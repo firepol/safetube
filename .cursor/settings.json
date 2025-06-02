@@ -1,0 +1,54 @@
+{
+  "version": "1.0",
+  "editor": {
+    "formatOnSave": true,
+    "tabSize": 2,
+    "insertSpaces": true,
+    "trimTrailingWhitespace": true,
+    "insertFinalNewline": true
+  },
+  "typescript": {
+    "preferences": {
+      "importModuleSpecifier": "non-relative",
+      "quoteStyle": "single"
+    },
+    "suggest": {
+      "completeFunctionCalls": true,
+      "autoImports": true
+    }
+  },
+  "search": {
+    "exclude": [
+      "**/node_modules",
+      "**/dist",
+      "**/.git",
+      "**/build"
+    ]
+  },
+  "files": {
+    "exclude": {
+      "**/.git": true,
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/build": true
+    },
+    "associations": {
+      "*.tsx": "typescriptreact",
+      "*.ts": "typescript"
+    }
+  },
+  "terminal": {
+    "integrated": {
+      "shell": {
+        "linux": "/bin/bash"
+      }
+    }
+  },
+  "ai": {
+    "enabled": true,
+    "autoComplete": true,
+    "codeReview": true,
+    "documentation": true,
+    "testGeneration": true
+  }
+} 
