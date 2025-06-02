@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Security Rules
+
+- Validate all inputs in [src/](mdc:src) files.
+- Handle errors gracefully in [src/](mdc:src) files.

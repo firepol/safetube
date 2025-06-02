@@ -1,0 +1,19 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Code Style Rules
+
+## TypeScript
+- Use strict TypeScript configuration for all [*.ts](mdc:src) files.
+- Define interfaces for all props in [*.tsx](mdc:src) files.
+- Avoid using the `any` type in [*.ts](mdc:src) files.
+
+## React
+- Use functional components in all [*.tsx](mdc:src) files.
+- Implement proper prop types in all [*.tsx](mdc:src) files.
+
+## Styling
+- Use Tailwind CSS classes in [*.tsx](mdc:src) files.
+- Follow shadcn/ui component patterns in [*.tsx](mdc:src) files.
