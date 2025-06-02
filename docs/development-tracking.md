@@ -46,7 +46,7 @@ Each feature PRD must include:
 - **Current Sprint**: Sprint 1
 - **Blockers**: None
 - **Dependencies**: None
-- **Progress**: 85%
+- **Progress**: 90%
 - **Last Updated**: 2024-03-19
 - **Completed Items**:
   - Basic project structure with Electron + React + TypeScript
@@ -57,11 +57,12 @@ Each feature PRD must include:
   - Electron Nightly integration for Linux compatibility
   - ESLint configuration with browser globals
   - Cursor rules migration to .mdc format
+  - Testing framework setup with Vitest and React Testing Library
 - **Remaining Items**:
-  - Set up testing framework
   - Configure CI/CD pipeline
   - Add error handling and logging
 - **Recent Changes**:
+  - 2024-03-19: Added testing framework with Vitest and React Testing Library
   - 2024-03-19: Migrated Cursor rules to .mdc format
   - 2024-03-19: Added ESLint configuration with browser globals
   - 2024-03-19: Switched to Electron Nightly for Linux compatibility
