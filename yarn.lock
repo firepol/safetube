@@ -2139,6 +2139,11 @@ electron-builder@^26.0.12:
     simple-update-notifier "2.0.0"
     yargs "^17.6.2"
 
+electron-log@^5.4.0:
+  version "5.4.0"
+  resolved "https://registry.yarnpkg.com/electron-log/-/electron-log-5.4.0.tgz#3180bf5194b2e2efacb62ec1392f8150faf4de6b"
+  integrity sha512-AXI5OVppskrWxEAmCxuv8ovX+s2Br39CpCAgkGMNHQtjYT3IiVbSQTncEjFVGPgoH35ZygRm/mvUMBDWwhRxgg==
+
 electron-nightly@^38.0.0-nightly.20250602:
   version "38.0.0-nightly.20250602"
   resolved "https://registry.yarnpkg.com/electron-nightly/-/electron-nightly-38.0.0-nightly.20250602.tgz#8ca04f0bd98b3b409c8872c0f593afddb16d0be9"

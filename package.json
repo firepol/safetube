@@ -14,8 +14,8 @@
     "preview": "vite preview",
     "electron:dev": "concurrently \"yarn dev\" \"yarn build:main && yarn build:preload && npx electron-nightly .\"",
     "electron:build": "yarn build:all && electron-builder",
-    "test": "vitest",
-    "test:watch": "vitest watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui"
   },
@@ -45,6 +45,7 @@
   "dependencies": {
     "@shadcn/ui": "^0.0.4",
     "electron": "^36.3.2",
+    "electron-log": "^5.4.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwindcss": "^4.1.8",

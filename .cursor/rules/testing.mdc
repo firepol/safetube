@@ -7,3 +7,20 @@ alwaysApply: true
 
 - Keep tests close to the code they test (see [*.test.ts, *.test.tsx](mdc:src)).
 - Use descriptive test names in all test files.
+- Write tests for all new features and bug fixes before committing.
+- Test both success and error cases.
+- Mock external dependencies and side effects.
+- Follow the Arrange-Act-Assert pattern in tests.
+- Ensure test coverage for critical paths.
+
+## Test Requirements for New Features
+- Unit tests for individual components and functions
+- Integration tests for feature interactions
+- Error handling and edge cases
+- Performance considerations where relevant
+
+## Test Requirements for Bug Fixes
+- Test that reproduces the bug
+- Test that verifies the fix
+- Additional tests for related edge cases
+- Regression tests to prevent future issues
