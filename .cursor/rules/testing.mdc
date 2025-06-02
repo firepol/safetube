@@ -1,0 +1,9 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Testing Rules
+
+- Keep tests close to the code they test (see [*.test.ts, *.test.tsx](mdc:src)).
+- Use descriptive test names in all test files.

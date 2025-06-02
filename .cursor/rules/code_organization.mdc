@@ -1,0 +1,15 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Code Organization Rules
+
+## File Structure
+- Keep related files close together in the directory structure (see [src/](mdc:src)).
+- Use clear, descriptive file names for all TypeScript files in [src/](mdc:src).
+- Group related components in the same directory under [src/components/](mdc:src/components).
+
+## Component Organization
+- Only one React component per file in [src/components/](mdc:src/components).
+- Place shared types in [src/types/](mdc:src/types).

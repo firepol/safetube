@@ -46,7 +46,7 @@ Each feature PRD must include:
 - **Current Sprint**: Sprint 1
 - **Blockers**: None
 - **Dependencies**: None
-- **Progress**: 75%
+- **Progress**: 85%
 - **Last Updated**: 2024-03-19
 - **Completed Items**:
   - Basic project structure with Electron + React + TypeScript
@@ -55,12 +55,15 @@ Each feature PRD must include:
   - Tailwind CSS integration
   - Basic application layout
   - Electron Nightly integration for Linux compatibility
+  - ESLint configuration with browser globals
+  - Cursor rules migration to .mdc format
 - **Remaining Items**:
-  - Add ESLint configuration
   - Set up testing framework
   - Configure CI/CD pipeline
   - Add error handling and logging
 - **Recent Changes**:
+  - 2024-03-19: Migrated Cursor rules to .mdc format
+  - 2024-03-19: Added ESLint configuration with browser globals
   - 2024-03-19: Switched to Electron Nightly for Linux compatibility
   - 2024-03-19: Added basic application layout with Tailwind CSS
   - 2024-03-19: Set up Vite development environment

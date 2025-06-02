@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Package Management Rules
+
+- Use Yarn as the package manager for this project. All package management commands should use Yarn, not npm.
+- The [package.json](mdc:package.json) file must be present and maintained.
+- The [yarn.lock](mdc:yarn.lock) file must be present and kept up to date.
+- Do not use npm commands or maintain a package-lock.json file.

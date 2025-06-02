@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# PRD Workflow Rules
+
+- The [docs/development-tracking.md](mdc:docs/development-tracking.md) document must be updated whenever a feature status changes.
+- PRDs must be developed in the order specified in [docs/development-tracking.md](mdc:docs/development-tracking.md).
+- Each PRD in [docs/prds/](mdc:docs/prds) must be completed before moving to the next one.
+- Feature dependencies must be respected in the development order as tracked in [docs/development-tracking.md](mdc:docs/development-tracking.md).

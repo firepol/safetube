@@ -1,0 +1,11 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Commit Message Rules
+
+- Commit messages should be clear, concise, and descriptive.
+- Use conventional commit format: `<type>(<scope>): <description>`.
+- Commit after each fix or feature (commit often).
+- Example: `fix(eslint): add browser globals for renderer, migrate ignores to config, and set module type`.
