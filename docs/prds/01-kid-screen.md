@@ -76,7 +76,10 @@ The Kid Screen is the main interface where children can browse and watch whiteli
 
 ### Video Card Design
 - Thumbnail with 16:9 aspect ratio
-- Title below thumbnail
+- Title below thumbnail (truncated with ellipsis if too long, full title shown on hover via tooltip)
+- Card displayed in a responsive grid, flowing left-to-right and wrapping as needed
+- Each card has a max width and max height for consistency
+- Thumbnail has min/max size constraints
 - Duration badge in bottom-right corner of thumbnail
 - Progress bar overlay on thumbnail for partially watched videos
 - Visual indicator for watched videos (e.g., colored border or overlay)

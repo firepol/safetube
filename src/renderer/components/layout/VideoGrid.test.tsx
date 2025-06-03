@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { VideoGrid } from './VideoGrid';
 import { VideoCardBaseProps } from '../video/VideoCardBase';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 describe('VideoGrid', () => {
   const mockVideos: VideoCardBaseProps[] = [
@@ -34,8 +35,11 @@ describe('VideoGrid', () => {
     },
   ];
 
+  const renderWithProvider = (ui: React.ReactElement) =>
+    render(<Tooltip.Provider>{ui}</Tooltip.Provider>);
+
   it('renders videos grouped by type', () => {
-    render(<VideoGrid videos={mockVideos} />);
+    renderWithProvider(<VideoGrid videos={mockVideos} />);
     
     // Check if type headers are rendered
     const headers = screen.getAllByRole('heading', { level: 2 });
@@ -51,7 +55,7 @@ describe('VideoGrid', () => {
   });
 
   it('renders videos without grouping when groupByType is false', () => {
-    render(<VideoGrid videos={mockVideos} groupByType={false} />);
+    renderWithProvider(<VideoGrid videos={mockVideos} groupByType={false} />);
     
     // Check that type headers are not rendered
     const headers = screen.queryAllByRole('heading', { level: 2 });
@@ -64,7 +68,7 @@ describe('VideoGrid', () => {
   });
 
   it('applies custom className', () => {
-    const { container } = render(
+    const { container } = renderWithProvider(
       <VideoGrid videos={mockVideos} className="custom-class" />
     );
     expect(container.firstChild).toHaveClass('custom-class');

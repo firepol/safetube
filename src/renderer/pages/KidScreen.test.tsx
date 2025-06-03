@@ -1,15 +1,19 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { KidScreen } from './KidScreen';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 describe('KidScreen', () => {
+  const renderWithProvider = (ui: React.ReactElement) =>
+    render(<Tooltip.Provider>{ui}</Tooltip.Provider>);
+
   it('renders the page title', () => {
-    render(<KidScreen />);
+    renderWithProvider(<KidScreen />);
     expect(screen.getByText('My Videos')).toBeInTheDocument();
   });
 
   it('renders all sample videos', () => {
-    render(<KidScreen />);
+    renderWithProvider(<KidScreen />);
     
     // Check for video titles
     expect(screen.getByText('Never Gonna Give You Up')).toBeInTheDocument();

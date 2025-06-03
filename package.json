@@ -43,6 +43,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@radix-ui/react-tooltip": "^1.2.7",
     "@shadcn/ui": "^0.0.4",
     "clsx": "^2.1.1",
     "electron": "^36.3.2",
