@@ -21,7 +21,14 @@ export const PlayerPage: React.FC = () => {
       </button>
       <h1 className="mb-2 text-2xl font-bold text-center">{video.title}</h1>
       <div className="mb-4 text-sm text-muted-foreground">Duration: {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}</div>
-      {video.type === 'youtube' ? (
+      {video.streamUrl ? (
+        <video
+          className="w-full max-w-2xl aspect-video bg-black rounded-lg"
+          src={video.streamUrl}
+          controls
+          autoPlay
+        />
+      ) : video.type === 'youtube' ? (
         <div className="w-full max-w-2xl aspect-video">
           <iframe
             width="100%"
