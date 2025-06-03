@@ -6,17 +6,12 @@ import { defineConfig } from 'vite'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-    },
-  },
+  root: path.join(__dirname, 'src/renderer'),
   base: './',
   server: {
     port: 5173,
     strictPort: true,
   },
-  root: path.join(__dirname, 'src/renderer'),
   publicDir: path.join(__dirname, 'public'),
   build: {
     outDir: path.join(__dirname, 'dist/renderer'),

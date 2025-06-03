@@ -1,6 +1,6 @@
 import React from 'react';
-import { VideoGrid } from '@/components/layout/VideoGrid';
-import { sampleVideos } from '@/data/sample-videos';
+import { VideoGrid } from '../components/layout/VideoGrid';
+import { sampleVideos } from '../data/sample-videos';
 
 export const KidScreen: React.FC = () => {
   return (
