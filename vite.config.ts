@@ -8,6 +8,11 @@ export default defineConfig({
   plugins: [react()],
   root: path.join(__dirname, 'src/renderer'),
   base: './',
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   server: {
     port: 5173,
     strictPort: true,
