@@ -12,7 +12,7 @@
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"yarn dev\" \"yarn build:main && yarn build:preload && npx electron-nightly .\"",
+    "electron:dev": "concurrently \"yarn dev\" \"yarn build:main && yarn build:preload && NODE_ENV=development npx electron-nightly .\"",
     "electron:build": "yarn build:all && electron-builder",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -56,6 +56,7 @@
     "typescript": "^5.8.3"
   },
   "devDependencies": {
+    "@tailwindcss/aspect-ratio": "^0.4.2",
     "@tailwindcss/postcss": "^4.1.8",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^6.6.3",
