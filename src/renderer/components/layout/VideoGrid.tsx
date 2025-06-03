@@ -31,7 +31,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
           {groupByType && (
             <h2 className="text-xl font-semibold capitalize">{type}</h2>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 p-2">
+          <div className="grid gap-6 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
             {typeVideos.map((video, index) => (
               <VideoCardBase
                 key={`${video.type}-${index}`}

@@ -28,19 +28,18 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   return (
     <div
       className={cn(
-        'bg-card rounded-xl shadow-md flex flex-col max-w-xs min-w-[200px] w-full h-full',
-        'transition-transform hover:scale-[1.03] border border-border',
+        'bg-card rounded-xl border shadow-md flex flex-col max-w-[340px] w-full',
+        'transition-transform hover:scale-[1.03]',
         watched ? 'opacity-80' : ''
       )}
       tabIndex={0}
     >
       {/* Thumbnail */}
-      <div className="relative aspect-video w-full max-h-48 overflow-hidden rounded-t-xl">
+      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
         <img
           src={thumbnail}
           alt={title}
           className="h-full w-full object-cover"
-          style={{ minHeight: 120, maxHeight: 192 }}
         />
         {/* Duration Overlay */}
         <div className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 py-0.5 text-xs text-white">
