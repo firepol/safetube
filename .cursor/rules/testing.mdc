@@ -5,7 +5,7 @@ alwaysApply: true
 ---
 # Testing Rules
 
-- Keep tests close to the code they test (see [*.test.ts, *.test.tsx](mdc:src)).
+- Keep tests close to the code they test (see [*.test.ts, *.test.tsx](mdc:src/)).
 - Use descriptive test names in all test files.
 - Write tests for all new features and bug fixes before committing.
 - Test both success and error cases.
@@ -24,3 +24,23 @@ alwaysApply: true
 - Test that verifies the fix
 - Additional tests for related edge cases
 - Regression tests to prevent future issues
+
+## Development Workflow
+1. Make changes to code
+2. Write or update tests for the changes
+3. Run tests with `yarn test`
+4. If tests pass, commit changes
+5. If tests fail, fix issues before committing
+
+## Test Naming Conventions
+- Use descriptive names that explain the test's purpose
+- Follow the pattern: `describe('Component/Function', () => { it('should do something specific', () => {}) })`
+- Group related tests using nested `describe` blocks
+- Use `beforeEach` and `afterEach` for test setup and cleanup
+
+## Test Organization
+- Keep test files next to the code they test
+- Use `.test.ts` or `.test.tsx` extension
+- Group related tests together
+- Use clear test descriptions
+- Follow the AAA pattern (Arrange, Act, Assert)
