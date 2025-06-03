@@ -76,7 +76,7 @@ Each feature PRD must include:
 - **Current Sprint**: Sprint 1
 - **Blockers**: None
 - **Dependencies**: Project Setup
-- **Progress**: 50%
+- **Progress**: 80%
 - **Last Updated**: 2024-03-19
 - **Completed Items**:
   - Basic video grid layout with grouping by type
@@ -84,17 +84,21 @@ Each feature PRD must include:
   - Sample data for testing
   - Tests for VideoGrid and VideoCardBase components
   - Electron integration with renderer
-- **Remaining Items**:
   - Style video cards with proper thumbnails
   - Add video duration display
   - Add progress bar for watched videos
   - Add hover effects and interactions
   - Implement responsive design
+- **Remaining Items**:
+  - Further visual polish and UX improvements for cards/grid
 - **Recent Changes**:
   - 2024-03-19: Added basic video grid with grouping
   - 2024-03-19: Created VideoCardBase component
   - 2024-03-19: Added sample data for testing
   - 2024-03-19: Set up renderer structure
+  - 2024-03-19: Improved card/grid styling and responsiveness
+  - 2024-03-19: Added duration, progress bar, and hover effects
+  - 2024-03-19: Noted further visual polish planned
 
 ### 2. Play Video
 - **Status**: Not Started
