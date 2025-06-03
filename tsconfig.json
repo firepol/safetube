@@ -15,11 +15,13 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
+    "declaration": true,
+    "declarationDir": "./dist/types",
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"]
     }
   },
-  "include": ["src"],
+  "include": ["src/renderer/**/*"],
   "references": [{ "path": "./tsconfig.node.json" }]
 } 

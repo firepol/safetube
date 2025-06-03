@@ -1,17 +1,56 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import videos from '../data/videos.json';
+
+declare global {
+  interface Window {
+    electron: {
+      getLocalFile: (filePath: string) => Promise<string>;
+      getDlnaFile: (server: string, port: number, path: string) => Promise<string>;
+    };
+  }
+}
 
 export const PlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const video = videos.find((v) => v.id === id);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [localFilePath, setLocalFilePath] = useState<string | null>(null);
+  const [dlnaUrl, setDlnaUrl] = useState<string | null>(null);
 
   useEffect(() => {
     if (video && video.resumeAt && videoRef.current) {
       videoRef.current.currentTime = video.resumeAt;
     }
+  }, [video]);
+
+  useEffect(() => {
+    const loadLocalFile = async () => {
+      if (video?.type === 'local' && video.url.startsWith('file://')) {
+        try {
+          const path = await window.electron.getLocalFile(video.url);
+          setLocalFilePath(path);
+        } catch (error) {
+          console.error('Error loading local file:', error);
+        }
+      }
+    };
+    loadLocalFile();
+  }, [video]);
+
+  useEffect(() => {
+    const loadDlnaFile = async () => {
+      if (video?.type === 'dlna' && video.server && video.port && video.path) {
+        try {
+          const url = await window.electron.getDlnaFile(video.server, video.port, video.path);
+          setDlnaUrl(url);
+        } catch (error) {
+          console.error('Error loading DLNA file:', error);
+        }
+      }
+    };
+    loadDlnaFile();
   }, [video]);
 
   if (!video) {
@@ -27,7 +66,7 @@ export const PlayerPage: React.FC = () => {
           onClick={() => navigate(-1)}
         >
           ← Back
-        </button>
+        </button><>&nbsp;</>
         <span className="text-sm text-muted-foreground">
           {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
         </span>
@@ -57,6 +96,22 @@ export const PlayerPage: React.FC = () => {
               allowFullScreen
             />
           </div>
+        ) : video.type === 'local' && localFilePath ? (
+          <video
+            ref={videoRef}
+            className="w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
+            src={`file://${localFilePath}`}
+            controls
+            autoPlay
+          />
+        ) : video.type === 'dlna' && dlnaUrl ? (
+          <video
+            ref={videoRef}
+            className="w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
+            src={dlnaUrl}
+            controls
+            autoPlay
+          />
         ) : (
           <div className="text-center text-muted-foreground">Video type not supported yet.</div>
         )}

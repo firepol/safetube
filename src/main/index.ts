@@ -1,7 +1,7 @@
 import path from 'path'
-
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import log from './logger'
+import { Client } from 'node-ssdp'
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -9,6 +9,68 @@ if (require('electron-squirrel-startup')) {
 }
 
 const isDev = process.env.NODE_ENV === 'development'
+
+// Initialize SSDP client
+const ssdpClient = new Client()
+
+// Handle local file access
+ipcMain.handle('get-local-file', async (event, filePath: string) => {
+  try {
+    // Convert file:// URL to actual file path
+    const decodedPath = decodeURIComponent(filePath.replace('file://', ''))
+    return decodedPath
+  } catch (error) {
+    log.error('Error accessing local file:', error)
+    throw error
+  }
+})
+
+// Handle DLNA file access
+ipcMain.handle('get-dlna-file', async (event, server: string, port: number, path: string) => {
+  try {
+    log.info('Searching for DLNA server:', server)
+    
+    // Search for DLNA servers
+    const devices = await new Promise<any[]>((resolve) => {
+      const foundDevices: any[] = []
+      
+      ssdpClient.on('response', (headers) => {
+        if (headers.ST === 'urn:schemas-upnp-org:service:ContentDirectory:1') {
+          foundDevices.push(headers)
+        }
+      })
+
+      ssdpClient.search('urn:schemas-upnp-org:service:ContentDirectory:1')
+      
+      // Wait for 5 seconds to collect responses
+      setTimeout(() => {
+        resolve(foundDevices)
+      }, 5000)
+    })
+
+    // Find our target server
+    const targetDevice = devices.find(device => device.LOCATION.includes(server))
+    if (!targetDevice) {
+      throw new Error(`DLNA server ${server} not found`)
+    }
+
+    log.info('Found DLNA server:', targetDevice.LOCATION)
+    
+    // For now, just return the direct URL since we know the server and path
+    // In a real implementation, we would:
+    // 1. Parse the device description XML from LOCATION
+    // 2. Find the ContentDirectory service
+    // 3. Browse the content directory to find the video
+    // 4. Get the direct media URL
+    const url = `http://${server}:${port}${path}`
+    log.info('Using media URL:', url)
+    
+    return url
+  } catch (error) {
+    log.error('Error accessing DLNA file:', error)
+    throw error
+  }
+})
 
 const createWindow = (): void => {
   log.info('Creating main window')
@@ -20,6 +82,7 @@ const createWindow = (): void => {
       nodeIntegration: false,
       contextIsolation: true,
       preload: path.join(__dirname, '../preload/index.js'),
+      webSecurity: false, // Allow loading local files
     },
   })
 

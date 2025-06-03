@@ -53,10 +53,10 @@
   {
     "id": "local-1",
     "type": "local",
-    "title": "School Project",
+    "title": "Tai Otoshi",
     "thumbnail": "https://example.com/local-thumb1.jpg",
     "duration": 300,
-    "url": "file:///videos/school-project.mp4"
+    "url": "file:///home/paul/Downloads/youtube/judo/tai-otoshi.mp4"
   },
   {
     "id": "local-2",
@@ -65,5 +65,32 @@
     "thumbnail": "https://example.com/local-thumb2.jpg",
     "duration": 600,
     "url": "file:///videos/dance-recital.mp4"
+  },
+  {
+    "id": "youtube-1",
+    "type": "youtube",
+    "title": "Sample YouTube Video",
+    "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+    "duration": 212,
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  },
+  {
+    "id": "local-1",
+    "type": "local",
+    "title": "Sample Local Video",
+    "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+    "duration": 180,
+    "url": "file:///home/paul/Downloads/youtube/judo/2024-03-19_21-00-00.mp4"
+  },
+  {
+    "id": "dlna-1",
+    "type": "dlna",
+    "title": "Star Trek: Lower Decks S04E01",
+    "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+    "duration": 1800,
+    "url": "http://shuttle:8200/series/Star.Trek.Lower.Decks.S04/Star.Trek.Lower.Decks.S04E01.1080p.HEVC.x265-MeGusta[eztv.re].mkv",
+    "server": "shuttle",
+    "port": 8200,
+    "path": "/series/Star.Trek.Lower.Decks.S04/Star.Trek.Lower.Decks.S04E01.1080p.HEVC.x265-MeGusta[eztv.re].mkv"
   }
 ] 

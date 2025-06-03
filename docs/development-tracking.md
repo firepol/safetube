@@ -106,24 +106,29 @@ Each feature PRD must include:
 - **Current Sprint**: Sprint 2
 - **Blockers**: None
 - **Dependencies**: Project Setup, Kid Screen
-- **Progress**: 30%
+- **Progress**: 50%
 - **Last Updated**: 2024-03-19
 - **Completed Items**:
   - Player page loads by video id and plays YouTube videos using embed
   - Navigation from homepage to player and back works
   - All video data is loaded from a single JSON file
+  - Added support for local video files with proper file system access
+  - Implemented IPC communication for secure file access
+  - Added proper error handling for file access
 - **Remaining Items**:
   - Replace YouTube embed with a true HTML5 player (requires direct video stream URL)
   - Improve player design and controls
-  - Add support for DLNA and local videos
+  - Add support for DLNA videos
   - Add time tracking and resume support
 - **Recent Changes**:
+  - 2024-03-19: Added local file support with Electron IPC
   - 2024-03-19: Initial player page implemented with YouTube embed
   - 2024-03-19: All video data unified in JSON
 - **Notes**:
   - Current design is functional but visually unpolished/ugly
   - Player page uses YouTube embed, not a true HTML5 player yet
   - To use an HTML5 player for YouTube, a direct video stream URL is needed (e.g., from yt-dlp)
+  - Local file support is working with proper security measures
 
 ### 3. Time Tracking
 - **Status**: Not Started
