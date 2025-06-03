@@ -1,18 +1,15 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-
-export type VideoSourceType = 'youtube' | 'dlna' | 'local';
+import { formatDuration } from '../../lib/utils';
 
 export interface VideoCardBaseProps {
   thumbnail: string;
   title: string;
-  duration: number | null;
+  duration: number;
   resumeAt: number | null;
   watched: boolean;
-  type: VideoSourceType;
+  type: 'youtube' | 'dlna' | 'local';
   progress: number;
-  className?: string;
-  onClick?: () => void;
 }
 
 export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
@@ -23,71 +20,53 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   watched,
   type,
   progress,
-  className,
-  onClick,
 }) => {
-  const formatDuration = (seconds: number): string => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = seconds % 60;
-
-    if (hours > 0) {
-      return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
-  };
+  const progressPercentage = Math.min(100, Math.max(0, progress));
 
   return (
-    <div
-      className={cn(
-        'group relative aspect-video w-full overflow-hidden rounded-lg bg-muted transition-all hover:scale-[1.02]',
-        watched && 'opacity-75',
-        className
-      )}
-      onClick={onClick}
-    >
-      {/* Thumbnail */}
-      <div className="relative h-full w-full">
+    <div className="group relative overflow-hidden rounded-lg bg-card shadow-sm transition-all hover:shadow-md">
+      {/* Thumbnail Container */}
+      <div className="relative aspect-video w-full overflow-hidden">
         <img
           src={thumbnail}
           alt={title}
-          className="h-full w-full object-cover"
+          className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         />
         
+        {/* Duration Overlay */}
+        <div className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 py-0.5 text-xs text-white">
+          {formatDuration(duration)}
+        </div>
+
         {/* Progress Bar */}
-        {progress > 0 && (
-          <div className="absolute bottom-0 left-0 h-1 w-full bg-muted">
+        {watched && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200">
             <div
-              className="h-full bg-primary"
-              style={{ width: `${progress}%` }}
+              className="h-full bg-primary transition-all duration-300"
+              style={{ width: `${progressPercentage}%` }}
               role="progressbar"
             />
           </div>
         )}
 
-        {/* Duration Badge */}
-        {duration && (
-          <div className="absolute bottom-2 right-2 rounded bg-black/80 px-1 text-xs text-white">
-            {formatDuration(duration)}
+        {/* Resume Overlay */}
+        {resumeAt !== null && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-black">
+              Resume at {formatDuration(resumeAt)}
+            </div>
           </div>
         )}
-
-        {/* Resume Indicator */}
-        {resumeAt && (
-          <div className="absolute left-2 top-2 rounded bg-black/80 px-1 text-xs text-white">
-            Resume at {formatDuration(resumeAt)}
-          </div>
-        )}
-
-        {/* Source Type Badge */}
-        <div className="absolute right-2 top-2 rounded bg-black/80 px-1 text-xs text-white">
-          {type}
-        </div>
       </div>
 
       {/* Title */}
-      <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 to-transparent p-2">
-        <h3 className="text-sm font-medium text-white line-clamp-2">{title}</h3>
+      <div className="p-3">
+        <h3 className="line-clamp-2 text-sm font-medium text-foreground">
+          {title}
+        </h3>
+        <p className="mt-1 text-xs text-muted-foreground capitalize">
+          {type}
+        </p>
       </div>
     </div>
   );
