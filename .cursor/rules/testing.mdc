@@ -12,6 +12,13 @@ alwaysApply: true
 - Mock external dependencies and side effects.
 - Follow the Arrange-Act-Assert pattern in tests.
 - Ensure test coverage for critical paths.
+- Always run tests (`yarn test`) before asking the user to check anything.
+- If tests fail, fix the issues before proceeding.
+- When making changes that affect multiple components or files, run tests after each significant change.
+- If you're unsure about a change's impact, run the tests to verify.
+- Never ask the user to run tests without having run them yourself first.
+- If you encounter test failures, document them and fix them before proceeding with the next steps.
+- When moving or refactoring code, ensure all tests pass before committing changes.
 
 ## Test Requirements for New Features
 - Unit tests for individual components and functions

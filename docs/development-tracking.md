@@ -71,12 +71,30 @@ Each feature PRD must include:
   - 2024-03-19: Initialized project with Yarn
 
 ### 1. Kid Screen – Homepage
-- **Status**: Not Started
+- **Status**: In Progress
 - **PRD**: [Kid Screen PRD](prds/01-kid-screen.md)
-- **Current Sprint**: N/A
-- **Blockers**: Project Setup
+- **Current Sprint**: Sprint 1
+- **Blockers**: None
 - **Dependencies**: Project Setup
-- **Progress**: 0%
+- **Progress**: 50%
+- **Last Updated**: 2024-03-19
+- **Completed Items**:
+  - Basic video grid layout with grouping by type
+  - Video card component with basic structure
+  - Sample data for testing
+  - Tests for VideoGrid and VideoCardBase components
+  - Electron integration with renderer
+- **Remaining Items**:
+  - Style video cards with proper thumbnails
+  - Add video duration display
+  - Add progress bar for watched videos
+  - Add hover effects and interactions
+  - Implement responsive design
+- **Recent Changes**:
+  - 2024-03-19: Added basic video grid with grouping
+  - 2024-03-19: Created VideoCardBase component
+  - 2024-03-19: Added sample data for testing
+  - 2024-03-19: Set up renderer structure
 
 ### 2. Play Video
 - **Status**: Not Started
