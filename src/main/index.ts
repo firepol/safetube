@@ -66,6 +66,6 @@ process.on('uncaughtException', (error) => {
 })
 
 // Log unhandled promise rejections
-process.on('unhandledRejection', (reason, promise) => {
+process.on('unhandledRejection', (reason) => {
   log.error('Unhandled promise rejection:', reason)
 }) 

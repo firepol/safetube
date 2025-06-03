@@ -1,4 +1,4 @@
-import { VideoCardBaseProps } from '@/components/video/VideoCardBase';
+import { VideoCardBaseProps } from '../components/video/VideoCardBase';
 
 export const sampleVideos: VideoCardBaseProps[] = [
   // YouTube videos
