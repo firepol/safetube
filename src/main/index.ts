@@ -12,19 +12,18 @@ const createWindow = (): void => {
   log.info('Creating main window')
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    height: 600,
+    width: 800,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: true,
-      preload: path.join(__dirname, '../preload/index.js'),
+      contextIsolation: false,
     },
   })
 
   // and load the index.html of the app.
   if (process.env.NODE_ENV === 'development') {
     log.debug('Loading development URL:', MAIN_WINDOW_VITE_DEV_SERVER_URL)
-    mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL)
+    mainWindow.loadURL('http://localhost:5173')
     // Open the DevTools.
     log.debug('Opening DevTools')
     mainWindow.webContents.openDevTools()
