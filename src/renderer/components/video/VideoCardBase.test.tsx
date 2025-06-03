@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { VideoCardBase } from './VideoCardBase';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { MemoryRouter } from 'react-router-dom';
 
 describe('VideoCardBase', () => {
   const mockVideo = {
+    id: 'yt-test',
     thumbnail: 'https://example.com/thumb.jpg',
     title: 'Test Video',
     duration: 125, // 2:05
@@ -15,7 +17,11 @@ describe('VideoCardBase', () => {
   };
 
   const renderWithProvider = (ui: React.ReactElement) =>
-    render(<Tooltip.Provider>{ui}</Tooltip.Provider>);
+    render(
+      <MemoryRouter>
+        <Tooltip.Provider>{ui}</Tooltip.Provider>
+      </MemoryRouter>
+    );
 
   it('renders video card with all information', () => {
     renderWithProvider(<VideoCardBase {...mockVideo} />);

@@ -2,18 +2,21 @@ import React from 'react';
 import { cn } from '@/lib/utils';
 import { formatDuration } from '../../lib/utils';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { useNavigate } from 'react-router-dom';
 
 export interface VideoCardBaseProps {
+  id: string;
   thumbnail: string;
   title: string;
   duration: number;
-  resumeAt: number | null;
-  watched: boolean;
+  resumeAt?: number | null;
+  watched?: boolean;
   type: 'youtube' | 'dlna' | 'local';
-  progress: number;
+  progress?: number;
 }
 
 export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
+  id,
   thumbnail,
   title,
   duration,
@@ -22,17 +25,19 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   type,
   progress,
 }) => {
-  const progressPercentage = Math.min(100, Math.max(0, progress));
+  const progressPercentage = Math.min(100, Math.max(0, progress ?? 0));
   const isLongTitle = title.length > 32;
+  const navigate = useNavigate();
 
   return (
     <div
       className={cn(
-        'bg-card rounded-xl border shadow-md flex flex-col max-w-[340px] w-full',
+        'bg-card rounded-xl border shadow-md flex flex-col max-w-[340px] w-full cursor-pointer',
         'transition-transform hover:scale-[1.03]',
         watched ? 'opacity-80' : ''
       )}
       tabIndex={0}
+      onClick={() => navigate(`/player/${id}`)}
     >
       {/* Thumbnail */}
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
@@ -56,7 +61,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
           </div>
         )}
         {/* Resume Overlay */}
-        {resumeAt !== null && (
+        {resumeAt !== null && resumeAt !== undefined && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100">
             <div className="rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-black">
               Resume at {formatDuration(resumeAt)}

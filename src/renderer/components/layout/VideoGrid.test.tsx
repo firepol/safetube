@@ -3,10 +3,12 @@ import { render, screen } from '@testing-library/react';
 import { VideoGrid } from './VideoGrid';
 import { VideoCardBaseProps } from '../video/VideoCardBase';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { MemoryRouter } from 'react-router-dom';
 
 describe('VideoGrid', () => {
   const mockVideos: VideoCardBaseProps[] = [
     {
+      id: 'yt-1',
       thumbnail: 'https://example.com/thumb1.jpg',
       title: 'YouTube Video 1',
       duration: 120,
@@ -16,6 +18,7 @@ describe('VideoGrid', () => {
       progress: 0,
     },
     {
+      id: 'dlna-1',
       thumbnail: 'https://example.com/thumb2.jpg',
       title: 'DLNA Video 1',
       duration: 180,
@@ -25,6 +28,7 @@ describe('VideoGrid', () => {
       progress: 50,
     },
     {
+      id: 'local-1',
       thumbnail: 'https://example.com/thumb3.jpg',
       title: 'Local Video 1',
       duration: 240,
@@ -36,7 +40,11 @@ describe('VideoGrid', () => {
   ];
 
   const renderWithProvider = (ui: React.ReactElement) =>
-    render(<Tooltip.Provider>{ui}</Tooltip.Provider>);
+    render(
+      <MemoryRouter>
+        <Tooltip.Provider>{ui}</Tooltip.Provider>
+      </MemoryRouter>
+    );
 
   it('renders videos grouped by type', () => {
     renderWithProvider(<VideoGrid videos={mockVideos} />);
