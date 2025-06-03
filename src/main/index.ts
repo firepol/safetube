@@ -22,7 +22,7 @@ const createWindow = (): void => {
 
   // and load the index.html of the app.
   if (process.env.NODE_ENV === 'development') {
-    log.debug('Loading development URL:', MAIN_WINDOW_VITE_DEV_SERVER_URL)
+    log.debug('Loading development URL: http://localhost:5173')
     mainWindow.loadURL('http://localhost:5173')
     // Open the DevTools.
     log.debug('Opening DevTools')
