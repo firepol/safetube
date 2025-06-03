@@ -1041,6 +1041,11 @@
   dependencies:
     defer-to-connect "^2.0.0"
 
+"@tailwindcss/aspect-ratio@^0.4.2":
+  version "0.4.2"
+  resolved "https://registry.yarnpkg.com/@tailwindcss/aspect-ratio/-/aspect-ratio-0.4.2.tgz#9ffd52fee8e3c8b20623ff0dcb29e5c21fb0a9ba"
+  integrity sha512-8QPrypskfBa7QIMuKHg2TA7BqES6vhBrDLOv8Unb6FcFyd3TjKbc6lcmb9UPQHxfl24sXoJ41ux/H7qQQvfaSQ==
+
 "@tailwindcss/node@4.1.8":
   version "4.1.8"
   resolved "https://registry.yarnpkg.com/@tailwindcss/node/-/node-4.1.8.tgz#e29187abec6194ce1e9f072208c62116a79a129b"

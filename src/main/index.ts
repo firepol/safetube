@@ -8,6 +8,8 @@ if (require('electron-squirrel-startup')) {
   app.quit()
 }
 
+const isDev = process.env.NODE_ENV === 'development'
+
 const createWindow = (): void => {
   log.info('Creating main window')
   // Create the browser window.
@@ -15,22 +17,41 @@ const createWindow = (): void => {
     height: 600,
     width: 800,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      preload: path.join(__dirname, '../preload/index.js'),
     },
   })
 
   // and load the index.html of the app.
-  if (process.env.NODE_ENV === 'development') {
+  if (isDev) {
     log.debug('Loading development URL: http://localhost:5173')
-    mainWindow.loadURL('http://localhost:5173')
-    // Open the DevTools.
-    log.debug('Opening DevTools')
-    mainWindow.webContents.openDevTools()
+    // Wait for the dev server to be ready
+    const waitForDevServer = async () => {
+      try {
+        const response = await fetch('http://localhost:5173')
+        if (response.ok) {
+          mainWindow.loadURL('http://localhost:5173')
+          // Open the DevTools.
+          log.debug('Opening DevTools')
+          mainWindow.webContents.openDevTools()
+        }
+      } catch (error) {
+        log.error('Dev server not ready, retrying in 1 second...', error)
+        setTimeout(waitForDevServer, 1000)
+      }
+    }
+    waitForDevServer()
   } else {
-    log.debug('Loading production URL:', path.join(__dirname, '../renderer/index.html'))
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'))
+    const indexPath = path.join(__dirname, '../renderer/index.html')
+    log.debug('Loading production URL:', indexPath)
+    mainWindow.loadFile(indexPath)
   }
+
+  // Log any errors that occur during page load
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    log.error('Failed to load page:', { errorCode, errorDescription })
+  })
 }
 
 // This method will be called when Electron has finished
