@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { VideoCardBase } from './VideoCardBase';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 describe('VideoCardBase', () => {
   const mockVideo = {
@@ -13,8 +14,11 @@ describe('VideoCardBase', () => {
     progress: 50,
   };
 
+  const renderWithProvider = (ui: React.ReactElement) =>
+    render(<Tooltip.Provider>{ui}</Tooltip.Provider>);
+
   it('renders video card with all information', () => {
-    render(<VideoCardBase {...mockVideo} />);
+    renderWithProvider(<VideoCardBase {...mockVideo} />);
     
     // Check title
     expect(screen.getByText('Test Video')).toBeInTheDocument();
@@ -32,28 +36,28 @@ describe('VideoCardBase', () => {
   });
 
   it('shows resume overlay on hover when resumeAt is set', () => {
-    render(<VideoCardBase {...mockVideo} />);
+    renderWithProvider(<VideoCardBase {...mockVideo} />);
     expect(screen.getByText('Resume at 1:00')).toBeInTheDocument();
   });
 
   it('does not show resume overlay when resumeAt is null', () => {
-    render(<VideoCardBase {...mockVideo} resumeAt={null} />);
+    renderWithProvider(<VideoCardBase {...mockVideo} resumeAt={null} />);
     expect(screen.queryByText(/Resume at/)).not.toBeInTheDocument();
   });
 
   it('shows progress bar when video is watched', () => {
-    render(<VideoCardBase {...mockVideo} />);
+    renderWithProvider(<VideoCardBase {...mockVideo} />);
     const progressBar = screen.getByRole('progressbar');
     expect(progressBar).toHaveStyle({ width: '50%' });
   });
 
   it('does not show progress bar when video is not watched', () => {
-    render(<VideoCardBase {...mockVideo} watched={false} />);
+    renderWithProvider(<VideoCardBase {...mockVideo} watched={false} />);
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 
   it('formats duration correctly for videos over an hour', () => {
-    render(<VideoCardBase {...mockVideo} duration={3665} />); // 1:01:05
+    renderWithProvider(<VideoCardBase {...mockVideo} duration={3665} />); // 1:01:05
     expect(screen.getByText('1:01:05')).toBeInTheDocument();
   });
 }); 

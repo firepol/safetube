@@ -1,10 +1,13 @@
 import { KidScreen } from './pages/KidScreen';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 function App() {
   return (
-    <div className="min-h-screen bg-background">
-      <KidScreen />
-    </div>
+    <Tooltip.Provider>
+      <div className="min-h-screen bg-background">
+        <KidScreen />
+      </div>
+    </Tooltip.Provider>
   );
 }
 
