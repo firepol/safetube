@@ -1,0 +1,58 @@
+[
+  {
+    "id": "yt-OGDuutRhN9M",
+    "type": "youtube",
+    "title": "Young Star Venturino Scores a Brace | Top Moment | Bologna-Genoa | Serie A 2024/25",
+    "thumbnail": "https://img.youtube.com/vi/OGDuutRhN9M/hqdefault.jpg",
+    "duration": 127,
+    "url": "https://www.youtube.com/watch?v=OGDuutRhN9M"
+  },
+  {
+    "id": "yt-dQw4w9WgXcQ",
+    "type": "youtube",
+    "title": "Never Gonna Give You Up",
+    "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+    "duration": 212,
+    "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+  },
+  {
+    "id": "yt-jNQXAC9IVRw",
+    "type": "youtube",
+    "title": "Me at the zoo",
+    "thumbnail": "https://i.ytimg.com/vi/jNQXAC9IVRw/maxresdefault.jpg",
+    "duration": 19,
+    "url": "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+  },
+  {
+    "id": "dlna-1",
+    "type": "dlna",
+    "title": "Family Vacation 2023",
+    "thumbnail": "https://example.com/dlna-thumb1.jpg",
+    "duration": 3600,
+    "url": "http://example.com/dlna/video1.mp4"
+  },
+  {
+    "id": "dlna-2",
+    "type": "dlna",
+    "title": "Birthday Party",
+    "thumbnail": "https://example.com/dlna-thumb2.jpg",
+    "duration": 1800,
+    "url": "http://example.com/dlna/video2.mp4"
+  },
+  {
+    "id": "local-1",
+    "type": "local",
+    "title": "School Project",
+    "thumbnail": "https://example.com/local-thumb1.jpg",
+    "duration": 300,
+    "url": "file:///videos/school-project.mp4"
+  },
+  {
+    "id": "local-2",
+    "type": "local",
+    "title": "Dance Recital",
+    "thumbnail": "https://example.com/local-thumb2.jpg",
+    "duration": 600,
+    "url": "file:///videos/dance-recital.mp4"
+  }
+] 

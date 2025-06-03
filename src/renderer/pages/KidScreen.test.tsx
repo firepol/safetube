@@ -2,10 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { KidScreen } from './KidScreen';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { MemoryRouter } from 'react-router-dom';
 
 describe('KidScreen', () => {
   const renderWithProvider = (ui: React.ReactElement) =>
-    render(<Tooltip.Provider>{ui}</Tooltip.Provider>);
+    render(
+      <MemoryRouter>
+        <Tooltip.Provider>{ui}</Tooltip.Provider>
+      </MemoryRouter>
+    );
 
   it('renders the page title', () => {
     renderWithProvider(<KidScreen />);

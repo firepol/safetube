@@ -101,12 +101,29 @@ Each feature PRD must include:
   - 2024-03-19: Noted further visual polish planned
 
 ### 2. Play Video
-- **Status**: Not Started
+- **Status**: In Progress
 - **PRD**: [Play Video PRD](prds/02-play-video.md)
-- **Current Sprint**: N/A
-- **Blockers**: Project Setup
+- **Current Sprint**: Sprint 2
+- **Blockers**: None
 - **Dependencies**: Project Setup, Kid Screen
-- **Progress**: 0%
+- **Progress**: 30%
+- **Last Updated**: 2024-03-19
+- **Completed Items**:
+  - Player page loads by video id and plays YouTube videos using embed
+  - Navigation from homepage to player and back works
+  - All video data is loaded from a single JSON file
+- **Remaining Items**:
+  - Replace YouTube embed with a true HTML5 player (requires direct video stream URL)
+  - Improve player design and controls
+  - Add support for DLNA and local videos
+  - Add time tracking and resume support
+- **Recent Changes**:
+  - 2024-03-19: Initial player page implemented with YouTube embed
+  - 2024-03-19: All video data unified in JSON
+- **Notes**:
+  - Current design is functional but visually unpolished/ugly
+  - Player page uses YouTube embed, not a true HTML5 player yet
+  - To use an HTML5 player for YouTube, a direct video stream URL is needed (e.g., from yt-dlp)
 
 ### 3. Time Tracking
 - **Status**: Not Started
