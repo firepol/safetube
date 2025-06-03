@@ -44,10 +44,12 @@
   "license": "ISC",
   "dependencies": {
     "@shadcn/ui": "^0.0.4",
+    "clsx": "^2.1.1",
     "electron": "^36.3.2",
     "electron-log": "^5.4.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "tailwind-merge": "^3.3.0",
     "tailwindcss": "^4.1.8",
     "typescript": "^5.8.3"
   },
