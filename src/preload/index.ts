@@ -14,6 +14,12 @@ contextBridge.exposeInMainWorld(
     },
     removeListener: (channel: string, func: (...args: any[]) => void) => {
       ipcRenderer.removeListener(channel, func)
+    },
+    getLocalFile: (filePath: string) => {
+      return ipcRenderer.invoke('get-local-file', filePath)
+    },
+    getDlnaFile: (server: string, port: number, path: string) => {
+      return ipcRenderer.invoke('get-dlna-file', server, port, path)
     }
   }
 ) 
