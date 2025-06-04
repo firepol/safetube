@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import videos from '../data/videos.json';
+import videojs from 'video.js';
+import 'video.js/dist/video-js.css';
 
 declare global {
   interface Window {
@@ -11,23 +13,38 @@ declare global {
   }
 }
 
+// Define a Video type to avoid implicit any
+interface Video {
+  id: string;
+  type: string;
+  title: string;
+  thumbnail: string;
+  duration: number;
+  url: string;
+  streamUrl?: string;
+  resumeAt?: number;
+}
+
 export const PlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const video = videos.find((v) => v.id === id);
+  const video = videos.find((v: Video) => v.id === id);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const playerRef = useRef<any>(null);
   const [localFilePath, setLocalFilePath] = useState<string | null>(null);
   const [dlnaUrl, setDlnaUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (video && video.resumeAt && videoRef.current) {
-      videoRef.current.currentTime = video.resumeAt;
+    if (video && video.resumeAt && playerRef.current) {
+      playerRef.current.currentTime(video.resumeAt);
     }
   }, [video]);
 
   useEffect(() => {
     const loadLocalFile = async () => {
-      if (video?.type === 'local' && video.url.startsWith('file://')) {
+      if (video?.type === 'local' && video.url && video.url.startsWith('file://')) {
         try {
           const path = await window.electron.getLocalFile(video.url);
           setLocalFilePath(path);
@@ -41,17 +58,61 @@ export const PlayerPage: React.FC = () => {
 
   useEffect(() => {
     const loadDlnaFile = async () => {
-      if (video?.type === 'dlna' && video.server && video.port && video.path) {
+      if (video?.type === 'dlna' && video.url) {
         try {
-          const url = await window.electron.getDlnaFile(video.server, video.port, video.path);
-          setDlnaUrl(url);
+          setIsLoading(true);
+          setError(null);
+          console.log('Loading DLNA video:', video);
+          const url = new URL(video.url);
+          const server = url.hostname;
+          const port = parseInt(url.port);
+          const path = url.pathname;
+          console.log('DLNA URL parts:', { server, port, path });
+          const dlnaUrl = await window.electron.getDlnaFile(server, port, path);
+          console.log('Received DLNA URL:', dlnaUrl);
+          setDlnaUrl(dlnaUrl);
         } catch (error) {
           console.error('Error loading DLNA file:', error);
+          setError(error instanceof Error ? error.message : 'Failed to load DLNA video');
+        } finally {
+          setIsLoading(false);
         }
+      } else {
+        console.log('Video not DLNA or missing URL:', video);
       }
     };
     loadDlnaFile();
   }, [video]);
+
+  useEffect(() => {
+    if (videoRef.current && (dlnaUrl || localFilePath)) {
+      const options = {
+        controls: true,
+        autoplay: true,
+        preload: 'auto',
+        fluid: true,
+        html5: {
+          nativeVideoTracks: true,
+          nativeAudioTracks: true,
+          nativeTextTracks: true
+        }
+      };
+
+      playerRef.current = videojs(videoRef.current, options, function onPlayerReady() {
+        console.log('Player is ready');
+        this.src({
+          src: dlnaUrl || `file://${localFilePath}`,
+          type: 'video/mp4' // Try mp4 first, video.js will try other formats if needed
+        });
+      });
+
+      return () => {
+        if (playerRef.current) {
+          playerRef.current.dispose();
+        }
+      };
+    }
+  }, [dlnaUrl, localFilePath]);
 
   if (!video) {
     return <div className="p-8 text-center text-red-600">Video not found</div>;
@@ -76,11 +137,14 @@ export const PlayerPage: React.FC = () => {
       </div>
       {/* Video area */}
       <div className="flex-1 flex items-center justify-center bg-black">
-        {video.streamUrl ? (
+        {isLoading ? (
+          <div className="text-center text-muted-foreground">Loading video...</div>
+        ) : error ? (
+          <div className="text-center text-red-600">{error}</div>
+        ) : video.streamUrl ? (
           <video
             ref={videoRef}
-            className="w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
-            src={video.streamUrl}
+            className="video-js vjs-default-skin vjs-big-play-centered w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
             controls
             autoPlay
           />
@@ -99,16 +163,14 @@ export const PlayerPage: React.FC = () => {
         ) : video.type === 'local' && localFilePath ? (
           <video
             ref={videoRef}
-            className="w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
-            src={`file://${localFilePath}`}
+            className="video-js vjs-default-skin vjs-big-play-centered w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
             controls
             autoPlay
           />
         ) : video.type === 'dlna' && dlnaUrl ? (
           <video
             ref={videoRef}
-            className="w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
-            src={dlnaUrl}
+            className="video-js vjs-default-skin vjs-big-play-centered w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
             controls
             autoPlay
           />

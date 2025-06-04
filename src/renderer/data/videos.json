@@ -35,22 +35,6 @@
     "url": "https://www.youtube.com/watch?v=jNQXAC9IVRw"
   },
   {
-    "id": "dlna-1",
-    "type": "dlna",
-    "title": "Family Vacation 2023",
-    "thumbnail": "https://example.com/dlna-thumb1.jpg",
-    "duration": 3600,
-    "url": "http://example.com/dlna/video1.mp4"
-  },
-  {
-    "id": "dlna-2",
-    "type": "dlna",
-    "title": "Birthday Party",
-    "thumbnail": "https://example.com/dlna-thumb2.jpg",
-    "duration": 1800,
-    "url": "http://example.com/dlna/video2.mp4"
-  },
-  {
     "id": "local-1",
     "type": "local",
     "title": "Tai Otoshi",
@@ -61,10 +45,10 @@
   {
     "id": "local-2",
     "type": "local",
-    "title": "Dance Recital",
+    "title": "Uiki Goshi webm",
     "thumbnail": "https://example.com/local-thumb2.jpg",
     "duration": 600,
-    "url": "file:///videos/dance-recital.mp4"
+    "url": "file:///home/paul/Downloads/youtube/judo/uki-goshi.webm"
   },
   {
     "id": "youtube-1",
@@ -75,7 +59,7 @@
     "url": "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
   },
   {
-    "id": "local-1",
+    "id": "local-3",
     "type": "local",
     "title": "Sample Local Video",
     "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
@@ -85,12 +69,28 @@
   {
     "id": "dlna-1",
     "type": "dlna",
-    "title": "Star Trek: Lower Decks S04E01",
+    "title": "Star Trek: Lower Decks S04E01 DLNA",
     "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
     "duration": 1800,
-    "url": "http://shuttle:8200/series/Star.Trek.Lower.Decks.S04/Star.Trek.Lower.Decks.S04E01.1080p.HEVC.x265-MeGusta[eztv.re].mkv",
-    "server": "shuttle",
+    "url": "http://192.168.68.51:8200/MediaItems/573.mkv",
+    "server": "192.168.68.51",
     "port": 8200,
-    "path": "/series/Star.Trek.Lower.Decks.S04/Star.Trek.Lower.Decks.S04E01.1080p.HEVC.x265-MeGusta[eztv.re].mkv"
-  }
+    "path": "/MediaItems/573.mkv"
+  },
+  {
+    "id": "dlna-2",
+    "type": "dlna",
+    "title": "Judo Tao otoshi 1472 mp4",
+    "thumbnail": "https://example.com/dlna-thumb2.jpg",
+    "duration": 1800,
+    "url": "http://192.168.68.51:8200/MediaItems/1472.mp4"
+  },
+  {
+    "id": "dlna-3",
+    "type": "dlna",
+    "title": "Judo Tao otoshi 1473 mkv",
+    "thumbnail": "https://example.com/dlna-thumb1.jpg",
+    "duration": 3600,
+    "url": "http://192.168.68.51:8200/MediaItems/1473.mkv"
+  }  
 ] 
