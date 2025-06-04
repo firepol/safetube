@@ -1,14 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { KidScreen } from './KidScreen';
-import * as Tooltip from '@radix-ui/react-tooltip';
 import { MemoryRouter } from 'react-router-dom';
-import videos from '../data/videos.json';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 const renderWithProvider = (component: React.ReactNode) => {
   return render(
     <MemoryRouter>
-      {component}
+      <Tooltip.Provider>
+        {component}
+      </Tooltip.Provider>
     </MemoryRouter>
   );
 };
