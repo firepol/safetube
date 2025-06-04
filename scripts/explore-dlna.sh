@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# explore-dlna.sh
+#
+# Script to explore a DLNA server using HTTP and UPnP SOAP requests.
+# Usage: ./explore-dlna.sh <server> <port> [media_id]
+#   - Lists all media items if no media_id is given
+#   - Fetches a specific media item if media_id is given
+#   - Can browse containers/folders using UPnP SOAP
+#
+# This script is more complete than dlna-browser.ts and can be used to discover all available media and their resource URLs.
+
 # Check if server and port are provided
 if [ -z "$1" ] || [ -z "$2" ]; then
     echo "Usage: $0 <server> <port> [media_id]"

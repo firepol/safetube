@@ -11,7 +11,8 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      webSecurity: false // Allow cross-origin requests
     }
   });
 
@@ -23,6 +24,31 @@ function createWindow() {
     // In production, load the built index.html
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
+
+  // Add headers to all requests
+  mainWindow.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+    callback({
+      requestHeaders: {
+        ...details.requestHeaders,
+        'Origin': 'http://localhost:5173',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      }
+    });
+  });
+
+  // Handle CORS preflight requests
+  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Access-Control-Allow-Origin': ['*'],
+        'Access-Control-Allow-Methods': ['GET, POST, OPTIONS'],
+        'Access-Control-Allow-Headers': ['Content-Type']
+      }
+    });
+  });
 }
 
 app.whenReady().then(() => {
@@ -62,27 +88,8 @@ ipcMain.handle('get-local-file', async (_, filePath: string) => {
 
 // Handle DLNA file access
 ipcMain.handle('get-dlna-file', async (_, server: string, port: number, path: string) => {
-  return new Promise((resolve, reject) => {
-    const options = {
-      hostname: server,
-      port: port,
-      path: path,
-      method: 'HEAD'
-    };
-
-    const req = http.request(options, (res) => {
-      if (res.statusCode === 200) {
-        // If HEAD request succeeds, return the full URL
-        resolve(`http://${server}:${port}${path}`);
-      } else {
-        reject(new Error(`Failed to access DLNA file: ${res.statusCode}`));
-      }
-    });
-
-    req.on('error', (error) => {
-      reject(error);
-    });
-
-    req.end();
-  });
+  console.log('Getting DLNA file:', { server, port, path });
+  const url = `http://${server}:${port}${path}`;
+  console.log('Returning DLNA URL:', url);
+  return url;
 }); 

@@ -106,8 +106,8 @@ Each feature PRD must include:
 - **Current Sprint**: Sprint 2
 - **Blockers**: None
 - **Dependencies**: Project Setup, Kid Screen
-- **Progress**: 50%
-- **Last Updated**: 2024-03-19
+- **Progress**: 80%
+- **Last Updated**: 2024-06-04
 - **Completed Items**:
   - Player page loads by video id and plays YouTube videos using embed
   - Navigation from homepage to player and back works
@@ -115,16 +115,19 @@ Each feature PRD must include:
   - Added support for local video files with proper file system access
   - Implemented IPC communication for secure file access
   - Added proper error handling for file access
+  - DLNA video playback works for MP4 files
+  - Partial support for MKV/WEBM (some files work, some do not, depending on browser/Electron support and server MIME type)
 - **Remaining Items**:
   - Replace YouTube embed with a true HTML5 player (requires direct video stream URL)
   - Improve player design and controls
-  - Add support for DLNA videos
   - Add time tracking and resume support
+  - Improve support for more DLNA formats (transcoding or proxy may be needed for full MKV/WEBM support)
 - **Recent Changes**:
-  - 2024-03-19: Added local file support with Electron IPC
-  - 2024-03-19: Initial player page implemented with YouTube embed
-  - 2024-03-19: All video data unified in JSON
+  - 2024-06-04: MP4 DLNA playback confirmed working, partial support for MKV/WEBM, added and documented DLNA browsing scripts
 - **Notes**:
+  - MP4 files play reliably via DLNA
+  - MKV/WEBM files: some play, some do not, depending on browser/Electron support and server MIME type
+  - Two scripts exist for DLNA browsing: see `scripts/` for usage and documentation
   - Current design is functional but visually unpolished/ugly
   - Player page uses YouTube embed, not a true HTML5 player yet
   - To use an HTML5 player for YouTube, a direct video stream URL is needed (e.g., from yt-dlp)

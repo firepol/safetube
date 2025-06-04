@@ -1,19 +1,18 @@
 import React from 'react';
 import { VideoGrid } from '../components/layout/VideoGrid';
-import { sampleVideos } from '../data/sample-videos';
+import videos from '../data/videos.json';
 
 export const KidScreen: React.FC = () => {
   return (
-    <div className="w-full max-w-7xl mx-auto p-4">
-      <h1 className="mb-8 text-3xl font-bold">My Videos</h1>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Kid-Friendly Videos</h1>
       <VideoGrid
-        videos={sampleVideos.map((v) => ({
+        videos={videos.map((v) => ({
           id: v.id,
-          thumbnail: v.thumbnail,
           title: v.title,
-          duration: v.duration,
-          type: v.type as 'youtube' | 'dlna' | 'local',
-          // For now, progress, watched, and resumeAt are undefined
+          thumbnail: v.thumbnail,
+          duration: Number(v.duration),
+          type: v.type as 'youtube' | 'dlna' | 'local'
         }))}
       />
     </div>

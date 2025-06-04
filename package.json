@@ -45,16 +45,19 @@
   "dependencies": {
     "@radix-ui/react-tooltip": "^1.2.7",
     "@shadcn/ui": "^0.0.4",
+    "@types/video.js": "^7.3.58",
     "clsx": "^2.1.1",
     "electron": "^36.3.2",
     "electron-log": "^5.4.0",
+    "node-dlna": "^0.0.1",
     "node-ssdp": "^4.0.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-router-dom": "^7.6.1",
     "tailwind-merge": "^3.3.0",
     "tailwindcss": "^4.1.8",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "video.js": "^8.22.0"
   },
   "devDependencies": {
     "@tailwindcss/aspect-ratio": "^0.4.2",
