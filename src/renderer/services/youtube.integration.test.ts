@@ -194,5 +194,44 @@ describe('YouTubeAPI Integration', () => {
       availableStreams: videoStreams.length,
       availableAudioTracks: audioTracks.length,
     });
+
+    // Test language preference selection
+    const preferredLanguages = ['it', 'en'];
+    const bestAudio = YouTubeAPI.getBestAudioTrackByLanguage(audioTracks, preferredLanguages);
+    console.log('Selected audio track:', {
+      language: bestAudio.language,
+      bitrate: bestAudio.bitrate,
+      mimeType: bestAudio.mimeType
+    });
+
+    // Test highest quality stream with language preference
+    const highestQuality = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks, preferredLanguages);
+    console.log('Highest quality stream with audio:', {
+      quality: highestQuality.quality,
+      resolution: highestQuality.resolution,
+      fps: highestQuality.fps,
+      audioLanguage: highestQuality.audioLanguage,
+      hasAudio: !!highestQuality.audioUrl
+    });
+
+    // Test fallback to English when preferred language not available
+    const nonExistentLanguages = ['xx', 'yy'];
+    const englishFallback = YouTubeAPI.getBestAudioTrackByLanguage(audioTracks, nonExistentLanguages);
+    expect(englishFallback).toBeTruthy();
+    console.log('English fallback track:', {
+      language: englishFallback.language,
+      bitrate: englishFallback.bitrate
+    });
+
+    // Test fallback to first available when no English
+    const noEnglishTracks = audioTracks.filter(t => t.language.toLowerCase() !== 'en');
+    if (noEnglishTracks.length > 0) {
+      const firstAvailable = YouTubeAPI.getBestAudioTrackByLanguage(noEnglishTracks, ['xx']);
+      expect(firstAvailable).toBeTruthy();
+      console.log('First available track:', {
+        language: firstAvailable.language,
+        bitrate: firstAvailable.bitrate
+      });
+    }
   }, 20000);
 }); 
