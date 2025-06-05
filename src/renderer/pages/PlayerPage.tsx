@@ -3,15 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import videos from '../data/videos.json';
 import { YouTubeAPI } from '../services/youtube';
 
-declare global {
-  interface Window {
-    electron: {
-      getLocalFile: (filePath: string) => Promise<string>;
-      getDlnaFile: (server: string, port: number, path: string) => Promise<string>;
-    };
-  }
-}
-
 // Define a Video type to avoid implicit any
 interface Video {
   id: string;
@@ -21,6 +12,7 @@ interface Video {
   duration: number;
   url: string;
   streamUrl?: string;
+  audioStreamUrl?: string;
   resumeAt?: number;
   server?: string;
   port?: number;
@@ -50,9 +42,14 @@ export const PlayerPage: React.FC = () => {
         try {
           const path = await window.electron.getLocalFile(video.url);
           setLocalFilePath(path);
+          if (videoRef.current) {
+            videoRef.current.src = path;
+          }
+          setIsLoading(false);
         } catch (error) {
           console.error('Error loading local file:', error);
           setError('Failed to load local file');
+          setIsLoading(false);
         }
       }
     };
@@ -71,9 +68,14 @@ export const PlayerPage: React.FC = () => {
           const dlnaUrl = await window.electron.getDlnaFile(server, port, path);
           console.log('Received DLNA URL:', dlnaUrl);
           setDlnaUrl(dlnaUrl);
+          if (videoRef.current) {
+            videoRef.current.src = dlnaUrl;
+          }
+          setIsLoading(false);
         } catch (error) {
           console.error('Error loading DLNA file:', error);
           setError('Failed to load DLNA file');
+          setIsLoading(false);
         }
       }
     };
@@ -86,6 +88,19 @@ export const PlayerPage: React.FC = () => {
         try {
           setIsLoading(true);
           const videoId = video.url.split('v=')[1];
+          
+          // If we have pre-fetched streams, use them
+          if (video.streamUrl) {
+            console.log('Using pre-fetched stream');
+            if (videoRef.current) {
+              videoRef.current.src = video.streamUrl;
+            }
+            setIsLoading(false);
+            return;
+          }
+
+          // Otherwise fetch streams from YouTube
+          console.log('Fetching streams from YouTube');
           const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(videoId);
           
           // Get highest quality stream with preferred language

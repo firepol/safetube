@@ -20,6 +20,9 @@ contextBridge.exposeInMainWorld(
     },
     getDlnaFile: (server: string, port: number, path: string) => {
       return ipcRenderer.invoke('get-dlna-file', server, port, path)
+    },
+    getVideoStreams: (videoId: string) => {
+      return ipcRenderer.invoke('get-video-streams', videoId)
     }
   }
 ) 
