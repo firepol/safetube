@@ -13,7 +13,7 @@ export const PlayerPage: React.FC = () => {
   const [dlnaUrl, setDlnaUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const loadingTimeoutRef = useRef<number>();
+  const loadingTimeoutRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     if (video && video.resumeAt && videoRef.current) {
@@ -244,20 +244,20 @@ export const PlayerPage: React.FC = () => {
           ← Back
         </button>
         <h1 className="text-2xl font-bold mb-4">{video.title}</h1>
-      </div>
-      <div className="flex-grow flex items-center justify-center p-4">
         {isLoading && (
-          <div className="text-center">
+          <div className="text-center mb-4">
             <div className="text-lg mb-2">Loading video...</div>
             <div className="text-sm text-gray-500">This may take a few moments</div>
           </div>
         )}
         {error && (
-          <div className="text-center text-red-500">
+          <div className="text-center text-red-500 mb-4">
             <div className="text-lg mb-2">Error: {error}</div>
             <div className="text-sm">The video may be unavailable or the stream may have expired</div>
           </div>
         )}
+      </div>
+      <div className="flex-grow flex items-center justify-center p-4">
         <div className="w-full max-w-4xl">
           <video
             ref={videoRef}
