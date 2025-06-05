@@ -25,15 +25,36 @@ export const PlayerPage: React.FC = () => {
     const loadLocalFile = async () => {
       if (video?.type === 'local' && video.url) {
         try {
+          console.log('Loading local file:', video.url);
           const path = await window.electron.getLocalFile(video.url);
+          console.log('Received local file path:', path);
           setLocalFilePath(path);
+          
           if (videoRef.current) {
             videoRef.current.src = path;
+            // Add event listeners for debugging
+            videoRef.current.addEventListener('error', (e) => {
+              console.error('Video element error:', e);
+              const error = videoRef.current?.error;
+              if (error) {
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+              }
+            });
+            videoRef.current.addEventListener('loadedmetadata', () => {
+              console.log('Video metadata loaded');
+            });
+            videoRef.current.addEventListener('loadeddata', () => {
+              console.log('Video data loaded');
+            });
+            videoRef.current.addEventListener('canplay', () => {
+              console.log('Video can play');
+              setIsLoading(false);
+            });
           }
-          setIsLoading(false);
         } catch (error) {
           console.error('Error loading local file:', error);
-          setError('Failed to load local file');
+          setError('Failed to load local file: ' + (error instanceof Error ? error.message : String(error)));
           setIsLoading(false);
         }
       }
