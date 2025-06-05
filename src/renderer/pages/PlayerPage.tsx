@@ -106,15 +106,16 @@ export const PlayerPage: React.FC = () => {
             autoPlay
           />
         ) : video.type === 'youtube' ? (
-          <div className="w-full max-w-2xl aspect-video">
+          <div className="w-full max-w-4xl aspect-video">
             <iframe
               width="100%"
               height="100%"
-              src={`https://www.youtube.com/embed/${video.url.split('v=')[1]}`}
+              src={`https://www.youtube.com/embed/${video.url.split('v=')[1]}?autoplay=1`}
               title={video.title}
               frameBorder="0"
               allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
               allowFullScreen
+              className="rounded-lg"
             />
           </div>
         ) : video.type === 'local' && localFilePath ? (
