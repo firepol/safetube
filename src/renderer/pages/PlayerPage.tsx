@@ -23,34 +23,123 @@ export const PlayerPage: React.FC = () => {
 
   useEffect(() => {
     const loadLocalFile = async () => {
-      if (video?.type === 'local' && video.url) {
+      if (video?.type === 'local') {
         try {
-          console.log('Loading local file:', video.url);
-          const path = await window.electron.getLocalFile(video.url);
-          console.log('Received local file path:', path);
-          setLocalFilePath(path);
-          
-          if (videoRef.current) {
-            videoRef.current.src = path;
-            // Add event listeners for debugging
-            videoRef.current.addEventListener('error', (e) => {
-              console.error('Video element error:', e);
-              const error = videoRef.current?.error;
-              if (error) {
-                console.error('Error code:', error.code);
-                console.error('Error message:', error.message);
-              }
-            });
-            videoRef.current.addEventListener('loadedmetadata', () => {
-              console.log('Video metadata loaded');
-            });
-            videoRef.current.addEventListener('loadeddata', () => {
-              console.log('Video data loaded');
-            });
-            videoRef.current.addEventListener('canplay', () => {
-              console.log('Video can play');
-              setIsLoading(false);
-            });
+          // Handle separate video and audio files
+          if (video.video && video.audio) {
+            console.log('Loading split local files:', { video: video.video, audio: video.audio });
+            
+            // Get video file URL
+            const videoPath = await window.electron.getLocalFile(video.video);
+            console.log('Received video file path:', videoPath);
+            
+            // Get audio file URL
+            const audioPath = await window.electron.getLocalFile(video.audio);
+            console.log('Received audio file path:', audioPath);
+
+            if (videoRef.current) {
+              // Create a hidden audio element
+              const audioElement = document.createElement('audio');
+              audioElement.src = audioPath;
+              audioElement.style.display = 'none';
+              document.body.appendChild(audioElement);
+
+              // Set up video element
+              videoRef.current.src = videoPath;
+              videoRef.current.muted = true; // Mute the video element since we'll play audio separately
+
+              // Sync audio with video
+              videoRef.current.addEventListener('play', () => {
+                audioElement.currentTime = videoRef.current?.currentTime || 0;
+                audioElement.play();
+              });
+
+              videoRef.current.addEventListener('pause', () => {
+                audioElement.pause();
+              });
+
+              videoRef.current.addEventListener('seeking', () => {
+                if (videoRef.current) {
+                  audioElement.currentTime = videoRef.current.currentTime;
+                }
+              });
+
+              // Add event listeners for debugging
+              videoRef.current.addEventListener('error', (e) => {
+                console.error('Video element error:', e);
+                const error = videoRef.current?.error;
+                if (error) {
+                  console.error('Error code:', error.code);
+                  console.error('Error message:', error.message);
+                }
+              });
+
+              audioElement.addEventListener('error', (e) => {
+                console.error('Audio element error:', e);
+                const error = audioElement.error;
+                if (error) {
+                  console.error('Error code:', error.code);
+                  console.error('Error message:', error.message);
+                }
+              });
+
+              videoRef.current.addEventListener('loadedmetadata', () => {
+                console.log('Video metadata loaded');
+              });
+
+              audioElement.addEventListener('loadedmetadata', () => {
+                console.log('Audio metadata loaded');
+              });
+
+              videoRef.current.addEventListener('loadeddata', () => {
+                console.log('Video data loaded');
+              });
+
+              audioElement.addEventListener('loadeddata', () => {
+                console.log('Audio data loaded');
+              });
+
+              videoRef.current.addEventListener('canplay', () => {
+                console.log('Video can play');
+                setIsLoading(false);
+              });
+
+              // Clean up audio element when component unmounts
+              return () => {
+                audioElement.remove();
+              };
+            }
+          } else if (video.url) {
+            // Handle single file
+            console.log('Loading local file:', video.url);
+            const path = await window.electron.getLocalFile(video.url);
+            console.log('Received local file path:', path);
+            setLocalFilePath(path);
+            
+            if (videoRef.current) {
+              videoRef.current.src = path;
+              // Add event listeners for debugging
+              videoRef.current.addEventListener('error', (e) => {
+                console.error('Video element error:', e);
+                const error = videoRef.current?.error;
+                if (error) {
+                  console.error('Error code:', error.code);
+                  console.error('Error message:', error.message);
+                }
+              });
+              videoRef.current.addEventListener('loadedmetadata', () => {
+                console.log('Video metadata loaded');
+              });
+              videoRef.current.addEventListener('loadeddata', () => {
+                console.log('Video data loaded');
+              });
+              videoRef.current.addEventListener('canplay', () => {
+                console.log('Video can play');
+                setIsLoading(false);
+              });
+            }
+          } else {
+            throw new Error('No video file specified');
           }
         } catch (error) {
           console.error('Error loading local file:', error);

@@ -94,6 +94,16 @@
     "url": "file:///home/paul/Downloads/youtube/judo/tai-otoshi.mp4"
   },
   {
+    "id": "local-split",
+    "type": "local",
+    "title": "Tai Otoshi (split)",
+    "thumbnail": "https://picsum.photos/id/38/300/200?grayscale",
+    "duration": 300,
+    "url": "file:///home/paul/Downloads/youtube/judo/tai-otoshi-video.mp4",
+    "video": "file:///home/paul/Downloads/youtube/judo/tai-otoshi-video.mp4",
+    "audio": "file:///home/paul/Downloads/youtube/judo/tai-otoshi-audio.m4a"
+  },
+  {
     "id": "local-2",
     "type": "local",
     "title": "Uiki Goshi webm",
