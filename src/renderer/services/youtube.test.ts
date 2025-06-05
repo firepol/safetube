@@ -134,4 +134,97 @@ describe('YouTubeAPI', () => {
       .rejects
       .toThrow('YouTube API error: API Error');
   });
+});
+
+describe('YouTubeAPI Debug Tests', () => {
+  // Improved: Always return a status, even on error
+  async function checkStreamAccessibility(url: string): Promise<{ status: number; accessible: boolean }> {
+    try {
+      const response = await fetch(url, { method: 'HEAD' });
+      return {
+        status: response.status,
+        accessible: response.ok
+      };
+    } catch (error: any) {
+      console.error(`Error checking stream ${url}:`, error?.message || error);
+      return {
+        status: -1, // Use -1 to indicate network or fetch error
+        accessible: false
+      };
+    }
+  }
+
+  it('should debug video streams for OGDuutRhN9M', async () => {
+    const videoId = 'OGDuutRhN9M';
+    console.log('\n=== Debugging video OGDuutRhN9M ===');
+
+    const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(videoId);
+    console.log('\nVideo Info:', { videoStreams, audioTracks });
+
+    console.log('\nVideo Streams:');
+    for (const stream of videoStreams) {
+      const { status, accessible } = await checkStreamAccessibility(stream.url);
+      console.log({
+        url: stream.url,
+        quality: stream.quality,
+        mimeType: stream.mimeType,
+        width: stream.width,
+        height: stream.height,
+        fps: stream.fps,
+        bitrate: stream.bitrate,
+        status,
+        accessible
+      });
+    }
+
+    console.log('\nAudio Tracks:');
+    for (const track of audioTracks) {
+      const { status, accessible } = await checkStreamAccessibility(track.url);
+      console.log({
+        url: track.url,
+        language: track.language,
+        mimeType: track.mimeType,
+        bitrate: track.bitrate,
+        status,
+        accessible
+      });
+    }
+  }, 30000);
+
+  it('should debug video streams for f2_3sQu7lA4', async () => {
+    const videoId = 'f2_3sQu7lA4';
+    console.log('\n=== Debugging video f2_3sQu7lA4 ===');
+
+    const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(videoId);
+    console.log('\nVideo Info:', { videoStreams, audioTracks });
+
+    console.log('\nVideo Streams:');
+    for (const stream of videoStreams) {
+      const { status, accessible } = await checkStreamAccessibility(stream.url);
+      console.log({
+        url: stream.url,
+        quality: stream.quality,
+        mimeType: stream.mimeType,
+        width: stream.width,
+        height: stream.height,
+        fps: stream.fps,
+        bitrate: stream.bitrate,
+        status,
+        accessible
+      });
+    }
+
+    console.log('\nAudio Tracks:');
+    for (const track of audioTracks) {
+      const { status, accessible } = await checkStreamAccessibility(track.url);
+      console.log({
+        url: track.url,
+        language: track.language,
+        mimeType: track.mimeType,
+        bitrate: track.bitrate,
+        status,
+        accessible
+      });
+    }
+  }, 30000);
 }); 
