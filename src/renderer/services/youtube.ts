@@ -309,13 +309,38 @@ export class YouTubeAPI {
     throw new Error('No suitable stream found');
   }
 
+  // Helper to get best audio track by language preference
+  static getBestAudioTrackByLanguage(audioTracks: AudioTrack[], preferredLanguages: string[]): AudioTrack {
+    if (!audioTracks.length) {
+      throw new Error('No audio tracks available');
+    }
+
+    // First try to find a track in preferred languages
+    for (const lang of preferredLanguages) {
+      const track = audioTracks.find(t => t.language.toLowerCase() === lang.toLowerCase());
+      if (track) {
+        return track;
+      }
+    }
+
+    // If no preferred language found, try English
+    const englishTrack = audioTracks.find(t => t.language.toLowerCase() === 'en');
+    if (englishTrack) {
+      return englishTrack;
+    }
+
+    // If no English track, return the first available track
+    return audioTracks[0];
+  }
+
   // Helper to get highest quality stream details
-  static getHighestQualityStream(videoStreams: VideoStream[], audioTracks: AudioTrack[]): {
+  static getHighestQualityStream(videoStreams: VideoStream[], audioTracks: AudioTrack[], preferredLanguages: string[] = ['en']): {
     videoUrl: string;
     audioUrl?: string;
     quality: string;
     resolution: string;
     fps?: number;
+    audioLanguage?: string;
   } {
     // First try to find a combined format with high quality
     const combinedFormats = videoStreams
@@ -348,17 +373,17 @@ export class YouTubeAPI {
         return (b.fps || 0) - (a.fps || 0);
       });
     
-    const audioFormats = audioTracks
-      .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
-
     if (videoFormats.length > 0) {
       const bestVideo = videoFormats[0];
+      const bestAudio = this.getBestAudioTrackByLanguage(audioTracks, preferredLanguages);
+      
       return {
         videoUrl: bestVideo.url,
-        audioUrl: audioFormats[0]?.url,
+        audioUrl: bestAudio.url,
         quality: bestVideo.quality,
         resolution: `${bestVideo.width}x${bestVideo.height}`,
-        fps: bestVideo.fps
+        fps: bestVideo.fps,
+        audioLanguage: bestAudio.language
       };
     }
 

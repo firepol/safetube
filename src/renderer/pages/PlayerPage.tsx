@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import videos from '../data/videos.json';
+import { YouTubeAPI } from '../services/youtube';
 
 declare global {
   interface Window {
@@ -24,6 +25,7 @@ interface Video {
   server?: string;
   port?: number;
   path?: string;
+  preferredLanguages?: string[];
 }
 
 export const PlayerPage: React.FC = () => {
@@ -33,6 +35,8 @@ export const PlayerPage: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [localFilePath, setLocalFilePath] = useState<string | null>(null);
   const [dlnaUrl, setDlnaUrl] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (video && video.resumeAt && videoRef.current) {
@@ -48,6 +52,7 @@ export const PlayerPage: React.FC = () => {
           setLocalFilePath(path);
         } catch (error) {
           console.error('Error loading local file:', error);
+          setError('Failed to load local file');
         }
       }
     };
@@ -68,10 +73,79 @@ export const PlayerPage: React.FC = () => {
           setDlnaUrl(dlnaUrl);
         } catch (error) {
           console.error('Error loading DLNA file:', error);
+          setError('Failed to load DLNA file');
         }
       }
     };
     loadDlnaFile();
+  }, [video]);
+
+  useEffect(() => {
+    const loadYouTubeVideo = async () => {
+      if (video?.type === 'youtube' && video.url) {
+        try {
+          setIsLoading(true);
+          const videoId = video.url.split('v=')[1];
+          const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(videoId);
+          
+          // Get highest quality stream with preferred language
+          const preferredLanguages = video.preferredLanguages || ['en'];
+          const streamInfo = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks, preferredLanguages);
+          
+          if (streamInfo.audioUrl) {
+            // If we have separate video and audio streams, use MediaSource API
+            const mediaSource = new MediaSource();
+            const videoUrl = URL.createObjectURL(mediaSource);
+            
+            if (videoRef.current) {
+              videoRef.current.src = videoUrl;
+              
+              mediaSource.addEventListener('sourceopen', async () => {
+                try {
+                  const videoBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.42E01E"');
+                  const audioBuffer = mediaSource.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"');
+                  
+                  // Fetch video and audio data
+                  if (!streamInfo.videoUrl || !streamInfo.audioUrl) {
+                    throw new Error('Missing video or audio URL');
+                  }
+
+                  const [videoResponse, audioResponse] = await Promise.all([
+                    fetch(streamInfo.videoUrl),
+                    fetch(streamInfo.audioUrl)
+                  ]);
+                  
+                  const [videoData, audioData] = await Promise.all([
+                    videoResponse.arrayBuffer(),
+                    audioResponse.arrayBuffer()
+                  ]);
+                  
+                  // Append video and audio data
+                  videoBuffer.appendBuffer(videoData);
+                  audioBuffer.appendBuffer(audioData);
+                  
+                  mediaSource.endOfStream();
+                } catch (error) {
+                  console.error('Error setting up MediaSource:', error);
+                  setError('Failed to set up video playback');
+                }
+              });
+            }
+          } else {
+            // If we have a combined stream, use it directly
+            if (videoRef.current && streamInfo.videoUrl) {
+              videoRef.current.src = streamInfo.videoUrl;
+            }
+          }
+        } catch (error) {
+          console.error('Error loading YouTube video:', error);
+          setError('Failed to load YouTube video');
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+    loadYouTubeVideo();
   }, [video]);
 
   if (!video) {
@@ -97,49 +171,21 @@ export const PlayerPage: React.FC = () => {
       </div>
       {/* Video area */}
       <div className="flex-1 flex items-center justify-center bg-black">
-        {video.streamUrl ? (
-          <video
-            ref={videoRef}
-            className="w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
-            src={video.streamUrl}
-            controls
-            autoPlay
-          />
-        ) : video.type === 'youtube' ? (
-          <div className="w-full max-w-4xl aspect-video">
-            <iframe
-              width="100%"
-              height="100%"
-              src={`https://www.youtube.com/embed/${video.url.split('v=')[1]}?autoplay=1`}
-              title={video.title}
-              frameBorder="0"
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-              allowFullScreen
-              className="rounded-lg"
-            />
-          </div>
-        ) : video.type === 'local' && localFilePath ? (
-          <video
-            ref={videoRef}
-            className="w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
-            src={`file://${localFilePath}`}
-            controls
-            autoPlay
-          />
-        ) : video.type === 'dlna' && dlnaUrl ? (
-          <video
-            ref={videoRef}
-            className="w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
-            src={dlnaUrl}
-            controls
-            autoPlay
-          />
-        ) : (
+        {isLoading ? (
           <div className="text-center text-muted-foreground">
-            {video.type === 'local' ? 'Loading local file...' : 
-             video.type === 'dlna' ? 'Loading DLNA file...' : 
-             'Video type not supported yet.'}
+            Loading video...
           </div>
+        ) : error ? (
+          <div className="text-center text-red-600">
+            {error}
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            className="w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
+            controls
+            autoPlay
+          />
         )}
       </div>
     </div>
