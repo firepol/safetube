@@ -7,6 +7,10 @@ export interface Video {
   thumbnail: string;
   duration: number;
   url: string;
+  // For local videos with separate streams
+  video?: string;
+  audio?: string;
+  // For YouTube videos
   streamUrl?: string;
   audioStreamUrl?: string;
   resumeAt?: number;
