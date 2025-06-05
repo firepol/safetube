@@ -1,8 +1,4 @@
 import { z } from 'zod';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 // YouTube API response schemas
 const VideoSchema = z.object({
@@ -151,6 +147,14 @@ export interface AudioTrack {
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 const BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
+declare global {
+  interface Window {
+    electron: {
+      getVideoStreams: (videoId: string) => Promise<{ videoStreams: VideoStream[]; audioTracks: AudioTrack[] }>;
+    };
+  }
+}
+
 export class YouTubeAPI {
   private static async fetch<T>(endpoint: string, params: Record<string, string>): Promise<T> {
     const queryParams = new URLSearchParams({
@@ -185,49 +189,41 @@ export class YouTubeAPI {
 
   static async getVideoStreams(videoId: string): Promise<{ videoStreams: VideoStream[]; audioTracks: AudioTrack[] }> {
     try {
-      // Use yt-dlp to get video info in JSON format
-      const { stdout } = await execAsync(`yt-dlp -j https://www.youtube.com/watch?v=${videoId}`);
-      const info = JSON.parse(stdout);
+      // In test environment, use yt-dlp directly
+      if (typeof window === 'undefined' || !window.electron?.getVideoStreams) {
+        const { exec } = require('child_process');
+        const { promisify } = require('util');
+        const execAsync = promisify(exec);
 
-      const videoStreams: VideoStream[] = [];
-      const audioTracks: AudioTrack[] = [];
+        const { stdout } = await execAsync(`yt-dlp -j "${videoId}"`);
+        const data = JSON.parse(stdout);
 
-      // Process formats
-      for (const format of info.formats) {
-        if (format.vcodec !== 'none' && format.acodec !== 'none') {
-          // Combined video+audio format
-          videoStreams.push({
-            url: format.url,
-            quality: format.format_note || format.quality || 'unknown',
-            mimeType: format.ext,
-            width: format.width,
-            height: format.height,
-            fps: format.fps,
-            bitrate: format.tbr,
-          });
-        } else if (format.vcodec !== 'none') {
-          // Video-only format
-          videoStreams.push({
-            url: format.url,
-            quality: format.format_note || format.quality || 'unknown',
-            mimeType: format.ext,
-            width: format.width,
-            height: format.height,
-            fps: format.fps,
-            bitrate: format.tbr,
-          });
-        } else if (format.acodec !== 'none') {
-          // Audio-only format
-          audioTracks.push({
-            url: format.url,
-            language: format.language || 'unknown',
-            mimeType: format.ext,
-            bitrate: format.tbr,
-          });
-        }
+        const videoStreams: VideoStream[] = data.formats
+          .filter((f: any) => f.vcodec !== 'none' && f.acodec === 'none')
+          .map((f: any) => ({
+            url: f.url,
+            quality: f.format_note || f.quality,
+            mimeType: f.ext,
+            width: f.width,
+            height: f.height,
+            fps: f.fps,
+            bitrate: f.tbr
+          }));
+
+        const audioTracks: AudioTrack[] = data.formats
+          .filter((f: any) => f.vcodec === 'none' && f.acodec !== 'none')
+          .map((f: any) => ({
+            url: f.url,
+            language: f.language || 'en',
+            mimeType: f.ext,
+            bitrate: f.tbr
+          }));
+
+        return { videoStreams, audioTracks };
       }
 
-      return { videoStreams, audioTracks };
+      // In renderer process, use electron IPC
+      return await window.electron.getVideoStreams(videoId);
     } catch (error) {
       console.error('Error getting video streams:', error);
       throw new Error('Failed to get video streams');

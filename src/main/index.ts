@@ -2,6 +2,7 @@ import path from 'path'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import log from './logger'
 import { Client } from 'node-ssdp'
+import { setupYouTubeHandlers } from './youtube'
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -115,6 +116,9 @@ const createWindow = (): void => {
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     log.error('Failed to load page:', { errorCode, errorDescription })
   })
+
+  // Set up YouTube handlers
+  setupYouTubeHandlers()
 }
 
 // This method will be called when Electron has finished
