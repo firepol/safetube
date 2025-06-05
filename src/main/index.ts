@@ -3,6 +3,7 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import log from './logger'
 import { Client } from 'node-ssdp'
 import { setupYouTubeHandlers } from './youtube'
+import fs from 'fs'
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -19,7 +20,18 @@ ipcMain.handle('get-local-file', async (event, filePath: string) => {
   try {
     // Convert file:// URL to actual file path
     const decodedPath = decodeURIComponent(filePath.replace('file://', ''))
-    return decodedPath
+    log.info('Accessing local file:', decodedPath)
+    
+    // Check if file exists
+    if (!fs.existsSync(decodedPath)) {
+      log.error('File not found:', decodedPath)
+      throw new Error('File not found')
+    }
+
+    // Return the file:// URL for the video element
+    const fileUrl = `file://${decodedPath}`
+    log.info('Returning file URL:', fileUrl)
+    return fileUrl
   } catch (error) {
     log.error('Error accessing local file:', error)
     throw error
