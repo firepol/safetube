@@ -24,6 +24,6 @@ describe('KidScreen', () => {
     renderWithProvider(<KidScreen />);
     // Check for a few sample videos
     expect(screen.getByText('The Top 10 Goals of May | Top Goals | Serie A 2024/25')).toBeInTheDocument();
-    expect(screen.getByText('Young Star Venturino Scores a Brace | Top Moment | Bologna-Genoa | Serie A 2024/25')).toBeInTheDocument();
+    expect(screen.getByText('Venturino scores')).toBeInTheDocument();
   });
 }); 
