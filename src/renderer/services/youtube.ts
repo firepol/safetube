@@ -147,14 +147,6 @@ export interface AudioTrack {
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 const BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
-declare global {
-  interface Window {
-    electron: {
-      getVideoStreams: (videoId: string) => Promise<{ videoStreams: VideoStream[]; audioTracks: AudioTrack[] }>;
-    };
-  }
-}
-
 export class YouTubeAPI {
   private static async fetch<T>(endpoint: string, params: Record<string, string>): Promise<T> {
     const queryParams = new URLSearchParams({

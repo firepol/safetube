@@ -1,34 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import videos from '../data/videos.json';
-import { YouTubeAPI } from '../services/youtube';
-
-// Define a Video type to avoid implicit any
-interface Video {
-  id: string;
-  type: string;
-  title: string;
-  thumbnail: string;
-  duration: number;
-  url: string;
-  streamUrl?: string;
-  audioStreamUrl?: string;
-  resumeAt?: number;
-  server?: string;
-  port?: number;
-  path?: string;
-  preferredLanguages?: string[];
-}
+import { YouTubeAPI, VideoStream, AudioTrack } from '../services/youtube';
+import { Video } from '../types';
 
 export const PlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const video = videos.find((v: Video) => v.id === id);
+  const video = (videos as Video[]).find((v) => v.id === id);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [localFilePath, setLocalFilePath] = useState<string | null>(null);
   const [dlnaUrl, setDlnaUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const loadingTimeoutRef = useRef<number>();
 
   useEffect(() => {
     if (video && video.resumeAt && videoRef.current) {
@@ -84,78 +69,133 @@ export const PlayerPage: React.FC = () => {
 
   useEffect(() => {
     const loadYouTubeVideo = async () => {
-      if (video?.type === 'youtube' && video.url) {
+      if (video?.type === 'youtube' && video.id) {
         try {
-          setIsLoading(true);
-          const videoId = video.url.split('v=')[1];
-          
-          // If we have pre-fetched streams, use them
-          if (video.streamUrl) {
-            console.log('Using pre-fetched stream');
-            if (videoRef.current) {
-              videoRef.current.src = video.streamUrl;
+          let videoStream: VideoStream | undefined;
+          let audioTrack: AudioTrack | undefined;
+
+          if (video.useJsonStreamUrls && video.streamUrl) {
+            console.log('Using pre-defined stream URL from JSON:', video.streamUrl);
+            
+            videoStream = {
+              url: video.streamUrl,
+              quality: 'predefined',
+              mimeType: video.streamUrl.includes('webm') ? 'video/webm' : 'video/mp4'
+            };
+
+            // Only get audio track if it's not a video-only entry
+            if (video.audioStreamUrl) {
+              audioTrack = {
+                url: video.audioStreamUrl,
+                language: 'en',
+                mimeType: video.audioStreamUrl.includes('webm') ? 'audio/webm' : 'audio/mp4'
+              };
+              console.log('Using pre-defined audio stream:', video.audioStreamUrl);
+            } else {
+              console.log('No audio stream provided - video only mode');
             }
-            setIsLoading(false);
+          } else {
+            console.log('Fetching available streams for video:', video.id);
+            const { videoStreams, audioTracks } = await window.electron.getVideoStreams(video.id);
+            
+            // Get the best quality video stream
+            videoStream = videoStreams.reduce((best, current) => {
+              if (!best) return current;
+              if (!current.height || !best.height) return best;
+              return current.height > best.height ? current : best;
+            });
+
+            // Only get audio track if available
+            if (audioTracks.length > 0) {
+              audioTrack = audioTracks.reduce((best, current) => {
+                if (!best) return current;
+                if (!current.bitrate || !best.bitrate) return best;
+                return current.bitrate > best.bitrate ? current : best;
+              });
+            }
+
+            console.log('Selected video stream:', videoStream);
+            if (audioTrack) {
+              console.log('Selected audio track:', audioTrack);
+            } else {
+              console.log('No audio track selected - video only mode');
+            }
+          }
+
+          if (!videoStream?.url) {
+            throw new Error('No video stream URL available');
+          }
+
+          // For video-only entries, we can use direct playback
+          if (!audioTrack) {
+            console.log('Using direct playback for video-only stream');
+            if (videoRef.current) {
+              videoRef.current.src = videoStream.url;
+              setIsLoading(false);
+            }
             return;
           }
 
-          // Otherwise fetch streams from YouTube
-          console.log('Fetching streams from YouTube');
-          const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(videoId);
-          
-          // Get highest quality stream with preferred language
-          const preferredLanguages = video.preferredLanguages || ['en'];
-          const streamInfo = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks, preferredLanguages);
-          
-          if (streamInfo.audioUrl) {
-            // If we have separate video and audio streams, use MediaSource API
-            const mediaSource = new MediaSource();
-            const videoUrl = URL.createObjectURL(mediaSource);
-            
-            if (videoRef.current) {
-              videoRef.current.src = videoUrl;
-              
-              mediaSource.addEventListener('sourceopen', async () => {
-                try {
-                  const videoBuffer = mediaSource.addSourceBuffer('video/mp4; codecs="avc1.42E01E"');
-                  const audioBuffer = mediaSource.addSourceBuffer('audio/mp4; codecs="mp4a.40.2"');
-                  
-                  // Fetch video and audio data
-                  if (!streamInfo.videoUrl || !streamInfo.audioUrl) {
-                    throw new Error('Missing video or audio URL');
-                  }
+          // For videos with both video and audio, use MediaSource
+          const mediaSource = new MediaSource();
+          const videoUrl = URL.createObjectURL(mediaSource);
+          if (videoRef.current) {
+            videoRef.current.src = videoUrl;
+          }
 
-                  const [videoResponse, audioResponse] = await Promise.all([
-                    fetch(streamInfo.videoUrl),
-                    fetch(streamInfo.audioUrl)
-                  ]);
-                  
-                  const [videoData, audioData] = await Promise.all([
-                    videoResponse.arrayBuffer(),
-                    audioResponse.arrayBuffer()
-                  ]);
-                  
-                  // Append video and audio data
-                  videoBuffer.appendBuffer(videoData);
-                  audioBuffer.appendBuffer(audioData);
-                  
+          mediaSource.addEventListener('sourceopen', async () => {
+            try {
+              // Determine the correct MIME type and codec
+              const videoMimeType = videoStream.mimeType.includes('webm') 
+                ? 'video/webm; codecs="vp8"' 
+                : 'video/mp4; codecs="avc1.42E01E"';
+              
+              const audioMimeType = audioTrack.mimeType.includes('webm')
+                ? 'audio/webm; codecs="opus"'
+                : 'audio/mp4; codecs="mp4a.40.2"';
+
+              console.log('Using MIME types:', { videoMimeType, audioMimeType });
+
+              // Create source buffers for video and audio
+              const videoBuffer = mediaSource.addSourceBuffer(videoMimeType);
+              const audioBuffer = mediaSource.addSourceBuffer(audioMimeType);
+
+              // Fetch video and audio data
+              const videoResponse = await fetch(videoStream.url);
+              const audioResponse = await fetch(audioTrack.url);
+
+              if (!videoResponse.ok || !audioResponse.ok) {
+                throw new Error('Failed to fetch video or audio data');
+              }
+
+              const videoData = await videoResponse.arrayBuffer();
+              const audioData = await audioResponse.arrayBuffer();
+
+              // Append video and audio data to their respective buffers
+              videoBuffer.addEventListener('updateend', () => {
+                if (!videoBuffer.updating && mediaSource.readyState === 'open') {
                   mediaSource.endOfStream();
-                } catch (error) {
-                  console.error('Error setting up MediaSource:', error);
-                  setError('Failed to set up video playback');
                 }
               });
+
+              audioBuffer.addEventListener('updateend', () => {
+                if (!audioBuffer.updating && mediaSource.readyState === 'open') {
+                  mediaSource.endOfStream();
+                }
+              });
+
+              videoBuffer.appendBuffer(videoData);
+              audioBuffer.appendBuffer(audioData);
+            } catch (error) {
+              console.error('Error setting up MediaSource:', error);
+              setError('Failed to set up video playback');
             }
-          } else {
-            // If we have a combined stream, use it directly
-            if (videoRef.current && streamInfo.videoUrl) {
-              videoRef.current.src = streamInfo.videoUrl;
-            }
-          }
+          });
+
+          setIsLoading(false);
         } catch (error) {
           console.error('Error loading YouTube video:', error);
           setError('Failed to load YouTube video');
-        } finally {
           setIsLoading(false);
         }
       }
@@ -163,45 +203,79 @@ export const PlayerPage: React.FC = () => {
     loadYouTubeVideo();
   }, [video]);
 
+  // Set a timeout to prevent infinite loading
+  useEffect(() => {
+    if (isLoading) {
+      loadingTimeoutRef.current = window.setTimeout(() => {
+        setError('Loading timeout - video may be unavailable');
+        setIsLoading(false);
+      }, 10000); // 10 second timeout
+    }
+    return () => {
+      if (loadingTimeoutRef.current) {
+        window.clearTimeout(loadingTimeoutRef.current);
+      }
+    };
+  }, [isLoading]);
+
   if (!video) {
-    return <div className="p-8 text-center text-red-600">Video not found</div>;
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="p-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            ← Back
+          </button>
+          <div className="text-red-500">Video not found</div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* Top bar */}
-      <div className="flex items-center gap-4 px-4 py-2 bg-background border-b">
+    <div className="flex flex-col min-h-screen bg-gray-100">
+      <div className="p-4">
         <button
-          className="rounded bg-muted px-3 py-1 text-sm hover:bg-muted-foreground/10"
           onClick={() => navigate(-1)}
+          className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
         >
           ← Back
-        </button><>&nbsp;</>
-        <span className="text-sm text-muted-foreground">
-          {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
-        </span>
-        <span className="text-base font-medium truncate" title={video.title}>
-          - {video.title}
-        </span>
+        </button>
+        <h1 className="text-2xl font-bold mb-4">{video.title}</h1>
       </div>
-      {/* Video area */}
-      <div className="flex-1 flex items-center justify-center bg-black">
-        {isLoading ? (
-          <div className="text-center text-muted-foreground">
-            Loading video...
+      <div className="flex-grow flex items-center justify-center p-4">
+        {isLoading && (
+          <div className="text-center">
+            <div className="text-lg mb-2">Loading video...</div>
+            <div className="text-sm text-gray-500">This may take a few moments</div>
           </div>
-        ) : error ? (
-          <div className="text-center text-red-600">
-            {error}
+        )}
+        {error && (
+          <div className="text-center text-red-500">
+            <div className="text-lg mb-2">Error: {error}</div>
+            <div className="text-sm">The video may be unavailable or the stream may have expired</div>
           </div>
-        ) : (
+        )}
+        <div className="w-full max-w-4xl">
           <video
             ref={videoRef}
-            className="w-full h-auto max-w-3xl max-h-[80vh] bg-black rounded-lg"
+            className="w-full"
             controls
             autoPlay
+            playsInline
+            onError={(e) => {
+              console.error('Video error:', e);
+              setError('Failed to play video - the stream may have expired');
+              setIsLoading(false);
+            }}
+            onLoadedData={() => {
+              console.log('Video loaded successfully');
+              setIsLoading(false);
+            }}
           />
-        )}
+        </div>
       </div>
     </div>
   );

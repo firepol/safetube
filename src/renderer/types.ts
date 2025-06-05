@@ -1,18 +1,31 @@
+import { VideoStream, AudioTrack } from './services/youtube';
+
 export interface Video {
   id: string;
+  type: 'local' | 'dlna' | 'youtube';
   title: string;
-  description: string;
-  thumbnailUrl: string;
-  videoUrl: string;
-  duration: string;
-  type: 'local' | 'dlna';
+  thumbnail: string;
+  duration: number;
+  url: string;
+  streamUrl?: string;
+  audioStreamUrl?: string;
+  resumeAt?: number;
+  server?: string;
+  port?: number;
+  path?: string;
+  preferredLanguages?: string[];
+  useJsonStreamUrls?: boolean;
 }
 
 declare global {
   interface Window {
     electron: {
+      send: (channel: string, data: any) => void;
+      receive: (channel: string, func: (...args: any[]) => void) => void;
+      removeListener: (channel: string, func: (...args: any[]) => void) => void;
       getLocalFile: (filePath: string) => Promise<string>;
       getDlnaFile: (server: string, port: number, path: string) => Promise<string>;
+      getVideoStreams: (videoId: string) => Promise<{ videoStreams: VideoStream[]; audioTracks: AudioTrack[] }>;
     };
   }
 } 
