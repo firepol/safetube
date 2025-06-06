@@ -48,7 +48,6 @@ describe('Video Stream URLs Integration Tests', () => {
       const response = await fetch(url, { method: 'HEAD' });
       return response.ok;
     } catch (error) {
-      console.error(`Error checking URL ${url}:`, error);
       return false;
     }
   }
@@ -66,7 +65,6 @@ describe('Video Stream URLs Integration Tests', () => {
         existingData = JSON.parse(content);
       }
     } catch (error) {
-      console.error('Error reading debug file:', error);
     }
 
     const index = existingData.findIndex(item => item.videoId === debugInfo.videoId);
@@ -114,7 +112,6 @@ describe('Video Stream URLs Integration Tests', () => {
         if (video.streamUrl) {
           const isVideoUrlValid = await checkUrl(video.streamUrl);
           if (!isVideoUrlValid) {
-            console.log(`Video stream URL for ${video.title} is expired`);
             hasValidUrls = false;
           }
         }
@@ -122,14 +119,12 @@ describe('Video Stream URLs Integration Tests', () => {
         if (video.audioStreamUrl) {
           const isAudioUrlValid = await checkUrl(video.audioStreamUrl);
           if (!isAudioUrlValid) {
-            console.log(`Audio stream URL for ${video.title} is expired`);
             hasValidUrls = false;
           }
         }
 
         // If URLs are expired, try to fetch new ones
         if (!hasValidUrls) {
-        //   console.log(`Fetching new stream URLs for ${video.title}`);
           try {
             const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(videoId);
             debugInfo.availableStreams = { videoStreams, audioTracks };
@@ -141,20 +136,14 @@ describe('Video Stream URLs Integration Tests', () => {
             // Check if new URLs are accessible
             if (streamInfo.videoUrl) {
               const isNewVideoUrlValid = await checkUrl(streamInfo.videoUrl);
-              expect(isNewVideoUrlValid, `New video stream URL for ${video.title} is not accessible`).toBe(true);
+              expect(isNewVideoUrlValid).toBe(true);
             }
 
             if (streamInfo.audioUrl) {
               const isNewAudioUrlValid = await checkUrl(streamInfo.audioUrl);
-              expect(isNewAudioUrlValid, `New audio stream URL for ${video.title} is not accessible`).toBe(true);
+              expect(isNewAudioUrlValid).toBe(true);
             }
-
-            // Log the new URLs for updating videos.json
-            // console.log('New URLs for', video.title);
-            // console.log('Video URL:', streamInfo.videoUrl);
-            // console.log('Audio URL:', streamInfo.audioUrl);
           } catch (error) {
-            console.error(`Error fetching new URLs for ${video.title}:`, error);
             throw error;
           }
         }

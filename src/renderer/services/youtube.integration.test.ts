@@ -38,7 +38,6 @@ describe('YouTubeAPI Integration', () => {
     if (!videoId) return;
 
     const video = await YouTubeAPI.getVideoDetails(videoId);
-    console.log(video);
     expect(video.id).toBe(videoId);
     expect(video.snippet.title).toBeTruthy();
     expect(video.snippet.thumbnails.high.url).toBeTruthy();
@@ -55,45 +54,13 @@ describe('YouTubeAPI Integration', () => {
     expect(videoStreams.length).toBeGreaterThan(0);
     expect(audioTracks.length).toBeGreaterThan(0);
 
-    // Log available streams and tracks for inspection
-    console.log('\n=== Available Video Streams ===');
-    videoStreams.forEach((s, i) => {
-      console.log(`\nStream ${i + 1}:`);
-      console.log(`- Quality: ${s.quality}`);
-      console.log(`- Resolution: ${s.width}x${s.height}`);
-      console.log(`- FPS: ${s.fps}`);
-      console.log(`- MIME Type: ${s.mimeType}`);
-      console.log(`- URL: ${s.url}`);
-    });
-
-    console.log('\n=== Available Audio Tracks ===');
-    audioTracks.forEach((t, i) => {
-      console.log(`\nTrack ${i + 1}:`);
-      console.log(`- Language: ${t.language}`);
-      console.log(`- MIME Type: ${t.mimeType}`);
-      console.log(`- Bitrate: ${t.bitrate}`);
-      console.log(`- URL: ${t.url}`);
-    });
-
     // Get best quality stream URL
     const streamUrl = YouTubeAPI.getBestStreamUrl(videoStreams, audioTracks);
-    console.log('\n=== Best Stream URL ===');
-    console.log(streamUrl);
 
     // Get highest quality stream details
     const highestQuality = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks);
-    console.log('\n=== Highest Quality Stream Details ===');
-    console.log({
-      quality: highestQuality.quality,
-      resolution: highestQuality.resolution,
-      fps: highestQuality.fps,
-      hasAudio: !!highestQuality.audioUrl,
-      videoUrl: highestQuality.videoUrl,
-      audioUrl: highestQuality.audioUrl
-    });
 
     // Also show some alternative candidates
-    console.log('\n=== Alternative Stream Candidates ===');
     // Show first 3 combined formats (video+audio)
     const combinedFormats = videoStreams
       .filter(s => s.mimeType.includes('mp4'))
@@ -102,15 +69,6 @@ describe('YouTubeAPI Integration', () => {
         if (heightDiff !== 0) return heightDiff;
         return (b.fps || 0) - (a.fps || 0);
       });
-
-    console.log('\nCombined Formats (Video+Audio):');
-    combinedFormats.slice(0, 3).forEach((s, i) => {
-      console.log(`\nCandidate ${i + 1}:`);
-      console.log(`- Quality: ${s.quality}`);
-      console.log(`- Resolution: ${s.width}x${s.height}`);
-      console.log(`- FPS: ${s.fps}`);
-      console.log(`- URL: ${s.url}`);
-    });
 
     // Show highest quality video-only format
     const videoOnly = videoStreams
@@ -121,23 +79,9 @@ describe('YouTubeAPI Integration', () => {
         return (b.fps || 0) - (a.fps || 0);
       })[0];
 
-    if (videoOnly) {
-      console.log('\nHighest Quality Video-Only:');
-      console.log(`- Quality: ${videoOnly.quality}`);
-      console.log(`- Resolution: ${videoOnly.width}x${videoOnly.height}`);
-      console.log(`- FPS: ${videoOnly.fps}`);
-      console.log(`- URL: ${videoOnly.url}`);
-    }
-
     // Show highest quality audio track
     const bestAudio = audioTracks
       .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
-    if (bestAudio) {
-      console.log('\nHighest Quality Audio:');
-      console.log(`- Language: ${bestAudio.language}`);
-      console.log(`- Bitrate: ${bestAudio.bitrate}`);
-      console.log(`- URL: ${bestAudio.url}`);
-    }
 
     expect(streamUrl).toBeTruthy();
     expect(streamUrl.startsWith('http')).toBe(true);
@@ -185,53 +129,23 @@ describe('YouTubeAPI Integration', () => {
     // Get streams and tracks
     const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(videoId);
     
-    // Log available tracks for inspection
-    console.log('Video details:', {
-      title: video.snippet.title,
-      duration: video.contentDetails.duration,
-      definition: video.contentDetails.definition,
-      dimension: video.contentDetails.dimension,
-      availableStreams: videoStreams.length,
-      availableAudioTracks: audioTracks.length,
-    });
-
     // Test language preference selection
     const preferredLanguages = ['it', 'en'];
     const bestAudio = YouTubeAPI.getBestAudioTrackByLanguage(audioTracks, preferredLanguages);
-    console.log('Selected audio track:', {
-      language: bestAudio.language,
-      bitrate: bestAudio.bitrate,
-      mimeType: bestAudio.mimeType
-    });
 
     // Test highest quality stream with language preference
     const highestQuality = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks, preferredLanguages);
-    console.log('Highest quality stream with audio:', {
-      quality: highestQuality.quality,
-      resolution: highestQuality.resolution,
-      fps: highestQuality.fps,
-      audioLanguage: highestQuality.audioLanguage,
-      hasAudio: !!highestQuality.audioUrl
-    });
 
     // Test fallback to English when preferred language not available
     const nonExistentLanguages = ['xx', 'yy'];
     const englishFallback = YouTubeAPI.getBestAudioTrackByLanguage(audioTracks, nonExistentLanguages);
     expect(englishFallback).toBeTruthy();
-    console.log('English fallback track:', {
-      language: englishFallback.language,
-      bitrate: englishFallback.bitrate
-    });
 
     // Test fallback to first available when no English
     const noEnglishTracks = audioTracks.filter(t => t.language.toLowerCase() !== 'en');
     if (noEnglishTracks.length > 0) {
       const firstAvailable = YouTubeAPI.getBestAudioTrackByLanguage(noEnglishTracks, ['xx']);
       expect(firstAvailable).toBeTruthy();
-      console.log('First available track:', {
-        language: firstAvailable.language,
-        bitrate: firstAvailable.bitrate
-      });
     }
   }, 20000);
 }); 
