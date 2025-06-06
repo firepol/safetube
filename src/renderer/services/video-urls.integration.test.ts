@@ -81,9 +81,19 @@ describe('Video Stream URLs Integration Tests', () => {
 
   // Test YouTube video streams
   describe('YouTube Videos', () => {
-    const youtubeVideos = videos.filter(v => v.type === 'youtube');
+    // Filter out duplicate videos by extracting unique YouTube IDs
+    const uniqueYoutubeVideos = videos
+      .filter(v => v.type === 'youtube')
+      .reduce((acc, video) => {
+        const videoId = video.url.split('v=')[1];
+        // Only add if we haven't seen this video ID before
+        if (!acc.some(v => v.url.split('v=')[1] === videoId)) {
+          acc.push(video);
+        }
+        return acc;
+      }, [] as typeof videos);
 
-    youtubeVideos.forEach(video => {
+    uniqueYoutubeVideos.forEach(video => {
       it(`should have valid stream URLs for ${video.title}`, async () => {
         const videoId = video.url.split('v=')[1];
         let hasValidUrls = true;
