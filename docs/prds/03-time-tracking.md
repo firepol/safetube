@@ -17,6 +17,7 @@ The Time Tracking feature manages and enforces daily viewing time limits for chi
 - Time tracking survives app crashes/restarts
 - Different limits work correctly for different days
 - Usage history is maintained accurately
+- Fast-forwarding and rewinding time is tracked based on actual elapsed time, not skipped content duration
 
 ## Technical Requirements
 - JSON-based time limit configuration
@@ -26,6 +27,7 @@ The Time Tracking feature manages and enforces daily viewing time limits for chi
 - Time synchronization between main and renderer processes
 - Data validation and error handling
 - Backup mechanism for usage data
+- Fast-forward and rewind time tracking based on actual elapsed time (e.g., 5 seconds of fast-forwarding counts as 5 seconds of screen time, regardless of how much content was skipped)
 
 ## UI/UX Requirements
 - Clear display of time remaining
