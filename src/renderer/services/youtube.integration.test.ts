@@ -258,4 +258,56 @@ describe('YouTubeAPI Audio Language Selection', () => {
     expect(bestAudio.language.toLowerCase()).toBe('en');
     expect(bestAudio.mimeType).toBe('m4a');
   });
+});
+
+describe('YouTubeAPI Problematic Video Tests', () => {
+  const problematicVideoId = 'dQw4w9WgXcQ';
+
+  it('should handle problematic video streams correctly', async () => {
+    const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(problematicVideoId);
+    
+    // Log available streams for debugging
+    console.log('Available video streams:', videoStreams.map(s => ({
+      quality: s.quality,
+      mimeType: s.mimeType,
+      height: s.height,
+      fps: s.fps,
+      url: s.url.substring(0, 50) + '...'
+    })));
+    
+    console.log('Available audio tracks:', audioTracks.map(t => ({
+      language: t.language,
+      mimeType: t.mimeType,
+      bitrate: t.bitrate,
+      url: t.url.substring(0, 50) + '...'
+    })));
+
+    // Verify we have streams before trying to get highest quality
+    expect(videoStreams.length).toBeGreaterThan(0);
+    expect(audioTracks.length).toBeGreaterThan(0);
+
+    // Test video stream selection
+    const highestQuality = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks);
+    expect(highestQuality.videoUrl).toBeTruthy();
+    expect(highestQuality.videoUrl.startsWith('http')).toBe(true);
+    
+    // Verify we have a valid video stream
+    const bestVideoStream = videoStreams.find(s => s.url === highestQuality.videoUrl);
+    expect(bestVideoStream).toBeTruthy();
+    expect(bestVideoStream?.mimeType).toMatch(/^(video\/)?(webm|mp4)/);
+    
+    // Verify we have a valid audio track
+    const bestAudioTrack = audioTracks.find(t => t.url === highestQuality.audioUrl);
+    expect(bestAudioTrack).toBeTruthy();
+    expect(bestAudioTrack?.mimeType).toMatch(/^(audio\/)?(webm|m4a)/);
+
+    // Test format compatibility
+    const videoFormat = bestVideoStream?.mimeType.includes('webm') ? 'webm' : 'mp4';
+    const audioFormat = bestAudioTrack?.mimeType.includes('webm') ? 'webm' : 'm4a';
+    console.log('Selected formats:', { videoFormat, audioFormat });
+    
+    // Verify that we have a valid combination of formats
+    expect(videoFormat).toBeTruthy();
+    expect(audioFormat).toBeTruthy();
+  }, 20000);
 }); 
