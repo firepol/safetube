@@ -299,113 +299,18 @@ export const PlayerPage: React.FC = () => {
             videoElement.src = videoUrl;
           }
 
-          mediaSource.addEventListener('sourceopen', async () => {
-            try {
-              if (!isMediaSourceActive || !mediaSource) return;
+          // Set up MediaSource event handlers
+          if (mediaSource) {
+            mediaSource.addEventListener('sourceended', () => {
+              console.log('MediaSource ended');
+            });
 
-              // Determine the correct MIME type and codec
-              const videoMimeType = videoStream.mimeType.includes('webm') 
-                ? 'video/webm; codecs="vp8"' 
-                : 'video/mp4; codecs="avc1.42E01E"';
-              
-              const audioMimeType = audioTrack.mimeType === 'webm'
-                ? 'audio/webm; codecs="opus"'
-                : 'audio/mp4; codecs="mp4a.40.2"';
+            mediaSource.addEventListener('sourceclose', () => {
+              console.log('MediaSource closed');
+            });
+          }
 
-              console.log('Using MIME types:', { videoMimeType, audioMimeType });
-
-              // Create source buffers for video and audio
-              videoBuffer = mediaSource.addSourceBuffer(videoMimeType);
-              console.log('Created video source buffer');
-              
-              audioBuffer = mediaSource.addSourceBuffer(audioMimeType);
-              console.log('Created audio source buffer');
-
-              // Function to stream data in chunks
-              const streamData = async (url: string, buffer: SourceBuffer, type: string) => {
-                if (!isMediaSourceActive || !mediaSource) return;
-
-                const response = await fetch(url);
-                if (!response.ok) {
-                  throw new Error(`Failed to fetch ${type} data: ${response.status}`);
-                }
-
-                const reader = response.body?.getReader();
-                if (!reader) {
-                  throw new Error(`Failed to get reader for ${type} data`);
-                }
-
-                while (isMediaSourceActive && mediaSource) {
-                  const { done, value } = await reader.read();
-                  if (done) {
-                    console.log(`${type} stream complete`);
-                    break;
-                  }
-
-                  // Wait for the buffer to be ready
-                  while (buffer.updating && isMediaSourceActive && mediaSource) {
-                    await new Promise(resolve => setTimeout(resolve, 10));
-                  }
-
-                  if (!isMediaSourceActive || !mediaSource) break;
-
-                  try {
-                    // Check if the buffer is still attached to the MediaSource
-                    if (Array.from(mediaSource.sourceBuffers).includes(buffer)) {
-                      buffer.appendBuffer(value);
-                    } else {
-                      console.warn(`${type} buffer was removed from MediaSource`);
-                      break;
-                    }
-                  } catch (e) {
-                    console.warn(`Error appending ${type} buffer:`, e);
-                    break;
-                  }
-                }
-              };
-
-              // Start streaming both video and audio
-              console.log('Starting video and audio streams...');
-              await Promise.all([
-                streamData(videoStream.url, videoBuffer, 'video'),
-                streamData(audioTrack.url, audioBuffer, 'audio')
-              ]);
-
-              // End the stream when both are done
-              if (isMediaSourceActive && mediaSource && mediaSource.readyState === 'open') {
-                // Wait for any pending updates to complete
-                while ((videoBuffer?.updating || audioBuffer?.updating) && isMediaSourceActive && mediaSource) {
-                  await new Promise(resolve => setTimeout(resolve, 10));
-                }
-
-                if (isMediaSourceActive && mediaSource && mediaSource.readyState === 'open') {
-                  console.log('All data streamed, ending stream');
-                  mediaSource.endOfStream();
-                }
-              }
-              setIsLoading(false);
-            } catch (error) {
-              console.error('Error setting up MediaSource:', error);
-              setError('Failed to set up video playback: ' + (error instanceof Error ? error.message : String(error)));
-              setIsLoading(false);
-            }
-          });
-
-          // Add cleanup on component unmount
-          return () => {
-            cleanup();
-          };
-
-          // Add error handling for MediaSource
-          mediaSource.addEventListener('sourceended', () => {
-            console.log('MediaSource ended');
-          });
-
-          mediaSource.addEventListener('sourceclose', () => {
-            console.log('MediaSource closed');
-          });
-
-          // Add error handling for video element
+          // Set up video element event handlers
           if (videoElement) {
             videoElement.addEventListener('error', (e) => {
               console.error('Video element error:', e);
@@ -431,7 +336,142 @@ export const PlayerPage: React.FC = () => {
             });
           }
 
-          setIsLoading(false);
+          // Wait for MediaSource to be ready
+          await new Promise<void>((resolve, reject) => {
+            const handleSourceOpen = () => {
+              if (!mediaSource) {
+                reject(new Error('MediaSource is null'));
+                return;
+              }
+              mediaSource.removeEventListener('sourceopen', handleSourceOpen);
+              resolve();
+            };
+
+            const handleSourceClose = () => {
+              if (!mediaSource) return;
+              mediaSource.removeEventListener('sourceclose', handleSourceClose);
+              reject(new Error('MediaSource was closed before it could be used'));
+            };
+
+            mediaSource?.addEventListener('sourceopen', handleSourceOpen);
+            mediaSource?.addEventListener('sourceclose', handleSourceClose);
+          });
+
+          try {
+            if (!isMediaSourceActive || !mediaSource) return;
+
+            // Determine the correct MIME type and codec
+            const videoMimeType = videoStream.mimeType.includes('webm') 
+              ? (videoStream.mimeType.includes('vp9') 
+                ? 'video/webm; codecs="vp9"' 
+                : 'video/webm; codecs="vp8"')
+              : 'video/mp4; codecs="avc1.42E01E"';
+            
+            // Use WebM audio for WebM video to ensure compatibility
+            const audioMimeType = videoStream.mimeType.includes('webm')
+              ? 'audio/webm; codecs="opus"'
+              : 'audio/mp4; codecs="mp4a.40.2"';
+
+            console.log('Using MIME types:', { videoMimeType, audioMimeType });
+
+            // Create source buffers for video and audio
+            if (mediaSource.readyState !== 'open') {
+              throw new Error('MediaSource is not in open state');
+            }
+
+            try {
+              videoBuffer = mediaSource.addSourceBuffer(videoMimeType);
+              console.log('Created video source buffer');
+              
+              audioBuffer = mediaSource.addSourceBuffer(audioMimeType);
+              console.log('Created audio source buffer');
+            } catch (e) {
+              console.error('Error creating source buffers:', e);
+              // If we fail to create the source buffers, try with a more generic MIME type
+              if (videoStream.mimeType.includes('webm')) {
+                videoBuffer = mediaSource.addSourceBuffer('video/webm');
+                console.log('Created video source buffer with generic MIME type');
+                
+                audioBuffer = mediaSource.addSourceBuffer('audio/webm');
+                console.log('Created audio source buffer with generic MIME type');
+              } else {
+                throw e;
+              }
+            }
+
+            // Function to stream data in chunks
+            const streamData = async (url: string, buffer: SourceBuffer, type: string) => {
+              if (!isMediaSourceActive || !mediaSource) return;
+
+              const response = await fetch(url);
+              if (!response.ok) {
+                throw new Error(`Failed to fetch ${type} data: ${response.status}`);
+              }
+
+              const reader = response.body?.getReader();
+              if (!reader) {
+                throw new Error(`Failed to get reader for ${type} data`);
+              }
+
+              while (isMediaSourceActive && mediaSource) {
+                const { done, value } = await reader.read();
+                if (done) {
+                  console.log(`${type} stream complete`);
+                  break;
+                }
+
+                // Wait for the buffer to be ready
+                while (buffer.updating && isMediaSourceActive && mediaSource) {
+                  await new Promise(resolve => setTimeout(resolve, 10));
+                }
+
+                if (!isMediaSourceActive || !mediaSource) break;
+
+                try {
+                  // Check if the buffer is still attached to the MediaSource
+                  if (Array.from(mediaSource.sourceBuffers).includes(buffer)) {
+                    buffer.appendBuffer(value);
+                  } else {
+                    console.warn(`${type} buffer was removed from MediaSource`);
+                    break;
+                  }
+                } catch (e) {
+                  console.warn(`Error appending ${type} buffer:`, e);
+                  break;
+                }
+              }
+            };
+
+            // Start streaming both video and audio
+            console.log('Starting video and audio streams...');
+            await Promise.all([
+              streamData(videoStream.url, videoBuffer, 'video'),
+              streamData(audioTrack.url, audioBuffer, 'audio')
+            ]);
+
+            // End the stream when both are done
+            if (isMediaSourceActive && mediaSource && mediaSource.readyState === 'open') {
+              // Wait for any pending updates to complete
+              while ((videoBuffer?.updating || audioBuffer?.updating) && isMediaSourceActive && mediaSource) {
+                await new Promise(resolve => setTimeout(resolve, 10));
+              }
+
+              if (isMediaSourceActive && mediaSource && mediaSource.readyState === 'open') {
+                console.log('All data streamed, ending stream');
+                mediaSource.endOfStream();
+              }
+            }
+            setIsLoading(false);
+          } catch (error) {
+            console.error('Error setting up MediaSource:', error);
+            setError('Failed to set up video playback: ' + (error instanceof Error ? error.message : String(error)));
+            setIsLoading(false);
+          }
+
+          // Add cleanup on component unmount
+          return () => {
+            cleanup();
+          };
         } catch (error) {
           console.error('Error loading YouTube video:', error);
           setError('Failed to load YouTube video');
