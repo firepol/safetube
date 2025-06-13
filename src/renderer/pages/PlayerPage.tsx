@@ -208,28 +208,43 @@ export const PlayerPage: React.FC = () => {
             console.log('Fetching available streams for video:', video.id);
             const { videoStreams, audioTracks } = await window.electron.getVideoStreams(video.id);
             
-            // Get the best quality video stream
-            videoStream = videoStreams.reduce((best, current) => {
-              if (!best) return current;
-              if (!current.height || !best.height) return best;
-              return current.height > best.height ? current : best;
+            // Log available audio tracks
+            console.log('Available audio tracks:', audioTracks.map(t => ({
+              language: t.language,
+              mimeType: t.mimeType,
+              bitrate: t.bitrate,
+              url: t.url.substring(0, 50) + '...'
+            })));
+            
+            // Use the proper stream selection functions
+            const highestQuality = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks, video.preferredLanguages);
+            console.log('Highest quality stream result:', {
+              ...highestQuality,
+              videoUrl: highestQuality.videoUrl.substring(0, 50) + '...',
+              audioUrl: highestQuality.audioUrl ? highestQuality.audioUrl.substring(0, 50) + '...' : undefined
             });
+            
+            videoStream = {
+              url: highestQuality.videoUrl,
+              quality: highestQuality.quality,
+              mimeType: highestQuality.videoUrl.includes('webm') ? 'video/webm' : 'video/mp4'
+            };
 
-            // Only get audio track if available
-            if (audioTracks.length > 0) {
-              audioTrack = audioTracks.reduce((best, current) => {
-                if (!best) return current;
-                if (!current.bitrate || !best.bitrate) return best;
-                return current.bitrate > best.bitrate ? current : best;
+            if (highestQuality.audioUrl) {
+              audioTrack = {
+                url: highestQuality.audioUrl,
+                language: highestQuality.audioLanguage || 'en',
+                mimeType: highestQuality.audioUrl.includes('webm') ? 'audio/webm' : 'audio/m4a'
+              };
+              console.log('Selected audio track:', {
+                ...audioTrack,
+                url: audioTrack.url.substring(0, 50) + '...'
               });
+            } else {
+              console.log('No audio track selected - video only mode. Audio tracks were available:', audioTracks.length > 0);
             }
 
             console.log('Selected video stream:', videoStream);
-            if (audioTrack) {
-              console.log('Selected audio track:', audioTrack);
-            } else {
-              console.log('No audio track selected - video only mode');
-            }
           }
 
           if (!videoStream?.url) {
@@ -260,7 +275,7 @@ export const PlayerPage: React.FC = () => {
                 ? 'video/webm; codecs="vp8"' 
                 : 'video/mp4; codecs="avc1.42E01E"';
               
-              const audioMimeType = audioTrack.mimeType.includes('webm')
+              const audioMimeType = audioTrack.mimeType === 'webm'
                 ? 'audio/webm; codecs="opus"'
                 : 'audio/mp4; codecs="mp4a.40.2"';
 
@@ -268,33 +283,48 @@ export const PlayerPage: React.FC = () => {
 
               // Create source buffers for video and audio
               const videoBuffer = mediaSource.addSourceBuffer(videoMimeType);
+              console.log('Created video source buffer');
+              
               const audioBuffer = mediaSource.addSourceBuffer(audioMimeType);
+              console.log('Created audio source buffer');
 
               // Fetch video and audio data
+              console.log('Fetching video data from:', videoStream.url.substring(0, 50) + '...');
               const videoResponse = await fetch(videoStream.url);
+              console.log('Video response status:', videoResponse.status);
+              
+              console.log('Fetching audio data from:', audioTrack.url.substring(0, 50) + '...');
               const audioResponse = await fetch(audioTrack.url);
+              console.log('Audio response status:', audioResponse.status);
 
               if (!videoResponse.ok || !audioResponse.ok) {
-                throw new Error('Failed to fetch video or audio data');
+                throw new Error(`Failed to fetch video or audio data: video=${videoResponse.status}, audio=${audioResponse.status}`);
               }
 
               const videoData = await videoResponse.arrayBuffer();
+              console.log('Video data size:', videoData.byteLength);
+              
               const audioData = await audioResponse.arrayBuffer();
+              console.log('Audio data size:', audioData.byteLength);
 
               // Append video and audio data to their respective buffers
               videoBuffer.addEventListener('updateend', () => {
+                console.log('Video buffer update ended');
                 if (!videoBuffer.updating && mediaSource.readyState === 'open') {
                   mediaSource.endOfStream();
                 }
               });
 
               audioBuffer.addEventListener('updateend', () => {
+                console.log('Audio buffer update ended');
                 if (!audioBuffer.updating && mediaSource.readyState === 'open') {
                   mediaSource.endOfStream();
                 }
               });
 
+              console.log('Appending video buffer...');
               videoBuffer.appendBuffer(videoData);
+              console.log('Appending audio buffer...');
               audioBuffer.appendBuffer(audioData);
             } catch (error) {
               console.error('Error setting up MediaSource:', error);

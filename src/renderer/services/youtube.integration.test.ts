@@ -60,8 +60,7 @@ describe('YouTubeAPI Integration', () => {
     // Get highest quality stream details
     const highestQuality = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks);
 
-    // Also show some alternative candidates
-    // Show first 3 combined formats (video+audio)
+    // Test combined formats
     const combinedFormats = videoStreams
       .filter(s => s.mimeType.includes('mp4'))
       .sort((a, b) => {
@@ -69,8 +68,12 @@ describe('YouTubeAPI Integration', () => {
         if (heightDiff !== 0) return heightDiff;
         return (b.fps || 0) - (a.fps || 0);
       });
+    expect(combinedFormats.length).toBeGreaterThan(0);
+    expect(combinedFormats[0].mimeType).toContain('mp4');
+    expect(combinedFormats[0].height).toBeGreaterThan(0);
+    expect(combinedFormats[0].fps).toBeGreaterThan(0);
 
-    // Show highest quality video-only format
+    // Test highest quality video-only format
     const videoOnly = videoStreams
       .filter(s => !s.mimeType.includes('audio'))
       .sort((a, b) => {
@@ -78,10 +81,17 @@ describe('YouTubeAPI Integration', () => {
         if (heightDiff !== 0) return heightDiff;
         return (b.fps || 0) - (a.fps || 0);
       })[0];
+    expect(videoOnly).toBeTruthy();
+    expect(videoOnly.mimeType).not.toContain('audio');
+    expect(videoOnly.height).toBeGreaterThan(0);
+    expect(videoOnly.fps).toBeGreaterThan(0);
 
-    // Show highest quality audio track
+    // Get highest quality audio track and verify it exists
     const bestAudio = audioTracks
       .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+    expect(bestAudio).toBeTruthy();
+    expect(bestAudio.url).toBeTruthy();
+    expect(bestAudio.bitrate).toBeGreaterThan(0);
 
     expect(streamUrl).toBeTruthy();
     expect(streamUrl.startsWith('http')).toBe(true);
@@ -132,9 +142,8 @@ describe('YouTubeAPI Integration', () => {
     // Test language preference selection
     const preferredLanguages = ['it', 'en'];
     const bestAudio = YouTubeAPI.getBestAudioTrackByLanguage(audioTracks, preferredLanguages);
-
-    // Test highest quality stream with language preference
-    const highestQuality = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks, preferredLanguages);
+    expect(bestAudio.language.toLowerCase()).toBe(preferredLanguages[0]); // Should get Italian since it's first in preferredLanguages
+    expect(bestAudio.mimeType).toBe('m4a');
 
     // Test fallback to English when preferred language not available
     const nonExistentLanguages = ['xx', 'yy'];
@@ -148,4 +157,105 @@ describe('YouTubeAPI Integration', () => {
       expect(firstAvailable).toBeTruthy();
     }
   }, 20000);
+
+  it('should handle video-only mp4 formats correctly', async () => {
+    const videoId = extractVideoId(TEST_VIDEO_URL);
+    expect(videoId).toBeTruthy();
+    if (!videoId) return;
+
+    const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(videoId);
+    expect(videoStreams.length).toBeGreaterThan(0);
+    expect(audioTracks.length).toBeGreaterThan(0);
+
+    // Get highest quality stream details
+    const highestQuality = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks);
+    
+    // Verify that if we have audio tracks available, we should get an audio URL
+    if (audioTracks.length > 0) {
+      expect(highestQuality.audioUrl).toBeTruthy();
+      expect(highestQuality.audioLanguage).toBeTruthy();
+    }
+
+    // Verify that the video URL is valid
+    expect(highestQuality.videoUrl).toBeTruthy();
+    expect(highestQuality.videoUrl.startsWith('http')).toBe(true);
+
+    // Verify that we have quality and resolution info
+    expect(highestQuality.quality).toBeTruthy();
+    expect(highestQuality.resolution).toBeTruthy();
+    expect(highestQuality.resolution).toMatch(/^\d+x\d+$/);
+  }, 20000);
+
+  it('should handle video-only mp4 formats with preferred languages', async () => {
+    const videoId = extractVideoId(TEST_VIDEO_URL);
+    expect(videoId).toBeTruthy();
+    if (!videoId) return;
+
+    const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(videoId);
+    expect(videoStreams.length).toBeGreaterThan(0);
+    expect(audioTracks.length).toBeGreaterThan(0);
+
+    // Get highest quality stream details with preferred languages
+    const preferredLanguages = ['it', 'en'];
+    const highestQuality = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks, preferredLanguages);
+    
+    // Verify that if we have audio tracks available, we should get an audio URL
+    if (audioTracks.length > 0) {
+      expect(highestQuality.audioUrl).toBeTruthy();
+      expect(highestQuality.audioLanguage).toBeTruthy();
+      // Verify that the audio language matches one of our preferred languages
+      expect(preferredLanguages).toContain(highestQuality.audioLanguage?.toLowerCase());
+    }
+
+    // Verify that the video URL is valid
+    expect(highestQuality.videoUrl).toBeTruthy();
+    expect(highestQuality.videoUrl.startsWith('http')).toBe(true);
+
+    // Verify that we have quality and resolution info
+    expect(highestQuality.quality).toBeTruthy();
+    expect(highestQuality.resolution).toBeTruthy();
+    expect(highestQuality.resolution).toMatch(/^\d+x\d+$/);
+  }, 20000);
+});
+
+describe('YouTubeAPI Audio Language Selection', () => {
+  const videoId = 'f2_3sQu7lA4';
+  let audioTracks: any[] = [];
+  let videoStreams: any[] = [];
+
+  beforeAll(async () => {
+    const result = await YouTubeAPI.getVideoStreams(videoId);
+    audioTracks = result.audioTracks;
+    videoStreams = result.videoStreams;
+  }, 20000);
+
+  it('should select English by default if no language specified', () => {
+    const bestAudio = YouTubeAPI.getBestAudioTrackByLanguage(audioTracks, []);
+    expect(bestAudio.language.toLowerCase()).toBe('en');
+    expect(bestAudio.mimeType).toBe('m4a');
+  });
+
+  it('should select Italian if preferred language is it', () => {
+    const bestAudio = YouTubeAPI.getBestAudioTrackByLanguage(audioTracks, ['it']);
+    expect(bestAudio.language.toLowerCase()).toBe('it');
+    expect(bestAudio.mimeType).toBe('m4a');
+  });
+
+  it('should select Italian if preferred languages are xx,xy,it', () => {
+    const bestAudio = YouTubeAPI.getBestAudioTrackByLanguage(audioTracks, ['xx', 'xy', 'it']);
+    expect(bestAudio.language.toLowerCase()).toBe('it');
+    expect(bestAudio.mimeType).toBe('m4a');
+  });
+
+  it('should select Italian if preferred languages are it,en', () => {
+    const bestAudio = YouTubeAPI.getBestAudioTrackByLanguage(audioTracks, ['it', 'en']);
+    expect(bestAudio.language.toLowerCase()).toBe('it');
+    expect(bestAudio.mimeType).toBe('m4a');
+  });
+
+  it('should select English if preferred languages are en,it', () => {
+    const bestAudio = YouTubeAPI.getBestAudioTrackByLanguage(audioTracks, ['en', 'it']);
+    expect(bestAudio.language.toLowerCase()).toBe('en');
+    expect(bestAudio.mimeType).toBe('m4a');
+  });
 }); 

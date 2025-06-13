@@ -274,11 +274,16 @@ export class YouTubeAPI {
     );
   }
 
+  // Helper to check if URL is m3u8
+  private static isM3U8(url: string): boolean {
+    return url.toLowerCase().endsWith('.m3u8');
+  }
+
   // Helper to get best quality stream URL
   static getBestStreamUrl(videoStreams: VideoStream[], audioTracks: AudioTrack[]): string {
     // First try to find a combined format with high quality
     const combinedFormats = videoStreams
-      .filter(s => s.mimeType.includes('mp4'))
+      .filter(s => s.mimeType.includes('mp4') && !this.isM3U8(s.url)) // Prefer mp4 and non-m3u8
       .sort((a, b) => {
         // Sort by resolution first
         const heightDiff = (b.height || 0) - (a.height || 0);
@@ -293,6 +298,7 @@ export class YouTubeAPI {
 
     // If no combined format, get highest quality video and audio separately
     const videoFormats = videoStreams
+      .filter(s => !this.isM3U8(s.url)) // Only filter out m3u8
       .sort((a, b) => {
         // Sort by resolution first
         const heightDiff = (b.height || 0) - (a.height || 0);
@@ -301,12 +307,43 @@ export class YouTubeAPI {
         return (b.fps || 0) - (a.fps || 0);
       });
     
-    const audioFormats = audioTracks
+    if (videoFormats.length > 0) {
+      const bestVideo = videoFormats[0];
+      const bestAudio = this.getBestAudioTrackByLanguage(audioTracks, ['en']);
+      
+      return `${bestVideo.url}|${bestAudio.url}`;
+    }
+
+    // Fallback to any non-m3u8 format
+    const fallbackVideoFormats = videoStreams
+      .filter(s => !this.isM3U8(s.url)) // Prefer non-m3u8
+      .sort((a, b) => {
+        const heightDiff = (b.height || 0) - (a.height || 0);
+        if (heightDiff !== 0) return heightDiff;
+        return (b.fps || 0) - (a.fps || 0);
+      });
+    
+    const fallbackAudioFormats = audioTracks
+      .filter(a => !this.isM3U8(a.url)) // Prefer non-m3u8
       .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
 
-    if (videoFormats.length > 0 && audioFormats.length > 0) {
-      // Return both URLs, player will need to handle them
-      return `${videoFormats[0].url}|${audioFormats[0].url}`;
+    if (fallbackVideoFormats.length > 0 && fallbackAudioFormats.length > 0) {
+      return `${fallbackVideoFormats[0].url}|${fallbackAudioFormats[0].url}`;
+    }
+
+    // Last resort: use any format
+    const lastResortVideoFormats = videoStreams
+      .sort((a, b) => {
+        const heightDiff = (b.height || 0) - (a.height || 0);
+        if (heightDiff !== 0) return heightDiff;
+        return (b.fps || 0) - (a.fps || 0);
+      });
+    
+    const lastResortAudioFormats = audioTracks
+      .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
+
+    if (lastResortVideoFormats.length > 0 && lastResortAudioFormats.length > 0) {
+      return `${lastResortVideoFormats[0].url}|${lastResortAudioFormats[0].url}`;
     }
 
     throw new Error('No suitable stream found');
@@ -315,25 +352,94 @@ export class YouTubeAPI {
   // Helper to get best audio track by language preference
   static getBestAudioTrackByLanguage(audioTracks: AudioTrack[], preferredLanguages: string[]): AudioTrack {
     if (!audioTracks.length) {
+      console.log('No audio tracks available in getBestAudioTrackByLanguage');
       throw new Error('No audio tracks available');
     }
 
-    // First try to find a track in preferred languages
-    for (const lang of preferredLanguages) {
-      const track = audioTracks.find(t => t.language.toLowerCase() === lang.toLowerCase());
-      if (track) {
-        return track;
+    console.log('Getting best audio track for languages:', preferredLanguages);
+    console.log('Available audio tracks:', audioTracks.map(t => ({
+      language: t.language,
+      mimeType: t.mimeType,
+      bitrate: t.bitrate
+    })));
+
+    // If no preferredLanguages, default to English
+    const langs = (preferredLanguages && preferredLanguages.length > 0) ? preferredLanguages : ['en'];
+    console.log('Using languages:', langs);
+
+    // For each language, pick the highest-bitrate track, non-m3u8
+    for (const lang of langs) {
+      console.log(`Looking for language: ${lang}`);
+      const candidates = audioTracks
+        .filter(t => {
+          const matches = t.language.toLowerCase() === lang.toLowerCase() && !this.isM3U8(t.url);
+          // console.log(`Track ${t.language} matches ${lang}? ${matches}`);
+          return matches;
+        })
+        .sort((a, b) => {
+          // First sort by mimeType (prefer m4a over webm)
+          if (a.mimeType === 'm4a' && b.mimeType !== 'm4a') return -1;
+          if (a.mimeType !== 'm4a' && b.mimeType === 'm4a') return 1;
+          // Then by bitrate
+          return (b.bitrate || 0) - (a.bitrate || 0);
+        });
+      
+      // console.log(`Candidates for language ${lang}:`, candidates.map(t => ({
+      //   language: t.language,
+      //   mimeType: t.mimeType,
+      //   bitrate: t.bitrate
+      // })));
+      
+      if (candidates.length > 0) {
+        const selected = candidates[0];
+        console.log('Selected audio track:', {
+          language: selected.language,
+          mimeType: selected.mimeType,
+          bitrate: selected.bitrate
+        });
+        return selected;
       }
     }
 
-    // If no preferred language found, try English
-    const englishTrack = audioTracks.find(t => t.language.toLowerCase() === 'en');
-    if (englishTrack) {
-      return englishTrack;
+    // If we get here, none of the preferred languages were found
+    console.log('No tracks found for preferred languages, falling back to any non-m3u8 track');
+
+    // Fallback: any non-m3u8
+    const anyNonM3U8Track = audioTracks
+      .filter(t => !this.isM3U8(t.url))
+      .sort((a, b) => {
+        // First sort by mimeType (prefer m4a over webm)
+        if (a.mimeType === 'm4a' && b.mimeType !== 'm4a') return -1;
+        if (a.mimeType !== 'm4a' && b.mimeType === 'm4a') return 1;
+        // Then by bitrate
+        return (b.bitrate || 0) - (a.bitrate || 0);
+      })[0];
+    
+    if (anyNonM3U8Track) {
+      console.log('Selected fallback audio track:', {
+        language: anyNonM3U8Track.language,
+        mimeType: anyNonM3U8Track.mimeType,
+        bitrate: anyNonM3U8Track.bitrate
+      });
+      return anyNonM3U8Track;
     }
 
-    // If no English track, return the first available track
-    return audioTracks[0];
+    // Last resort: any
+    const lastResortTrack = audioTracks
+      .sort((a, b) => {
+        // First sort by mimeType (prefer m4a over webm)
+        if (a.mimeType === 'm4a' && b.mimeType !== 'm4a') return -1;
+        if (a.mimeType !== 'm4a' && b.mimeType === 'm4a') return 1;
+        // Then by bitrate
+        return (b.bitrate || 0) - (a.bitrate || 0);
+      })[0];
+    
+    console.log('Selected last resort audio track:', {
+      language: lastResortTrack.language,
+      mimeType: lastResortTrack.mimeType,
+      bitrate: lastResortTrack.bitrate
+    });
+    return lastResortTrack;
   }
 
   // Helper to get highest quality stream details
@@ -345,9 +451,15 @@ export class YouTubeAPI {
     fps?: number;
     audioLanguage?: string;
   } {
+    console.log('getHighestQualityStream called with:', {
+      videoStreamsCount: videoStreams.length,
+      audioTracksCount: audioTracks.length,
+      preferredLanguages
+    });
+
     // First try to find a combined format with high quality
     const combinedFormats = videoStreams
-      .filter(s => s.mimeType.includes('mp4'))
+      .filter(s => s.mimeType.includes('mp4') && !this.isM3U8(s.url) && s.mimeType.includes('audio')) // Must be mp4 and have audio
       .sort((a, b) => {
         // Sort by resolution first
         const heightDiff = (b.height || 0) - (a.height || 0);
@@ -356,8 +468,15 @@ export class YouTubeAPI {
         return (b.fps || 0) - (a.fps || 0);
       });
 
+    console.log('Combined formats found:', combinedFormats.length);
+
     if (combinedFormats.length > 0) {
       const best = combinedFormats[0];
+      console.log('Using combined format:', {
+        quality: best.quality,
+        resolution: `${best.width}x${best.height}`,
+        fps: best.fps
+      });
       return {
         videoUrl: best.url,
         quality: best.quality,
@@ -368,6 +487,7 @@ export class YouTubeAPI {
 
     // If no combined format, get highest quality video and audio separately
     const videoFormats = videoStreams
+      .filter(s => !this.isM3U8(s.url)) // Only filter out m3u8
       .sort((a, b) => {
         // Sort by resolution first
         const heightDiff = (b.height || 0) - (a.height || 0);
@@ -376,17 +496,51 @@ export class YouTubeAPI {
         return (b.fps || 0) - (a.fps || 0);
       });
     
+    console.log('Video formats found:', videoFormats.length);
+    
     if (videoFormats.length > 0) {
       const bestVideo = videoFormats[0];
-      const bestAudio = this.getBestAudioTrackByLanguage(audioTracks, preferredLanguages);
-      
-      return {
-        videoUrl: bestVideo.url,
-        audioUrl: bestAudio.url,
+      console.log('Best video format:', {
         quality: bestVideo.quality,
         resolution: `${bestVideo.width}x${bestVideo.height}`,
-        fps: bestVideo.fps,
-        audioLanguage: bestAudio.language
+        fps: bestVideo.fps
+      });
+
+      // Make sure we have audio tracks before trying to get the best one
+      if (audioTracks && audioTracks.length > 0) {
+        console.log('Getting best audio track for video...');
+        const bestAudio = this.getBestAudioTrackByLanguage(audioTracks, preferredLanguages);
+        console.log('Best audio track found:', {
+          language: bestAudio.language,
+          mimeType: bestAudio.mimeType,
+          bitrate: bestAudio.bitrate
+        });
+        return {
+          videoUrl: bestVideo.url,
+          audioUrl: bestAudio.url,
+          quality: bestVideo.quality,
+          resolution: `${bestVideo.width}x${bestVideo.height}`,
+          fps: bestVideo.fps,
+          audioLanguage: bestAudio.language
+        };
+      } else {
+        console.log('No audio tracks available for video');
+      }
+    }
+
+    // If we get here, we have a video but no audio
+    if (videoFormats.length > 0) {
+      const bestVideo = videoFormats[0];
+      console.log('Using video-only format as last resort:', {
+        quality: bestVideo.quality,
+        resolution: `${bestVideo.width}x${bestVideo.height}`,
+        fps: bestVideo.fps
+      });
+      return {
+        videoUrl: bestVideo.url,
+        quality: bestVideo.quality,
+        resolution: `${bestVideo.width}x${bestVideo.height}`,
+        fps: bestVideo.fps
       };
     }
 
