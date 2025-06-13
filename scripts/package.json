@@ -1,0 +1,12 @@
+{
+  "name": "youtube-stream-tester",
+  "version": "1.0.0",
+  "description": "Test YouTube stream selection logic",
+  "main": "test-streams.js",
+  "scripts": {
+    "test": "node test-streams.js"
+  },
+  "dependencies": {
+    "yargs": "^17.7.2"
+  }
+} 

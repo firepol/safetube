@@ -33,8 +33,8 @@ export function setupYouTubeHandlers() {
 
       // Process formats
       for (const format of info.formats) {
-        if (format.vcodec !== 'none' && format.acodec !== 'none') {
-          // Combined video+audio format
+        // Video-only formats
+        if (format.vcodec && format.vcodec !== 'none' && (!format.acodec || format.acodec === 'none')) {
           videoStreams.push({
             url: format.url,
             quality: format.format_note || format.quality || 'unknown',
@@ -44,22 +44,12 @@ export function setupYouTubeHandlers() {
             fps: format.fps,
             bitrate: format.tbr,
           });
-        } else if (format.vcodec !== 'none') {
-          // Video-only format
-          videoStreams.push({
-            url: format.url,
-            quality: format.format_note || format.quality || 'unknown',
-            mimeType: format.ext,
-            width: format.width,
-            height: format.height,
-            fps: format.fps,
-            bitrate: format.tbr,
-          });
-        } else if (format.acodec !== 'none') {
-          // Audio-only format
+        }
+        // Audio-only formats
+        else if (format.acodec && format.acodec !== 'none' && (!format.vcodec || format.vcodec === 'none')) {
           audioTracks.push({
             url: format.url,
-            language: format.language || 'unknown',
+            language: format.language || 'en',
             mimeType: format.ext,
             bitrate: format.tbr,
           });
