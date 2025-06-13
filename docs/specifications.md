@@ -92,6 +92,11 @@ Each source is defined in the `videoSources.json` config like:
 {monday: 30, tuesday: 30, wednesday: 30, thursday: 30, friday: 30, saturday: 60, sunday: 60}
 
 - Tracked time is saved regularly (every few seconds) to avoid data loss.
+- Fast forward and rewind should count toward the daily quota just like normal playback.
+  If a child fast-forwards or rewinds a video, the time that elapses during these actions is considered as “watched” and should be added to their daily total.
+  Pausing, by contrast, should not contribute to the daily quota.
+  For example: if the child fast-forwards 20 minutes of video in 5 seconds, only those 5 seconds should be added to their daily quota — not the 20-minute segment that was skipped.
+  Pausing, by contrast, should not contribute to the daily quota.
 - On crash/reboot, the app resumes tracking without loss.
 - Videos are blocked once the daily quota is reached.
 
