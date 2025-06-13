@@ -288,49 +288,90 @@ export const PlayerPage: React.FC = () => {
               const audioBuffer = mediaSource.addSourceBuffer(audioMimeType);
               console.log('Created audio source buffer');
 
-              // Fetch video and audio data
-              console.log('Fetching video data from:', videoStream.url.substring(0, 50) + '...');
-              const videoResponse = await fetch(videoStream.url);
-              console.log('Video response status:', videoResponse.status);
-              
-              console.log('Fetching audio data from:', audioTrack.url.substring(0, 50) + '...');
-              const audioResponse = await fetch(audioTrack.url);
-              console.log('Audio response status:', audioResponse.status);
+              // Function to stream data in chunks
+              const streamData = async (url: string, buffer: SourceBuffer, type: string) => {
+                const response = await fetch(url);
+                if (!response.ok) {
+                  throw new Error(`Failed to fetch ${type} data: ${response.status}`);
+                }
 
-              if (!videoResponse.ok || !audioResponse.ok) {
-                throw new Error(`Failed to fetch video or audio data: video=${videoResponse.status}, audio=${audioResponse.status}`);
+                const reader = response.body?.getReader();
+                if (!reader) {
+                  throw new Error(`Failed to get reader for ${type} data`);
+                }
+
+                while (true) {
+                  const { done, value } = await reader.read();
+                  if (done) {
+                    console.log(`${type} stream complete`);
+                    break;
+                  }
+
+                  // Wait for the buffer to be ready
+                  while (buffer.updating) {
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                  }
+
+                  // Append the chunk
+                  buffer.appendBuffer(value);
+                  // console.log(`Appended ${value.byteLength} bytes of ${type} data`);
+                }
+              };
+
+              // Start streaming both video and audio
+              console.log('Starting video and audio streams...');
+              await Promise.all([
+                streamData(videoStream.url, videoBuffer, 'video'),
+                streamData(audioTrack.url, audioBuffer, 'audio')
+              ]);
+
+              // End the stream when both are done
+              if (mediaSource.readyState === 'open') {
+                console.log('All data streamed, ending stream');
+                mediaSource.endOfStream();
+                setIsLoading(false);
               }
-
-              const videoData = await videoResponse.arrayBuffer();
-              console.log('Video data size:', videoData.byteLength);
-              
-              const audioData = await audioResponse.arrayBuffer();
-              console.log('Audio data size:', audioData.byteLength);
-
-              // Append video and audio data to their respective buffers
-              videoBuffer.addEventListener('updateend', () => {
-                console.log('Video buffer update ended');
-                if (!videoBuffer.updating && mediaSource.readyState === 'open') {
-                  mediaSource.endOfStream();
-                }
-              });
-
-              audioBuffer.addEventListener('updateend', () => {
-                console.log('Audio buffer update ended');
-                if (!audioBuffer.updating && mediaSource.readyState === 'open') {
-                  mediaSource.endOfStream();
-                }
-              });
-
-              console.log('Appending video buffer...');
-              videoBuffer.appendBuffer(videoData);
-              console.log('Appending audio buffer...');
-              audioBuffer.appendBuffer(audioData);
             } catch (error) {
               console.error('Error setting up MediaSource:', error);
-              setError('Failed to set up video playback');
+              setError('Failed to set up video playback: ' + (error instanceof Error ? error.message : String(error)));
+              setIsLoading(false);
             }
           });
+
+          // Add error handling for MediaSource
+          mediaSource.addEventListener('sourceended', () => {
+            console.log('MediaSource ended');
+          });
+
+          mediaSource.addEventListener('sourceclose', () => {
+            console.log('MediaSource closed');
+          });
+
+          // Add error handling for video element
+          if (videoRef.current) {
+            videoRef.current.addEventListener('error', (e) => {
+              console.error('Video element error:', e);
+              const error = videoRef.current?.error;
+              if (error) {
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+              }
+              setError('Video playback error: ' + (error?.message || 'Unknown error'));
+              setIsLoading(false);
+            });
+
+            videoRef.current.addEventListener('loadedmetadata', () => {
+              console.log('Video metadata loaded');
+            });
+
+            videoRef.current.addEventListener('loadeddata', () => {
+              console.log('Video data loaded');
+            });
+
+            videoRef.current.addEventListener('canplay', () => {
+              console.log('Video can play');
+            });
+          }
 
           setIsLoading(false);
         } catch (error) {
