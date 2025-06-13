@@ -183,6 +183,36 @@ export const PlayerPage: React.FC = () => {
         try {
           let videoStream: VideoStream | undefined;
           let audioTrack: AudioTrack | undefined;
+          let mediaSource: MediaSource | null = null;
+          let videoBuffer: SourceBuffer | null = null;
+          let audioBuffer: SourceBuffer | null = null;
+          let isMediaSourceActive = true;
+
+          // Cleanup function
+          const cleanup = () => {
+            isMediaSourceActive = false;
+            if (videoBuffer && mediaSource?.sourceBuffers.length) {
+              try {
+                mediaSource.removeSourceBuffer(videoBuffer);
+              } catch (e) {
+                console.warn('Error removing video buffer:', e);
+              }
+            }
+            if (audioBuffer && mediaSource?.sourceBuffers.length) {
+              try {
+                mediaSource.removeSourceBuffer(audioBuffer);
+              } catch (e) {
+                console.warn('Error removing audio buffer:', e);
+              }
+            }
+            if (mediaSource?.readyState === 'open') {
+              try {
+                mediaSource.endOfStream();
+              } catch (e) {
+                console.warn('Error ending media source stream:', e);
+              }
+            }
+          };
 
           if (video.useJsonStreamUrls && video.streamUrl) {
             console.log('Using pre-defined stream URL from JSON:', video.streamUrl);
@@ -262,14 +292,17 @@ export const PlayerPage: React.FC = () => {
           }
 
           // For videos with both video and audio, use MediaSource
-          const mediaSource = new MediaSource();
+          mediaSource = new MediaSource();
           const videoUrl = URL.createObjectURL(mediaSource);
-          if (videoRef.current) {
-            videoRef.current.src = videoUrl;
+          const videoElement = videoRef.current;
+          if (videoElement) {
+            videoElement.src = videoUrl;
           }
 
           mediaSource.addEventListener('sourceopen', async () => {
             try {
+              if (!isMediaSourceActive || !mediaSource) return;
+
               // Determine the correct MIME type and codec
               const videoMimeType = videoStream.mimeType.includes('webm') 
                 ? 'video/webm; codecs="vp8"' 
@@ -282,14 +315,16 @@ export const PlayerPage: React.FC = () => {
               console.log('Using MIME types:', { videoMimeType, audioMimeType });
 
               // Create source buffers for video and audio
-              const videoBuffer = mediaSource.addSourceBuffer(videoMimeType);
+              videoBuffer = mediaSource.addSourceBuffer(videoMimeType);
               console.log('Created video source buffer');
               
-              const audioBuffer = mediaSource.addSourceBuffer(audioMimeType);
+              audioBuffer = mediaSource.addSourceBuffer(audioMimeType);
               console.log('Created audio source buffer');
 
               // Function to stream data in chunks
               const streamData = async (url: string, buffer: SourceBuffer, type: string) => {
+                if (!isMediaSourceActive || !mediaSource) return;
+
                 const response = await fetch(url);
                 if (!response.ok) {
                   throw new Error(`Failed to fetch ${type} data: ${response.status}`);
@@ -300,7 +335,7 @@ export const PlayerPage: React.FC = () => {
                   throw new Error(`Failed to get reader for ${type} data`);
                 }
 
-                while (true) {
+                while (isMediaSourceActive && mediaSource) {
                   const { done, value } = await reader.read();
                   if (done) {
                     console.log(`${type} stream complete`);
@@ -308,13 +343,24 @@ export const PlayerPage: React.FC = () => {
                   }
 
                   // Wait for the buffer to be ready
-                  while (buffer.updating) {
+                  while (buffer.updating && isMediaSourceActive && mediaSource) {
                     await new Promise(resolve => setTimeout(resolve, 10));
                   }
 
-                  // Append the chunk
-                  buffer.appendBuffer(value);
-                  // console.log(`Appended ${value.byteLength} bytes of ${type} data`);
+                  if (!isMediaSourceActive || !mediaSource) break;
+
+                  try {
+                    // Check if the buffer is still attached to the MediaSource
+                    if (Array.from(mediaSource.sourceBuffers).includes(buffer)) {
+                      buffer.appendBuffer(value);
+                    } else {
+                      console.warn(`${type} buffer was removed from MediaSource`);
+                      break;
+                    }
+                  } catch (e) {
+                    console.warn(`Error appending ${type} buffer:`, e);
+                    break;
+                  }
                 }
               };
 
@@ -326,17 +372,29 @@ export const PlayerPage: React.FC = () => {
               ]);
 
               // End the stream when both are done
-              if (mediaSource.readyState === 'open') {
-                console.log('All data streamed, ending stream');
-                mediaSource.endOfStream();
-                setIsLoading(false);
+              if (isMediaSourceActive && mediaSource && mediaSource.readyState === 'open') {
+                // Wait for any pending updates to complete
+                while ((videoBuffer?.updating || audioBuffer?.updating) && isMediaSourceActive && mediaSource) {
+                  await new Promise(resolve => setTimeout(resolve, 10));
+                }
+
+                if (isMediaSourceActive && mediaSource && mediaSource.readyState === 'open') {
+                  console.log('All data streamed, ending stream');
+                  mediaSource.endOfStream();
+                }
               }
+              setIsLoading(false);
             } catch (error) {
               console.error('Error setting up MediaSource:', error);
               setError('Failed to set up video playback: ' + (error instanceof Error ? error.message : String(error)));
               setIsLoading(false);
             }
           });
+
+          // Add cleanup on component unmount
+          return () => {
+            cleanup();
+          };
 
           // Add error handling for MediaSource
           mediaSource.addEventListener('sourceended', () => {
@@ -348,10 +406,10 @@ export const PlayerPage: React.FC = () => {
           });
 
           // Add error handling for video element
-          if (videoRef.current) {
-            videoRef.current.addEventListener('error', (e) => {
+          if (videoElement) {
+            videoElement.addEventListener('error', (e) => {
               console.error('Video element error:', e);
-              const error = videoRef.current?.error;
+              const error = videoElement.error;
               if (error) {
                 console.error('Error code:', error.code);
                 console.error('Error message:', error.message);
@@ -360,15 +418,15 @@ export const PlayerPage: React.FC = () => {
               setIsLoading(false);
             });
 
-            videoRef.current.addEventListener('loadedmetadata', () => {
+            videoElement.addEventListener('loadedmetadata', () => {
               console.log('Video metadata loaded');
             });
 
-            videoRef.current.addEventListener('loadeddata', () => {
+            videoElement.addEventListener('loadeddata', () => {
               console.log('Video data loaded');
             });
 
-            videoRef.current.addEventListener('canplay', () => {
+            videoElement.addEventListener('canplay', () => {
               console.log('Video can play');
             });
           }
