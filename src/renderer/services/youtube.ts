@@ -190,21 +190,6 @@ export class YouTubeAPI {
         const { stdout } = await execAsync(`yt-dlp -j "${videoId}"`);
         const data = JSON.parse(stdout);
 
-        // Debug: Print all available formats
-        // console.log('All available formats for', videoId);
-        // data.formats.forEach((f: any) => {
-        //   console.log('Format:', {
-        //     format_id: f.format_id,
-        //     ext: f.ext,
-        //     vcodec: f.vcodec,
-        //     acodec: f.acodec,
-        //     url: f.url,
-        //     format_note: f.format_note,
-        //     tbr: f.tbr,
-        //     language: f.language
-        //   });
-        // });
-
         const videoStreams: VideoStream[] = data.formats
           .filter((f: any) => f.vcodec !== 'none' && f.acodec === 'none')
           .map((f: any) => ({
