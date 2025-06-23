@@ -11,7 +11,7 @@
 
 const http = require('http');
 
-const server = '192.168.68.51';
+const server = '192.168.1.100'; // Replace with your DLNA server IP
 const port = 8200;
 
 async function browseDlnaServer() {

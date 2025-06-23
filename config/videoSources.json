@@ -16,7 +16,7 @@
   {
     "id": "dlna1",
     "type": "dlna",
-    "url": "http://192.168.1.3:8200",
+    "url": "http://192.168.1.100:8200",
     "allowedFolder": "/Kids/Movies",
     "title": "Kids Movies",
     "sortOrder": "alphabetical"
@@ -24,7 +24,7 @@
   {
     "id": "local1",
     "type": "local",
-    "path": "/Users/paolo/Videos/Kids",
+    "path": "/path/to/your/local/videos",
     "title": "Offline Cartoons",
     "sortOrder": "alphabetical"
   }
