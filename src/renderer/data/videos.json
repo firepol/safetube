@@ -76,7 +76,7 @@
     "title": "Tai Otoshi",
     "thumbnail": "https://picsum.photos/id/38/300/200?grayscale",
     "duration": 300,
-    "url": "file:///home/paul/Downloads/youtube/judo/tai-otoshi.mp4"
+    "url": "file:///path/to/your/videos/tai-otoshi.mp4"
   },
   {
     "id": "local-split",
@@ -84,9 +84,9 @@
     "title": "Tai Otoshi (split)",
     "thumbnail": "https://picsum.photos/id/38/300/200?grayscale",
     "duration": 300,
-    "url": "file:///home/paul/Downloads/youtube/judo/tai-otoshi-video.mp4",
-    "video": "file:///home/paul/Downloads/youtube/judo/tai-otoshi-video.mp4",
-    "audio": "file:///home/paul/Downloads/youtube/judo/tai-otoshi-audio.m4a"
+    "url": "file:///path/to/your/videos/tai-otoshi-video.mp4",
+    "video": "file:///path/to/your/videos/tai-otoshi-video.mp4",
+    "audio": "file:///path/to/your/videos/tai-otoshi-audio.m4a"
   },
   {
     "id": "local-2",
@@ -94,7 +94,7 @@
     "title": "Uiki Goshi webm",
     "thumbnail": "https://picsum.photos/id/15/300/200?grayscale",
     "duration": 600,
-    "url": "file:///home/paul/Downloads/youtube/judo/uki-goshi.webm"
+    "url": "file:///path/to/your/videos/uki-goshi.webm"
   },
   {
     "id": "youtube-1",
@@ -111,7 +111,7 @@
     "title": "Sample Local Video",
     "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
     "duration": 180,
-    "url": "file:///home/paul/Downloads/youtube/judo/2024-03-19_21-00-00.mp4"
+    "url": "file:///path/to/your/videos/2024-03-19_21-00-00.mp4"
   },
   {
     "id": "dlna-1",
