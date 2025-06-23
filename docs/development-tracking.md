@@ -9,6 +9,22 @@ This document tracks the development progress of SafeTube, a kid-friendly video 
 - [Status Legend](#status-legend) - Feature status definitions
 - [Sprint Planning](#sprint-planning) - Sprint organization guidelines
 
+## Important Rules
+
+### Date Management
+- **ALWAYS check the current date before updating timestamps** using one of these methods:
+  - Linux: `date` command
+  - Node.js: `node -e "console.log(new Date().toISOString())"`
+  - Or use the system's current date/time
+- Never assume dates - always verify the current date before making timestamp updates
+- This project started in June 2025, not 2024
+
+### Changelog Generation
+- Use the changelog script to get accurate development dates: `./scripts/generate-changelog.sh`
+- The script generates a `changelog.txt` file with all commits grouped by date
+- Use this changelog to update development tracking with correct dates
+- Run the script before updating any timestamps in this document
+
 ## PRD Rules
 
 Each feature PRD must include:
@@ -47,7 +63,7 @@ Each feature PRD must include:
 - **Blockers**: None
 - **Dependencies**: None
 - **Progress**: 100%
-- **Last Updated**: 2024-03-19
+- **Last Updated**: 2025-06-02
 - **Completed Items**:
   - Basic project structure with Electron + React + TypeScript
   - Development environment setup with Vite
@@ -61,14 +77,14 @@ Each feature PRD must include:
   - Logging framework setup with electron-log
 - **Remaining Items**: None
 - **Recent Changes**:
-  - 2024-03-19: Added logging framework with electron-log
-  - 2024-03-19: Added testing framework with Vitest and React Testing Library
-  - 2024-03-19: Migrated Cursor rules to .mdc format
-  - 2024-03-19: Added ESLint configuration with browser globals
-  - 2024-03-19: Switched to Electron Nightly for Linux compatibility
-  - 2024-03-19: Added basic application layout with Tailwind CSS
-  - 2024-03-19: Set up Vite development environment
-  - 2024-03-19: Initialized project with Yarn
+  - 2025-06-02: Added logging framework with electron-log
+  - 2025-06-02: Added testing framework with Vitest and React Testing Library
+  - 2025-06-02: Migrated Cursor rules to .mdc format
+  - 2025-06-02: Added ESLint configuration with browser globals
+  - 2025-06-02: Switched to Electron Nightly for Linux compatibility
+  - 2025-06-02: Added basic application layout with Tailwind CSS
+  - 2025-06-02: Set up Vite development environment
+  - 2025-06-02: Initialized project with Yarn
 
 ### 1. Kid Screen – Homepage
 - **Status**: In Progress
@@ -77,7 +93,7 @@ Each feature PRD must include:
 - **Blockers**: None
 - **Dependencies**: Project Setup
 - **Progress**: 80%
-- **Last Updated**: 2024-03-19
+- **Last Updated**: 2025-06-03
 - **Completed Items**:
   - Basic video grid layout with grouping by type
   - Video card component with basic structure
@@ -92,13 +108,13 @@ Each feature PRD must include:
 - **Remaining Items**:
   - Further visual polish and UX improvements for cards/grid
 - **Recent Changes**:
-  - 2024-03-19: Added basic video grid with grouping
-  - 2024-03-19: Created VideoCardBase component
-  - 2024-03-19: Added sample data for testing
-  - 2024-03-19: Set up renderer structure
-  - 2024-03-19: Improved card/grid styling and responsiveness
-  - 2024-03-19: Added duration, progress bar, and hover effects
-  - 2024-03-19: Noted further visual polish planned
+  - 2025-06-03: Added basic video grid with grouping
+  - 2025-06-03: Created VideoCardBase component
+  - 2025-06-03: Added sample data for testing
+  - 2025-06-03: Set up renderer structure
+  - 2025-06-03: Improved card/grid styling and responsiveness
+  - 2025-06-03: Added duration, progress bar, and hover effects
+  - 2025-06-03: Noted further visual polish planned
 
 ### 2. Play Video
 - **Status**: In Progress
@@ -107,7 +123,7 @@ Each feature PRD must include:
 - **Blockers**: None
 - **Dependencies**: Project Setup, Kid Screen
 - **Progress**: 80%
-- **Last Updated**: 2024-06-04
+- **Last Updated**: 2025-06-05
 - **Completed Items**:
   - Player page loads by video id and plays YouTube videos using embed
   - Navigation from homepage to player and back works
@@ -117,21 +133,28 @@ Each feature PRD must include:
   - Added proper error handling for file access
   - DLNA video playback works for MP4 files
   - Partial support for MKV/WEBM (some files work, some do not, depending on browser/Electron support and server MIME type)
+  - HTML5 video player with direct stream URLs for YouTube
+  - Support for separate video and audio streams with MediaSource API
+  - Language preference support for audio tracks
+  - Resume functionality for videos
 - **Remaining Items**:
-  - Replace YouTube embed with a true HTML5 player (requires direct video stream URL)
   - Improve player design and controls
-  - Add time tracking and resume support
+  - Add time tracking and resume support integration
   - Improve support for more DLNA formats (transcoding or proxy may be needed for full MKV/WEBM support)
 - **Recent Changes**:
-  - 2024-06-04: MP4 DLNA playback confirmed working, partial support for MKV/WEBM, added and documented DLNA browsing scripts
+  - 2025-06-05: Added support for separate video and audio streams with MediaSource API
+  - 2025-06-05: Improved YouTube video stream handling with yt-dlp integration
+  - 2025-06-05: Added language preference support for audio tracks
+  - 2025-06-04: MP4 DLNA playback confirmed working, partial support for MKV/WEBM, added and documented DLNA browsing scripts
+  - 2025-06-03: Initial player page with YouTube embed and HTML5 video player
 - **Notes**:
   - MP4 files play reliably via DLNA
   - MKV/WEBM files: some play, some do not, depending on browser/Electron support and server MIME type
   - Two scripts exist for DLNA browsing: see `scripts/` for usage and documentation
   - Current design is functional but visually unpolished/ugly
-  - Player page uses YouTube embed, not a true HTML5 player yet
-  - To use an HTML5 player for YouTube, a direct video stream URL is needed (e.g., from yt-dlp)
+  - Player page now uses HTML5 video player with direct stream URLs when available
   - Local file support is working with proper security measures
+  - Resume functionality is implemented
 
 ### 3. Time Tracking
 - **Status**: In Progress
@@ -140,7 +163,7 @@ Each feature PRD must include:
 - **Blockers**: None
 - **Dependencies**: Project Setup, Play Video
 - **Progress**: 70%
-- **Last Updated**: 2025-01-20
+- **Last Updated**: 2025-06-23
 - **Completed Items**:
   - JSON configuration files for time limits, usage logs, watched videos, and video sources
   - TypeScript types for all time tracking data structures
@@ -157,10 +180,10 @@ Each feature PRD must include:
   - Integration tests with actual video playback
   - Resume functionality integration with video player
 - **Recent Changes**:
-  - 2025-01-20: Implemented complete time tracking backend with JSON files and TypeScript types
-  - 2025-01-20: Added comprehensive test suite for all time tracking functionality
-  - 2025-01-20: Created file utilities with error handling and backup capabilities
-  - 2025-01-20: Implemented core time tracking logic with daily limits and usage tracking
+  - 2025-06-23: Implemented complete time tracking backend with JSON files and TypeScript types
+  - 2025-06-23: Added comprehensive test suite for all time tracking functionality
+  - 2025-06-23: Created file utilities with error handling and backup capabilities
+  - 2025-06-23: Implemented core time tracking logic with daily limits and usage tracking
 - **Notes**:
   - All core time tracking logic is implemented and tested
   - JSON-based approach aligns with MVP requirements
