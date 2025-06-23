@@ -2,7 +2,7 @@
   "name": "safetube",
   "version": "1.0.0",
   "description": "A kid-friendly video application",
-  "main": "dist/main/index.js",
+  "main": "dist/main/main/index.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",

@@ -7,7 +7,9 @@ declare module 'node-ssdp' {
 
   export class Client {
     constructor();
-    search(target: string): void;
-    on(event: 'response', callback: (headers: SSDPHeaders) => void): this;
+    search(serviceType: string): void;
+    on(event: 'response', callback: (headers: any) => void): this;
   }
-} 
+}
+
+declare module 'node-ssdp'; 

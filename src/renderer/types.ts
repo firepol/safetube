@@ -30,6 +30,8 @@ declare global {
       getLocalFile: (filePath: string) => Promise<string>;
       getDlnaFile: (server: string, port: number, path: string) => Promise<string>;
       getVideoStreams: (videoId: string) => Promise<{ videoStreams: VideoStream[]; audioTracks: AudioTrack[] }>;
+      recordVideoWatching: (videoId: string, position: number, timeWatched: number) => Promise<{ success: boolean }>;
+      getTimeTrackingState: () => Promise<{ currentDate: string; timeUsedToday: number; timeLimitToday: number; timeRemaining: number; isLimitReached: boolean }>;
     };
   }
 } 

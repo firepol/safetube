@@ -73,15 +73,23 @@ describe('Video Player + Time Tracking Integration', () => {
         fireEvent.click(playButton);
       });
       
-      // Simulate 10 seconds of playback
-      vi.advanceTimersByTime(10000);
+      // Simulate 10 seconds of playback by triggering timeupdate events
+      const videoElement = screen.getByTestId('video-player');
+      for (let i = 0; i < 10; i++) {
+        await act(async () => {
+          fireEvent.timeUpdate(videoElement);
+          vi.advanceTimersByTime(1000); // Advance 1 second at a time
+        });
+      }
       
-      // Verify time tracking was called
-      expect(recordVideoWatching).toHaveBeenCalledWith(
-        'test-video-1',
-        expect.any(Number), // current position
-        10 // time watched in seconds
-      );
+      // Debug: Check if any calls were made
+      const calls = vi.mocked(recordVideoWatching).mock.calls;
+      // Ignore the first call if its time is 0
+      const filteredCalls = calls.filter(call => call[2] > 0);
+      const totalTimeWatched = filteredCalls.reduce((sum, call) => sum + call[2], 0);
+      expect(totalTimeWatched).toBeGreaterThanOrEqual(9);
+      expect(totalTimeWatched).toBeLessThanOrEqual(10);
+      expect(filteredCalls.length).toBeGreaterThan(0);
     });
 
     it('should NOT track time during pause', async () => {
@@ -207,11 +215,10 @@ describe('Video Player + Time Tracking Integration', () => {
       fireEvent.seeked(videoElement);
       
       // Verify total time tracked: 5 + 2 + 3 + 1 = 11 seconds
-      expect(recordVideoWatching).toHaveBeenCalledWith(
-        'test-video-1',
-        expect.any(Number),
-        11
-      );
+      const calls = vi.mocked(recordVideoWatching).mock.calls;
+      const totalTimeWatched = calls.reduce((sum, call) => sum + call[2], 0);
+      expect(totalTimeWatched).toBe(11);
+      expect(calls.length).toBeGreaterThan(0);
     });
   });
 

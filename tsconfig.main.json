@@ -3,12 +3,13 @@
     "target": "ES2020",
     "module": "CommonJS",
     "outDir": "dist/main",
-    "rootDir": "src/main",
+    "rootDir": "src",
     "strict": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "typeRoots": ["./src/types", "./node_modules/@types"]
   },
-  "include": ["src/main/**/*"]
+  "include": ["src/main/index.ts", "src/shared/**/*"]
 } 

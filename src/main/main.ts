@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as http from 'http';
 import * as url from 'url';
+import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking';
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -11,7 +12,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
+      preload: path.join(__dirname, '../preload/index.js'),
       webSecurity: false // Allow cross-origin requests
     }
   });
@@ -92,4 +93,40 @@ ipcMain.handle('get-dlna-file', async (_, server: string, port: number, path: st
   const url = `http://${server}:${port}${path}`;
   console.log('Returning DLNA URL:', url);
   return url;
+});
+
+// Handle video streams
+ipcMain.handle('get-video-streams', async (_, videoId: string) => {
+  try {
+    console.log('Getting video streams for:', videoId);
+    // For now, return a mock response - you can implement actual YouTube API calls here
+    return {
+      streams: [
+        { url: `https://www.youtube.com/watch?v=${videoId}`, quality: 'default' }
+      ]
+    };
+  } catch (error) {
+    console.error('Error getting video streams:', error);
+    throw error;
+  }
+});
+
+// Time tracking IPC handlers
+ipcMain.handle('time-tracking:record-video-watching', async (_, videoId: string, position: number, timeWatched: number) => {
+  try {
+    await recordVideoWatching(videoId, position, timeWatched);
+    return { success: true };
+  } catch (error) {
+    console.error('Error recording video watching:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
+  try {
+    return await getTimeTrackingState();
+  } catch (error) {
+    console.error('Error getting time tracking state:', error);
+    throw error;
+  }
 }); 

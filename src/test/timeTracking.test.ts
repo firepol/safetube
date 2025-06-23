@@ -203,8 +203,8 @@ describe('Time Tracking', () => {
       expect(result).toEqual({
         currentDate: '2025-01-20',
         timeUsedToday: 25,
-        timeLimitToday: 60,
-        timeRemaining: 35,
+        timeLimitToday: 3600, // 60 minutes * 60 seconds
+        timeRemaining: 3575, // 3600 - 25 seconds
         isLimitReached: false
       });
     });
@@ -221,7 +221,7 @@ describe('Time Tracking', () => {
       };
 
       const mockUsageLog: UsageLog = {
-        '2025-01-20': 35
+        '2025-01-20': 1800 // 30 minutes in seconds
       };
 
       vi.mocked(readTimeLimits).mockResolvedValue(mockTimeLimits);
@@ -232,8 +232,8 @@ describe('Time Tracking', () => {
 
       expect(result).toEqual({
         currentDate: '2025-01-20',
-        timeUsedToday: 35,
-        timeLimitToday: 30,
+        timeUsedToday: 1800,
+        timeLimitToday: 1800, // 30 minutes * 60 seconds
         timeRemaining: 0,
         isLimitReached: true
       });
@@ -242,13 +242,18 @@ describe('Time Tracking', () => {
 
   describe('formatTimeRemaining', () => {
     it('should format hours and minutes correctly', () => {
-      expect(formatTimeRemaining(90)).toBe('1h 30m remaining');
-      expect(formatTimeRemaining(120)).toBe('2h 0m remaining');
+      expect(formatTimeRemaining(5400)).toBe('1h 30m 0s remaining'); // 90 minutes in seconds
+      expect(formatTimeRemaining(7200)).toBe('2h 0m 0s remaining'); // 120 minutes in seconds
     });
 
     it('should format minutes only correctly', () => {
-      expect(formatTimeRemaining(45)).toBe('45m remaining');
-      expect(formatTimeRemaining(30)).toBe('30m remaining');
+      expect(formatTimeRemaining(2700)).toBe('45m 0s remaining'); // 45 minutes in seconds
+      expect(formatTimeRemaining(1800)).toBe('30m 0s remaining'); // 30 minutes in seconds
+    });
+
+    it('should format seconds only correctly', () => {
+      expect(formatTimeRemaining(45)).toBe('45s remaining');
+      expect(formatTimeRemaining(30)).toBe('30s remaining');
     });
 
     it('should handle zero time', () => {
@@ -259,13 +264,18 @@ describe('Time Tracking', () => {
 
   describe('formatTimeUsed', () => {
     it('should format hours and minutes correctly', () => {
-      expect(formatTimeUsed(90)).toBe('1h 30m used');
-      expect(formatTimeUsed(120)).toBe('2h 0m used');
+      expect(formatTimeUsed(5400)).toBe('1h 30m 0s used'); // 90 minutes in seconds
+      expect(formatTimeUsed(7200)).toBe('2h 0m 0s used'); // 120 minutes in seconds
     });
 
     it('should format minutes only correctly', () => {
-      expect(formatTimeUsed(45)).toBe('45m used');
-      expect(formatTimeUsed(30)).toBe('30m used');
+      expect(formatTimeUsed(2700)).toBe('45m 0s used'); // 45 minutes in seconds
+      expect(formatTimeUsed(1800)).toBe('30m 0s used'); // 30 minutes in seconds
+    });
+
+    it('should format seconds only correctly', () => {
+      expect(formatTimeUsed(45)).toBe('45s used');
+      expect(formatTimeUsed(30)).toBe('30s used');
     });
   });
 

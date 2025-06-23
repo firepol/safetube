@@ -8,4 +8,6 @@ interface ElectronAPI {
   getDlnaFile: (server: string, port: number, path: string) => Promise<{ url: string; type: string }>;
   getVideoStreams: (videoId: string) => Promise<{ videoStreams: VideoStream[]; audioTracks: AudioTrack[] }>;
   getVideoInfo: (videoId: string) => Promise<{ streamUrl?: string; audioStreamUrl?: string; preferredLanguages?: string[] }>;
+  recordVideoWatching: (videoId: string, position: number, timeWatched: number) => Promise<{ success: boolean }>;
+  getTimeTrackingState: () => Promise<{ currentDate: string; timeUsedToday: number; timeLimitToday: number; timeRemaining: number; isLimitReached: boolean }>;
 } 
