@@ -9,7 +9,7 @@ export interface TimeLimits {
 }
 
 export interface UsageLog {
-  [date: string]: number; // ISO date string -> minutes used
+  [date: string]: number; // ISO date string -> seconds used (for precision)
 }
 
 export interface WatchedVideo {
@@ -34,9 +34,9 @@ export interface VideoSource {
 
 export interface TimeTrackingState {
   currentDate: string;
-  timeUsedToday: number;
-  timeLimitToday: number;
-  timeRemaining: number;
+  timeUsedToday: number; // seconds
+  timeLimitToday: number; // seconds (converted from minutes)
+  timeRemaining: number; // seconds
   isLimitReached: boolean;
 }
 

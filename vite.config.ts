@@ -16,6 +16,13 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    watch: {
+      ignored: [
+        '**/config/**',
+        '**/dist/**',
+        '**/node_modules/**'
+      ]
+    }
   },
   publicDir: path.join(__dirname, 'public'),
   build: {

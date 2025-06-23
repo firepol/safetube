@@ -22,6 +22,12 @@ interface AudioTrack {
 }
 
 export function setupYouTubeHandlers() {
+  // Check if handler is already registered
+  if (ipcMain.listenerCount('get-video-streams') > 0) {
+    console.log('YouTube handlers already registered, skipping...');
+    return;
+  }
+
   ipcMain.handle('get-video-streams', async (_, videoId: string) => {
     try {
       // Use yt-dlp to get video info in JSON format

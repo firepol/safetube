@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import videos from '../data/videos.json';
 import { YouTubeAPI, VideoStream, AudioTrack } from '../services/youtube';
@@ -14,6 +14,23 @@ export const PlayerPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadingTimeoutRef = useRef<number | undefined>(undefined);
+  
+  // Time tracking state
+  const [timeTrackingState, setTimeTrackingState] = useState<{
+    timeRemaining: number;
+    isLimitReached: boolean;
+  } | null>(null);
+  const timeTrackingRef = useRef<{
+    startTime: number;
+    totalWatched: number;
+    isTracking: boolean;
+    lastUpdateTime: number;
+  }>({
+    startTime: 0,
+    totalWatched: 0,
+    isTracking: false,
+    lastUpdateTime: 0
+  });
 
   useEffect(() => {
     if (video && video.resumeAt && videoRef.current) {
@@ -497,6 +514,101 @@ export const PlayerPage: React.FC = () => {
     };
   }, [isLoading]);
 
+  // Time tracking functions
+  const startTimeTracking = useCallback(() => {
+    console.log('[TimeTracking] startTimeTracking called');
+    if (!timeTrackingRef.current.isTracking) {
+      timeTrackingRef.current = {
+        startTime: Date.now(),
+        totalWatched: 0,
+        isTracking: true,
+        lastUpdateTime: Date.now()
+      };
+      console.log('[TimeTracking] Time tracking started:', timeTrackingRef.current);
+    } else {
+      console.log('[TimeTracking] Time tracking already active');
+    }
+  }, []);
+
+  const updateTimeTracking = useCallback(async () => {
+    console.log('[TimeTracking] updateTimeTracking called, isTracking:', timeTrackingRef.current.isTracking);
+    if (timeTrackingRef.current.isTracking && video) {
+      const currentTime = Date.now();
+      const timeWatched = (currentTime - timeTrackingRef.current.lastUpdateTime) / 1000; // Convert to seconds
+      
+      // Only update if at least 1 second has passed to prevent excessive updates
+      if (timeWatched >= 1) {
+        timeTrackingRef.current.totalWatched += timeWatched;
+        timeTrackingRef.current.lastUpdateTime = currentTime;
+
+        // Record the time watched
+        if (videoRef.current) {
+          console.log('[TimeTracking] updateTimeTracking:', {
+            videoId: video.id,
+            currentTime: videoRef.current.currentTime,
+            timeWatched
+          });
+          await window.electron.recordVideoWatching(
+            video.id,
+            videoRef.current.currentTime,
+            timeWatched
+          );
+        } else {
+          console.log('[TimeTracking] videoRef.current is null');
+        }
+      }
+    } else {
+      console.log('[TimeTracking] Not tracking - isTracking is false or no video');
+    }
+  }, [video]);
+
+  const stopTimeTracking = useCallback(async () => {
+    console.log('[TimeTracking] stopTimeTracking called, isTracking:', timeTrackingRef.current.isTracking);
+    if (timeTrackingRef.current.isTracking) {
+      await updateTimeTracking();
+      timeTrackingRef.current.isTracking = false;
+      console.log('[TimeTracking] Time tracking stopped');
+    }
+  }, [updateTimeTracking]);
+
+  // Check time limits on mount and when video changes
+  useEffect(() => {
+    console.log('[TimeTracking] PlayerPage useEffect triggered for video:', video?.id);
+    console.log('[TimeTracking] window.electron available functions:', Object.keys(window.electron || {}));
+    
+    let isMounted = true;
+    
+    const checkTimeLimits = async () => {
+      if (!video || !isMounted) return;
+      
+      try {
+        const state = await window.electron.getTimeTrackingState();
+        if (isMounted) {
+          setTimeTrackingState({
+            timeRemaining: state.timeRemaining,
+            isLimitReached: state.isLimitReached
+          });
+          
+          // If limit is reached, don't allow playback
+          if (state.isLimitReached) {
+            console.log('[TimeTracking] Daily time limit reached');
+            if (videoRef.current) {
+              videoRef.current.pause();
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking time limits:', error);
+      }
+    };
+
+    checkTimeLimits();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [video?.id]);
+
   if (!video) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
@@ -516,12 +628,25 @@ export const PlayerPage: React.FC = () => {
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
       <div className="p-4">
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          ← Back
-        </button>
+        <div className="flex items-center justify-between mb-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            ← Back
+          </button>
+          {timeTrackingState && (
+            <div className="text-sm">
+              {timeTrackingState.isLimitReached ? (
+                <p className="text-red-600">Daily time limit reached</p>
+              ) : (
+                <p className="text-green-600">
+                  {Math.floor(timeTrackingState.timeRemaining / 60)} minutes remaining
+                </p>
+              )}
+            </div>
+          )}
+        </div>
         <h1 className="text-2xl font-bold mb-4">{video.title}</h1>
         {isLoading && (
           <div className="text-center mb-4">
@@ -544,6 +669,34 @@ export const PlayerPage: React.FC = () => {
             controls
             autoPlay
             playsInline
+            onPlay={() => {
+              console.log('[TimeTracking] Video onPlay event fired');
+              startTimeTracking();
+            }}
+            onPause={() => {
+              console.log('[TimeTracking] Video onPause event fired');
+              stopTimeTracking();
+            }}
+            onEnded={() => {
+              console.log('[TimeTracking] Video onEnded event fired');
+              stopTimeTracking();
+            }}
+            onTimeUpdate={() => {
+              // Throttle time update events to prevent excessive calls
+              if (!timeTrackingRef.current.lastUpdateTime || 
+                  Date.now() - timeTrackingRef.current.lastUpdateTime > 1000) {
+                console.log('[TimeTracking] Video onTimeUpdate event fired');
+                updateTimeTracking();
+              }
+            }}
+            onSeeking={() => {
+              console.log('[TimeTracking] Video onSeeking event fired');
+              updateTimeTracking();
+            }}
+            onSeeked={() => {
+              console.log('[TimeTracking] Video onSeeked event fired');
+              updateTimeTracking();
+            }}
             onError={(e) => {
               console.error('Video error:', e);
               setError('Failed to play video - the stream may have expired');

@@ -4,6 +4,7 @@ import log from './logger'
 import { Client } from 'node-ssdp'
 import { setupYouTubeHandlers } from './youtube'
 import fs from 'fs'
+import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking'
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -47,7 +48,7 @@ ipcMain.handle('get-dlna-file', async (event, server: string, port: number, path
     const devices = await new Promise<any[]>((resolve) => {
       const foundDevices: any[] = []
       
-      ssdpClient.on('response', (headers) => {
+      ssdpClient.on('response', (headers: any) => {
         if (headers.ST === 'urn:schemas-upnp-org:service:ContentDirectory:1') {
           foundDevices.push(headers)
         }
@@ -85,6 +86,26 @@ ipcMain.handle('get-dlna-file', async (event, server: string, port: number, path
   }
 })
 
+// Time tracking IPC handlers
+ipcMain.handle('time-tracking:record-video-watching', async (event, videoId: string, position: number, timeWatched: number) => {
+  try {
+    await recordVideoWatching(videoId, position, timeWatched)
+    return { success: true }
+  } catch (error) {
+    log.error('Error recording video watching:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
+  try {
+    return await getTimeTrackingState()
+  } catch (error) {
+    log.error('Error getting time tracking state:', error)
+    throw error
+  }
+})
+
 const createWindow = (): void => {
   log.info('Creating main window')
   // Create the browser window.
@@ -94,7 +115,7 @@ const createWindow = (): void => {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: path.join(__dirname, '../../preload/index.js'),
       webSecurity: false, // Allow loading local files
     },
   })
@@ -129,8 +150,12 @@ const createWindow = (): void => {
     log.error('Failed to load page:', { errorCode, errorDescription })
   })
 
-  // Set up YouTube handlers
-  setupYouTubeHandlers()
+  // Set up YouTube handlers (may already be registered)
+  try {
+    setupYouTubeHandlers()
+  } catch (error) {
+    log.warn('YouTube handlers may already be registered:', error)
+  }
 }
 
 // This method will be called when Electron has finished

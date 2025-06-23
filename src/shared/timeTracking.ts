@@ -28,7 +28,7 @@ export async function getTimeLimitForToday(): Promise<number> {
 }
 
 /**
- * Gets the time used today
+ * Gets the time used today in seconds
  */
 export async function getTimeUsedToday(): Promise<number> {
   const usageLog = await readUsageLog();
@@ -37,13 +37,13 @@ export async function getTimeUsedToday(): Promise<number> {
 }
 
 /**
- * Adds time to today's usage
+ * Adds time to today's usage in seconds
  */
-export async function addTimeUsedToday(minutes: number): Promise<void> {
+export async function addTimeUsedToday(seconds: number): Promise<void> {
   const usageLog = await readUsageLog();
   const today = getCurrentDate();
   
-  usageLog[today] = (usageLog[today] || 0) + minutes;
+  usageLog[today] = (usageLog[today] || 0) + seconds;
   
   await writeUsageLog(usageLog);
 }
@@ -53,16 +53,19 @@ export async function addTimeUsedToday(minutes: number): Promise<void> {
  */
 export async function getTimeTrackingState(): Promise<TimeTrackingState> {
   const currentDate = getCurrentDate();
-  const timeUsedToday = await getTimeUsedToday();
-  const timeLimitToday = await getTimeLimitForToday();
-  const timeRemaining = Math.max(0, timeLimitToday - timeUsedToday);
-  const isLimitReached = timeRemaining <= 0;
+  const timeUsedTodaySeconds = await getTimeUsedToday();
+  const timeLimitTodayMinutes = await getTimeLimitForToday();
+  
+  // Convert time limit from minutes to seconds for comparison
+  const timeLimitTodaySeconds = timeLimitTodayMinutes * 60;
+  const timeRemainingSeconds = Math.max(0, timeLimitTodaySeconds - timeUsedTodaySeconds);
+  const isLimitReached = timeRemainingSeconds <= 0;
   
   return {
     currentDate,
-    timeUsedToday,
-    timeLimitToday,
-    timeRemaining,
+    timeUsedToday: timeUsedTodaySeconds,
+    timeLimitToday: timeLimitTodaySeconds,
+    timeRemaining: timeRemainingSeconds,
     isLimitReached
   };
 }
@@ -70,33 +73,45 @@ export async function getTimeTrackingState(): Promise<TimeTrackingState> {
 /**
  * Formats time remaining in a human-readable format
  */
-export function formatTimeRemaining(minutes: number): string {
-  if (minutes <= 0) {
+export function formatTimeRemaining(seconds: number): string {
+  if (seconds <= 0) {
     return 'No time remaining';
   }
   
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   
   if (hours > 0) {
-    return `${hours}h ${remainingMinutes}m remaining`;
+    return `${hours}h ${remainingMinutes}m ${remainingSeconds}s remaining`;
   }
   
-  return `${remainingMinutes}m remaining`;
+  if (minutes > 0) {
+    return `${minutes}m ${remainingSeconds}s remaining`;
+  }
+  
+  return `${remainingSeconds}s remaining`;
 }
 
 /**
  * Formats time used in a human-readable format
  */
-export function formatTimeUsed(minutes: number): string {
+export function formatTimeUsed(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
   const hours = Math.floor(minutes / 60);
   const remainingMinutes = minutes % 60;
   
   if (hours > 0) {
-    return `${hours}h ${remainingMinutes}m used`;
+    return `${hours}h ${remainingMinutes}m ${remainingSeconds}s used`;
   }
   
-  return `${remainingMinutes}m used`;
+  if (minutes > 0) {
+    return `${minutes}m ${remainingSeconds}s used`;
+  }
+  
+  return `${remainingSeconds}s used`;
 }
 
 /**
@@ -110,11 +125,9 @@ export async function recordVideoWatching(
   position: number, 
   timeWatched: number
 ): Promise<void> {
-  // Convert seconds to minutes for daily tracking
-  const minutesWatched = timeWatched / 60;
-  
-  // Add to daily usage
-  await addTimeUsedToday(minutesWatched);
+  console.log('[TimeTracking] recordVideoWatching:', { videoId, position, timeWatched });
+  // Add to daily usage in seconds (for precision)
+  await addTimeUsedToday(timeWatched);
   
   // Update watched video history
   const watchedVideos = await readWatchedVideos();
@@ -187,9 +200,13 @@ export async function getUsageHistory(days: number = 7): Promise<Array<{ date: s
     date.setDate(date.getDate() - i);
     const dateString = date.toISOString().split('T')[0];
     
+    // Convert seconds to minutes for display
+    const secondsUsed = usageLog[dateString] || 0;
+    const minutesUsed = Math.round(secondsUsed / 60 * 100) / 100; // Round to 2 decimal places
+    
     history.push({
       date: dateString,
-      minutes: usageLog[dateString] || 0
+      minutes: minutesUsed
     });
   }
   
