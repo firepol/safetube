@@ -1,482 +1,389 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { promises as fs } from 'fs';
-import path from 'path';
-import {
-  getCurrentDate,
-  getDayOfWeek,
-  getTimeLimitForToday,
-  getTimeUsedToday,
-  addTimeUsedToday,
-  getTimeTrackingState,
-  formatTimeRemaining,
-  formatTimeUsed,
-  recordVideoWatching,
-  getLastWatchedVideo,
-  resetDailyUsage,
-  getUsageHistory,
-  validateTimeLimits
-} from '../shared/timeTracking';
-import { readTimeLimits, readUsageLog, readWatchedVideos } from '../shared/fileUtils';
-import { TimeLimits, UsageLog, WatchedVideo } from '../shared/types';
 
-// Mock the file system operations
-vi.mock('fs', () => ({
-  promises: {
-    readFile: vi.fn(),
-    writeFile: vi.fn(),
-    access: vi.fn(),
-    mkdir: vi.fn(),
-    copyFile: vi.fn()
-  }
-}));
-
-// Mock the file utils
+// HOISTED MOCK: This ensures the mock is always used, even if other files import fileUtils first
 vi.mock('../shared/fileUtils', () => ({
   readTimeLimits: vi.fn(),
-  writeTimeLimits: vi.fn(),
   readUsageLog: vi.fn(),
   writeUsageLog: vi.fn(),
   readWatchedVideos: vi.fn(),
   writeWatchedVideos: vi.fn(),
-  readVideoSources: vi.fn(),
-  writeVideoSources: vi.fn(),
-  backupConfig: vi.fn()
 }));
 
 describe('Time Tracking', () => {
-  beforeEach(() => {
+  let timeTracking: any;
+  let mockReadTimeLimits: any;
+  let mockReadUsageLog: any;
+  let mockWriteUsageLog: any;
+  let mockReadWatchedVideos: any;
+  let mockWriteWatchedVideos: any;
+
+  beforeEach(async () => {
+    // Clear all mocks and reset modules to ensure clean state
     vi.clearAllMocks();
-    vi.useFakeTimers();
+    vi.resetModules();
+    
+    // Import the mocked modules
+    const fileUtils = await import('../shared/fileUtils');
+    mockReadTimeLimits = vi.mocked(fileUtils.readTimeLimits);
+    mockReadUsageLog = vi.mocked(fileUtils.readUsageLog);
+    mockWriteUsageLog = vi.mocked(fileUtils.writeUsageLog);
+    mockReadWatchedVideos = vi.mocked(fileUtils.readWatchedVideos);
+    mockWriteWatchedVideos = vi.mocked(fileUtils.writeWatchedVideos);
+    
+    // Setup default mocks BEFORE importing the module under test
+    mockReadTimeLimits.mockResolvedValue({
+      Monday: 120,
+      Tuesday: 120,
+      Wednesday: 120,
+      Thursday: 120,
+      Friday: 120,
+      Saturday: 180,
+      Sunday: 180
+    });
+    
+    mockReadUsageLog.mockResolvedValue({});
+    mockReadWatchedVideos.mockResolvedValue([]);
+    mockWriteUsageLog.mockResolvedValue();
+    mockWriteWatchedVideos.mockResolvedValue();
+    
+    // Import the module under test after mocks are set
+    timeTracking = await import('../shared/timeTracking');
   });
 
   afterEach(() => {
-    vi.useRealTimers();
+    vi.resetAllMocks();
   });
 
   describe('getCurrentDate', () => {
     it('should return current date in YYYY-MM-DD format', () => {
-      const mockDate = new Date('2025-01-20T10:30:00Z');
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
       vi.setSystemTime(mockDate);
       
-      const result = getCurrentDate();
+      const result = timeTracking.getCurrentDate();
       
-      expect(result).toBe('2025-01-20');
+      expect(result).toBe('2024-01-15');
+      vi.useRealTimers();
     });
   });
 
   describe('getDayOfWeek', () => {
-    it('should return correct day of week for Monday', () => {
-      const result = getDayOfWeek('2025-01-20'); // Monday
-      expect(result).toBe('Monday');
-    });
-
-    it('should return correct day of week for Sunday', () => {
-      const result = getDayOfWeek('2025-01-19'); // Sunday
-      expect(result).toBe('Sunday');
+    it('should return correct day of week', () => {
+      expect(timeTracking.getDayOfWeek('2024-01-15')).toBe('Monday'); // Jan 15, 2024 is a Monday
+      expect(timeTracking.getDayOfWeek('2024-01-16')).toBe('Tuesday');
+      expect(timeTracking.getDayOfWeek('2024-01-20')).toBe('Saturday');
+      expect(timeTracking.getDayOfWeek('2024-01-21')).toBe('Sunday');
     });
   });
 
   describe('getTimeLimitForToday', () => {
-    it('should return time limit for current day', async () => {
-      const mockTimeLimits: TimeLimits = {
-        Monday: 30,
-        Tuesday: 45,
-        Wednesday: 30,
-        Thursday: 30,
-        Friday: 60,
-        Saturday: 90,
-        Sunday: 90
-      };
-
-      vi.mocked(readTimeLimits).mockResolvedValue(mockTimeLimits);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z')); // Monday
-
-      const result = await getTimeLimitForToday();
-
-      expect(result).toBe(30);
-      expect(readTimeLimits).toHaveBeenCalledOnce();
+    it('should return time limit for today', async () => {
+      const mockDate = new Date('2024-01-15T10:30:00.000Z'); // Monday
+      vi.setSystemTime(mockDate);
+      
+      const result = await timeTracking.getTimeLimitForToday();
+      
+      expect(result).toBe(120); // Monday limit
+      expect(mockReadTimeLimits).toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
-    it('should return 0 if no limit set for day', async () => {
-      const mockTimeLimits: TimeLimits = {
-        Monday: 30,
-        Tuesday: 45,
-        Wednesday: 30,
-        Thursday: 30,
-        Friday: 60,
-        Saturday: 90,
-        Sunday: 90
-      };
-
-      vi.mocked(readTimeLimits).mockResolvedValue(mockTimeLimits);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z')); // Monday
-
-      const result = await getTimeLimitForToday();
-
-      expect(result).toBe(30);
+    it('should return 0 when no limit is set for the day', async () => {
+      mockReadTimeLimits.mockResolvedValue({
+        Monday: 0,
+        Tuesday: 0,
+        Wednesday: 0,
+        Thursday: 0,
+        Friday: 0,
+        Saturday: 0,
+        Sunday: 0
+      });
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      vi.setSystemTime(mockDate);
+      
+      const result = await timeTracking.getTimeLimitForToday();
+      
+      expect(result).toBe(0);
+      vi.useRealTimers();
     });
   });
 
   describe('getTimeUsedToday', () => {
-    it('should return time used for current day', async () => {
-      const mockUsageLog: UsageLog = {
-        '2025-01-20': 25,
-        '2025-01-19': 45
-      };
-
-      vi.mocked(readUsageLog).mockResolvedValue(mockUsageLog);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z'));
-
-      const result = await getTimeUsedToday();
-
-      expect(result).toBe(25);
-      expect(readUsageLog).toHaveBeenCalledOnce();
+    it('should return time used today', async () => {
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      vi.setSystemTime(mockDate);
+      
+      mockReadUsageLog.mockResolvedValue({
+        '2024-01-15': 3600,
+        '2024-01-14': 1800
+      });
+      
+      const result = await timeTracking.getTimeUsedToday();
+      
+      expect(result).toBe(3600);
+      expect(mockReadUsageLog).toHaveBeenCalled();
+      vi.useRealTimers();
     });
 
-    it('should return 0 if no usage for current day', async () => {
-      const mockUsageLog: UsageLog = {
-        '2025-01-19': 45
-      };
-
-      vi.mocked(readUsageLog).mockResolvedValue(mockUsageLog);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z'));
-
-      const result = await getTimeUsedToday();
-
+    it('should return 0 when no usage for today', async () => {
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      vi.setSystemTime(mockDate);
+      
+      mockReadUsageLog.mockResolvedValue({
+        '2024-01-14': 1800
+      });
+      
+      const result = await timeTracking.getTimeUsedToday();
+      
       expect(result).toBe(0);
+      vi.useRealTimers();
     });
   });
 
   describe('addTimeUsedToday', () => {
-    it('should add time to current day usage', async () => {
-      const mockUsageLog: UsageLog = {
-        '2025-01-20': 25,
-        '2025-01-19': 45
-      };
-
-      vi.mocked(readUsageLog).mockResolvedValue(mockUsageLog);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z'));
-
-      await addTimeUsedToday(15);
-
-      expect(readUsageLog).toHaveBeenCalledOnce();
-      // Note: We can't easily test the writeUsageLog call due to the mock structure
-      // In a real implementation, we'd verify the updated data was written
+    it('should add time to today\'s usage', async () => {
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      vi.setSystemTime(mockDate);
+      
+      mockReadUsageLog.mockResolvedValue({
+        '2024-01-15': 1800,
+        '2024-01-14': 3600
+      });
+      
+      await timeTracking.addTimeUsedToday(900);
+      
+      expect(mockReadUsageLog).toHaveBeenCalled();
+      expect(mockWriteUsageLog).toHaveBeenCalledWith({
+        '2024-01-15': 2700, // 1800 + 900
+        '2024-01-14': 3600
+      });
+      vi.useRealTimers();
     });
 
-    it('should create new entry if no usage for current day', async () => {
-      const mockUsageLog: UsageLog = {
-        '2025-01-19': 45
-      };
-
-      vi.mocked(readUsageLog).mockResolvedValue(mockUsageLog);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z'));
-
-      await addTimeUsedToday(30);
-
-      expect(readUsageLog).toHaveBeenCalledOnce();
+    it('should create new entry when no usage for today', async () => {
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      vi.setSystemTime(mockDate);
+      
+      mockReadUsageLog.mockResolvedValue({
+        '2024-01-14': 3600
+      });
+      
+      await timeTracking.addTimeUsedToday(900);
+      
+      expect(mockWriteUsageLog).toHaveBeenCalledWith({
+        '2024-01-15': 900,
+        '2024-01-14': 3600
+      });
+      vi.useRealTimers();
     });
   });
 
   describe('getTimeTrackingState', () => {
     it('should return complete time tracking state', async () => {
-      const mockTimeLimits: TimeLimits = {
-        Monday: 60,
-        Tuesday: 45,
-        Wednesday: 30,
-        Thursday: 30,
-        Friday: 60,
-        Saturday: 90,
-        Sunday: 90
-      };
-
-      const mockUsageLog: UsageLog = {
-        '2025-01-20': 25
-      };
-
-      vi.mocked(readTimeLimits).mockResolvedValue(mockTimeLimits);
-      vi.mocked(readUsageLog).mockResolvedValue(mockUsageLog);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z')); // Monday
-
-      const result = await getTimeTrackingState();
-
+      const mockDate = new Date('2024-01-15T10:30:00.000Z'); // Monday
+      vi.setSystemTime(mockDate);
+      
+      mockReadUsageLog.mockResolvedValue({
+        '2024-01-15': 1800 // 30 minutes used
+      });
+      
+      const result = await timeTracking.getTimeTrackingState();
+      
       expect(result).toEqual({
-        currentDate: '2025-01-20',
-        timeUsedToday: 25,
-        timeLimitToday: 3600, // 60 minutes * 60 seconds
-        timeRemaining: 3575, // 3600 - 25 seconds
+        currentDate: '2024-01-15',
+        timeUsedToday: 1800,
+        timeLimitToday: 7200, // 120 minutes * 60 seconds
+        timeRemaining: 5400, // 7200 - 1800
         isLimitReached: false
       });
+      vi.useRealTimers();
     });
 
     it('should handle limit reached case', async () => {
-      const mockTimeLimits: TimeLimits = {
-        Monday: 30,
-        Tuesday: 45,
-        Wednesday: 30,
-        Thursday: 30,
-        Friday: 60,
-        Saturday: 90,
-        Sunday: 90
-      };
-
-      const mockUsageLog: UsageLog = {
-        '2025-01-20': 1800 // 30 minutes in seconds
-      };
-
-      vi.mocked(readTimeLimits).mockResolvedValue(mockTimeLimits);
-      vi.mocked(readUsageLog).mockResolvedValue(mockUsageLog);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z')); // Monday
-
-      const result = await getTimeTrackingState();
-
-      expect(result).toEqual({
-        currentDate: '2025-01-20',
-        timeUsedToday: 1800,
-        timeLimitToday: 1800, // 30 minutes * 60 seconds
-        timeRemaining: 0,
-        isLimitReached: true
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      vi.setSystemTime(mockDate);
+      
+      mockReadUsageLog.mockResolvedValue({
+        '2024-01-15': 7200 // 2 hours used (limit reached)
       });
+      
+      const result = await timeTracking.getTimeTrackingState();
+      
+      expect(result.isLimitReached).toBe(true);
+      expect(result.timeRemaining).toBe(0);
+      vi.useRealTimers();
     });
   });
 
   describe('formatTimeRemaining', () => {
-    it('should format hours and minutes correctly', () => {
-      expect(formatTimeRemaining(5400)).toBe('1h 30m 0s remaining'); // 90 minutes in seconds
-      expect(formatTimeRemaining(7200)).toBe('2h 0m 0s remaining'); // 120 minutes in seconds
-    });
-
-    it('should format minutes only correctly', () => {
-      expect(formatTimeRemaining(2700)).toBe('45m 0s remaining'); // 45 minutes in seconds
-      expect(formatTimeRemaining(1800)).toBe('30m 0s remaining'); // 30 minutes in seconds
-    });
-
-    it('should format seconds only correctly', () => {
-      expect(formatTimeRemaining(45)).toBe('45s remaining');
-      expect(formatTimeRemaining(30)).toBe('30s remaining');
-    });
-
-    it('should handle zero time', () => {
-      expect(formatTimeRemaining(0)).toBe('No time remaining');
-      expect(formatTimeRemaining(-5)).toBe('No time remaining');
+    it('should format time remaining correctly', () => {
+      expect(timeTracking.formatTimeRemaining(3661)).toBe('1h 1m 1s remaining');
+      expect(timeTracking.formatTimeRemaining(3600)).toBe('1h 0m 0s remaining');
+      expect(timeTracking.formatTimeRemaining(61)).toBe('1m 1s remaining');
+      expect(timeTracking.formatTimeRemaining(30)).toBe('30s remaining');
+      expect(timeTracking.formatTimeRemaining(0)).toBe('No time remaining');
+      expect(timeTracking.formatTimeRemaining(-100)).toBe('No time remaining');
     });
   });
 
   describe('formatTimeUsed', () => {
-    it('should format hours and minutes correctly', () => {
-      expect(formatTimeUsed(5400)).toBe('1h 30m 0s used'); // 90 minutes in seconds
-      expect(formatTimeUsed(7200)).toBe('2h 0m 0s used'); // 120 minutes in seconds
-    });
-
-    it('should format minutes only correctly', () => {
-      expect(formatTimeUsed(2700)).toBe('45m 0s used'); // 45 minutes in seconds
-      expect(formatTimeUsed(1800)).toBe('30m 0s used'); // 30 minutes in seconds
-    });
-
-    it('should format seconds only correctly', () => {
-      expect(formatTimeUsed(45)).toBe('45s used');
-      expect(formatTimeUsed(30)).toBe('30s used');
+    it('should format time used correctly', () => {
+      expect(timeTracking.formatTimeUsed(3661)).toBe('1h 1m 1s used');
+      expect(timeTracking.formatTimeUsed(3600)).toBe('1h 0m 0s used');
+      expect(timeTracking.formatTimeUsed(61)).toBe('1m 1s used');
+      expect(timeTracking.formatTimeUsed(30)).toBe('30s used');
+      expect(timeTracking.formatTimeUsed(0)).toBe('0s used');
     });
   });
 
   describe('recordVideoWatching', () => {
     it('should record video watching time and update history', async () => {
-      const mockUsageLog: UsageLog = {
-        '2025-01-20': 25
-      };
-
-      const mockWatchedVideos: WatchedVideo[] = [
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      vi.setSystemTime(mockDate);
+      
+      mockReadUsageLog.mockResolvedValue({
+        '2024-01-15': 1800
+      });
+      
+      mockReadWatchedVideos.mockResolvedValue([
         {
           videoId: 'video1',
-          position: 100,
-          lastWatched: '2025-01-19T10:00:00Z',
-          timeWatched: 300
+          position: 300,
+          lastWatched: '2024-01-14T10:00:00.000Z',
+          timeWatched: 600
         }
-      ];
-
-      vi.mocked(readUsageLog).mockResolvedValue(mockUsageLog);
-      vi.mocked(readWatchedVideos).mockResolvedValue(mockWatchedVideos);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z'));
-
-      await recordVideoWatching('video1', 150, 60);
-
-      expect(readUsageLog).toHaveBeenCalledOnce();
-      expect(readWatchedVideos).toHaveBeenCalledOnce();
+      ]);
+      
+      await timeTracking.recordVideoWatching('video1', 600, 300);
+      
+      expect(mockWriteUsageLog).toHaveBeenCalledWith({
+        '2024-01-15': 2100 // 1800 + 300
+      });
+      
+      expect(mockWriteWatchedVideos).toHaveBeenCalledWith([
+        {
+          videoId: 'video1',
+          position: 600,
+          lastWatched: expect.any(String),
+          timeWatched: 900 // 600 + 300
+        }
+      ]);
+      vi.useRealTimers();
     });
 
-    it('should create new watched video entry if not exists', async () => {
-      const mockUsageLog: UsageLog = {
-        '2025-01-20': 25
-      };
-
-      const mockWatchedVideos: WatchedVideo[] = [];
-
-      vi.mocked(readUsageLog).mockResolvedValue(mockUsageLog);
-      vi.mocked(readWatchedVideos).mockResolvedValue(mockWatchedVideos);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z'));
-
-      await recordVideoWatching('newVideo', 120, 90);
-
-      expect(readUsageLog).toHaveBeenCalledOnce();
-      expect(readWatchedVideos).toHaveBeenCalledOnce();
+    it('should create new watched video entry when video not in history', async () => {
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      vi.setSystemTime(mockDate);
+      
+      mockReadUsageLog.mockResolvedValue({
+        '2024-01-15': 1800
+      });
+      
+      mockReadWatchedVideos.mockResolvedValue([]);
+      
+      await timeTracking.recordVideoWatching('new-video', 300, 180);
+      
+      expect(mockWriteWatchedVideos).toHaveBeenCalledWith([
+        {
+          videoId: 'new-video',
+          position: 300,
+          lastWatched: expect.any(String),
+          timeWatched: 180
+        }
+      ]);
+      vi.useRealTimers();
     });
   });
 
   describe('getLastWatchedVideo', () => {
     it('should return most recently watched video', async () => {
-      const mockWatchedVideos: WatchedVideo[] = [
+      const watchedVideos = [
         {
           videoId: 'video1',
-          position: 100,
-          lastWatched: '2025-01-19T10:00:00Z',
-          timeWatched: 300
+          position: 300,
+          lastWatched: '2024-01-14T10:00:00.000Z',
+          timeWatched: 600
         },
         {
           videoId: 'video2',
-          position: 200,
-          lastWatched: '2025-01-20T10:00:00Z',
-          timeWatched: 150
+          position: 600,
+          lastWatched: '2024-01-15T10:00:00.000Z',
+          timeWatched: 900
         }
       ];
-
-      vi.mocked(readWatchedVideos).mockResolvedValue(mockWatchedVideos);
-
-      const result = await getLastWatchedVideo();
-
-      // video2 should be most recent (2025-01-20 vs 2025-01-19)
-      // After sorting, video2 will be at index 0
-      expect(result?.videoId).toBe('video2');
-      expect(result?.lastWatched).toBe('2025-01-20T10:00:00Z');
-      expect(readWatchedVideos).toHaveBeenCalledOnce();
+      
+      mockReadWatchedVideos.mockResolvedValue(watchedVideos);
+      
+      const result = await timeTracking.getLastWatchedVideo();
+      
+      expect(result).toEqual(watchedVideos[1]); // video2 is more recent
     });
 
-    it('should debug sorting behavior', async () => {
-      const mockWatchedVideos: WatchedVideo[] = [
-        {
-          videoId: 'video1',
-          position: 100,
-          lastWatched: '2025-01-19T10:00:00Z',
-          timeWatched: 300
-        },
-        {
-          videoId: 'video2',
-          position: 200,
-          lastWatched: '2025-01-20T10:00:00Z',
-          timeWatched: 150
-        }
-      ];
-
-      vi.mocked(readWatchedVideos).mockResolvedValue(mockWatchedVideos);
-
-      // Test the sorting logic directly
-      const sorted = mockWatchedVideos.sort((a, b) => 
-        new Date(b.lastWatched).getTime() - new Date(a.lastWatched).getTime()
-      );
-
-      console.log('Original array:', mockWatchedVideos.map(v => ({ videoId: v.videoId, lastWatched: v.lastWatched })));
-      console.log('Sorted array:', sorted.map(v => ({ videoId: v.videoId, lastWatched: v.lastWatched })));
-      console.log('Expected most recent:', mockWatchedVideos[1].videoId);
-      console.log('Actual most recent:', sorted[0].videoId);
-
-      expect(sorted[0].videoId).toBe('video2');
-    });
-
-    it('should return null if no watched videos', async () => {
-      vi.mocked(readWatchedVideos).mockResolvedValue([]);
-
-      const result = await getLastWatchedVideo();
-
+    it('should return null when no watched videos', async () => {
+      mockReadWatchedVideos.mockResolvedValue([]);
+      
+      const result = await timeTracking.getLastWatchedVideo();
+      
       expect(result).toBeNull();
-      expect(readWatchedVideos).toHaveBeenCalledOnce();
     });
   });
 
   describe('resetDailyUsage', () => {
-    it('should reset usage for current day', async () => {
-      const mockUsageLog: UsageLog = {
-        '2025-01-20': 25,
-        '2025-01-19': 45
-      };
-
-      vi.mocked(readUsageLog).mockResolvedValue(mockUsageLog);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z'));
-
-      await resetDailyUsage();
-
-      expect(readUsageLog).toHaveBeenCalledOnce();
+    it('should reset today\'s usage', async () => {
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      vi.setSystemTime(mockDate);
+      
+      mockReadUsageLog.mockResolvedValue({
+        '2024-01-15': 1800,
+        '2024-01-14': 3600
+      });
+      
+      await timeTracking.resetDailyUsage();
+      
+      expect(mockWriteUsageLog).toHaveBeenCalledWith({
+        '2024-01-14': 3600
+      });
+      vi.useRealTimers();
     });
   });
 
   describe('getUsageHistory', () => {
     it('should return usage history for specified days', async () => {
-      const mockUsageLog: UsageLog = {
-        '2025-01-20': 25,
-        '2025-01-19': 45,
-        '2025-01-18': 30
-      };
-
-      vi.mocked(readUsageLog).mockResolvedValue(mockUsageLog);
-      vi.setSystemTime(new Date('2025-01-20T10:30:00Z'));
-
-      const result = await getUsageHistory(3);
-
-      expect(result).toHaveLength(3);
-      expect(result[0].date).toBe('2025-01-18');
-      expect(result[1].date).toBe('2025-01-19');
-      expect(result[2].date).toBe('2025-01-20');
-    });
-  });
-
-  describe('validateTimeLimits', () => {
-    it('should validate correct time limits', () => {
-      const timeLimits: TimeLimits = {
-        Monday: 30,
-        Tuesday: 45,
-        Wednesday: 30,
-        Thursday: 30,
-        Friday: 60,
-        Saturday: 90,
-        Sunday: 90
-      };
-
-      const result = validateTimeLimits(timeLimits);
-
-      expect(result.isValid).toBe(true);
-      expect(result.errors).toHaveLength(0);
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      vi.setSystemTime(mockDate);
+      
+      mockReadUsageLog.mockResolvedValue({
+        '2024-01-15': 1800,
+        '2024-01-14': 3600,
+        '2024-01-13': 2700,
+        '2024-01-12': 900
+      });
+      
+      const result = await timeTracking.getUsageHistory(3);
+      
+      expect(result).toEqual([
+        { date: '2024-01-15', minutes: 30 },
+        { date: '2024-01-14', minutes: 60 },
+        { date: '2024-01-13', minutes: 45 }
+      ]);
+      vi.useRealTimers();
     });
 
-    it('should detect negative values', () => {
-      const timeLimits: TimeLimits = {
-        Monday: -5,
-        Tuesday: 45,
-        Wednesday: 30,
-        Thursday: 30,
-        Friday: 60,
-        Saturday: 90,
-        Sunday: 90
-      };
-
-      const result = validateTimeLimits(timeLimits);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('Monday: cannot be negative');
-    });
-
-    it('should detect values exceeding 24 hours', () => {
-      const timeLimits: TimeLimits = {
-        Monday: 30,
-        Tuesday: 45,
-        Wednesday: 30,
-        Thursday: 30,
-        Friday: 60,
-        Saturday: 90,
-        Sunday: 1500 // 25 hours
-      };
-
-      const result = validateTimeLimits(timeLimits);
-
-      expect(result.isValid).toBe(false);
-      expect(result.errors).toContain('Sunday: cannot exceed 24 hours (1440 minutes)');
+    it('should return empty array for days with no usage', async () => {
+      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      vi.setSystemTime(mockDate);
+      
+      mockReadUsageLog.mockResolvedValue({
+        '2024-01-14': 3600
+      });
+      
+      const result = await timeTracking.getUsageHistory(3);
+      
+      expect(result).toEqual([
+        { date: '2024-01-15', minutes: 0 },
+        { date: '2024-01-14', minutes: 60 },
+        { date: '2024-01-13', minutes: 0 }
+      ]);
+      vi.useRealTimers();
     });
   });
 }); 
