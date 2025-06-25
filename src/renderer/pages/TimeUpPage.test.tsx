@@ -4,11 +4,9 @@ import { MemoryRouter } from 'react-router-dom';
 import { TimeUpPage } from './TimeUpPage';
 import { vi } from 'vitest';
 
-// Mock the time tracking functions
-vi.mock('@/shared/timeTracking', () => ({
-  getCurrentDate: vi.fn().mockReturnValue('2024-01-15'),
-  getDayOfWeek: vi.fn().mockReturnValue('Monday'),
-}));
+// Set system time to Monday, January 15, 2024
+vi.useFakeTimers();
+vi.setSystemTime(new Date('2024-01-15T12:00:00Z'));
 
 const renderWithRouter = (component: React.ReactNode) => {
   return render(
@@ -20,8 +18,6 @@ const renderWithRouter = (component: React.ReactNode) => {
 
 describe('TimeUpPage', () => {
   let mockGetTimeLimits: any;
-  let mockGetCurrentDate: any;
-  let mockGetDayOfWeek: any;
 
   beforeEach(async () => {
     vi.resetAllMocks();
@@ -39,11 +35,12 @@ describe('TimeUpPage', () => {
       })
     } as any;
     
-    const timeTracking = await import('@/shared/timeTracking');
-    
     mockGetTimeLimits = vi.mocked(window.electron.getTimeLimits);
-    mockGetCurrentDate = vi.mocked(timeTracking.getCurrentDate);
-    mockGetDayOfWeek = vi.mocked(timeTracking.getDayOfWeek);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
   });
 
   it('renders loading state initially', () => {
@@ -89,8 +86,8 @@ describe('TimeUpPage', () => {
     renderWithRouter(<TimeUpPage />);
     
     await waitFor(() => {
-      const mondayElement = screen.getByText('Monday').closest('div');
-      expect(mondayElement).toHaveClass('bg-red-50', 'border-red-300');
+      const wednesdayElement = screen.getByText('Wednesday').closest('div');
+      expect(wednesdayElement).toHaveClass('bg-red-50', 'border-red-300');
       expect(screen.getByText('Today')).toBeInTheDocument();
     });
   });
