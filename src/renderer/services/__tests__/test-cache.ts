@@ -1,0 +1,98 @@
+interface CachedVideoStreams {
+  videoId: string;
+  timestamp: number;
+  videoStreams: any[];
+  audioTracks: any[];
+}
+
+interface CachedVideoDetails {
+  videoId: string;
+  timestamp: number;
+  details: any;
+}
+
+class TestCache {
+  private static instance: TestCache;
+  private streamCache: Map<string, CachedVideoStreams> = new Map();
+  private detailsCache: Map<string, CachedVideoDetails> = new Map();
+  private cacheExpiryMs = 24 * 60 * 60 * 1000; // 24 hours
+
+  private constructor() {
+    // In-memory only - no file operations
+  }
+
+  static getInstance(): TestCache {
+    if (!TestCache.instance) {
+      TestCache.instance = new TestCache();
+    }
+    return TestCache.instance;
+  }
+
+  private isExpired(timestamp: number): boolean {
+    return Date.now() - timestamp > this.cacheExpiryMs;
+  }
+
+  getVideoStreams(videoId: string): { videoStreams: any[]; audioTracks: any[] } | null {
+    const cached = this.streamCache.get(videoId);
+    if (cached && !this.isExpired(cached.timestamp)) {
+      console.log(`[CACHE HIT] Using cached video streams for ${videoId}`);
+      return {
+        videoStreams: cached.videoStreams,
+        audioTracks: cached.audioTracks
+      };
+    }
+    console.log(`[CACHE MISS] No cached video streams for ${videoId}`);
+    return null;
+  }
+
+  setVideoStreams(videoId: string, videoStreams: any[], audioTracks: any[]): void {
+    console.log(`[CACHE SET] Caching video streams for ${videoId}`);
+    this.streamCache.set(videoId, {
+      videoId,
+      timestamp: Date.now(),
+      videoStreams,
+      audioTracks
+    });
+  }
+
+  getVideoDetails(videoId: string): any | null {
+    const cached = this.detailsCache.get(videoId);
+    if (cached && !this.isExpired(cached.timestamp)) {
+      console.log(`[CACHE HIT] Using cached video details for ${videoId}`);
+      return cached.details;
+    }
+    console.log(`[CACHE MISS] No cached video details for ${videoId}`);
+    return null;
+  }
+
+  setVideoDetails(videoId: string, details: any): void {
+    console.log(`[CACHE SET] Caching video details for ${videoId}`);
+    this.detailsCache.set(videoId, {
+      videoId,
+      timestamp: Date.now(),
+      details
+    });
+  }
+
+  clearCache(): void {
+    console.log('[CACHE CLEAR] Clearing all cached data');
+    this.streamCache.clear();
+    this.detailsCache.clear();
+  }
+
+  getCacheStats(): { streams: number; details: number } {
+    return {
+      streams: this.streamCache.size,
+      details: this.detailsCache.size
+    };
+  }
+
+  // Debug method to see what's cached
+  debugCache(): void {
+    console.log('[CACHE DEBUG] Current cache contents:');
+    console.log('Stream cache keys:', Array.from(this.streamCache.keys()));
+    console.log('Details cache keys:', Array.from(this.detailsCache.keys()));
+  }
+}
+
+export const testCache = TestCache.getInstance(); 

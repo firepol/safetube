@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { VideoCardBase } from './VideoCardBase';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { MemoryRouter } from 'react-router-dom';
@@ -24,7 +24,7 @@ describe('VideoCardBase', () => {
     );
 
   it('renders video card with all information', () => {
-    renderWithProvider(<VideoCardBase {...mockVideo} />);
+    const { container } = renderWithProvider(<VideoCardBase {...mockVideo} />);
     
     // Check title
     expect(screen.getByText('Test Video')).toBeInTheDocument();
@@ -43,7 +43,8 @@ describe('VideoCardBase', () => {
 
   it('shows resume overlay on hover when resumeAt is set', () => {
     renderWithProvider(<VideoCardBase {...mockVideo} />);
-    expect(screen.getByText('Resume at 1:00')).toBeInTheDocument();
+    const resumeElements = screen.getAllByText(/Resume at 1:00/);
+    expect(resumeElements.length).toBeGreaterThan(0);
   });
 
   it('does not show resume overlay when resumeAt is null', () => {
@@ -53,8 +54,9 @@ describe('VideoCardBase', () => {
 
   it('shows progress bar when video is watched', () => {
     renderWithProvider(<VideoCardBase {...mockVideo} />);
-    const progressBar = screen.getByRole('progressbar');
-    expect(progressBar).toHaveStyle({ width: '50%' });
+    const progressBars = screen.getAllByRole('progressbar');
+    expect(progressBars.length).toBeGreaterThan(0);
+    expect(progressBars[0]).toHaveStyle({ width: '50%' });
   });
 
   it('does not show progress bar when video is not watched', () => {

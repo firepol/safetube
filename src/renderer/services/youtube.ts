@@ -161,7 +161,7 @@ export class YouTubeAPI {
   }
 
   static async getVideoDetails(videoId: string): Promise<YouTubeVideo> {
-    const data = await this.fetch<{ items: YouTubeVideo[] }>('videos', {
+    const data = await YouTubeAPI.fetch<{ items: YouTubeVideo[] }>('videos', {
       part: 'snippet,contentDetails,status',
       id: videoId,
     });
@@ -172,7 +172,7 @@ export class YouTubeAPI {
   }
 
   static async getVideoPlayer(videoId: string): Promise<YouTubePlayer> {
-    const data = await this.fetch<YouTubePlayer>('player', {
+    const data = await YouTubeAPI.fetch<YouTubePlayer>('player', {
       part: 'streamingData,videoDetails',
       id: videoId,
     });
@@ -223,7 +223,7 @@ export class YouTubeAPI {
   }
 
   static async getPlaylistVideos(playlistId: string, maxResults = 50): Promise<string[]> {
-    const data = await this.fetch<YouTubePlaylist>('playlistItems', {
+    const data = await YouTubeAPI.fetch<YouTubePlaylist>('playlistItems', {
       part: 'snippet',
       playlistId,
       maxResults: maxResults.toString(),
@@ -232,7 +232,7 @@ export class YouTubeAPI {
   }
 
   static async getChannelDetails(channelId: string): Promise<YouTubeChannel> {
-    const data = await this.fetch<{ items: YouTubeChannel[] }>('channels', {
+    const data = await YouTubeAPI.fetch<{ items: YouTubeChannel[] }>('channels', {
       part: 'snippet,contentDetails',
       id: channelId,
     });
@@ -260,7 +260,7 @@ export class YouTubeAPI {
   }
 
   // Helper to check if URL is m3u8
-  private static isM3U8(url: string): boolean {
+  static isM3U8(url: string): boolean {
     return url.toLowerCase().endsWith('.m3u8');
   }
 
@@ -268,7 +268,7 @@ export class YouTubeAPI {
   static getBestStreamUrl(videoStreams: VideoStream[], audioTracks: AudioTrack[]): string {
     // First try to find a combined format with high quality
     const combinedFormats = videoStreams
-      .filter(s => s.mimeType.includes('mp4') && !this.isM3U8(s.url)) // Prefer mp4 and non-m3u8
+      .filter(s => s.mimeType.includes('mp4') && !YouTubeAPI.isM3U8(s.url)) // Prefer mp4 and non-m3u8
       .sort((a, b) => {
         // Sort by resolution first
         const heightDiff = (b.height || 0) - (a.height || 0);
@@ -283,7 +283,7 @@ export class YouTubeAPI {
 
     // If no combined format, get highest quality video and audio separately
     const videoFormats = videoStreams
-      .filter(s => !this.isM3U8(s.url)) // Only filter out m3u8
+      .filter(s => !YouTubeAPI.isM3U8(s.url)) // Only filter out m3u8
       .sort((a, b) => {
         // Sort by resolution first
         const heightDiff = (b.height || 0) - (a.height || 0);
@@ -301,7 +301,7 @@ export class YouTubeAPI {
 
     // Fallback to any non-m3u8 format
     const fallbackVideoFormats = videoStreams
-      .filter(s => !this.isM3U8(s.url)) // Prefer non-m3u8
+      .filter(s => !YouTubeAPI.isM3U8(s.url)) // Prefer non-m3u8
       .sort((a, b) => {
         const heightDiff = (b.height || 0) - (a.height || 0);
         if (heightDiff !== 0) return heightDiff;
@@ -309,7 +309,7 @@ export class YouTubeAPI {
       });
     
     const fallbackAudioFormats = audioTracks
-      .filter(a => !this.isM3U8(a.url)) // Prefer non-m3u8
+      .filter(a => !YouTubeAPI.isM3U8(a.url)) // Prefer non-m3u8
       .sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0));
 
     if (fallbackVideoFormats.length > 0 && fallbackAudioFormats.length > 0) {
@@ -357,7 +357,7 @@ export class YouTubeAPI {
       console.log(`Looking for language: ${lang}`);
       const candidates = audioTracks
         .filter(t => {
-          const matches = t.language.toLowerCase() === lang.toLowerCase() && !this.isM3U8(t.url);
+          const matches = t.language.toLowerCase() === lang.toLowerCase() && !YouTubeAPI.isM3U8(t.url);
           // console.log(`Track ${t.language} matches ${lang}? ${matches}`);
           return matches;
         })
@@ -391,7 +391,7 @@ export class YouTubeAPI {
 
     // Fallback: any non-m3u8
     const anyNonM3U8Track = audioTracks
-      .filter(t => !this.isM3U8(t.url))
+      .filter(t => !YouTubeAPI.isM3U8(t.url))
       .sort((a, b) => {
         // First sort by mimeType (prefer m4a over webm)
         if (a.mimeType === 'm4a' && b.mimeType !== 'm4a') return -1;
@@ -444,7 +444,7 @@ export class YouTubeAPI {
 
     // First try to find a combined format with high quality
     const combinedFormats = videoStreams
-      .filter(s => s.mimeType.includes('mp4') && !this.isM3U8(s.url) && s.mimeType.includes('audio')) // Must be mp4 and have audio
+      .filter(s => s.mimeType.includes('mp4') && !YouTubeAPI.isM3U8(s.url) && s.mimeType.includes('audio')) // Must be mp4 and have audio
       .sort((a, b) => {
         // Sort by resolution first
         const heightDiff = (b.height || 0) - (a.height || 0);
@@ -457,22 +457,17 @@ export class YouTubeAPI {
 
     if (combinedFormats.length > 0) {
       const best = combinedFormats[0];
-      console.log('Using combined format:', {
-        quality: best.quality,
-        resolution: `${best.width}x${best.height}`,
-        fps: best.fps
-      });
       return {
         videoUrl: best.url,
         quality: best.quality,
-        resolution: `${best.width}x${best.height}`,
-        fps: best.fps
+        resolution: `${best.width || 0}x${best.height || 0}`,
+        fps: best.fps,
       };
     }
 
     // If no combined format, get highest quality video and audio separately
     const videoFormats = videoStreams
-      .filter(s => !this.isM3U8(s.url)) // Only filter out m3u8
+      .filter(s => !YouTubeAPI.isM3U8(s.url)) // Only filter out m3u8
       .sort((a, b) => {
         // Sort by resolution first
         const heightDiff = (b.height || 0) - (a.height || 0);
@@ -481,51 +476,58 @@ export class YouTubeAPI {
         return (b.fps || 0) - (a.fps || 0);
       });
     
-    console.log('Video formats found:', videoFormats.length);
-    
     if (videoFormats.length > 0) {
       const bestVideo = videoFormats[0];
-      console.log('Best video format:', {
-        quality: bestVideo.quality,
-        resolution: `${bestVideo.width}x${bestVideo.height}`,
-        fps: bestVideo.fps
-      });
-
-      // Make sure we have audio tracks before trying to get the best one
-      if (audioTracks && audioTracks.length > 0) {
-        console.log('Getting best audio track for video...');
-        const bestAudio = this.getBestAudioTrackByLanguage(audioTracks, preferredLanguages);
-        console.log('Best audio track found:', {
-          language: bestAudio.language,
-          mimeType: bestAudio.mimeType,
-          bitrate: bestAudio.bitrate
-        });
-        return {
-          videoUrl: bestVideo.url,
-          audioUrl: bestAudio.url,
-          quality: bestVideo.quality,
-          resolution: `${bestVideo.width}x${bestVideo.height}`,
-          fps: bestVideo.fps,
-          audioLanguage: bestAudio.language
-        };
-      } else {
-        console.log('No audio tracks available for video');
-      }
-    }
-
-    // If we get here, we have a video but no audio
-    if (videoFormats.length > 0) {
-      const bestVideo = videoFormats[0];
-      console.log('Using video-only format as last resort:', {
-        quality: bestVideo.quality,
-        resolution: `${bestVideo.width}x${bestVideo.height}`,
-        fps: bestVideo.fps
-      });
+      const bestAudio = this.getBestAudioTrackByLanguage(audioTracks, preferredLanguages);
+      
       return {
         videoUrl: bestVideo.url,
+        audioUrl: bestAudio.url,
         quality: bestVideo.quality,
-        resolution: `${bestVideo.width}x${bestVideo.height}`,
-        fps: bestVideo.fps
+        resolution: `${bestVideo.width || 0}x${bestVideo.height || 0}`,
+        fps: bestVideo.fps,
+        audioLanguage: bestAudio.language,
+      };
+    }
+
+    // Last resort: use any format including M3U8
+    const lastResortVideoFormats = videoStreams
+      .sort((a, b) => {
+        // Sort by resolution first
+        const heightDiff = (b.height || 0) - (a.height || 0);
+        if (heightDiff !== 0) return heightDiff;
+        // Then by FPS
+        return (b.fps || 0) - (a.fps || 0);
+      });
+    
+    if (lastResortVideoFormats.length > 0) {
+      const bestVideo = lastResortVideoFormats[0];
+      let bestAudio: AudioTrack;
+      
+      try {
+        bestAudio = this.getBestAudioTrackByLanguage(audioTracks, preferredLanguages);
+      } catch (error) {
+        // If no audio tracks available, use the first one
+        if (audioTracks.length > 0) {
+          bestAudio = audioTracks[0];
+        } else {
+          // No audio tracks at all
+          return {
+            videoUrl: bestVideo.url,
+            quality: bestVideo.quality,
+            resolution: `${bestVideo.width || 0}x${bestVideo.height || 0}`,
+            fps: bestVideo.fps,
+          };
+        }
+      }
+      
+      return {
+        videoUrl: bestVideo.url,
+        audioUrl: bestAudio.url,
+        quality: bestVideo.quality,
+        resolution: `${bestVideo.width || 0}x${bestVideo.height || 0}`,
+        fps: bestVideo.fps,
+        audioLanguage: bestAudio.language,
       };
     }
 

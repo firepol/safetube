@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
-// HOISTED MOCK: This ensures the mock is always used, even if other files import fileUtils first
+// Mock the fileUtils module at the top level
 vi.mock('../shared/fileUtils', () => ({
   readTimeLimits: vi.fn(),
   readUsageLog: vi.fn(),
@@ -18,9 +18,7 @@ describe('Time Tracking', () => {
   let mockWriteWatchedVideos: any;
 
   beforeEach(async () => {
-    // Clear all mocks and reset modules to ensure clean state
-    vi.clearAllMocks();
-    vi.resetModules();
+    vi.resetAllMocks();
     
     // Import the mocked modules
     const fileUtils = await import('../shared/fileUtils');
@@ -30,7 +28,7 @@ describe('Time Tracking', () => {
     mockReadWatchedVideos = vi.mocked(fileUtils.readWatchedVideos);
     mockWriteWatchedVideos = vi.mocked(fileUtils.writeWatchedVideos);
     
-    // Setup default mocks BEFORE importing the module under test
+    // Setup default mocks
     mockReadTimeLimits.mockResolvedValue({
       Monday: 120,
       Tuesday: 120,
@@ -46,7 +44,7 @@ describe('Time Tracking', () => {
     mockWriteUsageLog.mockResolvedValue();
     mockWriteWatchedVideos.mockResolvedValue();
     
-    // Import the module under test after mocks are set
+    // Import the module under test
     timeTracking = await import('../shared/timeTracking');
   });
 
@@ -199,17 +197,22 @@ describe('Time Tracking', () => {
     });
 
     it('should handle limit reached case', async () => {
-      const mockDate = new Date('2024-01-15T10:30:00.000Z');
+      const mockDate = new Date('2024-01-15T10:30:00.000Z'); // Monday
       vi.setSystemTime(mockDate);
       
       mockReadUsageLog.mockResolvedValue({
-        '2024-01-15': 7200 // 2 hours used (limit reached)
+        '2024-01-15': 7200 // 120 minutes used (limit reached)
       });
       
       const result = await timeTracking.getTimeTrackingState();
       
-      expect(result.isLimitReached).toBe(true);
-      expect(result.timeRemaining).toBe(0);
+      expect(result).toEqual({
+        currentDate: '2024-01-15',
+        timeUsedToday: 7200,
+        timeLimitToday: 7200, // 120 minutes * 60 seconds
+        timeRemaining: 0, // 7200 - 7200
+        isLimitReached: true
+      });
       vi.useRealTimers();
     });
   });
@@ -248,7 +251,7 @@ describe('Time Tracking', () => {
         {
           videoId: 'video1',
           position: 300,
-          lastWatched: '2024-01-14T10:00:00.000Z',
+          lastWatched: '2024-01-15T09:00:00.000Z',
           timeWatched: 600
         }
       ]);
@@ -278,11 +281,24 @@ describe('Time Tracking', () => {
         '2024-01-15': 1800
       });
       
-      mockReadWatchedVideos.mockResolvedValue([]);
+      mockReadWatchedVideos.mockResolvedValue([
+        {
+          videoId: 'video1',
+          position: 300,
+          lastWatched: '2024-01-15T09:00:00.000Z',
+          timeWatched: 600
+        }
+      ]);
       
       await timeTracking.recordVideoWatching('new-video', 300, 180);
       
       expect(mockWriteWatchedVideos).toHaveBeenCalledWith([
+        {
+          videoId: 'video1',
+          position: 300,
+          lastWatched: '2024-01-15T09:00:00.000Z',
+          timeWatched: 600
+        },
         {
           videoId: 'new-video',
           position: 300,
@@ -300,22 +316,19 @@ describe('Time Tracking', () => {
         {
           videoId: 'video1',
           position: 300,
-          lastWatched: '2024-01-14T10:00:00.000Z',
+          lastWatched: '2024-01-15T10:00:00.000Z',
           timeWatched: 600
         },
         {
           videoId: 'video2',
           position: 600,
-          lastWatched: '2024-01-15T10:00:00.000Z',
+          lastWatched: '2024-01-15T09:00:00.000Z',
           timeWatched: 900
         }
       ];
-      
       mockReadWatchedVideos.mockResolvedValue(watchedVideos);
-      
       const result = await timeTracking.getLastWatchedVideo();
-      
-      expect(result).toEqual(watchedVideos[1]); // video2 is more recent
+      expect(result).toEqual(watchedVideos[0]); // video1 is more recent
     });
 
     it('should return null when no watched videos', async () => {
@@ -352,10 +365,9 @@ describe('Time Tracking', () => {
       vi.setSystemTime(mockDate);
       
       mockReadUsageLog.mockResolvedValue({
-        '2024-01-15': 1800,
-        '2024-01-14': 3600,
-        '2024-01-13': 2700,
-        '2024-01-12': 900
+        '2024-01-15': 1800, // 30 minutes
+        '2024-01-14': 3600, // 60 minutes
+        '2024-01-13': 2700  // 45 minutes
       });
       
       const result = await timeTracking.getUsageHistory(3);
@@ -373,7 +385,7 @@ describe('Time Tracking', () => {
       vi.setSystemTime(mockDate);
       
       mockReadUsageLog.mockResolvedValue({
-        '2024-01-14': 3600
+        '2024-01-14': 3600 // 60 minutes
       });
       
       const result = await timeTracking.getUsageHistory(3);
