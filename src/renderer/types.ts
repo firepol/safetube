@@ -1,4 +1,5 @@
 import { VideoStream, AudioTrack } from './services/youtube';
+import { TimeLimits } from '@/shared/types';
 
 export interface Video {
   id: string;
@@ -32,6 +33,7 @@ declare global {
       getVideoStreams: (videoId: string) => Promise<{ videoStreams: VideoStream[]; audioTracks: AudioTrack[] }>;
       recordVideoWatching: (videoId: string, position: number, timeWatched: number) => Promise<{ success: boolean }>;
       getTimeTrackingState: () => Promise<{ currentDate: string; timeUsedToday: number; timeLimitToday: number; timeRemaining: number; isLimitReached: boolean }>;
+      getTimeLimits: () => Promise<TimeLimits>;
     };
   }
 } 

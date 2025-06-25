@@ -162,7 +162,7 @@ Each feature PRD must include:
 - **Current Sprint**: Sprint 2
 - **Blockers**: None
 - **Dependencies**: Project Setup, Play Video
-- **Progress**: 70%
+- **Progress**: 85%
 - **Last Updated**: 2025-06-23
 - **Completed Items**:
   - JSON configuration files for time limits, usage logs, watched videos, and video sources
@@ -181,17 +181,23 @@ Each feature PRD must include:
   - Time tracking UI with human-friendly display (minutes only)
   - Proper throttling to prevent excessive updates
   - Vite configuration to prevent page reloads during time tracking
+  - Dedicated Time's Up page with weekly schedule display
+  - Redirect logic from homepage to Time's Up page when time limit is reached
+  - Time display format updated to X/Y [Z minutes left] format
+  - Warning threshold display (red when time is low)
 - **Remaining Items**:
   - Implement countdown overlay in last 60 seconds of daily limit
   - Add audio feedback (system beep) in last 10 seconds
-  - Create dedicated Time's Up page with weekly schedule display
-  - Add warning threshold configuration and red display when time is low
-  - Update time display format to X/Y [Z minutes left] format
-  - Implement mm:ss format for countdown display
   - Add full-screen and windowed mode countdown support
   - Handle full-screen exit when time runs out
   - Add configuration for countdown, audio, and warning settings
+  - Improve Time's Up page design and remove unnecessary "Return to Home" button
 - **Recent Changes**:
+  - 2025-06-23: Created dedicated Time's Up page with weekly schedule display
+  - 2025-06-23: Added redirect logic from homepage to Time's Up page when time limit is reached
+  - 2025-06-23: Updated time display format to X/Y [Z minutes left] format with warning threshold
+  - 2025-06-23: Fixed fs module dependency issues in renderer process
+  - 2025-06-23: Added IPC communication for time limits retrieval
   - 2025-06-23: Completed full integration with video player and UI components
   - 2025-06-23: Added IPC communication between renderer and main process
   - 2025-06-23: Implemented real-time time tracking with proper throttling
@@ -207,7 +213,8 @@ Each feature PRD must include:
   - Time tracking survives app crashes/restarts with persistent JSON storage
   - Daily limits are properly enforced with automatic video pausing
   - Fast-forward and rewind time is tracked based on actual elapsed time
-  - Core functionality complete, but needs countdown overlay, audio feedback, and Time's Up page
+  - Time's Up page is functional but needs design improvements
+  - Core functionality complete, needs countdown overlay and audio feedback
 
 ### 4. Video History
 - **Status**: Not Started

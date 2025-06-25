@@ -5,6 +5,7 @@ import { Client } from 'node-ssdp'
 import { setupYouTubeHandlers } from './youtube'
 import fs from 'fs'
 import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking'
+import { readTimeLimits } from '../shared/fileUtils'
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -102,6 +103,15 @@ ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
     return await getTimeTrackingState()
   } catch (error) {
     log.error('Error getting time tracking state:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('time-tracking:get-time-limits', async () => {
+  try {
+    return await readTimeLimits()
+  } catch (error) {
+    log.error('Error getting time limits:', error)
     throw error
   }
 })
