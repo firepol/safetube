@@ -7,7 +7,16 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/renderer/setupTests.ts', './vitest.setup.ts'],
-    globals: true
+    globals: true,
+    testTimeout: 30000, // 30 seconds timeout for integration tests
+    hookTimeout: 30000, // 30 seconds timeout for hooks
+    pool: 'threads', // Use threads for isolation
+    poolOptions: {
+      threads: {
+        minThreads: 1,
+        maxThreads: 1 // Enforce single process for shared in-memory cache
+      }
+    }
   },
   resolve: {
     alias: {

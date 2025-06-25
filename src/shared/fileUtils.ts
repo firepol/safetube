@@ -1,5 +1,5 @@
 import { promises as fs } from 'fs';
-import path from 'path';
+import * as path from 'path';
 import { TimeLimits, UsageLog, WatchedVideo, VideoSource } from './types';
 
 const CONFIG_DIR = path.join(process.cwd(), 'config');

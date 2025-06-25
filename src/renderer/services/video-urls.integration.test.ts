@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import videos from '../data/videos.json';
-import { YouTubeAPI } from './youtube';
+import { CachedYouTubeAPI as YouTubeAPI } from './__tests__/cached-youtube';
+import { testCache } from './__tests__/test-cache';
 import fs from 'fs';
 import path from 'path';
 
@@ -42,6 +43,16 @@ interface DebugStreamInfo {
 }
 
 describe('Video Stream URLs Integration Tests', () => {
+  beforeAll(() => {
+    console.log('Starting video URLs integration tests with caching enabled');
+  });
+
+  afterAll(() => {
+    const stats = testCache.getCacheStats();
+    console.log(`Test cache stats: ${stats.streams} streams, ${stats.details} details cached`);
+    testCache.debugCache();
+  });
+
   // Helper function to check if a URL is accessible
   async function checkUrl(url: string): Promise<boolean> {
     try {

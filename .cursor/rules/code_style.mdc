@@ -20,3 +20,4 @@ alwaysApply: true
 
 ## Development Workflow
 - Commit automatically after each code change that has been tested and all tests pass.
+- When making code changes, only run the relevant test files (not the full test suite) to speed up development.

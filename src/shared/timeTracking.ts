@@ -199,18 +199,12 @@ export async function getUsageHistory(days: number = 7): Promise<Array<{ date: s
     const date = new Date(today);
     date.setDate(date.getDate() - i);
     const dateString = date.toISOString().split('T')[0];
-    
-    // Convert seconds to minutes for display
-    const secondsUsed = usageLog[dateString] || 0;
-    const minutesUsed = Math.round(secondsUsed / 60 * 100) / 100; // Round to 2 decimal places
-    
-    history.push({
-      date: dateString,
-      minutes: minutesUsed
-    });
+    const seconds = usageLog[dateString] || 0;
+    const minutes = Math.floor(seconds / 60);
+    history.push({ date: dateString, minutes });
   }
   
-  return history.reverse();
+  return history;
 }
 
 /**
@@ -218,17 +212,15 @@ export async function getUsageHistory(days: number = 7): Promise<Array<{ date: s
  */
 export function validateTimeLimits(timeLimits: TimeLimits): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
-  const days: (keyof TimeLimits)[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  
+  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   
   for (const day of days) {
-    const limit = timeLimits[day];
-    
-    if (typeof limit !== 'number') {
-      errors.push(`${day}: must be a number`);
+    const limit = timeLimits[day as keyof TimeLimits];
+    if (limit === undefined) {
+      errors.push(`Missing time limit for ${day}`);
     } else if (limit < 0) {
-      errors.push(`${day}: cannot be negative`);
-    } else if (limit > 1440) {
-      errors.push(`${day}: cannot exceed 24 hours (1440 minutes)`);
+      errors.push(`Invalid time limit for ${day}: ${limit} (must be >= 0)`);
     }
   }
   
