@@ -1,0 +1,48 @@
+/**
+ * Logging utility for controlling verbosity across different environments
+ */
+
+/**
+ * Determines if verbose logging should be enabled based on the current environment
+ */
+function shouldLogVerbose(): boolean {
+  // Check if we're in a test environment
+  const isTestEnvironment = 
+    process.env.NODE_ENV === 'test' || 
+    typeof jest !== 'undefined' || 
+    typeof (globalThis as any).vitest !== 'undefined' ||
+    process.env.VITEST !== undefined;
+
+  if (isTestEnvironment) {
+    return process.env.TEST_LOG_VERBOSE === 'true';
+  }
+
+  // In Electron app environment
+  return process.env.ELECTRON_LOG_VERBOSE === 'true';
+}
+
+/**
+ * Logs a message only if verbose logging is enabled for the current environment
+ * @param args - Arguments to pass to console.log
+ */
+export function logVerbose(...args: any[]): void {
+  if (shouldLogVerbose()) {
+    console.log(...args);
+  }
+}
+
+/**
+ * Logs an error message (always logged, regardless of verbosity setting)
+ * @param args - Arguments to pass to console.error
+ */
+export function logError(...args: any[]): void {
+  console.error(...args);
+}
+
+/**
+ * Logs a warning message (always logged, regardless of verbosity setting)
+ * @param args - Arguments to pass to console.warn
+ */
+export function logWarning(...args: any[]): void {
+  console.warn(...args);
+} 
