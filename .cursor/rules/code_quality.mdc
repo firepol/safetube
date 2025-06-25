@@ -17,3 +17,27 @@ alwaysApply: false
 ## Documentation Standards
 - Document complex functions with JSDoc in all [*.ts, *.tsx](mdc:src) files.
 - Add comments for complex logic in [src/**/*.tsx](mdc:src) files.
+
+## Electron Architecture Patterns
+- **NEVER use direct filesystem access (fs, path) in renderer process** - use IPC communication instead
+- **ALWAYS use IPC (ipcRenderer/ipcMain) for main-renderer process communication**
+- Keep main process code in [src/main/](mdc:src/main) and renderer process code in [src/renderer/](mdc:src/renderer)
+- Use preload scripts in [src/preload/](mdc:src/preload) to expose safe APIs to renderer
+- Validate all IPC messages and handle errors gracefully
+- Use contextIsolation and nodeIntegration: false for security
+
+## Testable Architecture & Business Logic
+- **Extract business logic into pure functions/classes that don't depend on Electron APIs**
+- **Use interfaces for all external dependencies** (file storage, time tracking, video services, etc.)
+- **Implement dependency injection** - pass interface implementations rather than concrete classes
+- **Separate concerns**: business logic in [src/shared/](mdc:src/shared), platform adapters in main/renderer
+- **Design for testability**: business logic should be testable without Electron context
+- **Use interfaces to enforce contracts** - TypeScript will fail compilation if implementations don't match interface changes
+- **Mock interface implementations** in tests rather than testing through IPC
+- **Keep business logic pure** - avoid side effects and external dependencies in core logic
+
+**Interface Benefits:**
+- TypeScript compilation fails if interface changes aren't reflected in all implementations
+- Enables easy swapping of implementations (real vs mock) for testing
+- Provides clear contracts for what operations are available
+- Makes refactoring safer by catching breaking changes at compile time
