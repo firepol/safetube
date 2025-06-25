@@ -7,9 +7,9 @@ const getCurrentDate = (): string => {
 };
 
 const getDayOfWeek = (dateString: string): keyof TimeLimits => {
-  const date = new Date(dateString);
+  const date = new Date(dateString + 'T00:00:00Z');
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  return days[date.getDay()] as keyof TimeLimits;
+  return days[date.getUTCDay()] as keyof TimeLimits;
 };
 
 export const TimeUpPage: React.FC = () => {
@@ -55,9 +55,11 @@ export const TimeUpPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-lg mb-2">Loading schedule...</div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="text-lg mb-2">Loading schedule...</div>
+          </div>
         </div>
       </div>
     );
@@ -65,19 +67,21 @@ export const TimeUpPage: React.FC = () => {
 
   if (!timeLimits) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-lg mb-2 text-red-600">Error loading schedule</div>
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto p-6">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="text-lg mb-2 text-red-600">Error loading schedule</div>
+          </div>
         </div>
       </div>
     );
   }
 
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-2xl mx-auto">
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-red-600 mb-4">
@@ -89,44 +93,46 @@ export const TimeUpPage: React.FC = () => {
         </div>
 
         {/* Weekly Schedule */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <h2 className="text-xl font-semibold mb-4 text-center">Weekly Schedule</h2>
-          <div className="space-y-3">
-            {days.map((day) => {
-              const limit = timeLimits[day as keyof TimeLimits] || 0;
-              const isToday = isCurrentDay(day);
-              
-              return (
-                <div
-                  key={day}
-                  className={`flex justify-between items-center p-3 rounded-lg border ${
-                    isToday
-                      ? 'bg-red-50 border-red-300'
-                      : 'bg-gray-50 border-gray-200'
-                  }`}
-                >
-                  <span
-                    className={`font-medium ${
-                      isToday ? 'text-red-700 font-bold' : 'text-gray-700'
+        <div className="flex justify-center">
+          <div className="bg-white rounded-lg shadow-lg p-3 w-full max-w-xs">
+            <h2 className="text-base font-semibold mb-3 text-center">Weekly Schedule</h2>
+            <div className="space-y-1">
+              {days.map((day) => {
+                const limit = timeLimits[day as keyof TimeLimits] || 0;
+                const isToday = isCurrentDay(day);
+                
+                return (
+                  <div
+                    key={day}
+                    className={`flex justify-between items-center p-1.5 rounded border ${
+                      isToday
+                        ? 'bg-red-50 border-red-300'
+                        : 'bg-gray-50 border-gray-200'
                     }`}
                   >
-                    {formatDayName(day)}
-                    {isToday && (
-                      <span className="ml-2 text-sm bg-red-100 text-red-800 px-2 py-1 rounded">
-                        Today
-                      </span>
-                    )}
-                  </span>
-                  <span
-                    className={`font-semibold ${
-                      isToday ? 'text-red-700' : 'text-gray-600'
-                    }`}
-                  >
-                    {formatTimeLimit(limit)}
-                  </span>
-                </div>
-              );
-            })}
+                    <span
+                      className={`font-medium text-xs ${
+                        isToday ? 'text-red-700 font-bold' : 'text-gray-700'
+                      }`}
+                    >
+                      {formatDayName(day)}
+                      {isToday && (
+                        <span className="ml-1 text-xs bg-red-100 text-red-800 px-1 py-0.5 rounded">
+                          Today
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      className={`font-semibold text-xs ${
+                        isToday ? 'text-red-700' : 'text-gray-600'
+                      }`}
+                    >
+                      {formatTimeLimit(limit)}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
