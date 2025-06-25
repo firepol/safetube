@@ -1,0 +1,32 @@
+[
+  {
+    "videoId": "dlna1:/Movies/ToyStory.mp4",
+    "position": 123,
+    "lastWatched": "2025-01-20T10:33:00Z",
+    "timeWatched": 180
+  },
+  {
+    "videoId": "f2_3sQu7lA4",
+    "position": 8.872938,
+    "lastWatched": "2025-06-23T21:50:36.610Z",
+    "timeWatched": 69.09400000000001
+  },
+  {
+    "videoId": "video1",
+    "position": 600,
+    "lastWatched": "2024-01-15T10:30:00.000Z",
+    "timeWatched": 9000
+  },
+  {
+    "videoId": "newVideo",
+    "position": 120,
+    "lastWatched": "2025-01-20T10:00:00.000Z",
+    "timeWatched": 1800
+  },
+  {
+    "videoId": "new-video",
+    "position": 300,
+    "lastWatched": "2024-01-15T10:30:00.000Z",
+    "timeWatched": 4680
+  }
+]
