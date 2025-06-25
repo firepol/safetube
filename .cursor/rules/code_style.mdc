@@ -17,3 +17,6 @@ alwaysApply: true
 ## Styling
 - Use Tailwind CSS classes in [*.tsx](mdc:src) files.
 - Follow shadcn/ui component patterns in [*.tsx](mdc:src) files.
+
+## Development Workflow
+- Commit automatically after each code change that has been tested and all tests pass.

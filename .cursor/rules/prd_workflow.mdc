@@ -1,7 +1,7 @@
 ---
-description: 
+description: "Load when working on PRDs, updating development status, planning features, or when user mentions product requirements or development tracking.
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 # PRD Workflow Rules
 

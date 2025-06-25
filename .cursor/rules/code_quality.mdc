@@ -1,9 +1,9 @@
 ---
-description: 
+description: oad when creating new files, refactoring code, organizing components, or when user asks about code organization and documentation standards.
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
-# Code Organization Rules
+# Code Quality Rules
 
 ## File Structure
 - Keep related files close together in the directory structure (see [src/](mdc:src)).
@@ -13,3 +13,7 @@ alwaysApply: true
 ## Component Organization
 - Only one React component per file in [src/components/](mdc:src/components).
 - Place shared types in [src/types/](mdc:src/types).
+
+## Documentation Standards
+- Document complex functions with JSDoc in all [*.ts, *.tsx](mdc:src) files.
+- Add comments for complex logic in [src/**/*.tsx](mdc:src) files.

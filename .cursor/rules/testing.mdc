@@ -1,11 +1,11 @@
 ---
-description: 
+description: Load when user mentions tests, test failures, writing new features that need testing, or when running test commands. Comprehensive testing workflow and requirements.
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 # Testing Rules
 
-- Keep tests close to the code they test (see [*.test.ts, *.test.tsx](mdc:src/)).
+- Keep tests close to the code they test (see [*.test.ts, *.test.tsx](mdc:src)).
 - Use descriptive test names in all test files.
 - Write tests for all new features and bug fixes before committing.
 - Test both success and error cases.

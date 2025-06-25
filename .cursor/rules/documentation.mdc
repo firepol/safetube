@@ -1,9 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: true
----
-# Code Documentation Rules
-
-- Document complex functions with JSDoc in all [*.ts, *.tsx](mdc:src) files.
-- Add comments for complex logic in [src/**/*.tsx](mdc:src) files.
