@@ -56,8 +56,50 @@ This document outlines the MVP (Minimum Viable Product) features for the **White
 - Auto-stop playback when limit is reached.
 - Persist current video, position, and usage every few seconds to survive crashes.
 - Resume feature:
-  - When a video is interrupted due to time, it reappears as “Resume last video” at top of homepage.
+  - When a video is interrupted due to time, it reappears as "Resume last video" at top of homepage.
   - Resume from saved position (rewind by 15 seconds).
+
+### Time Display and UI
+
+- **Homepage time display**: Show `X / Y [Z minutes left]` format where X is minutes used, Y is daily limit, Z is minutes remaining
+- **Real-time updates**: Time display updates in real-time during video playback
+- **Warning threshold**: When remaining time ≤ `warningThresholdMinutes` (configurable), display time in red
+- **Time format**: Display time in mm:ss format (minutes and seconds) for countdown
+
+### Countdown and Audio Feedback
+
+- **Countdown overlay**: In last 60 seconds of daily limit, show countdown on video (both full-screen and windowed)
+- **Countdown appearance**: Large font, gray with opacity, positioned at top of video to avoid disturbing viewing
+- **Countdown behavior**: Pauses when video is paused, resumes when video resumes
+- **Audio warning**: In last 10 seconds, play system beep (one per second)
+- **Audio configuration**: Use system beep by default, optional custom sound file with fallback
+
+### Time's Up Behavior
+
+- **Video interruption**: When time runs out, immediately stop video playback
+- **Full-screen handling**: If in full-screen mode, exit full-screen first
+- **Navigation**: Automatically navigate to dedicated "Time's Up" page (not homepage)
+- **No exceptions**: Same behavior for short videos - no gaming the system
+
+### Time's Up Page
+
+- **Dedicated page**: Separate route/page for time's up state to maintain clean architecture
+- **Schedule display**: Show full weekly schedule with current day in bold and red
+- **Time's up message**: Configurable message explaining time limit reached
+- **Navigation**: Redirect to this page from any part of app when time is exhausted
+
+### Additional Configuration
+
+```json
+{
+  "timeUpMessage": "Time's up for today! Here's your schedule:",
+  "countdownWarningSeconds": 60,
+  "audioWarningSeconds": 10,
+  "warningThresholdMinutes": 3,
+  "useSystemBeep": true,
+  "customBeepSound": ""
+}
+```
 
 ---
 
@@ -71,7 +113,7 @@ This document outlines the MVP (Minimum Viable Product) features for the **White
   - Time watched (seconds)
 - Each source UI (channel/folder) displays:
   - Unwatched videos first.
-  - Watched section at the bottom (e.g. “Already watched”).
+  - Watched section at the bottom (e.g. "Already watched").
 - Style watched videos differently (grayscale, overlay).
 
 ---

@@ -93,17 +93,73 @@ Each source is defined in the `videoSources.json` config like:
 
 - Tracked time is saved regularly (every few seconds) to avoid data loss.
 - Fast forward and rewind should count toward the daily quota just like normal playback.
-  If a child fast-forwards or rewinds a video, the time that elapses during these actions is considered as “watched” and should be added to their daily total.
+  If a child fast-forwards or rewinds a video, the time that elapses during these actions is considered as "watched" and should be added to their daily total.
   Pausing, by contrast, should not contribute to the daily quota.
   For example: if the child fast-forwards 20 minutes of video in 5 seconds, only those 5 seconds should be added to their daily quota — not the 20-minute segment that was skipped.
   Pausing, by contrast, should not contribute to the daily quota.
 - On crash/reboot, the app resumes tracking without loss.
 - Videos are blocked once the daily quota is reached.
 
+### Time Display
+
+- **Homepage**: Show time remaining in format `X / Y [Z minutes left]` where X is minutes used, Y is daily limit, Z is minutes remaining
+- **Real-time updates**: Time display updates in real-time during video playback
+- **Warning threshold**: When `Z <= warningThresholdMinutes` (configurable), display time in red
+- **Time format**: Display time in mm:ss format (minutes and seconds) for countdown
+
+### Countdown and Audio Feedback
+
+- **Countdown display**: In the last 60 seconds of daily limit, show countdown overlay on video (both full-screen and windowed mode)
+- **Countdown appearance**: Large font, gray with opacity, positioned at top of video to avoid disturbing viewing experience
+- **Countdown behavior**: Pauses when video is paused, resumes when video resumes
+- **Audio warning**: In the last 10 seconds, play system beep (one per second)
+- **Audio configuration**: 
+  - Use system beep by default
+  - Optional custom beep sound file (falls back to system beep if empty/undefined)
+  - Configurable via `useSystemBeep` and `customBeepSound` settings
+
+### Time's Up Behavior
+
+- **Video interruption**: When time runs out, immediately stop video playback
+- **Full-screen handling**: If in full-screen mode, exit full-screen first
+- **Navigation**: Automatically navigate to dedicated "Time's Up" page (not homepage)
+- **No exceptions**: Same behavior for short videos - no gaming the system by watching infinite short videos
+
+### Time's Up Page
+
+- **Dedicated page**: Separate route/page for time's up state to maintain clean architecture
+- **Schedule display**: Show full weekly schedule with current day in bold and red
+- **Time's up message**: Configurable message explaining time limit reached
+- **Navigation**: Redirect to this page from any part of app when time is exhausted
+- **Future feature**: Snooze option for parents (requires password, specify extra minutes) - not in MVP
+
+### Configuration
+
+timeLimits.json (example)
+{
+  "monday": 30,
+  "tuesday": 30,
+  "wednesday": 30,
+  "thursday": 30,
+  "friday": 30,
+  "saturday": 60,
+  "sunday": 60
+}
+
 timeUsed.json (example)
 {
   "2025-06-02": 24,
   "2025-06-01": 33
+}
+
+Additional time tracking configuration:
+{
+  "timeUpMessage": "Time's up for today! Here's your schedule:",
+  "countdownWarningSeconds": 60,
+  "audioWarningSeconds": 10,
+  "warningThresholdMinutes": 3,
+  "useSystemBeep": true,
+  "customBeepSound": ""
 }
 
 ---
