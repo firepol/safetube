@@ -1,6 +1,7 @@
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { ipcMain } from 'electron';
+import { logVerbose } from '../shared/logging';
 
 const execAsync = promisify(exec);
 
@@ -24,7 +25,7 @@ interface AudioTrack {
 export function setupYouTubeHandlers() {
   // Check if handler is already registered
   if (ipcMain.listenerCount('get-video-streams') > 0) {
-    console.log('YouTube handlers already registered, skipping...');
+    logVerbose('YouTube handlers already registered, skipping...');
     return;
   }
 

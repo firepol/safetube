@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as http from 'http';
 import * as url from 'url';
 import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking';
+import { logVerbose } from '../shared/logging';
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -89,16 +90,16 @@ ipcMain.handle('get-local-file', async (_, filePath: string) => {
 
 // Handle DLNA file access
 ipcMain.handle('get-dlna-file', async (_, server: string, port: number, path: string) => {
-  console.log('Getting DLNA file:', { server, port, path });
+  logVerbose('Getting DLNA file:', { server, port, path });
   const url = `http://${server}:${port}${path}`;
-  console.log('Returning DLNA URL:', url);
+  logVerbose('Returning DLNA URL:', url);
   return url;
 });
 
 // Handle video streams
 ipcMain.handle('get-video-streams', async (_, videoId: string) => {
   try {
-    console.log('Getting video streams for:', videoId);
+    logVerbose('Getting video streams for:', videoId);
     // For now, return a mock response - you can implement actual YouTube API calls here
     return {
       streams: [

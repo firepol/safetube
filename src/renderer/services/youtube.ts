@@ -359,7 +359,7 @@ export class YouTubeAPI {
       const candidates = audioTracks
         .filter(t => {
           const matches = t.language.toLowerCase() === lang.toLowerCase() && !YouTubeAPI.isM3U8(t.url);
-          // console.log(`Track ${t.language} matches ${lang}? ${matches}`);
+          logVerbose(`Track ${t.language} matches ${lang}? ${matches}`);
           return matches;
         })
         .sort((a, b) => {
@@ -370,11 +370,11 @@ export class YouTubeAPI {
           return (b.bitrate || 0) - (a.bitrate || 0);
         });
       
-      // console.log(`Candidates for language ${lang}:`, candidates.map(t => ({
-      //   language: t.language,
-      //   mimeType: t.mimeType,
-      //   bitrate: t.bitrate
-      // })));
+      logVerbose(`Candidates for language ${lang}:`, candidates.map(t => ({
+        language: t.language,
+        mimeType: t.mimeType,
+        bitrate: t.bitrate
+      })));
       
       if (candidates.length > 0) {
         const selected = candidates[0];
