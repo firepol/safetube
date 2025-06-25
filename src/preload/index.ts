@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld(
     getVideoStreams: (videoId: string) => ipcRenderer.invoke('get-video-streams', videoId),
     recordVideoWatching: (videoId: string, position: number, timeWatched: number) =>
       ipcRenderer.invoke('time-tracking:record-video-watching', videoId, position, timeWatched),
-    getTimeTrackingState: () => ipcRenderer.invoke('time-tracking:get-time-tracking-state')
+    getTimeTrackingState: () => ipcRenderer.invoke('time-tracking:get-time-tracking-state'),
+    getTimeLimits: () => ipcRenderer.invoke('time-tracking:get-time-limits')
   }
 ); 
