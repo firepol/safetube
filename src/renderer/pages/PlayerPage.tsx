@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import videos from '../data/videos.json';
 import { YouTubeAPI, VideoStream, AudioTrack } from '../services/youtube';
 import { Video } from '../types';
+import { logVerbose } from '@/shared/logging';
 
 export const PlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -44,15 +45,15 @@ export const PlayerPage: React.FC = () => {
         try {
           // Handle separate video and audio files
           if (video.video && video.audio) {
-            console.log('Loading split local files:', { video: video.video, audio: video.audio });
+            logVerbose('Loading split local files:', { video: video.video, audio: video.audio });
             
             // Get video file URL
             const videoPath = await window.electron.getLocalFile(video.video);
-            console.log('Received video file path:', videoPath);
+            logVerbose('Received video file path:', videoPath);
             
             // Get audio file URL
             const audioPath = await window.electron.getLocalFile(video.audio);
-            console.log('Received audio file path:', audioPath);
+            logVerbose('Received audio file path:', audioPath);
 
             if (videoRef.current) {
               // Create a hidden audio element
@@ -101,23 +102,23 @@ export const PlayerPage: React.FC = () => {
               });
 
               videoRef.current.addEventListener('loadedmetadata', () => {
-                console.log('Video metadata loaded');
+                logVerbose('Video metadata loaded');
               });
 
               audioElement.addEventListener('loadedmetadata', () => {
-                console.log('Audio metadata loaded');
+                logVerbose('Audio metadata loaded');
               });
 
               videoRef.current.addEventListener('loadeddata', () => {
-                console.log('Video data loaded');
+                logVerbose('Video data loaded');
               });
 
               audioElement.addEventListener('loadeddata', () => {
-                console.log('Audio data loaded');
+                logVerbose('Audio data loaded');
               });
 
               videoRef.current.addEventListener('canplay', () => {
-                console.log('Video can play');
+                logVerbose('Video can play');
                 setIsLoading(false);
               });
 
@@ -128,9 +129,9 @@ export const PlayerPage: React.FC = () => {
             }
           } else if (video.url) {
             // Handle single file
-            console.log('Loading local file:', video.url);
+            logVerbose('Loading local file:', video.url);
             const path = await window.electron.getLocalFile(video.url);
-            console.log('Received local file path:', path);
+            logVerbose('Received local file path:', path);
             setLocalFilePath(path);
             
             if (videoRef.current) {
@@ -145,13 +146,13 @@ export const PlayerPage: React.FC = () => {
                 }
               });
               videoRef.current.addEventListener('loadedmetadata', () => {
-                console.log('Video metadata loaded');
+                logVerbose('Video metadata loaded');
               });
               videoRef.current.addEventListener('loadeddata', () => {
-                console.log('Video data loaded');
+                logVerbose('Video data loaded');
               });
               videoRef.current.addEventListener('canplay', () => {
-                console.log('Video can play');
+                logVerbose('Video can play');
                 setIsLoading(false);
               });
             }
@@ -176,9 +177,9 @@ export const PlayerPage: React.FC = () => {
           const server = url.hostname;
           const port = parseInt(url.port);
           const path = url.pathname;
-          console.log('Loading DLNA video:', { server, port, path });
+          logVerbose('Loading DLNA video:', { server, port, path });
           const dlnaUrl = await window.electron.getDlnaFile(server, port, path);
-          console.log('Received DLNA URL:', dlnaUrl);
+          logVerbose('Received DLNA URL:', dlnaUrl);
           setDlnaUrl(dlnaUrl);
           if (videoRef.current) {
             videoRef.current.src = dlnaUrl;
@@ -232,7 +233,7 @@ export const PlayerPage: React.FC = () => {
           };
 
           if (video.useJsonStreamUrls && video.streamUrl) {
-            console.log('Using pre-defined stream URL from JSON:', video.streamUrl);
+            logVerbose('Using pre-defined stream URL from JSON:', video.streamUrl);
             
             videoStream = {
               url: video.streamUrl,
@@ -247,16 +248,16 @@ export const PlayerPage: React.FC = () => {
                 language: 'en',
                 mimeType: video.audioStreamUrl.includes('webm') ? 'audio/webm' : 'audio/mp4'
               };
-              console.log('Using pre-defined audio stream:', video.audioStreamUrl);
+              logVerbose('Using pre-defined audio stream:', video.audioStreamUrl);
             } else {
-              console.log('No audio stream provided - video only mode');
+              logVerbose('No audio stream provided - video only mode');
             }
           } else {
-            console.log('Fetching available streams for video:', video.id);
+            logVerbose('Fetching available streams for video:', video.id);
             const { videoStreams, audioTracks } = await window.electron.getVideoStreams(video.id);
             
             // Log available audio tracks
-            console.log('Available audio tracks:', audioTracks.map(t => ({
+            logVerbose('Available audio tracks:', audioTracks.map(t => ({
               language: t.language,
               mimeType: t.mimeType,
               bitrate: t.bitrate,
@@ -265,7 +266,7 @@ export const PlayerPage: React.FC = () => {
             
             // Use the proper stream selection functions
             const highestQuality = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks, video.preferredLanguages);
-            console.log('Highest quality stream result:', {
+            logVerbose('Highest quality stream result:', {
               ...highestQuality,
               videoUrl: highestQuality.videoUrl.substring(0, 50) + '...',
               audioUrl: highestQuality.audioUrl ? highestQuality.audioUrl.substring(0, 50) + '...' : undefined
@@ -283,15 +284,15 @@ export const PlayerPage: React.FC = () => {
                 language: highestQuality.audioLanguage || 'en',
                 mimeType: highestQuality.audioUrl.includes('webm') ? 'audio/webm' : 'audio/m4a'
               };
-              console.log('Selected audio track:', {
+              logVerbose('Selected audio track:', {
                 ...audioTrack,
                 url: audioTrack.url.substring(0, 50) + '...'
               });
             } else {
-              console.log('No audio track selected - video only mode. Audio tracks were available:', audioTracks.length > 0);
+              logVerbose('No audio track selected - video only mode. Audio tracks were available:', audioTracks.length > 0);
             }
 
-            console.log('Selected video stream:', videoStream);
+            logVerbose('Selected video stream:', videoStream);
           }
 
           if (!videoStream?.url) {
@@ -300,7 +301,7 @@ export const PlayerPage: React.FC = () => {
 
           // For video-only entries, we can use direct playback
           if (!audioTrack) {
-            console.log('Using direct playback for video-only stream');
+            logVerbose('Using direct playback for video-only stream');
             if (videoRef.current) {
               videoRef.current.src = videoStream.url;
               setIsLoading(false);
@@ -319,11 +320,11 @@ export const PlayerPage: React.FC = () => {
           // Set up MediaSource event handlers
           if (mediaSource) {
             mediaSource.addEventListener('sourceended', () => {
-              console.log('MediaSource ended');
+              logVerbose('MediaSource ended');
             });
 
             mediaSource.addEventListener('sourceclose', () => {
-              console.log('MediaSource closed');
+              logVerbose('MediaSource closed');
             });
           }
 
@@ -341,15 +342,15 @@ export const PlayerPage: React.FC = () => {
             });
 
             videoElement.addEventListener('loadedmetadata', () => {
-              console.log('Video metadata loaded');
+              logVerbose('Video metadata loaded');
             });
 
             videoElement.addEventListener('loadeddata', () => {
-              console.log('Video data loaded');
+              logVerbose('Video data loaded');
             });
 
             videoElement.addEventListener('canplay', () => {
-              console.log('Video can play');
+              logVerbose('Video can play');
             });
           }
 
@@ -389,7 +390,7 @@ export const PlayerPage: React.FC = () => {
               ? 'audio/webm; codecs="opus"'
               : 'audio/mp4; codecs="mp4a.40.2"';
 
-            console.log('Using MIME types:', { videoMimeType, audioMimeType });
+            logVerbose('Using MIME types:', { videoMimeType, audioMimeType });
 
             // Create source buffers for video and audio
             if (mediaSource.readyState !== 'open') {
@@ -398,19 +399,19 @@ export const PlayerPage: React.FC = () => {
 
             try {
               videoBuffer = mediaSource.addSourceBuffer(videoMimeType);
-              console.log('Created video source buffer');
+              logVerbose('Created video source buffer');
               
               audioBuffer = mediaSource.addSourceBuffer(audioMimeType);
-              console.log('Created audio source buffer');
+              logVerbose('Created audio source buffer');
             } catch (e) {
               console.error('Error creating source buffers:', e);
               // If we fail to create the source buffers, try with a more generic MIME type
               if (videoStream.mimeType.includes('webm')) {
                 videoBuffer = mediaSource.addSourceBuffer('video/webm');
-                console.log('Created video source buffer with generic MIME type');
+                logVerbose('Created video source buffer with generic MIME type');
                 
                 audioBuffer = mediaSource.addSourceBuffer('audio/webm');
-                console.log('Created audio source buffer with generic MIME type');
+                logVerbose('Created audio source buffer with generic MIME type');
               } else {
                 throw e;
               }
@@ -433,7 +434,7 @@ export const PlayerPage: React.FC = () => {
               while (isMediaSourceActive && mediaSource) {
                 const { done, value } = await reader.read();
                 if (done) {
-                  console.log(`${type} stream complete`);
+                  logVerbose(`${type} stream complete`);
                   break;
                 }
 
@@ -460,7 +461,7 @@ export const PlayerPage: React.FC = () => {
             };
 
             // Start streaming both video and audio
-            console.log('Starting video and audio streams...');
+            logVerbose('Starting video and audio streams...');
             await Promise.all([
               streamData(videoStream.url, videoBuffer, 'video'),
               streamData(audioTrack.url, audioBuffer, 'audio')
@@ -474,7 +475,7 @@ export const PlayerPage: React.FC = () => {
               }
 
               if (isMediaSourceActive && mediaSource && mediaSource.readyState === 'open') {
-                console.log('All data streamed, ending stream');
+                logVerbose('All data streamed, ending stream');
                 mediaSource.endOfStream();
               }
             }
@@ -516,7 +517,7 @@ export const PlayerPage: React.FC = () => {
 
   // Time tracking functions
   const startTimeTracking = useCallback(() => {
-    console.log('[TimeTracking] startTimeTracking called');
+    logVerbose('[TimeTracking] startTimeTracking called');
     if (!timeTrackingRef.current.isTracking) {
       timeTrackingRef.current = {
         startTime: Date.now(),
@@ -524,14 +525,14 @@ export const PlayerPage: React.FC = () => {
         isTracking: true,
         lastUpdateTime: Date.now()
       };
-      console.log('[TimeTracking] Time tracking started:', timeTrackingRef.current);
+      logVerbose('[TimeTracking] Time tracking started:', timeTrackingRef.current);
     } else {
-      console.log('[TimeTracking] Time tracking already active');
+      logVerbose('[TimeTracking] Time tracking already active');
     }
   }, []);
 
   const updateTimeTracking = useCallback(async () => {
-    console.log('[TimeTracking] updateTimeTracking called, isTracking:', timeTrackingRef.current.isTracking);
+    logVerbose('[TimeTracking] updateTimeTracking called, isTracking:', timeTrackingRef.current.isTracking);
     if (timeTrackingRef.current.isTracking && video) {
       const currentTime = Date.now();
       const timeWatched = (currentTime - timeTrackingRef.current.lastUpdateTime) / 1000; // Convert to seconds
@@ -543,7 +544,7 @@ export const PlayerPage: React.FC = () => {
 
         // Record the time watched
         if (videoRef.current) {
-          console.log('[TimeTracking] updateTimeTracking:', {
+          logVerbose('[TimeTracking] updateTimeTracking:', {
             videoId: video.id,
             currentTime: videoRef.current.currentTime,
             timeWatched
@@ -554,27 +555,27 @@ export const PlayerPage: React.FC = () => {
             timeWatched
           );
         } else {
-          console.log('[TimeTracking] videoRef.current is null');
+          logVerbose('[TimeTracking] videoRef.current is null');
         }
       }
     } else {
-      console.log('[TimeTracking] Not tracking - isTracking is false or no video');
+      logVerbose('[TimeTracking] Not tracking - isTracking is false or no video');
     }
   }, [video]);
 
   const stopTimeTracking = useCallback(async () => {
-    console.log('[TimeTracking] stopTimeTracking called, isTracking:', timeTrackingRef.current.isTracking);
+    logVerbose('[TimeTracking] stopTimeTracking called, isTracking:', timeTrackingRef.current.isTracking);
     if (timeTrackingRef.current.isTracking) {
       await updateTimeTracking();
       timeTrackingRef.current.isTracking = false;
-      console.log('[TimeTracking] Time tracking stopped');
+      logVerbose('[TimeTracking] Time tracking stopped');
     }
   }, [updateTimeTracking]);
 
   // Check time limits on mount and when video changes
   useEffect(() => {
-    console.log('[TimeTracking] PlayerPage useEffect triggered for video:', video?.id);
-    console.log('[TimeTracking] window.electron available functions:', Object.keys(window.electron || {}));
+    logVerbose('[TimeTracking] PlayerPage useEffect triggered for video:', video?.id);
+    logVerbose('[TimeTracking] window.electron available functions:', Object.keys(window.electron || {}));
     
     let isMounted = true;
     
@@ -591,7 +592,7 @@ export const PlayerPage: React.FC = () => {
           
           // If limit is reached, don't allow playback
           if (state.isLimitReached) {
-            console.log('[TimeTracking] Daily time limit reached');
+            logVerbose('[TimeTracking] Daily time limit reached');
             if (videoRef.current) {
               videoRef.current.pause();
             }
@@ -670,31 +671,31 @@ export const PlayerPage: React.FC = () => {
             autoPlay
             playsInline
             onPlay={() => {
-              console.log('[TimeTracking] Video onPlay event fired');
+              logVerbose('[TimeTracking] Video onPlay event fired');
               startTimeTracking();
             }}
             onPause={() => {
-              console.log('[TimeTracking] Video onPause event fired');
+              logVerbose('[TimeTracking] Video onPause event fired');
               stopTimeTracking();
             }}
             onEnded={() => {
-              console.log('[TimeTracking] Video onEnded event fired');
+              logVerbose('[TimeTracking] Video onEnded event fired');
               stopTimeTracking();
             }}
             onTimeUpdate={() => {
               // Throttle time update events to prevent excessive calls
               if (!timeTrackingRef.current.lastUpdateTime || 
                   Date.now() - timeTrackingRef.current.lastUpdateTime > 1000) {
-                console.log('[TimeTracking] Video onTimeUpdate event fired');
+                logVerbose('[TimeTracking] Video onTimeUpdate event fired');
                 updateTimeTracking();
               }
             }}
             onSeeking={() => {
-              console.log('[TimeTracking] Video onSeeking event fired');
+              logVerbose('[TimeTracking] Video onSeeking event fired');
               updateTimeTracking();
             }}
             onSeeked={() => {
-              console.log('[TimeTracking] Video onSeeked event fired');
+              logVerbose('[TimeTracking] Video onSeeked event fired');
               updateTimeTracking();
             }}
             onError={(e) => {
@@ -703,7 +704,7 @@ export const PlayerPage: React.FC = () => {
               setIsLoading(false);
             }}
             onLoadedData={() => {
-              console.log('Video loaded successfully');
+              logVerbose('Video loaded successfully');
               setIsLoading(false);
             }}
           />

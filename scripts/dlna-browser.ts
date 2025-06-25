@@ -9,13 +9,15 @@
 //
 // For a more complete DLNA/UPnP browse, use the Bash script in scripts/explore-dlna.sh.
 
+import { logVerbose } from "../src/shared/logging";
+
 const http = require('http');
 
 const server = '192.168.1.100'; // Replace with your DLNA server IP
 const port = 8200;
 
 async function browseDlnaServer() {
-  console.log('Browsing DLNA server...');
+  logVerbose('Browsing DLNA server...');
 
   // Try to browse the series directory
   const options = {
@@ -26,7 +28,7 @@ async function browseDlnaServer() {
   };
 
   const req = http.request(options, (res) => {
-    console.log('Server response:', res.statusCode);
+    logVerbose('Server response:', res.statusCode);
     let data = '';
 
     res.on('data', (chunk) => {
@@ -34,7 +36,7 @@ async function browseDlnaServer() {
     });
 
     res.on('end', () => {
-      console.log('Server content:', data);
+      logVerbose('Server content:', data);
       
       // Try to access the videos directly
       const videoPaths = [
@@ -51,9 +53,9 @@ async function browseDlnaServer() {
         };
 
         const videoReq = http.request(videoOptions, (videoRes) => {
-          console.log(`Video ${path} response:`, videoRes.statusCode);
+          logVerbose(`Video ${path} response:`, videoRes.statusCode);
           if (videoRes.statusCode === 200) {
-            console.log(`Video ${path} is accessible at: http://${server}:${port}${path}`);
+            logVerbose(`Video ${path} is accessible at: http://${server}:${port}${path}`);
           }
         });
 

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { CachedYouTubeAPI as YouTubeAPI } from './__tests__/cached-youtube';
 import { testCache } from './__tests__/test-cache';
+import { logVerbose } from '@/shared/logging';
 
 // Test URLs
 const TEST_VIDEO_URL = 'https://www.youtube.com/watch?v=OGDuutRhN9M'; // Young Star Venturino video
@@ -34,12 +35,12 @@ describe('YouTubeAPI Integration', () => {
   };
 
   beforeAll(() => {
-    console.log('Starting YouTube API integration tests with caching enabled');
+    logVerbose('Starting YouTube API integration tests with caching enabled');
   });
 
   afterAll(() => {
     const stats = testCache.getCacheStats();
-    console.log(`Test cache stats: ${stats.streams} streams, ${stats.details} details cached`);
+    logVerbose(`Test cache stats: ${stats.streams} streams, ${stats.details} details cached`);
     testCache.debugCache();
   });
 
@@ -285,7 +286,7 @@ describe('YouTubeAPI Problematic Video Tests', () => {
     const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(problematicVideoId);
     
     // Log available streams for debugging
-    console.log('Available video streams:', videoStreams.map(s => ({
+    logVerbose('Available video streams:', videoStreams.map(s => ({
       quality: s.quality,
       mimeType: s.mimeType,
       height: s.height,
@@ -293,7 +294,7 @@ describe('YouTubeAPI Problematic Video Tests', () => {
       url: s.url.substring(0, 50) + '...'
     })));
     
-    console.log('Available audio tracks:', audioTracks.map(t => ({
+    logVerbose('Available audio tracks:', audioTracks.map(t => ({
       language: t.language,
       mimeType: t.mimeType,
       bitrate: t.bitrate,
@@ -322,7 +323,7 @@ describe('YouTubeAPI Problematic Video Tests', () => {
     // Test format compatibility
     const videoFormat = bestVideoStream?.mimeType.includes('webm') ? 'webm' : 'mp4';
     const audioFormat = bestAudioTrack?.mimeType.includes('webm') ? 'webm' : 'm4a';
-    console.log('Selected formats:', { videoFormat, audioFormat });
+    logVerbose('Selected formats:', { videoFormat, audioFormat });
     
     // Verify that we have a valid combination of formats
     expect(videoFormat).toBeTruthy();

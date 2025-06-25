@@ -1,5 +1,6 @@
 import { TimeLimits, UsageLog, WatchedVideo, TimeTrackingState } from './types';
 import { readTimeLimits, readUsageLog, writeUsageLog, readWatchedVideos, writeWatchedVideos } from './fileUtils';
+import { logVerbose } from './logging';
 
 /**
  * Gets the current date in ISO format (YYYY-MM-DD)
@@ -125,7 +126,7 @@ export async function recordVideoWatching(
   position: number, 
   timeWatched: number
 ): Promise<void> {
-  console.log('[TimeTracking] recordVideoWatching:', { videoId, position, timeWatched });
+  logVerbose('[TimeTracking] recordVideoWatching:', { videoId, position, timeWatched });
   // Add to daily usage in seconds (for precision)
   await addTimeUsedToday(timeWatched);
   

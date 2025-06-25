@@ -7,6 +7,7 @@ const path = require('path');
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const { getBestStreamUrl, getHighestQualityStream, getBestAudioTrackByLanguage } = require('./youtube-streams');
+const { logVerbose } = require('../src/shared/logging');
 
 const execAsync = promisify(exec);
 
@@ -68,15 +69,15 @@ async function main() {
 
     // Get best stream URL
     const bestStreamUrl = getBestStreamUrl(videoStreams, audioTracks);
-    console.log('\nBest Stream URL:', bestStreamUrl);
+    logVerbose('\nBest Stream URL:', bestStreamUrl);
 
     // Get highest quality stream details
     const highestQuality = getHighestQualityStream(videoStreams, audioTracks, preferredLanguages);
-    console.log('\nHighest Quality Stream:', highestQuality);
+    logVerbose('\nHighest Quality Stream:', highestQuality);
 
     // Get best audio track
     const bestAudio = getBestAudioTrackByLanguage(audioTracks, preferredLanguages);
-    console.log('\nBest Audio Track:', bestAudio);
+    logVerbose('\nBest Audio Track:', bestAudio);
 
     // Debug mode: Save all data
     if (argv.debug) {
@@ -97,7 +98,7 @@ async function main() {
       // Save debug data
       const debugFile = path.join('logs', `${argv.id}.json`);
       await fs.writeFile(debugFile, JSON.stringify(debugData, null, 2));
-      console.log(`\nDebug data saved to: ${debugFile}`);
+      logVerbose(`\nDebug data saved to: ${debugFile}`);
     }
 
   } catch (error) {
