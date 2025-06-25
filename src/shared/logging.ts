@@ -7,18 +7,18 @@
  */
 function shouldLogVerbose(): boolean {
   // Check if we're in a test environment
-  const isTestEnvironment = 
-    process.env.NODE_ENV === 'test' || 
-    typeof jest !== 'undefined' || 
+  const isTestEnvironment =
+    typeof process !== 'undefined' && process.env.NODE_ENV === 'test' ||
+    typeof jest !== 'undefined' ||
     typeof (globalThis as any).vitest !== 'undefined' ||
-    process.env.VITEST !== undefined;
+    (typeof process !== 'undefined' && process.env.VITEST !== undefined);
 
   if (isTestEnvironment) {
-    return process.env.TEST_LOG_VERBOSE === 'true';
+    return typeof process !== 'undefined' && process.env.TEST_LOG_VERBOSE === 'true';
   }
 
   // In Electron app environment
-  return process.env.ELECTRON_LOG_VERBOSE === 'true';
+  return typeof process !== 'undefined' && process.env.ELECTRON_LOG_VERBOSE === 'true';
 }
 
 /**
