@@ -1,0 +1,14 @@
+[
+  {
+    "videoId": "example-video-1",
+    "position": 300,
+    "lastWatched": "2024-01-15T10:00:00.000Z",
+    "timeWatched": 600
+  },
+  {
+    "videoId": "example-video-2",
+    "position": 600,
+    "lastWatched": "2024-01-15T09:00:00.000Z",
+    "timeWatched": 900
+  }
+]
