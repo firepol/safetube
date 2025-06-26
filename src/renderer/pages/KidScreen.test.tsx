@@ -98,8 +98,10 @@ describe('KidScreen', () => {
     });
   });
 
-  it('shows loading state initially', () => {
+  it('shows loading state initially', async () => {
     renderWithProvider(<KidScreen />);
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Loading...')).toBeInTheDocument();
+    });
   });
 }); 
