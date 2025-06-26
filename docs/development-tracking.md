@@ -164,7 +164,7 @@ Each feature PRD must include:
 - **Current Sprint**: Sprint 2
 - **Blockers**: None
 - **Dependencies**: Project Setup, Play Video
-- **Progress**: 90%
+- **Progress**: 95%
 - **Last Updated**: 2025-06-26
 - **Completed Items**:
   - JSON configuration files for time limits, usage logs, watched videos, and video sources
@@ -188,13 +188,18 @@ Each feature PRD must include:
   - Time display format updated to X/Y [Z minutes left] format
   - Warning threshold display (red when time is low)
   - Time's Up page design improvements with proper styling and current day highlighting
+  - **Time's Up behavior implementation in video player** - when time limit is reached during playback, video is paused, fullscreen is exited if active, and user is navigated to Time's Up page
+  - **Continuous time limit monitoring** during video playback with 3-second interval checks
+  - **Comprehensive test coverage** for Time's Up behavior including fullscreen exit and navigation
 - **Remaining Items**:
   - Implement countdown overlay in last 60 seconds of daily limit
   - Add audio feedback (system beep) in last 10 seconds
   - Add full-screen and windowed mode countdown support
-  - Handle full-screen exit when time runs out
   - Add configuration for countdown, audio, and warning settings
 - **Recent Changes**:
+  - 2025-06-26: **Implemented Time's Up behavior in video player - automatic video pause, fullscreen exit, and navigation to Time's Up page when limit is reached**
+  - 2025-06-26: **Added continuous time limit monitoring during video playback with 3-second interval checks**
+  - 2025-06-26: **Created comprehensive test for Time's Up behavior including fullscreen handling and navigation verification**
   - 2025-06-26: **Improved Time's Up page design - removed test yellow background, current day properly highlighted in red**
   - 2025-06-25: **Created dedicated Time's Up page with weekly schedule display**
   - 2025-06-25: **Added redirect logic from homepage to Time's Up page when time limit is reached**
@@ -217,6 +222,8 @@ Each feature PRD must include:
   - Daily limits are properly enforced with automatic video pausing
   - Fast-forward and rewind time is tracked based on actual elapsed time
   - Time's Up page is now properly styled with current day highlighting
+  - **Time's Up behavior is fully implemented - video stops, fullscreen exits, and navigation occurs when limit is reached**
+  - **Continuous monitoring ensures time limits are enforced even during long video sessions**
   - Core functionality complete, needs countdown overlay and audio feedback
 
 ### 4. Video History
