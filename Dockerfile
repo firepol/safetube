@@ -10,8 +10,11 @@ RUN apk add --no-cache \
     wget \
     ffmpeg
 
-# Install yt-dlp
-RUN pip3 install --no-cache-dir yt-dlp
+# Create virtual environment and install yt-dlp
+RUN python3 -m venv /opt/yt-dlp-env && \
+    . /opt/yt-dlp-env/bin/activate && \
+    pip install --no-cache-dir yt-dlp && \
+    ln -s /opt/yt-dlp-env/bin/yt-dlp /usr/local/bin/yt-dlp
 
 # Install Yarn
 RUN npm install -g yarn
