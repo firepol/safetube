@@ -235,12 +235,43 @@ Each feature PRD must include:
 - **Progress**: 0%
 
 ### 5. Configuration via JSON Files
-- **Status**: Not Started
+- **Status**: In Progress
 - **PRD**: [Configuration PRD](prds/05-configuration.md)
-- **Current Sprint**: N/A
-- **Blockers**: Project Setup
+- **Current Sprint**: Sprint 2
+- **Blockers**: None
 - **Dependencies**: Project Setup
-- **Progress**: 0%
+- **Progress**: 85%
+- **Last Updated**: 2025-06-26
+- **Completed Items**:
+  - **Time Limits Configuration** (`timeLimits.json`) - Daily viewing limits per weekday with TypeScript interfaces
+  - **Usage Log Configuration** (`usageLog.json`) - Daily time tracking with ISO date strings and precision timing
+  - **Watch History Configuration** (`watched.json`) - Video progress tracking with resume functionality
+  - **Video Sources Configuration** (`videoSources.json`) - YouTube channels, playlists, DLNA servers, local folders
+  - **Configuration Management System** - Robust file reading/writing with backup mechanisms
+  - **TypeScript Type Safety** - All config files use proper TypeScript interfaces
+  - **Example Configuration Files** - `config.example/` directory with templates for new installations
+  - **Configuration Validation** - Functions to ensure data integrity and proper format
+  - **Error Handling** - Graceful handling of missing or corrupted configuration files
+  - **Backup System** - Automatic backup creation before file modifications
+  - **Persistence** - All data survives app crashes and restarts
+  - **Documentation** - Comprehensive documentation in specifications.md
+- **Remaining Items**:
+  - Countdown settings configuration (warning seconds, audio feedback)
+  - Warning thresholds configuration for UI warnings
+  - Custom Time's Up messages configuration
+  - Admin UI for configuration management (future feature)
+- **Recent Changes**:
+  - 2025-06-26: **Updated specifications.md with comprehensive JSON configuration documentation**
+  - 2025-06-26: **Recognized that configuration system is largely complete with working files**
+  - 2025-06-23: Implemented complete configuration file system with TypeScript types
+  - 2025-06-23: Added backup and validation mechanisms for configuration files
+  - 2025-06-23: Created example configuration files for easy setup
+- **Notes**:
+  - All core configuration files are implemented and working
+  - Configuration system provides type safety and error handling
+  - Files are automatically backed up before modifications
+  - Example files make new installations straightforward
+  - System is ready for future enhancements like countdown settings
 
 ### 6. Placeholder Thumbnails
 - **Status**: Not Started

@@ -186,6 +186,93 @@ Additional time tracking configuration:
 
 ---
 
+## JSON Configuration Files
+
+The application uses a simple JSON-based configuration system for all settings and data persistence. All configuration files are stored in the `config/` directory with example files provided in `config.example/`.
+
+### ✅ Implemented Configuration Files
+
+#### Time Limits (`timeLimits.json`)
+Defines daily viewing time limits in minutes for each day of the week:
+
+```json
+{
+  "Monday": 30,
+  "Tuesday": 30,
+  "Wednesday": 30,
+  "Thursday": 30,
+  "Friday": 30,
+  "Saturday": 90,
+  "Sunday": 90
+}
+```
+
+#### Usage Log (`usageLog.json`)
+Tracks daily video watching time in seconds with ISO date strings as keys:
+
+```json
+{
+  "2025-06-26": 1801.8220000000001,
+  "2025-06-25": 123.84300000000003,
+  "2024-01-15": 1800
+}
+```
+
+#### Watch History (`watched.json`)
+Records video watching progress and history for resume functionality:
+
+```json
+[
+  {
+    "videoId": "f2_3sQu7lA4",
+    "position": 81.739554,
+    "lastWatched": "2025-06-26T22:56:40.209Z",
+    "timeWatched": 346.31499999999994
+  }
+]
+```
+
+#### Video Sources (`videoSources.json`)
+Defines available video sources (YouTube channels, playlists, DLNA servers, local folders):
+
+```json
+[
+  {
+    "id": "yt1",
+    "type": "youtube_channel",
+    "url": "https://www.youtube.com/channel/UCxxxxx",
+    "title": "Science For Kids",
+    "sortOrder": "newestFirst"
+  },
+  {
+    "id": "dlna1",
+    "type": "dlna",
+    "url": "http://192.168.1.100:8200",
+    "allowedFolder": "/Kids/Movies",
+    "title": "Kids Movies",
+    "sortOrder": "alphabetical"
+  }
+]
+```
+
+### Configuration Management
+
+- **File Structure**: All config files use TypeScript interfaces for type safety
+- **Error Handling**: Robust file reading/writing with backup mechanisms
+- **Example Files**: `config.example/` directory provides templates for new installations
+- **Validation**: Configuration validation functions ensure data integrity
+- **Backup**: Automatic backup creation before file modifications
+- **Persistence**: All data survives app crashes and restarts
+
+### Future Configuration Enhancements
+
+- **Countdown Settings**: Configuration for countdown warning seconds and audio feedback
+- **Warning Thresholds**: Configurable time remaining thresholds for UI warnings
+- **Custom Messages**: Configurable Time's Up messages and notifications
+- **Admin UI**: Future web-based configuration interface (not in MVP)
+
+---
+
 ## Watch History
 
 - Local history saved in `watchHistory.json`
