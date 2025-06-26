@@ -3,12 +3,16 @@ import { CachedYouTubeAPI as YouTubeAPI } from './__tests__/cached-youtube';
 import { testCache } from './__tests__/test-cache';
 import { logVerbose } from '@/shared/logging';
 
+// Skip integration tests in CI environment
+// These tests require real YouTube API access and yt-dlp, which are unreliable in CI
+const testRunner = process.env.CI ? describe.skip : describe;
+
 // Test URLs
 const TEST_VIDEO_URL = 'https://www.youtube.com/watch?v=OGDuutRhN9M'; // Young Star Venturino video
 const TEST_PLAYLIST_URL = 'https://www.youtube.com/watch?v=Bf5LrHNX7kc&list=PLFTjYT0jsEKyiD-O4v7jPgjbcM43JCPbW'; // Serie A playlist
 const TEST_CHANNEL_URL = 'https://www.youtube.com/@SerieA'; // Serie A channel
 
-describe('YouTubeAPI Integration', () => {
+testRunner('YouTubeAPI Integration', () => {
   // Helper to extract IDs from URLs
   const extractVideoId = (url: string) => {
     const match = url.match(/[?&]v=([^&]+)/);
@@ -230,7 +234,7 @@ describe('YouTubeAPI Integration', () => {
   }, 20000);
 });
 
-describe('YouTubeAPI Audio Language Selection', () => {
+testRunner('YouTubeAPI Audio Language Selection', () => {
   const videoId = 'f2_3sQu7lA4';
   let audioTracks: any[] = [];
   let videoStreams: any[] = [];
@@ -279,7 +283,7 @@ describe('YouTubeAPI Audio Language Selection', () => {
   });
 });
 
-describe('YouTubeAPI Problematic Video Tests', () => {
+testRunner('YouTubeAPI Problematic Video Tests', () => {
   const problematicVideoId = 'dQw4w9WgXcQ';
 
   it('should handle problematic video streams correctly', async () => {
