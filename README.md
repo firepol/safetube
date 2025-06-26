@@ -15,7 +15,7 @@ A safe video player application for kids built with Electron, React, and TypeScr
 
 ### Prerequisites
 
-- Node.js 18+ and Yarn
+- Node.js 20+ and Yarn
 - YouTube API key (optional, for YouTube features)
 
 ### Installation
@@ -59,12 +59,33 @@ Before running the application, update the configuration files with your setting
 # Start development server
 yarn dev
 
-# Run tests
+# Run tests (includes YouTube integration tests)
 yarn test
+
+# Run tests in CI mode (skips YouTube integration)
+CI=true yarn test
 
 # Build for production
 yarn build
 ```
+
+## CI/CD Pipeline
+
+SafeTube uses GitHub Actions for continuous integration with a reliable test strategy:
+
+- **Local Development**: Full test suite including YouTube API integration
+- **CI Environment**: Unit tests + local/DLNA tests only (YouTube tests skipped)
+- **Docker Containerization**: Consistent test environment across platforms
+- **Test Video Infrastructure**: Sample videos and generation scripts for reliable testing
+
+### Test Strategy
+
+The project implements smart test skipping to prevent flaky CI builds:
+- YouTube integration tests run locally but are skipped in CI
+- Local video and DLNA tests run in both environments
+- Unit tests for all business logic run everywhere
+
+See [Git Workflow Documentation](docs/git-workflow.md) for detailed information.
 
 ## Security Notes
 

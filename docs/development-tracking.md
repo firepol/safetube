@@ -254,23 +254,33 @@ Each feature PRD must include:
 - **Completed Items**:
   - Created comprehensive PRD for Git workflow feature
   - Added DevOps/Git workflow section to specifications.md
-  - Created custom Dockerfile with Node.js and yt-dlp dependencies
-  - Set up GitHub Actions workflow configuration
+  - Created custom Dockerfile with Node.js 20 LTS and yt-dlp dependencies
+  - Set up GitHub Actions workflow configuration with Docker containerization
   - Added .dockerignore file for optimized builds
-  - Created test-videos directory with sample video files
+  - Created test-videos directory with sample video files and generation scripts
   - Added test video entries to videos.json for CI testing
+  - Implemented CI skip logic for YouTube integration tests to improve reliability
+  - Added CI environment variable to Dockerfile for proper test skipping
+  - Created .env.example file for environment configuration
+  - Fixed debug log file handling in CI environment
   - Created comprehensive documentation for workflow setup and maintenance
   - Updated development tracking with new feature status
 - **Remaining Items**: None
 - **Recent Changes**:
+  - 2025-06-26: **Added CI environment variable to Dockerfile and created .env.example file**
+  - 2025-06-26: **Implemented CI skip logic for YouTube integration tests to prevent flaky CI builds**
+  - 2025-06-26: **Fixed debug log file handling and test video infrastructure**
   - 2025-06-26: **Completed Git workflow implementation with Docker and GitHub Actions**
   - 2025-06-26: **Added sample video files for CI testing**
   - 2025-06-26: **Created comprehensive documentation for workflow maintenance**
 - **Notes**:
   - Workflow runs `yarn test` on each push using custom Docker image
-  - Docker image includes Node.js 18, yt-dlp, and all necessary dependencies
+  - Docker image includes Node.js 20 LTS, yt-dlp, and all necessary dependencies
+  - YouTube integration tests are skipped in CI to prevent flaky builds
+  - Local development still runs full integration tests with real YouTube API
   - Sample video files are included in source control for integration tests
-  - Tests may fail initially due to missing video files, but infrastructure is ready
+  - CI environment variable ensures proper test skipping behavior
+  - Environment configuration template provided for easy setup
   - Documentation provides troubleshooting and maintenance guidance
 
 ## Status Legend
