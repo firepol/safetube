@@ -1,5 +1,6 @@
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
+import './index.css'; // Import Tailwind CSS for tests
 
 // Mock window.electron
 const mockElectron = {
