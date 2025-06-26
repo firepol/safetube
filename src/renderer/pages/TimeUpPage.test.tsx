@@ -83,12 +83,13 @@ describe('TimeUpPage', () => {
   });
 
   it('highlights the current day in red and bold', async () => {
-    renderWithRouter(<TimeUpPage />);
-    
+    renderWithRouter(<TimeUpPage currentDate="2024-01-18" />); // Thursday
     await waitFor(() => {
-      const wednesdayElement = screen.getByText('Wednesday').closest('div');
-      expect(wednesdayElement).toHaveClass('bg-red-50', 'border-red-300');
-      expect(screen.getByText('Today')).toBeInTheDocument();
+      // Find the row for Thursday
+      const thursdayCell = screen.getByText('Thursday');
+      const thursdayRow = thursdayCell.closest('tr');
+      expect(thursdayRow).toHaveClass('bg-red-50', 'border-l-4', 'border-red-500');
+      expect(thursdayCell).toHaveClass('text-red-700', 'font-bold');
     });
   });
 

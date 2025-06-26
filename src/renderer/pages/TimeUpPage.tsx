@@ -12,35 +12,34 @@ const getDayOfWeek = (dateString: string): keyof TimeLimits => {
   return days[date.getUTCDay()] as keyof TimeLimits;
 };
 
-export const TimeUpPage: React.FC = () => {
+// Accept currentDate as a prop for testability
+export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) => {
   const [timeLimits, setTimeLimits] = useState<TimeLimits | null>(null);
-  const [currentDate, setCurrentDate] = useState<string>('');
+  const [date, setDate] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadSchedule = async () => {
       try {
         const limits = await window.electron.getTimeLimits();
-        const today = getCurrentDate();
         setTimeLimits(limits);
-        setCurrentDate(today);
+        setDate(currentDate || getCurrentDate());
       } catch (error) {
         console.error('Error loading schedule:', error);
       } finally {
         setIsLoading(false);
       }
     };
-
     loadSchedule();
-  }, []);
+  }, [currentDate]);
 
   const formatDayName = (day: string): string => {
     return day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
   };
 
   const isCurrentDay = (day: string): boolean => {
-    if (!currentDate) return false;
-    const dayOfWeek = getDayOfWeek(currentDate);
+    if (!date) return false;
+    const dayOfWeek = getDayOfWeek(date);
     return day.toLowerCase() === dayOfWeek.toLowerCase();
   };
 
@@ -80,7 +79,7 @@ export const TimeUpPage: React.FC = () => {
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-6 font-sans">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -94,45 +93,43 @@ export const TimeUpPage: React.FC = () => {
 
         {/* Weekly Schedule */}
         <div className="flex justify-center">
-          <div className="bg-white rounded-lg shadow-lg p-3 w-full max-w-xs">
-            <h2 className="text-base font-semibold mb-3 text-center">Weekly Schedule</h2>
-            <div className="space-y-1">
-              {days.map((day) => {
-                const limit = timeLimits[day as keyof TimeLimits] || 0;
-                const isToday = isCurrentDay(day);
-                
-                return (
-                  <div
-                    key={day}
-                    className={`flex justify-between items-center p-1.5 rounded border ${
-                      isToday
-                        ? 'bg-red-50 border-red-300'
-                        : 'bg-gray-50 border-gray-200'
-                    }`}
-                  >
-                    <span
-                      className={`font-medium text-xs ${
-                        isToday ? 'text-red-700 font-bold' : 'text-gray-700'
-                      }`}
+          <div className="bg-white rounded-lg shadow-lg p-6 w-80">
+            <h2 className="text-lg font-semibold mb-4 text-center">Weekly Schedule</h2>
+            <table className="w-full border border-gray-400 border-collapse">
+              <tbody>
+                {days.map((day, idx) => {
+                  const limit = timeLimits[day as keyof TimeLimits] || 0;
+                  const isToday = isCurrentDay(day);
+                  return (
+                    <tr
+                      key={day}
+                      className={
+                        isToday
+                          ? 'bg-red-50 border-l-4 border-red-500'
+                          : ''
+                      }
                     >
-                      {formatDayName(day)}
-                      {isToday && (
-                        <span className="ml-1 text-xs bg-red-100 text-red-800 px-1 py-0.5 rounded">
-                          Today
-                        </span>
-                      )}
-                    </span>
-                    <span
-                      className={`font-semibold text-xs ${
-                        isToday ? 'text-red-700' : 'text-gray-600'
-                      }`}
-                    >
-                      {formatTimeLimit(limit)}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+                      <td
+                        className={
+                          'border border-gray-300 px-6 py-3' +
+                          (isToday ? ' text-red-700 font-bold' : ' text-gray-700')
+                        }
+                      >
+                        {formatDayName(day)}
+                      </td>
+                      <td
+                        className={
+                          'border border-gray-300 px-6 py-3 text-right' +
+                          (isToday ? ' text-red-700 font-bold' : ' text-gray-600 font-semibold')
+                        }
+                      >
+                        {formatTimeLimit(limit)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
 
