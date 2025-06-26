@@ -29,6 +29,28 @@ A minimal, local-only Electron app with a React frontend that allows kids to bro
 
 ---
 
+## DevOps / Git Workflow
+
+### CI/CD Pipeline
+- **GitHub Actions** for automated testing on each push
+- **Custom Docker image** with Node.js and yt-dlp dependencies
+- **Test execution** using `yarn test` command
+- **Automatic commits** after each code change (see git_operations rule)
+
+### Testing Requirements
+- **Unit tests** for all components and utilities
+- **Integration tests** for video playback and time tracking
+- **Sample video files** included in source control for CI testing
+- **Test coverage** reporting and monitoring
+
+### Docker Environment
+- **Base image**: Node.js 18+ LTS
+- **Dependencies**: yt-dlp, Yarn, Git
+- **Build process**: Multi-stage Dockerfile for optimization
+- **Caching**: Dependencies cached to speed up builds
+
+---
+
 ## Core Screens
 
 ### ✅ Kid Screen

@@ -1,0 +1,36 @@
+name: Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+      
+    - name: Build and run tests
+      run: |
+        # Build the Docker image
+        docker build --target test -t safetube-test .
+        
+        # Run tests in container
+        docker run --rm safetube-test yarn test
+        
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: |
+          logs/
+          coverage/
+        retention-days: 7 
