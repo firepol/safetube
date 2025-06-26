@@ -139,4 +139,55 @@ describe('PlayerPage', () => {
     // Should call getDlnaFile for DLNA videos
     expect(window.electron.getDlnaFile).toHaveBeenCalled();
   });
+
+  it('implements Time\'s Up behavior when limit is reached during playback', async () => {
+    const mockNavigate = vi.fn();
+    
+    // Mock time limit not reached initially
+    window.electron.getTimeTrackingState = vi.fn()
+      .mockResolvedValueOnce({
+        timeRemaining: 1800,
+        timeLimitToday: 3600,
+        timeUsedToday: 1800,
+        isLimitReached: false
+      })
+      .mockResolvedValue({
+        timeRemaining: 0,
+        timeLimitToday: 3600,
+        timeUsedToday: 3600,
+        isLimitReached: true
+      });
+
+    // Mock document.fullscreenElement
+    Object.defineProperty(document, 'fullscreenElement', {
+      writable: true,
+      value: null
+    });
+
+    // Mock document.exitFullscreen
+    document.exitFullscreen = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <MemoryRouter initialEntries={['/player/f2_3sQu7lA4']}>
+        <Routes>
+          <Route path="/player/:id" element={<PlayerPage />} />
+          <Route path="/time-up" element={<div>Time's Up Page</div>} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    // Wait for component to load
+    await waitFor(() => {
+      expect(screen.getByText('The Top 10 Goals of May | Top Goals | Serie A 2024/25')).toBeInTheDocument();
+    });
+
+    // Simulate time limit being reached after 3.5 seconds (after the interval check)
+    await new Promise(resolve => setTimeout(resolve, 3500));
+
+    // Verify that getTimeTrackingState was called at least twice (initial + interval)
+    const mockedGetTimeTrackingState = vi.mocked(window.electron.getTimeTrackingState);
+    expect(mockedGetTimeTrackingState.mock.calls.length).toBeGreaterThanOrEqual(2);
+    // Verify navigation to Time's Up page
+    expect(screen.getByText("Time's Up Page")).toBeInTheDocument();
+  });
 });

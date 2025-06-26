@@ -605,6 +605,55 @@ export const PlayerPage: React.FC = () => {
     };
   }, [video?.id]);
 
+  // Continuous time limit monitoring during video playback
+  useEffect(() => {
+    if (!video) return;
+    
+    let isMounted = true;
+    let intervalId: number | undefined;
+    
+    const monitorTimeLimits = async () => {
+      try {
+        const state = await window.electron.getTimeTrackingState();
+        if (!isMounted) return;
+        
+        if (state.isLimitReached) {
+          logVerbose('[TimeTracking] Time limit reached during playback - implementing Time\'s Up behavior');
+          
+          // Stop video playback
+          if (videoRef.current) {
+            videoRef.current.pause();
+          }
+          
+          // Exit fullscreen if in fullscreen mode
+          if (document.fullscreenElement) {
+            try {
+              await document.exitFullscreen();
+              logVerbose('[TimeTracking] Exited fullscreen mode');
+            } catch (error) {
+              console.error('Error exiting fullscreen:', error);
+            }
+          }
+          
+          // Navigate to Time's Up page
+          navigate('/time-up');
+        }
+      } catch (error) {
+        console.error('Error monitoring time limits:', error);
+      }
+    };
+    
+    // Check time limits every 3 seconds during video playback
+    intervalId = window.setInterval(monitorTimeLimits, 3000);
+    
+    return () => {
+      isMounted = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [video, navigate]);
+
   if (!video) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
