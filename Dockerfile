@@ -16,8 +16,8 @@ RUN python3 -m venv /opt/yt-dlp-env && \
     pip install --no-cache-dir yt-dlp && \
     ln -s /opt/yt-dlp-env/bin/yt-dlp /usr/local/bin/yt-dlp
 
-# Install Yarn
-RUN npm install -g yarn
+# Install Yarn (force overwrite if it exists)
+RUN npm install -g yarn --force
 
 # Set working directory
 WORKDIR /app
