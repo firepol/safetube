@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import videos from '../data/videos.json';
 import { YouTubeAPI, VideoStream, AudioTrack } from '../services/youtube';
 import { Video } from '../types';
+import { TimeIndicator } from '../components/layout/TimeIndicator';
 import { logVerbose } from '@/shared/logging';
 
 export const PlayerPage: React.FC = () => {
@@ -17,10 +18,7 @@ export const PlayerPage: React.FC = () => {
   const loadingTimeoutRef = useRef<number | undefined>(undefined);
   
   // Time tracking state
-  const [timeTrackingState, setTimeTrackingState] = useState<{
-    timeRemaining: number;
-    isLimitReached: boolean;
-  } | null>(null);
+  const [isLimitReached, setIsLimitReached] = useState<boolean>(false);
   const timeTrackingRef = useRef<{
     startTime: number;
     totalWatched: number;
@@ -585,10 +583,7 @@ export const PlayerPage: React.FC = () => {
       try {
         const state = await window.electron.getTimeTrackingState();
         if (isMounted) {
-          setTimeTrackingState({
-            timeRemaining: state.timeRemaining,
-            isLimitReached: state.isLimitReached
-          });
+          setIsLimitReached(state.isLimitReached);
           
           // If limit is reached, don't allow playback
           if (state.isLimitReached) {
@@ -636,17 +631,7 @@ export const PlayerPage: React.FC = () => {
           >
             ← Back
           </button>
-          {timeTrackingState && (
-            <div className="text-sm">
-              {timeTrackingState.isLimitReached ? (
-                <p className="text-red-600">Daily time limit reached</p>
-              ) : (
-                <p className="text-green-600">
-                  {Math.floor(timeTrackingState.timeRemaining / 60)} minutes remaining
-                </p>
-              )}
-            </div>
-          )}
+          <TimeIndicator realTime={true} updateInterval={3000} />
         </div>
         <h1 className="text-2xl font-bold mb-4">{video.title}</h1>
         {isLoading && (

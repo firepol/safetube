@@ -17,7 +17,12 @@ afterAll(() => {
 // Mock window.electron for time tracking IPC
 beforeAll(() => {
   window.electron = {
-    getTimeTrackingState: vi.fn().mockResolvedValue({ timeRemaining: 1800, isLimitReached: false }),
+    getTimeTrackingState: vi.fn().mockResolvedValue({ 
+      timeRemaining: 1800, 
+      timeLimitToday: 3600,
+      timeUsedToday: 1800,
+      isLimitReached: false 
+    }),
     recordVideoWatching: vi.fn().mockResolvedValue({ success: true }),
     getLocalFile: vi.fn().mockResolvedValue('file:///test/video.mp4'),
     getDlnaFile: vi.fn().mockResolvedValue('http://test/dlna.mp4'),
@@ -42,7 +47,7 @@ describe('PlayerPage', () => {
     
     expect(screen.getByText('← Back')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText(/minutes remaining/)).toBeInTheDocument();
+      expect(screen.getByText(/minutes left/)).toBeInTheDocument();
     });
   });
 
@@ -83,6 +88,8 @@ describe('PlayerPage', () => {
     // Mock time limit reached
     window.electron.getTimeTrackingState = vi.fn().mockResolvedValue({ 
       timeRemaining: 0, 
+      timeLimitToday: 3600,
+      timeUsedToday: 3600,
       isLimitReached: true 
     });
 

@@ -1,37 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { VideoGrid } from '../components/layout/VideoGrid';
+import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 import videos from '../data/videos.json';
-
-interface TimeDisplayProps {
-  timeRemaining: number;
-  timeLimit: number;
-  timeUsed: number;
-}
-
-const TimeDisplay: React.FC<TimeDisplayProps> = ({ timeRemaining, timeLimit, timeUsed }) => {
-  const minutesUsed = Math.floor(timeUsed / 60);
-  const minutesLimit = Math.floor(timeLimit / 60);
-  const minutesRemaining = Math.floor(timeRemaining / 60);
-  
-  // Show red when time is low (less than 3 minutes or 10% of daily limit)
-  const isTimeLow = minutesRemaining <= 3 || minutesRemaining <= (minutesLimit * 0.1);
-  
-  return (
-    <div className={`text-sm font-medium ${isTimeLow ? 'text-red-600' : 'text-green-600'}`}>
-      {minutesUsed} / {minutesLimit} [{minutesRemaining} minutes left]
-    </div>
-  );
-};
 
 export const KidScreen: React.FC = () => {
   const navigate = useNavigate();
-  const [timeTrackingState, setTimeTrackingState] = useState<{
-    timeRemaining: number;
-    timeLimit: number;
-    timeUsed: number;
-    isLimitReached: boolean;
-  } | null>(null);
+  const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -75,13 +50,7 @@ export const KidScreen: React.FC = () => {
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Kid-Friendly Videos</h1>
-        {timeTrackingState && (
-          <TimeDisplay
-            timeRemaining={timeTrackingState.timeRemaining}
-            timeLimit={timeTrackingState.timeLimit}
-            timeUsed={timeTrackingState.timeUsed}
-          />
-        )}
+        <TimeIndicator initialState={timeTrackingState} />
       </div>
       <VideoGrid
         videos={videos.map((v) => ({
