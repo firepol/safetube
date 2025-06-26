@@ -4,6 +4,16 @@ import { MemoryRouter } from 'react-router-dom';
 import { TimeUpPage } from './TimeUpPage';
 import { vi } from 'vitest';
 
+// Mock console.error to suppress error messages during tests
+const originalConsoleError = console.error;
+beforeAll(() => {
+  console.error = vi.fn();
+});
+
+afterAll(() => {
+  console.error = originalConsoleError;
+});
+
 // Set system time to Monday, January 15, 2024
 vi.useFakeTimers();
 vi.setSystemTime(new Date('2024-01-15T12:00:00Z'));
