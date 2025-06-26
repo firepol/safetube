@@ -187,7 +187,10 @@ describe('YouTubeAPI', () => {
   });
 });
 
-describe('YouTubeAPI Debug Tests', () => {
+// Skip debug tests in CI environment - these require real YouTube API access
+const debugTestRunner = process.env.CI ? describe.skip : describe;
+
+debugTestRunner('YouTubeAPI Debug Tests', () => {
   it('should verify video streams for OGDuutRhN9M', async () => {
     const videoId = 'OGDuutRhN9M';
     const { videoStreams, audioTracks } = await CachedYouTubeAPI.getVideoStreams(videoId);

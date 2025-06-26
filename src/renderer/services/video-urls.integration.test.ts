@@ -9,6 +9,10 @@ import { logVerbose } from '@/shared/logging';
 // Set to true to save debug info
 const DEBUG_MODE = true;
 
+// Skip YouTube integration tests in CI environment
+// These tests require real YouTube API access and yt-dlp, which are unreliable in CI
+const youtubeTestRunner = process.env.CI ? describe.skip : describe;
+
 interface DebugStreamInfo {
   videoId: string;
   title: string;
@@ -72,11 +76,19 @@ describe('Video Stream URLs Integration Tests', () => {
     let existingData: DebugStreamInfo[] = [];
     
     try {
+      // Ensure logs directory exists
+      const logsDir = path.dirname(debugFile);
+      if (!fs.existsSync(logsDir)) {
+        fs.mkdirSync(logsDir, { recursive: true });
+      }
+
       if (fs.existsSync(debugFile)) {
         const content = fs.readFileSync(debugFile, 'utf-8');
         existingData = JSON.parse(content);
       }
     } catch (error) {
+      // If we can't create the directory or read the file, just skip saving debug info
+      return;
     }
 
     const index = existingData.findIndex(item => item.videoId === debugInfo.videoId);
@@ -86,11 +98,15 @@ describe('Video Stream URLs Integration Tests', () => {
       existingData.push(debugInfo);
     }
 
-    fs.writeFileSync(debugFile, JSON.stringify(existingData, null, 2));
+    try {
+      fs.writeFileSync(debugFile, JSON.stringify(existingData, null, 2));
+    } catch (error) {
+      // If we can't write the file, just skip saving debug info
+    }
   }
 
   // Test YouTube video streams
-  describe('YouTube Videos', () => {
+  youtubeTestRunner('YouTube Videos', () => {
     // Filter out duplicate videos by extracting unique YouTube IDs
     const uniqueYoutubeVideos = videos
       .filter(v => v.type === 'youtube')
