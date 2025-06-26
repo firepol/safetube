@@ -16,11 +16,20 @@ export default defineConfig({
         minThreads: 1,
         maxThreads: 1 // Enforce single process for shared in-memory cache
       }
-    }
+    },
+    css: true, // Enable CSS processing in tests
   },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')
     }
-  }
+  },
+  css: {
+    postcss: {
+      plugins: [
+        require('tailwindcss'),
+        require('autoprefixer'),
+      ],
+    },
+  },
 }); 

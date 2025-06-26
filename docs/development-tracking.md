@@ -57,18 +57,18 @@ Each feature PRD must include:
 ## Feature Status Tracking
 
 ### 0. Project Setup
-- **Status**: In Progress
+- **Status**: Completed
 - **PRD**: [Project Setup PRD](prds/00-project-setup.md)
 - **Current Sprint**: Sprint 1
 - **Blockers**: None
 - **Dependencies**: None
 - **Progress**: 100%
-- **Last Updated**: 2025-06-25
+- **Last Updated**: 2025-06-26
 - **Completed Items**:
   - Basic project structure with Electron + React + TypeScript
   - Development environment setup with Vite
   - Package management with Yarn
-  - Tailwind CSS integration
+  - Tailwind CSS integration (fixed and working)
   - Basic application layout
   - Electron Nightly integration for Linux compatibility
   - ESLint configuration with browser globals
@@ -77,6 +77,8 @@ Each feature PRD must include:
   - Logging framework setup with electron-log
 - **Remaining Items**: None
 - **Recent Changes**:
+  - 2025-06-26: **Fixed Tailwind CSS integration - downgraded to stable v3, updated PostCSS config, added CSS import to test setup**
+  - 2025-06-26: **Created comprehensive Tailwind CSS integration tests to verify styling works**
   - 2025-06-02: Added logging framework with electron-log
   - 2025-06-02: Added testing framework with Vitest and React Testing Library
   - 2025-06-02: Migrated Cursor rules to .mdc format
@@ -162,8 +164,8 @@ Each feature PRD must include:
 - **Current Sprint**: Sprint 2
 - **Blockers**: None
 - **Dependencies**: Project Setup, Play Video
-- **Progress**: 85%
-- **Last Updated**: 2025-06-25
+- **Progress**: 90%
+- **Last Updated**: 2025-06-26
 - **Completed Items**:
   - JSON configuration files for time limits, usage logs, watched videos, and video sources
   - TypeScript types for all time tracking data structures
@@ -185,14 +187,15 @@ Each feature PRD must include:
   - Redirect logic from homepage to Time's Up page when time limit is reached
   - Time display format updated to X/Y [Z minutes left] format
   - Warning threshold display (red when time is low)
+  - Time's Up page design improvements with proper styling and current day highlighting
 - **Remaining Items**:
   - Implement countdown overlay in last 60 seconds of daily limit
   - Add audio feedback (system beep) in last 10 seconds
   - Add full-screen and windowed mode countdown support
   - Handle full-screen exit when time runs out
   - Add configuration for countdown, audio, and warning settings
-  - Improve Time's Up page design and remove unnecessary "Return to Home" button
 - **Recent Changes**:
+  - 2025-06-26: **Improved Time's Up page design - removed test yellow background, current day properly highlighted in red**
   - 2025-06-25: **Created dedicated Time's Up page with weekly schedule display**
   - 2025-06-25: **Added redirect logic from homepage to Time's Up page when time limit is reached**
   - 2025-06-25: **Updated time display format to X/Y [Z minutes left] format with warning threshold**
@@ -213,7 +216,7 @@ Each feature PRD must include:
   - Time tracking survives app crashes/restarts with persistent JSON storage
   - Daily limits are properly enforced with automatic video pausing
   - Fast-forward and rewind time is tracked based on actual elapsed time
-  - Time's Up page is functional but needs design improvements
+  - Time's Up page is now properly styled with current day highlighting
   - Core functionality complete, needs countdown overlay and audio feedback
 
 ### 4. Video History
