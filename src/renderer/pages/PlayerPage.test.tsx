@@ -4,6 +4,16 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { PlayerPage } from './PlayerPage';
 import { vi } from 'vitest';
 
+// Mock console.error to suppress error messages during tests
+const originalConsoleError = console.error;
+beforeAll(() => {
+  console.error = vi.fn();
+});
+
+afterAll(() => {
+  console.error = originalConsoleError;
+});
+
 // Mock window.electron for time tracking IPC
 beforeAll(() => {
   window.electron = {
