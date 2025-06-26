@@ -25,10 +25,10 @@ This directory contains sample video files used for testing the SafeTube applica
 ## Current Sample Files
 
 - `sample-local.mp4` - Sample local video file for testing
-- `sample-dlna.mp4` - Sample DLNA video file for testing
 
 ## Notes
 
 - These files are used only for testing purposes
 - They should not contain copyrighted content
-- Files are included in source control for CI reliability 
+- Files are included in source control for CI reliability
+- **One test video is sufficient** - DLNA functionality is tested separately via mocking 
