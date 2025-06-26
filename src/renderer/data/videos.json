@@ -145,5 +145,24 @@
     "server": "192.168.68.51",
     "port": 8200,
     "path": "/MediaItems/1473.mkv"
-  }  
+  },
+  {
+    "id": "test-local-1",
+    "type": "local",
+    "title": "Test Local Video",
+    "thumbnail": "https://picsum.photos/id/38/300/200?grayscale",
+    "duration": 120,
+    "url": "file://test-videos/sample-local.mp4"
+  },
+  {
+    "id": "test-dlna-1",
+    "type": "dlna",
+    "title": "Test DLNA Video",
+    "thumbnail": "https://picsum.photos/id/15/300/200?grayscale",
+    "duration": 180,
+    "url": "http://localhost:8200/test-videos/sample-dlna.mp4",
+    "server": "localhost",
+    "port": 8200,
+    "path": "/test-videos/sample-dlna.mp4"
+  }
 ] 
