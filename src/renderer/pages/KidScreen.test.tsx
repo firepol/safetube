@@ -4,6 +4,18 @@ import { KidScreen } from './KidScreen';
 import { MemoryRouter } from 'react-router-dom';
 import * as Tooltip from '@radix-ui/react-tooltip';
 
+// Shared mockNavigate for all tests
+const mockNavigate = vi.fn();
+
+// Always mock useNavigate
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate
+  };
+});
+
 // Mock window.electron
 beforeEach(() => {
   window.electron = {
@@ -14,6 +26,7 @@ beforeEach(() => {
       isLimitReached: false
     })
   } as any;
+  mockNavigate.mockReset();
 });
 
 const renderWithProvider = (component: React.ReactNode) => {
@@ -70,8 +83,6 @@ describe('KidScreen', () => {
   });
 
   it('redirects to time up page when limit is reached', async () => {
-    const mockNavigate = vi.fn();
-    
     // Mock time limit reached
     window.electron.getTimeTrackingState = vi.fn().mockResolvedValue({
       timeRemaining: 0,
@@ -80,17 +91,8 @@ describe('KidScreen', () => {
       isLimitReached: true
     });
 
-    // Mock useNavigate
-    vi.mock('react-router-dom', async () => {
-      const actual = await vi.importActual('react-router-dom');
-      return {
-        ...actual,
-        useNavigate: () => mockNavigate
-      };
-    });
-
     renderWithProvider(<KidScreen />);
-    
+
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/time-up');
     });
