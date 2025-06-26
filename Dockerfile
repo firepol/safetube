@@ -1,6 +1,9 @@
 # Multi-stage build for SafeTube CI environment
 FROM node:20-alpine AS base
 
+# Set CI environment variable for test skipping
+ENV CI=true
+
 # Install system dependencies
 RUN apk add --no-cache \
     python3 \
