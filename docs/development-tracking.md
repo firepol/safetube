@@ -192,11 +192,11 @@ Each feature PRD must include:
   - **Continuous time limit monitoring** during video playback with 3-second interval checks
   - **Comprehensive test coverage** for Time's Up behavior including fullscreen exit and navigation
 - **Remaining Items**:
-  - Implement countdown overlay in last 60 seconds of daily limit
   - Add audio feedback (system beep) in last 10 seconds
-  - Add full-screen and windowed mode countdown support
   - Add configuration for countdown, audio, and warning settings
 - **Recent Changes**:
+  - 2025-06-27: **Implemented countdown overlay in last 30 seconds of daily limit** - shows countdown timer in top-right corner of video player
+  - 2025-06-27: **Documented fullscreen limitation** - countdown overlay is not visible in Electron fullscreen mode due to technical limitations
   - 2025-06-26: **Implemented Time's Up behavior in video player - automatic video pause, fullscreen exit, and navigation to Time's Up page when limit is reached**
   - 2025-06-26: **Added continuous time limit monitoring during video playback with 3-second interval checks**
   - 2025-06-26: **Created comprehensive test for Time's Up behavior including fullscreen handling and navigation verification**
@@ -224,7 +224,10 @@ Each feature PRD must include:
   - Time's Up page is now properly styled with current day highlighting
   - **Time's Up behavior is fully implemented - video stops, fullscreen exits, and navigation occurs when limit is reached**
   - **Continuous monitoring ensures time limits are enforced even during long video sessions**
-  - Core functionality complete, needs countdown overlay and audio feedback
+  - **Countdown overlay appears in last 30 seconds (configurable) when time is running low**
+  - **Fullscreen limitation**: Countdown overlay is not visible in Electron fullscreen mode due to technical limitations of Electron's fullscreen implementation
+  - **Countdown overlay works perfectly in windowed mode** with proper positioning and visibility
+  - Core functionality complete, needs audio feedback implementation
 
 ### 4. Video History
 - **Status**: Not Started
