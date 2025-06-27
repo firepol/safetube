@@ -6,7 +6,16 @@ export interface TimeLimits {
   Friday: number;
   Saturday: number;
   Sunday: number;
+  warningThresholdMinutes?: number;
+  countdownWarningSeconds?: number;
+  audioWarningSeconds?: number;
+  timeUpMessage?: string;
+  useSystemBeep?: boolean;
+  customBeepSound?: string;
 }
+
+// Type for day-of-week keys only (for functions that need to access time limits)
+export type DayOfWeek = 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
 
 export interface UsageLog {
   [date: string]: number; // ISO date string -> seconds used (for precision)
