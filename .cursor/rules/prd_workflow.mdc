@@ -1,8 +1,9 @@
 ---
-description: "Load when working on PRDs, updating development status, planning features, or when user mentions product requirements or development tracking.
+description: Load when working on PRDs, updating development status, planning features, or when user mentions product requirements or development tracking.
 globs: 
 alwaysApply: false
 ---
+
 # PRD Workflow Rules
 
 - The [docs/development-tracking.md](mdc:docs/development-tracking.md) document must be updated whenever a feature status changes.
