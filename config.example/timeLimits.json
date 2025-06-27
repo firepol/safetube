@@ -5,5 +5,11 @@
   "Thursday": 30,
   "Friday": 45,
   "Saturday": 90,
-  "Sunday": 90
+  "Sunday": 90,
+  "warningThresholdMinutes": 3,
+  "countdownWarningSeconds": 60,
+  "audioWarningSeconds": 10,
+  "timeUpMessage": "Time's up for today! Here's your schedule:",
+  "useSystemBeep": true,
+  "customBeepSound": ""
 } 

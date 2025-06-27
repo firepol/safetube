@@ -1,4 +1,4 @@
-import { TimeLimits, UsageLog, WatchedVideo, TimeTrackingState } from './types';
+import { TimeLimits, UsageLog, WatchedVideo, TimeTrackingState, DayOfWeek } from './types';
 import { readTimeLimits, readUsageLog, writeUsageLog, readWatchedVideos, writeWatchedVideos } from './fileUtils';
 import { logVerbose } from './logging';
 
@@ -12,10 +12,10 @@ export function getCurrentDate(): string {
 /**
  * Gets the day of the week from a date string
  */
-export function getDayOfWeek(dateString: string): keyof TimeLimits {
+export function getDayOfWeek(dateString: string): DayOfWeek {
   const date = new Date(dateString);
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  return days[date.getDay()] as keyof TimeLimits;
+  const days: DayOfWeek[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[date.getDay()];
 }
 
 /**
@@ -214,10 +214,10 @@ export async function getUsageHistory(days: number = 7): Promise<Array<{ date: s
 export function validateTimeLimits(timeLimits: TimeLimits): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
   
-  const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const days: DayOfWeek[] = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
   
   for (const day of days) {
-    const limit = timeLimits[day as keyof TimeLimits];
+    const limit = timeLimits[day];
     if (limit === undefined) {
       errors.push(`Missing time limit for ${day}`);
     } else if (limit < 0) {

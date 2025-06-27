@@ -5,9 +5,11 @@ import { TimeIndicator, TimeTrackingState } from './TimeIndicator';
 
 // Always mock the electron API
 const mockGetTimeTrackingState = vi.fn();
+const mockGetTimeLimits = vi.fn();
 Object.defineProperty(window, 'electron', {
   value: {
-    getTimeTrackingState: mockGetTimeTrackingState
+    getTimeTrackingState: mockGetTimeTrackingState,
+    getTimeLimits: mockGetTimeLimits
   },
   writable: true
 });
@@ -15,6 +17,10 @@ Object.defineProperty(window, 'electron', {
 describe('TimeIndicator', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock for getTimeLimits
+    mockGetTimeLimits.mockResolvedValue({
+      warningThresholdMinutes: 3
+    });
   });
   afterEach(() => {
     vi.useRealTimers();
@@ -94,5 +100,49 @@ describe('TimeIndicator', () => {
     render(<TimeIndicator initialState={mockTimeState} className="custom-class" />);
     const timeElement = screen.getByText('30 / 60 [30 minutes left]');
     expect(timeElement).toHaveClass('custom-class');
+  });
+
+  it('uses configurable warning threshold', async () => {
+    // Mock a custom warning threshold of 5 minutes
+    mockGetTimeLimits.mockResolvedValue({
+      warningThresholdMinutes: 5
+    });
+
+    // State with 4 minutes remaining (should be red with 5-minute threshold)
+    const lowTimeState: TimeTrackingState = {
+      timeRemaining: 240, // 4 minutes
+      timeLimit: 3600, // 60 minutes
+      timeUsed: 3360, // 56 minutes
+      isLimitReached: false
+    };
+
+    render(<TimeIndicator initialState={lowTimeState} />);
+    
+    // Wait for the warning threshold to be fetched
+    await waitFor(() => {
+      const timeElement = screen.getByText('56 / 60 [4 minutes left]');
+      expect(timeElement).toHaveClass('text-red-600');
+    });
+  });
+
+  it('falls back to default warning threshold when not configured', async () => {
+    // Mock no warning threshold configured
+    mockGetTimeLimits.mockResolvedValue({});
+
+    // State with 2 minutes remaining (should be red with default 3-minute threshold)
+    const lowTimeState: TimeTrackingState = {
+      timeRemaining: 120, // 2 minutes
+      timeLimit: 3600, // 60 minutes
+      timeUsed: 3480, // 58 minutes
+      isLimitReached: false
+    };
+
+    render(<TimeIndicator initialState={lowTimeState} />);
+    
+    // Wait for the warning threshold to be fetched
+    await waitFor(() => {
+      const timeElement = screen.getByText('58 / 60 [2 minutes left]');
+      expect(timeElement).toHaveClass('text-red-600');
+    });
   });
 }); 

@@ -29,6 +29,7 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
   className = ''
 }) => {
   const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | null>(initialState || null);
+  const [warningThresholdMinutes, setWarningThresholdMinutes] = useState<number>(3); // Default fallback
 
   // Fetch time tracking state from main process
   const fetchTimeState = async (): Promise<TimeTrackingState | null> => {
@@ -46,11 +47,24 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
     }
   };
 
+  // Fetch warning threshold configuration
+  const fetchWarningThreshold = async (): Promise<void> => {
+    try {
+      const timeLimits = await window.electron.getTimeLimits();
+      const threshold = timeLimits.warningThresholdMinutes ?? 3; // Default to 3 minutes if not configured
+      setWarningThresholdMinutes(threshold);
+    } catch (error) {
+      console.error('Error fetching warning threshold:', error);
+      // Keep default value
+    }
+  };
+
   // Initial load
   useEffect(() => {
     if (!initialState) {
       fetchTimeState().then(setTimeTrackingState);
     }
+    fetchWarningThreshold();
   }, [initialState]);
 
   // Real-time updates
@@ -80,8 +94,8 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
   const minutesLimit = Math.floor(timeLimit / 60);
   const minutesRemaining = Math.floor(timeRemaining / 60);
   
-  // Show red when time is low (less than 3 minutes or 10% of daily limit)
-  const isTimeLow = minutesRemaining <= 3 || minutesRemaining <= (minutesLimit * 0.1);
+  // Show red when time is low (using configurable warning threshold)
+  const isTimeLow = minutesRemaining <= warningThresholdMinutes;
   
   const textColor = isLimitReached || isTimeLow ? 'text-red-600' : 'text-green-600';
 
