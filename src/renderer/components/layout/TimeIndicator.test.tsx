@@ -44,16 +44,20 @@ describe('TimeIndicator', () => {
     expect(screen.getByText('Loading time...')).toBeInTheDocument();
     // Wait for update
     await waitFor(() => {
-      expect(screen.getByText('30 / 60 [30 minutes left]')).toBeInTheDocument();
+      expect(screen.getByText('30:00')).toBeInTheDocument();
+      expect(screen.getByText('60:00')).toBeInTheDocument();
+      expect(screen.getByText('30:00 min')).toBeInTheDocument();
     });
   });
 
   it('renders time information with initialState', () => {
     render(<TimeIndicator initialState={mockTimeState} />);
-    expect(screen.getByText('30 / 60 [30 minutes left]')).toBeInTheDocument();
+    expect(screen.getByText('30:00')).toBeInTheDocument();
+    expect(screen.getByText('60:00')).toBeInTheDocument();
+    expect(screen.getByText('30:00 min')).toBeInTheDocument();
   });
 
-  it('shows red color when time is low', () => {
+  it('shows orange color when time is low', () => {
     const lowTimeState: TimeTrackingState = {
       timeRemaining: 120, // 2 minutes
       timeLimit: 3600, // 60 minutes
@@ -61,13 +65,13 @@ describe('TimeIndicator', () => {
       isLimitReached: false
     };
     render(<TimeIndicator initialState={lowTimeState} />);
-    const timeElement = screen.getByText('58 / 60 [2 minutes left]');
-    expect(timeElement).toHaveClass('text-red-600');
+    const timeElement = screen.getByText('58:00');
+    expect(timeElement).toHaveClass('text-orange-600');
   });
 
   it('shows green color when time is sufficient', () => {
     render(<TimeIndicator initialState={mockTimeState} />);
-    const timeElement = screen.getByText('30 / 60 [30 minutes left]');
+    const timeElement = screen.getByText('30:00');
     expect(timeElement).toHaveClass('text-green-600');
   });
 
@@ -79,8 +83,8 @@ describe('TimeIndicator', () => {
       isLimitReached: true
     };
     render(<TimeIndicator initialState={limitReachedState} />);
-    expect(screen.getByText('Daily time limit reached')).toBeInTheDocument();
-    expect(screen.getByText('Daily time limit reached')).toHaveClass('text-red-600');
+    expect(screen.getByText('⏰ Daily time limit reached')).toBeInTheDocument();
+    expect(screen.getByText('⏰ Daily time limit reached')).toHaveClass('text-red-600');
   });
 
   it('fetches time state when no initialState provided', async () => {
@@ -92,14 +96,16 @@ describe('TimeIndicator', () => {
     });
     render(<TimeIndicator />);
     await waitFor(() => {
-      expect(screen.getByText('45 / 60 [15 minutes left]')).toBeInTheDocument();
+      expect(screen.getByText('45:00')).toBeInTheDocument();
+      expect(screen.getByText('60:00')).toBeInTheDocument();
+      expect(screen.getByText('15:00 min')).toBeInTheDocument();
     });
   });
 
   it('applies custom className', () => {
     render(<TimeIndicator initialState={mockTimeState} className="custom-class" />);
-    const timeElement = screen.getByText('30 / 60 [30 minutes left]');
-    expect(timeElement).toHaveClass('custom-class');
+    const container = screen.getByText('30:00').closest('div');
+    expect(container).toHaveClass('custom-class');
   });
 
   it('uses configurable warning threshold', async () => {
@@ -108,7 +114,7 @@ describe('TimeIndicator', () => {
       warningThresholdMinutes: 5
     });
 
-    // State with 4 minutes remaining (should be red with 5-minute threshold)
+    // State with 4 minutes remaining (should be orange with 5-minute threshold)
     const lowTimeState: TimeTrackingState = {
       timeRemaining: 240, // 4 minutes
       timeLimit: 3600, // 60 minutes
@@ -120,8 +126,8 @@ describe('TimeIndicator', () => {
     
     // Wait for the warning threshold to be fetched
     await waitFor(() => {
-      const timeElement = screen.getByText('56 / 60 [4 minutes left]');
-      expect(timeElement).toHaveClass('text-red-600');
+      const timeElement = screen.getByText('56:00');
+      expect(timeElement).toHaveClass('text-orange-600');
     });
   });
 
@@ -129,7 +135,7 @@ describe('TimeIndicator', () => {
     // Mock no warning threshold configured
     mockGetTimeLimits.mockResolvedValue({});
 
-    // State with 2 minutes remaining (should be red with default 3-minute threshold)
+    // State with 2 minutes remaining (should be orange with default 3-minute threshold)
     const lowTimeState: TimeTrackingState = {
       timeRemaining: 120, // 2 minutes
       timeLimit: 3600, // 60 minutes
@@ -141,8 +147,8 @@ describe('TimeIndicator', () => {
     
     // Wait for the warning threshold to be fetched
     await waitFor(() => {
-      const timeElement = screen.getByText('58 / 60 [2 minutes left]');
-      expect(timeElement).toHaveClass('text-red-600');
+      const timeElement = screen.getByText('58:00');
+      expect(timeElement).toHaveClass('text-orange-600');
     });
   });
 }); 

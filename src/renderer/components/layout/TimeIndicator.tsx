@@ -18,6 +18,31 @@ interface TimeIndicatorProps {
   className?: string;
 }
 
+function pad2(n: number) {
+  return n.toString().padStart(2, '0');
+}
+
+/**
+ * Formats time in a human-readable format
+ */
+function formatTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${pad2(mins)}:${pad2(secs)}`;
+}
+
+/**
+ * Formats remaining time with appropriate unit
+ */
+function formatRemainingTime(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  if (mins > 0) {
+    return `${pad2(mins)}:${pad2(secs)} min`;
+  }
+  return `${pad2(secs)} sec`;
+}
+
 /**
  * Reusable time indicator component that can display time tracking information
  * in both static and real-time updating modes.
@@ -29,7 +54,8 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
   className = ''
 }) => {
   const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | null>(initialState || null);
-  const [warningThresholdMinutes, setWarningThresholdMinutes] = useState<number>(3); // Default fallback
+  const [warningThresholdMinutes, setWarningThresholdMinutes] = useState<number>(3);
+  const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
 
   // Fetch time tracking state from main process
   const fetchTimeState = async (): Promise<TimeTrackingState | null> => {
@@ -51,11 +77,11 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
   const fetchWarningThreshold = async (): Promise<void> => {
     try {
       const timeLimits = await window.electron.getTimeLimits();
-      const threshold = timeLimits.warningThresholdMinutes ?? 3; // Default to 3 minutes if not configured
+      const threshold = timeLimits.warningThresholdMinutes ?? 3;
       setWarningThresholdMinutes(threshold);
+      setCountdownWarningSeconds(timeLimits.countdownWarningSeconds ?? 60);
     } catch (error) {
       console.error('Error fetching warning threshold:', error);
-      // Keep default value
     }
   };
 
@@ -90,24 +116,40 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
   }
 
   const { timeRemaining, timeLimit, timeUsed, isLimitReached } = timeTrackingState;
-  const minutesUsed = Math.floor(timeUsed / 60);
-  const minutesLimit = Math.floor(timeLimit / 60);
   const minutesRemaining = Math.floor(timeRemaining / 60);
   
-  // Show red when time is low (using configurable warning threshold)
-  const isTimeLow = minutesRemaining <= warningThresholdMinutes;
-  
-  const textColor = isLimitReached || isTimeLow ? 'text-red-600' : 'text-green-600';
+  // Determine color based on time remaining
+  let colorClass = 'text-green-600';
+  let barColor = 'bg-green-500';
+  if (isLimitReached) {
+    colorClass = 'text-red-600';
+    barColor = 'bg-red-500';
+  } else if (timeRemaining <= countdownWarningSeconds) {
+    colorClass = 'text-red-600';
+    barColor = 'bg-red-500';
+  } else if (minutesRemaining <= warningThresholdMinutes) {
+    colorClass = 'text-orange-600';
+    barColor = 'bg-orange-500';
+  }
+
+  const percent = timeLimit > 0 ? Math.min(100, Math.max(0, Math.round((timeUsed / timeLimit) * 100))) : 0;
 
   return (
-    <div className="text-sm font-medium">
-      {isLimitReached ? (
-        <span className={`${textColor} ${className}`}>Daily time limit reached</span>
-      ) : (
-        <span className={`${textColor} ${className}`}>
-          {minutesUsed} / {minutesLimit} [{minutesRemaining} minutes left]
-        </span>
-      )}
+    <div className={`text-sm font-medium flex flex-col gap-1 ${className}`} style={{minWidth: 260}}>
+      <div className="flex items-center gap-2">
+        <span className="text-gray-600">⏰</span>
+        <span className={colorClass}>{formatTime(timeUsed)} / {formatTime(timeLimit)}</span>
+        <span className="text-gray-500">[{formatRemainingTime(timeRemaining)}]</span>
+      </div>
+      <div className="flex items-center gap-2 mt-1">
+        <div className="relative w-32 h-3 rounded bg-gray-200 overflow-hidden">
+          <div
+            className={`absolute left-0 top-0 h-3 rounded ${barColor}`}
+            style={{ width: `${percent}%`, transition: 'width 0.3s' }}
+          />
+        </div>
+        <span className="text-xs text-gray-500 ml-2" style={{minWidth: 32}}>{percent}%</span>
+      </div>
     </div>
   );
 }; 
