@@ -74,7 +74,10 @@ class AudioWarningService {
    * Check if audio warnings should be triggered based on remaining time
    */
   checkAudioWarnings(timeRemainingSeconds: number, isVideoPlaying: boolean): void {
+    log.verbose('[AudioWarning] Checking warnings - timeRemaining:', timeRemainingSeconds, 'isVideoPlaying:', isVideoPlaying);
+    
     if (!isVideoPlaying) {
+      log.verbose('[AudioWarning] Video not playing, skipping warnings');
       return; // Don't play warnings when video is paused
     }
 
@@ -84,6 +87,7 @@ class AudioWarningService {
       timeRemainingSeconds > this.config.countdownWarningSeconds - 10 &&
       !this.state.hasPlayedCountdownWarning
     ) {
+      log.verbose('[AudioWarning] Triggering countdown warning at', timeRemainingSeconds, 'seconds');
       this.playCountdownWarning();
     }
 
@@ -93,6 +97,7 @@ class AudioWarningService {
       timeRemainingSeconds > 0 &&
       !this.state.hasPlayedAudioWarning
     ) {
+      log.verbose('[AudioWarning] Triggering audio warning at', timeRemainingSeconds, 'seconds');
       this.playAudioWarning();
     }
   }
@@ -163,38 +168,50 @@ class AudioWarningService {
    * Play a single beep sound
    */
   private playBeep(): void {
-    if (this.config.useSystemBeep) {
-      // eslint-disable-next-line no-console
-      console.log('\x07');
-      return;
-    }
-    // Always check for AudioContext at beep time (for test compatibility)
+    log.verbose('[AudioWarning] Playing beep, useSystemBeep:', this.config.useSystemBeep);
+    
+    // Try Web Audio API first (works better in Electron than system beep)
     const AudioContextClass = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
-    if (AudioContextClass) {
+    if (AudioContextClass && !this.config.useSystemBeep) {
       try {
         if (!this.audioContext) {
           this.audioContext = new AudioContextClass();
         }
         const ctx = this.audioContext;
         if (!ctx) throw new Error('AudioContext not available');
+        
         const oscillator = ctx.createOscillator();
+        const gainNode = ctx.createGain();
+        
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(1000, ctx.currentTime);
-        oscillator.connect(ctx.destination);
-        oscillator.start();
-        oscillator.stop(ctx.currentTime + 0.1);
-        oscillator.onended = () => oscillator.disconnect();
+        oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+        oscillator.connect(gainNode);
+        gainNode.connect(ctx.destination);
+        
+        // Fade in and out for better sound
+        gainNode.gain.setValueAtTime(0, ctx.currentTime);
+        gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+        gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
+        
+        oscillator.start(ctx.currentTime);
+        oscillator.stop(ctx.currentTime + 0.2);
+        
+        oscillator.onended = () => {
+          oscillator.disconnect();
+          gainNode.disconnect();
+        };
+        
+        log.verbose('[AudioWarning] Web Audio API beep played successfully');
+        return;
       } catch (e) {
-        log.warn('[AudioWarning] AudioContext beep failed, falling back to system beep', e);
-        // Fallback to system beep
-        // eslint-disable-next-line no-console
-        console.log('\x07');
+        log.warn('[AudioWarning] Web Audio API beep failed, falling back to system beep:', e);
       }
-    } else {
-      log.verbose('[AudioWarning] AudioContext not available, using fallback beep');
-      // eslint-disable-next-line no-console
-      console.log('\x07');
     }
+    
+    // Fallback to system beep
+    log.verbose('[AudioWarning] Using system beep (console.log)');
+    // eslint-disable-next-line no-console
+    console.log('\x07');
   }
 
   /**
