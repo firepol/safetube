@@ -20,14 +20,14 @@ describe('AudioWarningService', () => {
       }
     });
     
-    // Remove AudioContext so fallback beep is used
+    // Remove AudioContext so system beep is used in tests
     // @ts-ignore
     delete (globalThis as any).AudioContext;
     // @ts-ignore
     delete (globalThis as any).webkitAudioContext;
     // Re-instantiate service after mocking
     audioWarningService = new AudioWarningService();
-    // Force fallback beep for tests
+    // Force system beep for tests
     // @ts-ignore
     audioWarningService.config.useSystemBeep = true;
     audioWarningService.resetState();
