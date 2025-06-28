@@ -1,12 +1,20 @@
-import log from 'electron-log';
+// Simple console-based logger for renderer process
+const log = {
+  verbose: (message: string, ...args: any[]) => {
+    console.log(`[Renderer] [verbose] ${message}`, ...args);
+  },
+  info: (message: string, ...args: any[]) => {
+    console.log(`[Renderer] [info] ${message}`, ...args);
+  },
+  warn: (message: string, ...args: any[]) => {
+    console.warn(`[Renderer] [warn] ${message}`, ...args);
+  },
+  error: (message: string, ...args: any[]) => {
+    console.error(`[Renderer] [error] ${message}`, ...args);
+  },
+  debug: (message: string, ...args: any[]) => {
+    console.log(`[Renderer] [debug] ${message}`, ...args);
+  }
+};
 
-// Configure log levels for renderer
-log.transports.file.level = 'info';
-log.transports.console.level = 'debug';
-
-// Configure log format for renderer
-log.transports.file.format = '[{y}-{m}-{d} {h}:{i}:{s}.{ms}] [Renderer] [{level}] {text}';
-log.transports.console.format = '[Renderer] [{level}] {text}';
-
-// Export configured logger
 export default log; 
