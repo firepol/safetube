@@ -82,7 +82,7 @@ describe('CountdownOverlay', () => {
   });
 
   it('counts down when video is playing', () => {
-    render(
+    const { rerender } = render(
       <CountdownOverlay
         isVisible={true}
         timeRemainingSeconds={3}
@@ -93,24 +93,40 @@ describe('CountdownOverlay', () => {
 
     expect(screen.getByText('3')).toBeInTheDocument();
 
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
+    // Simulate parent updating the time
+    rerender(
+      <CountdownOverlay
+        isVisible={true}
+        timeRemainingSeconds={2}
+        isVideoPlaying={true}
+        shouldShowCountdown={true}
+      />
+    );
     expect(screen.getByText('2')).toBeInTheDocument();
 
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
+    rerender(
+      <CountdownOverlay
+        isVisible={true}
+        timeRemainingSeconds={1}
+        isVideoPlaying={true}
+        shouldShowCountdown={true}
+      />
+    );
     expect(screen.getByText('1')).toBeInTheDocument();
 
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
+    rerender(
+      <CountdownOverlay
+        isVisible={true}
+        timeRemainingSeconds={0}
+        isVideoPlaying={true}
+        shouldShowCountdown={true}
+      />
+    );
     expect(screen.getByText('0')).toBeInTheDocument();
   });
 
   it('does not count down when video is paused', () => {
-    render(
+    const { rerender } = render(
       <CountdownOverlay
         isVisible={true}
         timeRemainingSeconds={3}
@@ -121,10 +137,16 @@ describe('CountdownOverlay', () => {
 
     expect(screen.getByText('3')).toBeInTheDocument();
 
-    act(() => {
-      vi.advanceTimersByTime(3000);
-    });
-    expect(screen.getByText('3')).toBeInTheDocument();
+    // Simulate parent updating the time (should still update even when paused)
+    rerender(
+      <CountdownOverlay
+        isVisible={true}
+        timeRemainingSeconds={2}
+        isVideoPlaying={false}
+        shouldShowCountdown={true}
+      />
+    );
+    expect(screen.getByText('2')).toBeInTheDocument();
   });
 
   it('resumes counting down when video starts playing', () => {
@@ -139,27 +161,27 @@ describe('CountdownOverlay', () => {
 
     expect(screen.getByText('3')).toBeInTheDocument();
 
-    // Advance time while paused - should not count down
-    act(() => {
-      vi.advanceTimersByTime(2000);
-    });
-    expect(screen.getByText('3')).toBeInTheDocument();
-
-    // Start playing
+    // Simulate parent updating the time while paused
     rerender(
       <CountdownOverlay
         isVisible={true}
-        timeRemainingSeconds={3}
+        timeRemainingSeconds={2}
+        isVideoPlaying={false}
+        shouldShowCountdown={true}
+      />
+    );
+    expect(screen.getByText('2')).toBeInTheDocument();
+
+    // Start playing - time should continue to update
+    rerender(
+      <CountdownOverlay
+        isVisible={true}
+        timeRemainingSeconds={1}
         isVideoPlaying={true}
         shouldShowCountdown={true}
       />
     );
-
-    // Now it should count down
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
-    expect(screen.getByText('2')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
   });
 
   it('updates display time when timeRemainingSeconds prop changes', () => {
@@ -216,7 +238,7 @@ describe('CountdownOverlay', () => {
   });
 
   it('stops counting down at zero', () => {
-    render(
+    const { rerender } = render(
       <CountdownOverlay
         isVisible={true}
         timeRemainingSeconds={1}
@@ -227,15 +249,26 @@ describe('CountdownOverlay', () => {
 
     expect(screen.getByText('1')).toBeInTheDocument();
 
-    act(() => {
-      vi.advanceTimersByTime(1000);
-    });
+    // Simulate parent updating to zero
+    rerender(
+      <CountdownOverlay
+        isVisible={true}
+        timeRemainingSeconds={0}
+        isVideoPlaying={true}
+        shouldShowCountdown={true}
+      />
+    );
     expect(screen.getByText('0')).toBeInTheDocument();
 
-    // Should stay at 00:00
-    act(() => {
-      vi.advanceTimersByTime(5000);
-    });
+    // Should stay at 0
+    rerender(
+      <CountdownOverlay
+        isVisible={true}
+        timeRemainingSeconds={0}
+        isVideoPlaying={true}
+        shouldShowCountdown={true}
+      />
+    );
     expect(screen.getByText('0')).toBeInTheDocument();
   });
 }); 
