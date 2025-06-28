@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import clsx from 'clsx';
 
 interface CountdownOverlayProps {
@@ -25,32 +25,12 @@ export const CountdownOverlay: React.FC<CountdownOverlayProps> = ({
   shouldShowCountdown,
   className = ''
 }) => {
-  const [displayTime, setDisplayTime] = useState<number>(timeRemainingSeconds);
-
-  // Update display time when timeRemainingSeconds changes
-  useEffect(() => {
-    setDisplayTime(Math.floor(timeRemainingSeconds));
-  }, [timeRemainingSeconds]);
-
-  // Countdown timer effect
-  useEffect(() => {
-    if (!isVisible || !shouldShowCountdown || !isVideoPlaying || displayTime <= 0) {
-      return;
-    }
-
-    const interval = setInterval(() => {
-      setDisplayTime(prev => {
-        const newTime = prev - 1;
-        return newTime >= 0 ? newTime : 0;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [isVisible, shouldShowCountdown, isVideoPlaying, displayTime]);
-
   if (!isVisible || !shouldShowCountdown) {
     return null;
   }
+
+  // Use the time remaining directly from parent, rounded down to whole seconds
+  const displayTime = Math.floor(timeRemainingSeconds);
 
   // Format time display
   let timeString: string;
