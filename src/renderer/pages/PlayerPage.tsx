@@ -4,6 +4,7 @@ import videos from '../data/videos.json';
 import { YouTubeAPI, VideoStream, AudioTrack } from '../services/youtube';
 import { Video } from '../types';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
+import { CountdownOverlay } from '../components/video/CountdownOverlay';
 import { logVerbose } from '@/shared/logging';
 
 export const PlayerPage: React.FC = () => {
@@ -19,6 +20,9 @@ export const PlayerPage: React.FC = () => {
   
   // Time tracking state
   const [isLimitReached, setIsLimitReached] = useState<boolean>(false);
+  const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
+  const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
+  const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
   const timeTrackingRef = useRef<{
     startTime: number;
     totalWatched: number;
@@ -617,6 +621,9 @@ export const PlayerPage: React.FC = () => {
         const state = await window.electron.getTimeTrackingState();
         if (!isMounted) return;
         
+        // Update time remaining for countdown overlay
+        setTimeRemainingSeconds(state.timeRemaining);
+        
         if (state.isLimitReached) {
           logVerbose('[TimeTracking] Time limit reached during playback - implementing Time\'s Up behavior');
           
@@ -653,6 +660,44 @@ export const PlayerPage: React.FC = () => {
       }
     };
   }, [video, navigate]);
+
+  // Fetch countdown configuration and update video play state
+  useEffect(() => {
+    const fetchCountdownConfig = async () => {
+      try {
+        const timeLimits = await window.electron.getTimeLimits();
+        const countdownSeconds = timeLimits.countdownWarningSeconds ?? 60;
+        setCountdownWarningSeconds(countdownSeconds);
+      } catch (error) {
+        console.error('Error fetching countdown configuration:', error);
+        // Keep default value of 60 seconds
+      }
+    };
+
+    fetchCountdownConfig();
+  }, []);
+
+  // Update video play state
+  useEffect(() => {
+    if (!videoRef.current) return;
+
+    const handlePlay = () => {
+      setIsVideoPlaying(true);
+    };
+
+    const handlePause = () => {
+      setIsVideoPlaying(false);
+    };
+
+    const videoElement = videoRef.current;
+    videoElement.addEventListener('play', handlePlay);
+    videoElement.addEventListener('pause', handlePause);
+
+    return () => {
+      videoElement.removeEventListener('play', handlePlay);
+      videoElement.removeEventListener('pause', handlePause);
+    };
+  }, [videoRef.current]);
 
   if (!video) {
     return (
@@ -697,7 +742,7 @@ export const PlayerPage: React.FC = () => {
         )}
       </div>
       <div className="flex-grow flex items-center justify-center p-4">
-        <div className="w-full max-w-4xl">
+        <div className="w-full max-w-4xl relative">
           <video
             ref={videoRef}
             className="w-full"
@@ -741,6 +786,13 @@ export const PlayerPage: React.FC = () => {
               logVerbose('Video loaded successfully');
               setIsLoading(false);
             }}
+          />
+          <CountdownOverlay
+            isVisible={!isLoading && !error}
+            timeRemainingSeconds={timeRemainingSeconds}
+            isVideoPlaying={isVideoPlaying}
+            shouldShowCountdown={timeRemainingSeconds <= countdownWarningSeconds && timeRemainingSeconds > 0}
+            countdownWarningSeconds={countdownWarningSeconds}
           />
         </div>
       </div>

@@ -1,8 +1,18 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach, beforeAll, afterAll } from 'vitest';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { KidScreen } from './KidScreen';
 import { MemoryRouter } from 'react-router-dom';
 import * as Tooltip from '@radix-ui/react-tooltip';
+
+// Mock console.error to suppress error messages during tests
+const originalConsoleError = console.error;
+beforeAll(() => {
+  console.error = vi.fn();
+});
+
+afterAll(() => {
+  console.error = originalConsoleError;
+});
 
 // Shared mockNavigate for all tests
 const mockNavigate = vi.fn();
@@ -24,6 +34,10 @@ beforeEach(() => {
       timeLimitToday: 3600,
       timeUsedToday: 1800,
       isLimitReached: false
+    }),
+    getTimeLimits: vi.fn().mockResolvedValue({
+      warningThresholdMinutes: 3,
+      countdownWarningSeconds: 60
     })
   } as any;
   mockNavigate.mockReset();
@@ -60,8 +74,11 @@ describe('KidScreen', () => {
     renderWithProvider(<KidScreen />);
     
     await waitFor(() => {
-      // Should show time display in format "X / Y [Z minutes left]"
-      expect(screen.getByText(/30 \/ 60 \[30 minutes left\]/)).toBeInTheDocument();
+      // Should show time display in new format with TimeIndicator
+      const timeIndicator = screen.getByTestId('time-indicator-root');
+      expect(timeIndicator).toBeInTheDocument();
+      // Check that it shows time in the new format
+      expect(within(timeIndicator).getAllByText(/30:00/).length).toBeGreaterThan(0);
     });
   });
 
@@ -77,8 +94,12 @@ describe('KidScreen', () => {
     renderWithProvider(<KidScreen />);
     
     await waitFor(() => {
-      const timeDisplay = screen.getByText(/58 \/ 60 \[2 minutes left\]/);
-      expect(timeDisplay).toHaveClass('text-red-600');
+      // Look for the time indicator with the new structure
+      const timeIndicator = screen.getByTestId('time-indicator-root');
+      expect(timeIndicator).toBeInTheDocument();
+      // Check that the time shows 58:00 / 60:00 in orange (2 minutes remaining with 3-minute warning threshold)
+      const timeElement = within(timeIndicator).getByText(/58:00/);
+      expect(timeElement).toHaveClass('text-orange-600');
     });
   });
 
