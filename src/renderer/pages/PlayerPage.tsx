@@ -621,6 +621,8 @@ export const PlayerPage: React.FC = () => {
         setTimeRemainingSeconds(state.timeRemaining);
         
         // Check for audio warnings
+        logVerbose('[AudioWarning] Current isVideoPlaying state:', isVideoPlaying);
+        logVerbose('[AudioWarning] Video element paused state:', videoRef.current?.paused);
         audioWarningService.checkAudioWarnings(state.timeRemaining, isVideoPlaying);
         
         if (state.isLimitReached) {
@@ -693,12 +695,14 @@ export const PlayerPage: React.FC = () => {
     if (!videoRef.current) return;
 
     const handlePlay = () => {
+      logVerbose('[VideoState] DOM play event fired - setting isVideoPlaying to true');
       setIsVideoPlaying(true);
       // Reset audio warning state when video starts playing
       audioWarningService.resetState();
     };
 
     const handlePause = () => {
+      logVerbose('[VideoState] DOM pause event fired - setting isVideoPlaying to false');
       setIsVideoPlaying(false);
     };
 
@@ -771,10 +775,12 @@ export const PlayerPage: React.FC = () => {
             playsInline
             onPlay={() => {
               logVerbose('[TimeTracking] Video onPlay event fired');
+              logVerbose('[VideoState] React onPlay - current isVideoPlaying state:', isVideoPlaying);
               startTimeTracking();
             }}
             onPause={() => {
               logVerbose('[TimeTracking] Video onPause event fired');
+              logVerbose('[VideoState] React onPause - current isVideoPlaying state:', isVideoPlaying);
               stopTimeTracking();
             }}
             onEnded={() => {
