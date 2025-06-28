@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import clsx from 'clsx';
 
 export interface TimeTrackingState {
   timeRemaining: number;
@@ -135,7 +136,14 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
   const percent = timeLimit > 0 ? Math.min(100, Math.max(0, Math.round((timeUsed / timeLimit) * 100))) : 0;
 
   return (
-    <div className={`text-sm font-medium flex flex-col gap-1 ${className}`} style={{minWidth: 260}}>
+    <div
+      data-testid="time-indicator-root"
+      className={clsx(
+        'text-sm font-medium flex flex-col gap-1',
+        className
+      )}
+      style={{ minWidth: '260px' }}
+    >
       <div className="flex items-center gap-2">
         <span className="text-gray-600">⏰</span>
         <span className={colorClass}>{formatTime(timeUsed)} / {formatTime(timeLimit)}</span>

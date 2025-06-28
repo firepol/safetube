@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { PlayerPage } from './PlayerPage';
 import { vi } from 'vitest';
@@ -22,6 +22,10 @@ beforeAll(() => {
       timeLimitToday: 3600,
       timeUsedToday: 1800,
       isLimitReached: false 
+    }),
+    getTimeLimits: vi.fn().mockResolvedValue({
+      warningThresholdMinutes: 3,
+      countdownWarningSeconds: 60
     }),
     recordVideoWatching: vi.fn().mockResolvedValue({ success: true }),
     getLocalFile: vi.fn().mockResolvedValue('file:///test/video.mp4'),
@@ -47,7 +51,11 @@ describe('PlayerPage', () => {
     
     expect(screen.getByText('← Back')).toBeInTheDocument();
     await waitFor(() => {
-      expect(screen.getByText(/minutes left/)).toBeInTheDocument();
+      // Look for the time indicator with the new structure
+      const timeIndicator = screen.getByTestId('time-indicator-root');
+      expect(timeIndicator).toBeInTheDocument();
+      // Check that it shows time remaining in the new format
+      expect(within(timeIndicator).getAllByText(/30:00/).length).toBeGreaterThan(0);
     });
   });
 
@@ -102,7 +110,14 @@ describe('PlayerPage', () => {
     );
     
     await waitFor(() => {
-      expect(screen.getByText('Daily time limit reached')).toBeInTheDocument();
+      // Look for the time indicator showing limit reached (red color)
+      const timeIndicator = screen.getByTestId('time-indicator-root');
+      expect(timeIndicator).toBeInTheDocument();
+      // Check that the time shows 60:00 / 60:00 in red
+      const timeElement = within(timeIndicator).getByText(/60:00/);
+      expect(timeElement).toHaveClass('text-red-600');
+      // Check for 100% in the progress bar
+      expect(screen.getByText(/100\s*%/)).toBeInTheDocument();
     });
   });
 
