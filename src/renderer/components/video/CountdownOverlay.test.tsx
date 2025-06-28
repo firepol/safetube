@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import { CountdownOverlay } from './CountdownOverlay';
 
@@ -93,17 +93,17 @@ describe('CountdownOverlay', () => {
 
     expect(screen.getByText('3')).toBeInTheDocument();
 
-    waitFor(() => {
+    act(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(screen.getByText('2')).toBeInTheDocument();
 
-    waitFor(() => {
+    act(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(screen.getByText('1')).toBeInTheDocument();
 
-    waitFor(() => {
+    act(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(screen.getByText('0')).toBeInTheDocument();
@@ -121,7 +121,7 @@ describe('CountdownOverlay', () => {
 
     expect(screen.getByText('3')).toBeInTheDocument();
 
-    waitFor(() => {
+    act(() => {
       vi.advanceTimersByTime(3000);
     });
     expect(screen.getByText('3')).toBeInTheDocument();
@@ -140,7 +140,7 @@ describe('CountdownOverlay', () => {
     expect(screen.getByText('3')).toBeInTheDocument();
 
     // Advance time while paused - should not count down
-    waitFor(() => {
+    act(() => {
       vi.advanceTimersByTime(2000);
     });
     expect(screen.getByText('3')).toBeInTheDocument();
@@ -156,7 +156,7 @@ describe('CountdownOverlay', () => {
     );
 
     // Now it should count down
-    waitFor(() => {
+    act(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(screen.getByText('2')).toBeInTheDocument();
@@ -227,13 +227,13 @@ describe('CountdownOverlay', () => {
 
     expect(screen.getByText('1')).toBeInTheDocument();
 
-    waitFor(() => {
+    act(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(screen.getByText('0')).toBeInTheDocument();
 
     // Should stay at 00:00
-    waitFor(() => {
+    act(() => {
       vi.advanceTimersByTime(5000);
     });
     expect(screen.getByText('0')).toBeInTheDocument();
