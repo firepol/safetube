@@ -1,6 +1,5 @@
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect } from 'vitest';
-import React from 'react';
 
 // Test component to verify Tailwind CSS is working
 const TailwindTestComponent = () => {

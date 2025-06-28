@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import { TimeIndicator, TimeTrackingState } from './TimeIndicator';

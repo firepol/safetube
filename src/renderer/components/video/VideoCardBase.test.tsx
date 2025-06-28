@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { VideoCardBase } from './VideoCardBase';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { MemoryRouter } from 'react-router-dom';
@@ -24,7 +24,7 @@ describe('VideoCardBase', () => {
     );
 
   it('renders video card with all information', () => {
-    const { container } = renderWithProvider(<VideoCardBase {...mockVideo} />);
+    const { } = renderWithProvider(<VideoCardBase {...mockVideo} />);
     
     // Check title
     expect(screen.getByText('Test Video')).toBeInTheDocument();

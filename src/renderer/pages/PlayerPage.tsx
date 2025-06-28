@@ -12,14 +12,11 @@ export const PlayerPage: React.FC = () => {
   const navigate = useNavigate();
   const video = (videos as Video[]).find((v) => v.id === id);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [localFilePath, setLocalFilePath] = useState<string | null>(null);
-  const [dlnaUrl, setDlnaUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadingTimeoutRef = useRef<number | undefined>(undefined);
   
   // Time tracking state
-  const [isLimitReached, setIsLimitReached] = useState<boolean>(false);
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
@@ -134,7 +131,6 @@ export const PlayerPage: React.FC = () => {
             logVerbose('Loading local file:', video.url);
             const path = await window.electron.getLocalFile(video.url);
             logVerbose('Received local file path:', path);
-            setLocalFilePath(path);
             
             if (videoRef.current) {
               videoRef.current.src = path;
@@ -182,7 +178,6 @@ export const PlayerPage: React.FC = () => {
           logVerbose('Loading DLNA video:', { server, port, path });
           const dlnaUrl = await window.electron.getDlnaFile(server, port, path);
           logVerbose('Received DLNA URL:', dlnaUrl);
-          setDlnaUrl(dlnaUrl);
           if (videoRef.current) {
             videoRef.current.src = dlnaUrl;
           }
@@ -587,7 +582,7 @@ export const PlayerPage: React.FC = () => {
       try {
         const state = await window.electron.getTimeTrackingState();
         if (isMounted) {
-          setIsLimitReached(state.isLimitReached);
+          setTimeRemainingSeconds(state.timeRemaining);
           
           // If limit is reached, don't allow playback
           if (state.isLimitReached) {
@@ -792,7 +787,6 @@ export const PlayerPage: React.FC = () => {
             timeRemainingSeconds={timeRemainingSeconds}
             isVideoPlaying={isVideoPlaying}
             shouldShowCountdown={timeRemainingSeconds <= countdownWarningSeconds && timeRemainingSeconds > 0}
-            countdownWarningSeconds={countdownWarningSeconds}
           />
         </div>
       </div>

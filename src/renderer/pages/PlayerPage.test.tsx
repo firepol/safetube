@@ -1,4 +1,3 @@
-import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { PlayerPage } from './PlayerPage';
@@ -156,8 +155,6 @@ describe('PlayerPage', () => {
   });
 
   it('implements Time\'s Up behavior when limit is reached during playback', async () => {
-    const mockNavigate = vi.fn();
-    
     // Mock time limit not reached initially
     window.electron.getTimeTrackingState = vi.fn()
       .mockResolvedValueOnce({

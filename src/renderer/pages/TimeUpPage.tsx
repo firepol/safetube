@@ -97,7 +97,7 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
             <h2 className="text-lg font-semibold mb-4 text-center">Weekly Schedule</h2>
             <table className="w-full border border-gray-400 border-collapse">
               <tbody>
-                {days.map((day, idx) => {
+                {days.map((day) => {
                   const limit = timeLimits[day as keyof TimeLimits] || 0;
                   const isToday = isCurrentDay(day);
                   return (
@@ -123,7 +123,7 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
                           (isToday ? ' text-red-700 font-bold' : ' text-gray-600 font-semibold')
                         }
                       >
-                        {formatTimeLimit(limit)}
+                        {formatTimeLimit(Number(limit))}
                       </td>
                     </tr>
                   );
