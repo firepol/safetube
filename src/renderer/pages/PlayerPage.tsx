@@ -6,6 +6,7 @@ import { Video } from '../types';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
 import { CountdownOverlay } from '../components/video/CountdownOverlay';
 import { logVerbose } from '@/shared/logging';
+import { audioWarningService } from '../services/audioWarning';
 
 export const PlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -619,6 +620,9 @@ export const PlayerPage: React.FC = () => {
         // Update time remaining for countdown overlay
         setTimeRemainingSeconds(state.timeRemaining);
         
+        // Check for audio warnings
+        audioWarningService.checkAudioWarnings(state.timeRemaining, isVideoPlaying);
+        
         if (state.isLimitReached) {
           logVerbose('[TimeTracking] Time limit reached during playback - implementing Time\'s Up behavior');
           
@@ -662,10 +666,22 @@ export const PlayerPage: React.FC = () => {
       try {
         const timeLimits = await window.electron.getTimeLimits();
         const countdownSeconds = timeLimits.countdownWarningSeconds ?? 60;
+        const audioWarningSeconds = timeLimits.audioWarningSeconds ?? 10;
+        const useSystemBeep = timeLimits.useSystemBeep ?? true;
+        const customBeepSound = timeLimits.customBeepSound;
+        
         setCountdownWarningSeconds(countdownSeconds);
+        
+        // Initialize audio warning service
+        await audioWarningService.initialize({
+          countdownWarningSeconds: countdownSeconds,
+          audioWarningSeconds: audioWarningSeconds,
+          useSystemBeep: useSystemBeep,
+          customBeepSound: customBeepSound,
+        });
       } catch (error) {
         console.error('Error fetching countdown configuration:', error);
-        // Keep default value of 60 seconds
+        // Keep default values
       }
     };
 
@@ -678,6 +694,8 @@ export const PlayerPage: React.FC = () => {
 
     const handlePlay = () => {
       setIsVideoPlaying(true);
+      // Reset audio warning state when video starts playing
+      audioWarningService.resetState();
     };
 
     const handlePause = () => {
@@ -693,6 +711,13 @@ export const PlayerPage: React.FC = () => {
       videoElement.removeEventListener('pause', handlePause);
     };
   }, [videoRef.current]);
+
+  // Cleanup audio warning service on unmount
+  useEffect(() => {
+    return () => {
+      audioWarningService.destroy();
+    };
+  }, []);
 
   if (!video) {
     return (
