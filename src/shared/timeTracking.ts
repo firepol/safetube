@@ -44,7 +44,9 @@ export async function addTimeUsedToday(seconds: number): Promise<void> {
   const usageLog = await readUsageLog();
   const today = getCurrentDate();
   
-  usageLog[today] = (usageLog[today] || 0) + seconds;
+  // Round to whole seconds to avoid decimal precision issues
+  const roundedSeconds = Math.round(seconds);
+  usageLog[today] = (usageLog[today] || 0) + roundedSeconds;
   
   await writeUsageLog(usageLog);
 }
@@ -126,9 +128,12 @@ export async function recordVideoWatching(
   position: number, 
   timeWatched: number
 ): Promise<void> {
-  logVerbose('[TimeTracking] recordVideoWatching:', { videoId, position, timeWatched });
+  // Round timeWatched to whole seconds for consistency
+  const roundedTimeWatched = Math.round(timeWatched);
+  logVerbose('[TimeTracking] recordVideoWatching:', { videoId, position, timeWatched: roundedTimeWatched });
+  
   // Add to daily usage in seconds (for precision)
-  await addTimeUsedToday(timeWatched);
+  await addTimeUsedToday(roundedTimeWatched);
   
   // Update watched video history
   const watchedVideos = await readWatchedVideos();
@@ -142,7 +147,7 @@ export async function recordVideoWatching(
       ...watchedVideos[existingIndex],
       position,
       lastWatched: now,
-      timeWatched: watchedVideos[existingIndex].timeWatched + timeWatched
+      timeWatched: watchedVideos[existingIndex].timeWatched + roundedTimeWatched
     };
   } else {
     // Add new entry
@@ -150,7 +155,7 @@ export async function recordVideoWatching(
       videoId,
       position,
       lastWatched: now,
-      timeWatched
+      timeWatched: roundedTimeWatched
     });
   }
   
