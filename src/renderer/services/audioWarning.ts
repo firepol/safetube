@@ -74,30 +74,32 @@ class AudioWarningService {
    * Check if audio warnings should be triggered based on remaining time
    */
   checkAudioWarnings(timeRemainingSeconds: number, isVideoPlaying: boolean): void {
-    log.verbose('[AudioWarning] Checking warnings - timeRemaining:', timeRemainingSeconds, 'isVideoPlaying:', isVideoPlaying);
+    const roundedTime = Math.round(timeRemainingSeconds * 10) / 10;
+    log.verbose('[AudioWarning] Checking warnings - timeRemaining:', roundedTime, 'isVideoPlaying:', isVideoPlaying);
     
     if (!isVideoPlaying) {
       log.verbose('[AudioWarning] Video not playing, skipping warnings');
       return; // Don't play warnings when video is paused
     }
 
-    // Check for countdown warning (60 seconds)
+    // Check for countdown warning (60 seconds) - trigger between 60-50 seconds
     if (
       timeRemainingSeconds <= this.config.countdownWarningSeconds &&
       timeRemainingSeconds > this.config.countdownWarningSeconds - 10 &&
       !this.state.hasPlayedCountdownWarning
     ) {
-      log.verbose('[AudioWarning] Triggering countdown warning at', timeRemainingSeconds, 'seconds');
+      log.verbose('[AudioWarning] Triggering countdown warning at', roundedTime, 'seconds');
       this.playCountdownWarning();
     }
 
-    // Check for audio warning (10 seconds)
+    // Check for audio warning (10 seconds) - trigger when first reaching <= 10 seconds
+    // This ensures it triggers even if the check happens at 7 seconds (missed 10)
     if (
       timeRemainingSeconds <= this.config.audioWarningSeconds &&
-      timeRemainingSeconds > 0 &&
+      timeRemainingSeconds >= 0 &&
       !this.state.hasPlayedAudioWarning
     ) {
-      log.verbose('[AudioWarning] Triggering audio warning at', timeRemainingSeconds, 'seconds');
+      log.verbose('[AudioWarning] Triggering audio warning at', roundedTime, 'seconds (first time reaching <= 10)');
       this.playAudioWarning();
     }
   }
@@ -118,7 +120,7 @@ class AudioWarningService {
   private playAudioWarning(): void {
     this.state.hasPlayedAudioWarning = true;
     this.state.beepCount = 0;
-    this.startBeeping(500); // 0.5 second interval for more urgent warning
+    this.startBeeping(1000); // 1 second interval for consistent timing
     log.verbose('[AudioWarning] Playing audio warning beeps');
   }
 
@@ -134,7 +136,7 @@ class AudioWarningService {
     this.state.lastBeepTime = Date.now();
 
     const beep = () => {
-      // Stop countdown warning after 10 beeps
+      // Stop countdown warning after exactly 10 beeps
       if (this.state.hasPlayedCountdownWarning && this.state.beepCount >= 10) {
         this.stopBeeping();
         log.verbose('[AudioWarning] Countdown warning completed (10 beeps)');

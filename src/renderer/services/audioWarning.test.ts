@@ -98,12 +98,12 @@ describe('AudioWarningService', () => {
     expect(mockConsoleLog).toHaveBeenCalledWith('\x07');
   });
 
-  it('does not trigger audio warning at 0 seconds', () => {
-    // Check at 0 seconds (should not trigger audio warning)
+  it('triggers audio warning at 0 seconds', () => {
+    // Check at 0 seconds (should trigger audio warning)
     audioWarningService.checkAudioWarnings(0, true);
     
-    // Should not trigger audio warning
-    expect(mockConsoleLog).not.toHaveBeenCalled();
+    // Should trigger audio warning
+    expect(mockConsoleLog).toHaveBeenCalledWith('\x07');
   });
 
   it('only triggers countdown warning once', () => {
@@ -153,9 +153,9 @@ describe('AudioWarningService', () => {
 
   it('plays audio warning continuously until time is up', () => {
     audioWarningService.checkAudioWarnings(10, true);
-    // First beep is synchronous, then 5 scheduled
+    // First beep is synchronous, then 5 scheduled at 1-second intervals
     for (let i = 0; i < 5; i++) {
-      vi.advanceTimersByTime(500);
+      vi.advanceTimersByTime(1000);
     }
     expect(mockConsoleLog).toHaveBeenCalledTimes(6);
   });

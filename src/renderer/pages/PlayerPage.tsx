@@ -621,6 +621,7 @@ export const PlayerPage: React.FC = () => {
         setTimeRemainingSeconds(state.timeRemaining);
         
         // Check for audio warnings
+        const roundedTimeRemaining = Math.round(state.timeRemaining * 10) / 10;
         logVerbose('[AudioWarning] Current isVideoPlaying state:', isVideoPlaying);
         logVerbose('[AudioWarning] Video element paused state:', videoRef.current?.paused);
         
@@ -632,7 +633,7 @@ export const PlayerPage: React.FC = () => {
         const finalVideoPlaying = isVideoPlaying || actualVideoPlaying;
         logVerbose('[AudioWarning] Final video playing state used for warnings:', finalVideoPlaying);
         
-        audioWarningService.checkAudioWarnings(state.timeRemaining, finalVideoPlaying);
+        audioWarningService.checkAudioWarnings(roundedTimeRemaining, finalVideoPlaying);
         
         if (state.isLimitReached) {
           logVerbose('[TimeTracking] Time limit reached during playback - implementing Time\'s Up behavior');
@@ -660,8 +661,8 @@ export const PlayerPage: React.FC = () => {
       }
     };
     
-    // Check time limits every 3 seconds during video playback
-    intervalId = window.setInterval(monitorTimeLimits, 3000);
+    // Check time limits every 1 second during video playback for more precise audio warning timing
+    intervalId = window.setInterval(monitorTimeLimits, 1000);
     
     return () => {
       isMounted = false;
