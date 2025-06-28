@@ -153,7 +153,7 @@ testRunner('YouTubeAPI Integration', () => {
     expect(video.id).toBe(videoId);
     
     // Get streams and tracks
-    const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(videoId);
+    const { audioTracks } = await YouTubeAPI.getVideoStreams(videoId);
     
     // Test language preference selection
     const preferredLanguages = ['it', 'en'];
@@ -237,12 +237,10 @@ testRunner('YouTubeAPI Integration', () => {
 testRunner('YouTubeAPI Audio Language Selection', () => {
   const videoId = 'f2_3sQu7lA4';
   let audioTracks: any[] = [];
-  let videoStreams: any[] = [];
 
   beforeAll(async () => {
     const result = await YouTubeAPI.getVideoStreams(videoId);
     audioTracks = result.audioTracks;
-    videoStreams = result.videoStreams;
   }, 20000);
 
   it('should select English by default if no language specified', () => {

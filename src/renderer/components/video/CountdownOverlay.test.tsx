@@ -1,5 +1,4 @@
-import React from 'react';
-import { render, screen, act } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import { CountdownOverlay } from './CountdownOverlay';
 
@@ -29,7 +28,6 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={60}
         isVideoPlaying={true}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
     expect(container.firstChild).toBeNull();
@@ -42,7 +40,6 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={60}
         isVideoPlaying={true}
         shouldShowCountdown={false}
-        countdownWarningSeconds={60}
       />
     );
     expect(container.firstChild).toBeNull();
@@ -55,7 +52,6 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={65}
         isVideoPlaying={true}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
     expect(screen.getByText('1:05')).toBeInTheDocument();
@@ -68,7 +64,6 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={125}
         isVideoPlaying={true}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
     expect(screen.getByText('2:05')).toBeInTheDocument();
@@ -81,7 +76,6 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={45}
         isVideoPlaying={true}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
     expect(screen.getByText('45')).toBeInTheDocument();
@@ -94,23 +88,22 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={3}
         isVideoPlaying={true}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
 
     expect(screen.getByText('3')).toBeInTheDocument();
 
-    act(() => {
+    waitFor(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(screen.getByText('2')).toBeInTheDocument();
 
-    act(() => {
+    waitFor(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(screen.getByText('1')).toBeInTheDocument();
 
-    act(() => {
+    waitFor(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(screen.getByText('0')).toBeInTheDocument();
@@ -123,13 +116,12 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={3}
         isVideoPlaying={false}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
 
     expect(screen.getByText('3')).toBeInTheDocument();
 
-    act(() => {
+    waitFor(() => {
       vi.advanceTimersByTime(3000);
     });
     expect(screen.getByText('3')).toBeInTheDocument();
@@ -142,14 +134,13 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={3}
         isVideoPlaying={false}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
 
     expect(screen.getByText('3')).toBeInTheDocument();
 
     // Advance time while paused - should not count down
-    act(() => {
+    waitFor(() => {
       vi.advanceTimersByTime(2000);
     });
     expect(screen.getByText('3')).toBeInTheDocument();
@@ -161,12 +152,11 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={3}
         isVideoPlaying={true}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
 
     // Now it should count down
-    act(() => {
+    waitFor(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(screen.getByText('2')).toBeInTheDocument();
@@ -179,7 +169,6 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={60}
         isVideoPlaying={true}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
 
@@ -191,7 +180,6 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={30}
         isVideoPlaying={true}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
 
@@ -205,7 +193,6 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={60}
         isVideoPlaying={true}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
         className="custom-class"
       />
     );
@@ -221,7 +208,6 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={60}
         isVideoPlaying={true}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
     
@@ -236,19 +222,18 @@ describe('CountdownOverlay', () => {
         timeRemainingSeconds={1}
         isVideoPlaying={true}
         shouldShowCountdown={true}
-        countdownWarningSeconds={60}
       />
     );
 
     expect(screen.getByText('1')).toBeInTheDocument();
 
-    act(() => {
+    waitFor(() => {
       vi.advanceTimersByTime(1000);
     });
     expect(screen.getByText('0')).toBeInTheDocument();
 
     // Should stay at 00:00
-    act(() => {
+    waitFor(() => {
       vi.advanceTimersByTime(5000);
     });
     expect(screen.getByText('0')).toBeInTheDocument();

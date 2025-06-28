@@ -10,8 +10,6 @@ interface CountdownOverlayProps {
   isVideoPlaying: boolean;
   /** Whether the countdown should be shown (when time is <= countdownWarningSeconds) */
   shouldShowCountdown: boolean;
-  /** The countdown warning threshold in seconds */
-  countdownWarningSeconds: number;
   /** CSS classes for additional styling */
   className?: string;
 }
@@ -25,7 +23,6 @@ export const CountdownOverlay: React.FC<CountdownOverlayProps> = ({
   timeRemainingSeconds,
   isVideoPlaying,
   shouldShowCountdown,
-  countdownWarningSeconds,
   className = ''
 }) => {
   const [displayTime, setDisplayTime] = useState<number>(timeRemainingSeconds);
