@@ -623,7 +623,16 @@ export const PlayerPage: React.FC = () => {
         // Check for audio warnings
         logVerbose('[AudioWarning] Current isVideoPlaying state:', isVideoPlaying);
         logVerbose('[AudioWarning] Video element paused state:', videoRef.current?.paused);
-        audioWarningService.checkAudioWarnings(state.timeRemaining, isVideoPlaying);
+        
+        // Use video element's actual state as fallback if isVideoPlaying state is incorrect
+        const actualVideoPlaying = videoRef.current ? !videoRef.current.paused : false;
+        logVerbose('[AudioWarning] Actual video playing state:', actualVideoPlaying);
+        
+        // Use the more reliable state (actual video state if different from React state)
+        const finalVideoPlaying = isVideoPlaying || actualVideoPlaying;
+        logVerbose('[AudioWarning] Final video playing state used for warnings:', finalVideoPlaying);
+        
+        audioWarningService.checkAudioWarnings(state.timeRemaining, finalVideoPlaying);
         
         if (state.isLimitReached) {
           logVerbose('[TimeTracking] Time limit reached during playback - implementing Time\'s Up behavior');
@@ -776,11 +785,13 @@ export const PlayerPage: React.FC = () => {
             onPlay={() => {
               logVerbose('[TimeTracking] Video onPlay event fired');
               logVerbose('[VideoState] React onPlay - current isVideoPlaying state:', isVideoPlaying);
+              setIsVideoPlaying(true);
               startTimeTracking();
             }}
             onPause={() => {
               logVerbose('[TimeTracking] Video onPause event fired');
               logVerbose('[VideoState] React onPause - current isVideoPlaying state:', isVideoPlaying);
+              setIsVideoPlaying(false);
               stopTimeTracking();
             }}
             onEnded={() => {
