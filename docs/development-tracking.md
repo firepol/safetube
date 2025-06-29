@@ -63,7 +63,7 @@ Each feature PRD must include:
 - **Blockers**: None
 - **Dependencies**: None
 - **Progress**: 100%
-- **Last Updated**: 2025-06-26
+- **Last Updated**: 2025-06-29
 - **Completed Items**:
   - Basic project structure with Electron + React + TypeScript
   - Development environment setup with Vite
@@ -164,8 +164,8 @@ Each feature PRD must include:
 - **Current Sprint**: Sprint 2
 - **Blockers**: None
 - **Dependencies**: Project Setup, Play Video
-- **Progress**: 95%
-- **Last Updated**: 2025-06-26
+- **Progress**: 98%
+- **Last Updated**: 2025-06-29
 - **Completed Items**:
   - JSON configuration files for time limits, usage logs, watched videos, and video sources
   - TypeScript types for all time tracking data structures
@@ -191,11 +191,17 @@ Each feature PRD must include:
   - **Time's Up behavior implementation in video player** - when time limit is reached during playback, video is paused, fullscreen is exited if active, and user is navigated to Time's Up page
   - **Continuous time limit monitoring** during video playback with 3-second interval checks
   - **Comprehensive test coverage** for Time's Up behavior including fullscreen exit and navigation
+  - **Countdown overlay implementation** - shows countdown timer in top-right corner of video player in last 30 seconds
+  - **Audio warning system** - Web Audio API beep with fallback to system beep for better compatibility
+  - **Improved time indicator styling** - horizontal progress bar with percent and color logic (green/orange/red)
+  - **Video play state detection improvements** - better fallback to video element state
 - **Remaining Items**:
-  - Add audio feedback (system beep) in last 10 seconds
   - Add configuration for countdown, audio, and warning settings
 - **Recent Changes**:
-  - 2025-06-27: **Implemented countdown overlay in last 30 seconds of daily limit** - shows countdown timer in top-right corner of video player
+  - 2025-06-28: **Implemented audio warning system with Web Audio API beep and fallback to system beep**
+  - 2025-06-28: **Improved video play state detection with fallback to video element state**
+  - 2025-06-28: **Fixed countdown overlay display and jumping issues**
+  - 2025-06-28: **Implemented countdown overlay in last 30 seconds of daily limit** - shows countdown timer in top-right corner of video player
   - 2025-06-27: **Documented fullscreen limitation** - countdown overlay is not visible in Electron fullscreen mode due to technical limitations
   - 2025-06-26: **Implemented Time's Up behavior in video player - automatic video pause, fullscreen exit, and navigation to Time's Up page when limit is reached**
   - 2025-06-26: **Added continuous time limit monitoring during video playback with 3-second interval checks**
@@ -227,7 +233,9 @@ Each feature PRD must include:
   - **Countdown overlay appears in last 30 seconds (configurable) when time is running low**
   - **Fullscreen limitation**: Countdown overlay is not visible in Electron fullscreen mode due to technical limitations of Electron's fullscreen implementation
   - **Countdown overlay works perfectly in windowed mode** with proper positioning and visibility
-  - Core functionality complete, needs audio feedback implementation
+  - **Audio warning system provides audio feedback in last 10 seconds with Web Audio API beep**
+  - **Improved time indicator shows progress bar with color-coded status (green/orange/red)**
+  - Core functionality complete, needs configuration settings for countdown and audio preferences
 
 ### 4. Video History
 - **Status**: Not Started
@@ -243,8 +251,8 @@ Each feature PRD must include:
 - **Current Sprint**: Sprint 2
 - **Blockers**: None
 - **Dependencies**: Project Setup
-- **Progress**: 85%
-- **Last Updated**: 2025-06-26
+- **Progress**: 90%
+- **Last Updated**: 2025-06-29
 - **Completed Items**:
   - **Time Limits Configuration** (`timeLimits.json`) - Daily viewing limits per weekday with TypeScript interfaces
   - **Usage Log Configuration** (`usageLog.json`) - Daily time tracking with ISO date strings and precision timing
@@ -258,12 +266,14 @@ Each feature PRD must include:
   - **Backup System** - Automatic backup creation before file modifications
   - **Persistence** - All data survives app crashes and restarts
   - **Documentation** - Comprehensive documentation in specifications.md
+  - **Countdown Settings Configuration** - `countdownWarningSeconds` (60s), `audioWarningSeconds` (10s) fully implemented and working
+  - **Audio Warning Configuration** - `useSystemBeep`, `customBeepSound` settings implemented with Web Audio API fallback
+  - **Warning Thresholds Configuration** - `warningThresholdMinutes` for UI color changes implemented
 - **Remaining Items**:
-  - Countdown settings configuration (warning seconds, audio feedback)
-  - Warning thresholds configuration for UI warnings
-  - Custom Time's Up messages configuration
+  - **Custom Time's Up messages configuration** - `timeUpMessage` field exists in config but not used in TimeUpPage UI (hardcoded message)
   - Admin UI for configuration management (future feature)
 - **Recent Changes**:
+  - 2025-06-29: **Updated to reflect that countdown and audio settings are fully implemented**
   - 2025-06-26: **Updated specifications.md with comprehensive JSON configuration documentation**
   - 2025-06-26: **Recognized that configuration system is largely complete with working files**
   - 2025-06-23: Implemented complete configuration file system with TypeScript types
@@ -274,7 +284,10 @@ Each feature PRD must include:
   - Configuration system provides type safety and error handling
   - Files are automatically backed up before modifications
   - Example files make new installations straightforward
-  - System is ready for future enhancements like countdown settings
+  - **Countdown and audio warning settings are fully functional** - configurable timing and audio preferences work correctly
+  - **Warning thresholds work properly** - UI color changes based on configurable threshold
+  - **Custom Time's Up message exists in config but is not used** - TimeUpPage shows hardcoded "Time's Up for Today!" message instead of using `timeUpMessage` field
+  - System is ready for future enhancements like admin UI
 
 ### 6. Placeholder Thumbnails
 - **Status**: Not Started
