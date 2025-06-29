@@ -342,13 +342,6 @@ export class YouTubeAPI {
       throw new Error('No audio tracks available');
     }
 
-    console.log('[YouTube] Getting best audio track for languages:', preferredLanguages);
-    console.log('[YouTube] Available audio tracks:', audioTracks.map(t => ({
-      language: t.language,
-      mimeType: t.mimeType,
-      bitrate: t.bitrate
-    })));
-    
     logVerbose('Getting best audio track for languages:', preferredLanguages);
     logVerbose('Available audio tracks:', audioTracks.map(t => ({
       language: t.language,
