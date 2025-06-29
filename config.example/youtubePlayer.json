@@ -24,4 +24,23 @@
       "reason": "Test video for MediaSource player"
     }
   }
-} 
+}
+
+/*
+Quality Settings Reference:
+- 144p (256×144) - Very slow connections
+- 240p (426×240) - Slow connections  
+- 360p (640×360) - Basic streaming
+- 480p (854×480) - Standard definition
+- 720p (1280×720) - High definition (recommended)
+- 1080p (1920×1080) - Full HD (default)
+- 1440p (2560×1440) - 2K resolution
+- 2160p (3840×2160) - 4K resolution
+- 4k (3840×2160) - 4K resolution (alias)
+
+Recommended maxQuality values:
+- Smooth playback: 720p or 1080p
+- Slow connections: 480p or 360p
+- High-end systems: 1080p or 1440p
+- Avoid: 2160p/4k (may cause stuttering)
+*/ 
