@@ -18,6 +18,8 @@ ELECTRON_LOG_VERBOSE=true
 ELECTRON_LOG_VERBOSE=false
 ```
 
+**Note**: The `.env` file is automatically loaded when starting the Electron app. You can also set the environment variable directly in the command line: `ELECTRON_LOG_VERBOSE=true yarn electron:dev`
+
 ### For Tests
 Set `TEST_LOG_VERBOSE` in your test environment:
 ```env
@@ -154,6 +156,8 @@ ELECTRON_LOG_VERBOSE=false
 # .env.test or test environment
 TEST_LOG_VERBOSE=false
 ```
+
+**Note**: The `.env` file is automatically loaded by the Electron startup script. This is the recommended way to configure logging verbosity.
 
 ## Recent Changes
 
