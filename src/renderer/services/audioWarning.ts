@@ -75,11 +75,9 @@ class AudioWarningService {
    */
   checkAudioWarnings(timeRemainingSeconds: number, isVideoPlaying: boolean): void {
     const roundedTime = Math.round(timeRemainingSeconds * 10) / 10;
-    console.log('[AudioWarning] Checking warnings - timeRemaining:', roundedTime, 'isVideoPlaying:', isVideoPlaying);
     logVerbose('[AudioWarning] Checking warnings - timeRemaining:', roundedTime, 'isVideoPlaying:', isVideoPlaying);
     
     if (!isVideoPlaying) {
-      console.log('[AudioWarning] Video not playing, skipping warnings');
       logVerbose('[AudioWarning] Video not playing, skipping warnings');
       return; // Don't play warnings when video is paused
     }
@@ -90,7 +88,6 @@ class AudioWarningService {
       timeRemainingSeconds > this.config.countdownWarningSeconds - 10 &&
       !this.state.hasPlayedCountdownWarning
     ) {
-      console.log('[AudioWarning] Triggering countdown warning at', roundedTime, 'seconds');
       logVerbose('[AudioWarning] Triggering countdown warning at', roundedTime, 'seconds');
       this.playCountdownWarning();
     }
@@ -102,7 +99,6 @@ class AudioWarningService {
       timeRemainingSeconds >= 0 &&
       !this.state.hasPlayedAudioWarning
     ) {
-      console.log('[AudioWarning] Triggering audio warning at', roundedTime, 'seconds (first time reaching <= 10)');
       logVerbose('[AudioWarning] Triggering audio warning at', roundedTime, 'seconds (first time reaching <= 10)');
       this.playAudioWarning();
     }
@@ -115,7 +111,6 @@ class AudioWarningService {
     this.state.hasPlayedCountdownWarning = true;
     this.state.beepCount = 0;
     this.startBeeping(1000); // 1 second interval
-    console.log('[AudioWarning] Playing countdown warning beeps');
     logVerbose('[AudioWarning] Playing countdown warning beeps');
   }
 
@@ -126,7 +121,6 @@ class AudioWarningService {
     this.state.hasPlayedAudioWarning = true;
     this.state.beepCount = 0;
     this.startBeeping(1000); // 1 second interval for consistent timing
-    console.log('[AudioWarning] Playing audio warning beeps');
     logVerbose('[AudioWarning] Playing audio warning beeps');
   }
 
@@ -145,7 +139,6 @@ class AudioWarningService {
       // Stop countdown warning after exactly 10 beeps
       if (this.state.hasPlayedCountdownWarning && this.state.beepCount >= 10) {
         this.stopBeeping();
-        console.log('[AudioWarning] Countdown warning completed (10 beeps)');
         logVerbose('[AudioWarning] Countdown warning completed (10 beeps)');
         return;
       }
