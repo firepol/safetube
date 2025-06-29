@@ -130,4 +130,9 @@ ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
     console.error('Error getting time tracking state:', error);
     throw error;
   }
+});
+
+// Environment variable handler
+ipcMain.handle('get-env-var', async (_, varName: string) => {
+  return process.env[varName];
 }); 

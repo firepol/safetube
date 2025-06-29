@@ -34,9 +34,7 @@ declare global {
       recordVideoWatching: (videoId: string, position: number, timeWatched: number) => Promise<{ success: boolean }>;
       getTimeTrackingState: () => Promise<{ currentDate: string; timeUsedToday: number; timeLimitToday: number; timeRemaining: number; isLimitReached: boolean }>;
       getTimeLimits: () => Promise<TimeLimits>;
-      env: {
-        ELECTRON_LOG_VERBOSE?: string;
-      };
+      getEnvVar: (varName: string) => Promise<string | undefined>;
     };
   }
 } 
