@@ -647,7 +647,7 @@ export const PlayerPage: React.FC = () => {
         const finalVideoPlaying = isVideoPlaying || actualVideoPlaying;
         logVerbose('[AudioWarning] Final video playing state used for warnings:', finalVideoPlaying);
         
-        console.log('[PlayerPage] Calling audio warning service with:', { timeRemaining: roundedTimeRemaining, isVideoPlaying: finalVideoPlaying });
+        logVerbose('[PlayerPage] Calling audio warning service with:', { timeRemaining: roundedTimeRemaining, isVideoPlaying: finalVideoPlaying });
         audioWarningService.checkAudioWarnings(roundedTimeRemaining, finalVideoPlaying);
         
         if (state.isLimitReached) {
