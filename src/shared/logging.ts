@@ -23,20 +23,46 @@ function shouldLogVerbose(): boolean {
     return true;
   }
 
-  // Check renderer process environment variable (exposed via preload)
-  if (typeof window !== 'undefined' && (window as any).electron?.env?.ELECTRON_LOG_VERBOSE === 'true') {
+  // Check renderer process environment variable (exposed via IPC)
+  if (typeof window !== 'undefined' && (window as any).electron?.getEnvVar) {
+    // We'll check this asynchronously, but for now return false to avoid blocking
+    // The actual check will be done in the async version
+    return false;
+  }
+
+  return false;
+}
+
+/**
+ * Async version of shouldLogVerbose for renderer process
+ */
+async function shouldLogVerboseAsync(): Promise<boolean> {
+  // Check if we're in a test environment
+  const isTestEnvironment =
+    typeof process !== 'undefined' && process.env.NODE_ENV === 'test' ||
+    typeof jest !== 'undefined' ||
+    typeof (globalThis as any).vitest !== 'undefined' ||
+    (typeof process !== 'undefined' && process.env.VITEST !== undefined);
+
+  if (isTestEnvironment) {
+    return typeof process !== 'undefined' && process.env.TEST_LOG_VERBOSE === 'true';
+  }
+
+  // In Electron app environment
+  // Check main process environment variable
+  if (typeof process !== 'undefined' && process.env.ELECTRON_LOG_VERBOSE === 'true') {
     return true;
   }
 
-  // Debug: Log what we're checking
-  console.log('[Logging Debug] shouldLogVerbose check:', {
-    hasProcess: typeof process !== 'undefined',
-    processEnv: typeof process !== 'undefined' ? process.env.ELECTRON_LOG_VERBOSE : 'undefined',
-    hasWindow: typeof window !== 'undefined',
-    windowElectron: typeof window !== 'undefined' ? (window as any).electron : 'undefined',
-    windowElectronEnv: typeof window !== 'undefined' ? (window as any).electron?.env : 'undefined',
-    windowElectronEnvValue: typeof window !== 'undefined' ? (window as any).electron?.env?.ELECTRON_LOG_VERBOSE : 'undefined'
-  });
+  // Check renderer process environment variable (exposed via IPC)
+  if (typeof window !== 'undefined' && (window as any).electron?.getEnvVar) {
+    try {
+      const value = await (window as any).electron.getEnvVar('ELECTRON_LOG_VERBOSE');
+      return value === 'true';
+    } catch (error) {
+      return false;
+    }
+  }
 
   return false;
 }
@@ -48,6 +74,13 @@ function shouldLogVerbose(): boolean {
 export function logVerbose(...args: any[]): void {
   if (shouldLogVerbose()) {
     console.log(...args);
+  } else if (typeof window !== 'undefined' && (window as any).electron?.getEnvVar) {
+    // In renderer process, check asynchronously
+    shouldLogVerboseAsync().then(shouldLog => {
+      if (shouldLog) {
+        console.log(...args);
+      }
+    });
   }
 }
 

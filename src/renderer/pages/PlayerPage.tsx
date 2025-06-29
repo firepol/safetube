@@ -18,10 +18,6 @@ export const PlayerPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const loadingTimeoutRef = useRef<number | undefined>(undefined);
   
-  // Test log to verify logging is working
-  console.log('[PlayerPage] Component initialized with video ID:', id);
-  logVerbose('[PlayerPage] Component initialized with video ID:', id);
-  
   // Time tracking state
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
@@ -37,6 +33,12 @@ export const PlayerPage: React.FC = () => {
     isTracking: false,
     lastUpdateTime: 0
   });
+
+  // Log component initialization only once
+  useEffect(() => {
+    console.log('[PlayerPage] Component initialized with video ID:', id);
+    logVerbose('[PlayerPage] Component initialized with video ID:', id);
+  }, [id]);
 
   useEffect(() => {
     if (video && video.resumeAt && videoRef.current) {
