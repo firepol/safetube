@@ -54,6 +54,14 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  console.log('[Main] App is ready, registering IPC handlers...');
+  
+  // Test handler to verify IPC is working
+  ipcMain.handle('test-handler', async () => {
+    console.log('[Main] Test handler called successfully');
+    return 'test-success';
+  });
+  
   createWindow();
 
   app.on('activate', () => {
@@ -134,5 +142,9 @@ ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
 
 // Environment variable handler
 ipcMain.handle('get-env-var', async (_, varName: string) => {
-  return process.env[varName];
+  console.log('[Main] get-env-var called with:', varName);
+  console.log('[Main] Available env vars:', Object.keys(process.env).filter(key => key.includes('LOG')));
+  const value = process.env[varName];
+  console.log('[Main] Returning value:', value);
+  return value;
 }); 
