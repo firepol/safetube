@@ -246,12 +246,12 @@ Each feature PRD must include:
 - **Progress**: 0%
 
 ### 5. Configuration via JSON Files
-- **Status**: In Progress
+- **Status**: Completed
 - **PRD**: [Configuration PRD](prds/05-configuration.md)
 - **Current Sprint**: Sprint 2
 - **Blockers**: None
 - **Dependencies**: Project Setup
-- **Progress**: 90%
+- **Progress**: 100%
 - **Last Updated**: 2025-06-29
 - **Completed Items**:
   - **Time Limits Configuration** (`timeLimits.json`) - Daily viewing limits per weekday with TypeScript interfaces
@@ -269,10 +269,11 @@ Each feature PRD must include:
   - **Countdown Settings Configuration** - `countdownWarningSeconds` (60s), `audioWarningSeconds` (10s) fully implemented and working
   - **Audio Warning Configuration** - `useSystemBeep`, `customBeepSound` settings implemented with Web Audio API fallback
   - **Warning Thresholds Configuration** - `warningThresholdMinutes` for UI color changes implemented
-- **Remaining Items**:
-  - **Custom Time's Up messages configuration** - `timeUpMessage` field exists in config but not used in TimeUpPage UI (hardcoded message)
-  - Admin UI for configuration management (future feature)
+  - **Custom Time's Up Messages Configuration** - `timeUpMessage` field now used in TimeUpPage UI with fallback to default
+- **Remaining Items**: None
 - **Recent Changes**:
+  - 2025-06-29: **Simplified Time's Up page design** - custom message now used as main red title for cleaner UI
+  - 2025-06-29: **Implemented configurable Time's Up message from timeLimits.json** - TimeUpPage now uses timeUpMessage field with fallback
   - 2025-06-29: **Updated to reflect that countdown and audio settings are fully implemented**
   - 2025-06-26: **Updated specifications.md with comprehensive JSON configuration documentation**
   - 2025-06-26: **Recognized that configuration system is largely complete with working files**
@@ -286,8 +287,8 @@ Each feature PRD must include:
   - Example files make new installations straightforward
   - **Countdown and audio warning settings are fully functional** - configurable timing and audio preferences work correctly
   - **Warning thresholds work properly** - UI color changes based on configurable threshold
-  - **Custom Time's Up message exists in config but is not used** - TimeUpPage shows hardcoded "Time's Up for Today!" message instead of using `timeUpMessage` field
-  - System is ready for future enhancements like admin UI
+  - **Custom Time's Up message is now fully functional** - TimeUpPage uses timeUpMessage from config with fallback to default
+  - **Configuration system is 100% complete** - all planned features implemented and working
 
 ### 6. Placeholder Thumbnails
 - **Status**: Not Started

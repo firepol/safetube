@@ -58,12 +58,51 @@ describe('TimeUpPage', () => {
     expect(screen.getByText('Loading schedule...')).toBeInTheDocument();
   });
 
-  it('renders the time up message and schedule', async () => {
+  it('renders the time up message and schedule with default message', async () => {
     renderWithRouter(<TimeUpPage />);
     
     await waitFor(() => {
-      expect(screen.getByText("Time's Up for Today!")).toBeInTheDocument();
-      expect(screen.getByText("Here's your weekly viewing schedule:")).toBeInTheDocument();
+      expect(screen.getByText("Time's up for today! Here's your schedule:")).toBeInTheDocument();
+      expect(screen.getByText('Weekly Schedule')).toBeInTheDocument();
+    });
+  });
+
+  it('renders custom time up message when configured', async () => {
+    mockGetTimeLimits.mockResolvedValue({
+      Monday: 30,
+      Tuesday: 45,
+      Wednesday: 30,
+      Thursday: 30,
+      Friday: 60,
+      Saturday: 90,
+      Sunday: 90,
+      timeUpMessage: "Custom message: Your viewing time is up!"
+    });
+    
+    renderWithRouter(<TimeUpPage />);
+    
+    await waitFor(() => {
+      expect(screen.getByText("Custom message: Your viewing time is up!")).toBeInTheDocument();
+      expect(screen.getByText('Weekly Schedule')).toBeInTheDocument();
+    });
+  });
+
+  it('uses default message when timeUpMessage is not configured', async () => {
+    mockGetTimeLimits.mockResolvedValue({
+      Monday: 30,
+      Tuesday: 45,
+      Wednesday: 30,
+      Thursday: 30,
+      Friday: 60,
+      Saturday: 90,
+      Sunday: 90
+      // No timeUpMessage field
+    });
+    
+    renderWithRouter(<TimeUpPage />);
+    
+    await waitFor(() => {
+      expect(screen.getByText("Time's up for today! Here's your schedule:")).toBeInTheDocument();
       expect(screen.getByText('Weekly Schedule')).toBeInTheDocument();
     });
   });
