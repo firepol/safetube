@@ -2,9 +2,6 @@
  * Logging utility for controlling verbosity across different environments
  */
 
-// Cache for the verbose setting to avoid repeated IPC calls
-let verboseSettingCache: boolean | null = null;
-
 /**
  * Determines if verbose logging should be enabled based on the current environment
  */
@@ -26,34 +23,12 @@ function shouldLogVerbose(): boolean {
     return true;
   }
 
-  // Check renderer process environment variable (exposed via IPC)
-  if (typeof window !== 'undefined' && (window as any).electron?.getEnvVar) {
-    // Use cached value if available
-    if (verboseSettingCache !== null) {
-      return verboseSettingCache;
-    }
-    
-    // For now, return false and let the async version handle it
-    return false;
+  // Check renderer process environment variable (exposed via preload)
+  if (typeof window !== 'undefined' && (window as any).electron?.env?.ELECTRON_LOG_VERBOSE === 'true') {
+    return true;
   }
 
   return false;
-}
-
-/**
- * Initialize the verbose setting cache for renderer process
- */
-export async function initializeVerboseLogging(): Promise<void> {
-  if (typeof window !== 'undefined' && (window as any).electron?.getEnvVar) {
-    try {
-      const value = await (window as any).electron.getEnvVar('ELECTRON_LOG_VERBOSE');
-      verboseSettingCache = value === 'true';
-      console.log('[Logging] Verbose logging initialized:', verboseSettingCache);
-    } catch (error) {
-      verboseSettingCache = false;
-      console.error('[Logging] Failed to initialize verbose logging:', error);
-    }
-  }
 }
 
 /**

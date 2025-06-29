@@ -3,15 +3,8 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { PlayerPage } from './pages/PlayerPage';
 import { TimeUpPage } from './pages/TimeUpPage';
-import { useEffect } from 'react';
-import { initializeVerboseLogging } from '@/shared/logging';
 
 function App() {
-  useEffect(() => {
-    // Initialize verbose logging when the app starts
-    initializeVerboseLogging();
-  }, []);
-
   return (
     <Tooltip.Provider>
       <BrowserRouter>
