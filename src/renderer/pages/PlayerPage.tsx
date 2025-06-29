@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import videos from '../data/videos.json';
 import { YouTubeAPI, VideoStream, AudioTrack } from '../services/youtube';
+import { PlayerConfigService } from '../services/playerConfig';
 import { Video } from '../types';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
 import { CountdownOverlay } from '../components/video/CountdownOverlay';
@@ -254,6 +255,10 @@ export const PlayerPage: React.FC = () => {
             logVerbose('Fetching available streams for video:', video.id);
             const { videoStreams, audioTracks } = await window.electron.getVideoStreams(video.id);
             
+            // Get MediaSource configuration for max quality
+            const mediaSourceConfig = await PlayerConfigService.getMediaSourceConfig();
+            logVerbose('MediaSource configuration:', mediaSourceConfig);
+            
             // Log available audio tracks
             logVerbose('Available audio tracks:', audioTracks.map(t => ({
               language: t.language,
@@ -262,8 +267,13 @@ export const PlayerPage: React.FC = () => {
               url: t.url.substring(0, 50) + '...'
             })));
             
-            // Use the proper stream selection functions
-            const highestQuality = YouTubeAPI.getHighestQualityStream(videoStreams, audioTracks, video.preferredLanguages);
+            // Use the proper stream selection functions with max quality limit
+            const highestQuality = YouTubeAPI.getHighestQualityStream(
+              videoStreams, 
+              audioTracks, 
+              mediaSourceConfig.preferredLanguages,
+              mediaSourceConfig.maxQuality
+            );
             logVerbose('Highest quality stream result:', {
               ...highestQuality,
               videoUrl: highestQuality.videoUrl.substring(0, 50) + '...',

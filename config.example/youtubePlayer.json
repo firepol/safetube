@@ -1,9 +1,9 @@
 {
-  "youtubePlayerType": "iframe",
+  "youtubePlayerType": "mediasource",
   "youtubePlayerConfig": {
     "iframe": {
       "showRelatedVideos": false,
-      "customEndScreen": true,
+      "customEndScreen": false,
       "qualityControls": true,
       "autoplay": true,
       "controls": true,

@@ -429,7 +429,12 @@ export class YouTubeAPI {
   }
 
   // Helper to get highest quality stream details
-  static getHighestQualityStream(videoStreams: VideoStream[], audioTracks: AudioTrack[], preferredLanguages: string[] = ['en']): {
+  static getHighestQualityStream(
+    videoStreams: VideoStream[], 
+    audioTracks: AudioTrack[], 
+    preferredLanguages: string[] = ['en'],
+    maxQuality?: string
+  ): {
     videoUrl: string;
     audioUrl?: string;
     quality: string;
@@ -440,11 +445,23 @@ export class YouTubeAPI {
     logVerbose('getHighestQualityStream called with:', {
       videoStreamsCount: videoStreams.length,
       audioTracksCount: audioTracks.length,
-      preferredLanguages
+      preferredLanguages,
+      maxQuality
     });
 
+    // Parse max quality to height limit
+    const maxHeight = maxQuality ? this.parseMaxQuality(maxQuality) : undefined;
+    logVerbose('Max height limit:', maxHeight);
+
+    // Filter streams by max quality if specified
+    const filteredVideoStreams = maxHeight 
+      ? videoStreams.filter(s => (s.height || 0) <= maxHeight)
+      : videoStreams;
+
+    logVerbose('Filtered video streams count:', filteredVideoStreams.length);
+
     // First try to find a combined format with high quality
-    const combinedFormats = videoStreams
+    const combinedFormats = filteredVideoStreams
       .filter(s => s.mimeType.includes('mp4') && !YouTubeAPI.isM3U8(s.url) && s.mimeType.includes('audio')) // Must be mp4 and have audio
       .sort((a, b) => {
         // Sort by resolution first
@@ -458,6 +475,11 @@ export class YouTubeAPI {
 
     if (combinedFormats.length > 0) {
       const best = combinedFormats[0];
+      logVerbose('Selected combined format:', {
+        quality: best.quality,
+        resolution: `${best.width || 0}x${best.height || 0}`,
+        fps: best.fps
+      });
       return {
         videoUrl: best.url,
         quality: best.quality,
@@ -467,7 +489,7 @@ export class YouTubeAPI {
     }
 
     // If no combined format, get highest quality video and audio separately
-    const videoFormats = videoStreams
+    const videoFormats = filteredVideoStreams
       .filter(s => !YouTubeAPI.isM3U8(s.url)) // Only filter out m3u8
       .sort((a, b) => {
         // Sort by resolution first
@@ -481,6 +503,13 @@ export class YouTubeAPI {
       const bestVideo = videoFormats[0];
       const bestAudio = this.getBestAudioTrackByLanguage(audioTracks, preferredLanguages);
       
+      logVerbose('Selected separate video/audio format:', {
+        videoQuality: bestVideo.quality,
+        videoResolution: `${bestVideo.width || 0}x${bestVideo.height || 0}`,
+        videoFps: bestVideo.fps,
+        audioLanguage: bestAudio.language
+      });
+
       return {
         videoUrl: bestVideo.url,
         audioUrl: bestAudio.url,
@@ -492,7 +521,7 @@ export class YouTubeAPI {
     }
 
     // Last resort: use any format including M3U8
-    const lastResortVideoFormats = videoStreams
+    const lastResortVideoFormats = filteredVideoStreams
       .sort((a, b) => {
         // Sort by resolution first
         const heightDiff = (b.height || 0) - (a.height || 0);
@@ -513,6 +542,7 @@ export class YouTubeAPI {
           bestAudio = audioTracks[0];
         } else {
           // No audio tracks at all
+          logVerbose('No audio tracks available, using video-only format');
           return {
             videoUrl: bestVideo.url,
             quality: bestVideo.quality,
@@ -522,6 +552,13 @@ export class YouTubeAPI {
         }
       }
       
+      logVerbose('Selected last resort format:', {
+        videoQuality: bestVideo.quality,
+        videoResolution: `${bestVideo.width || 0}x${bestVideo.height || 0}`,
+        videoFps: bestVideo.fps,
+        audioLanguage: bestAudio.language
+      });
+
       return {
         videoUrl: bestVideo.url,
         audioUrl: bestAudio.url,
@@ -533,6 +570,23 @@ export class YouTubeAPI {
     }
 
     throw new Error('No suitable stream found');
+  }
+
+  // Helper function to parse quality string to max height
+  private static parseMaxQuality(maxQuality: string): number {
+    const qualityMap: Record<string, number> = {
+      '144p': 144,
+      '240p': 240,
+      '360p': 360,
+      '480p': 480,
+      '720p': 720,
+      '1080p': 1080,
+      '1440p': 1440,
+      '2160p': 2160,
+      '4k': 2160
+    };
+
+    return qualityMap[maxQuality.toLowerCase()] || 1080;
   }
 
   // Helper to get available audio tracks
