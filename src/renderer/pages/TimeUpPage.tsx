@@ -77,18 +77,18 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
   }
 
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  
+  // Use configurable timeUpMessage with fallback to default
+  const timeUpMessage = timeLimits.timeUpMessage || "Time's up for today! Here's your schedule:";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-6 font-sans">
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-red-600 mb-4">
-            Time's Up for Today!
+          <h1 className="text-3xl font-bold text-red-600 mb-6">
+            {timeUpMessage}
           </h1>
-          <p className="text-lg text-gray-600 mb-6">
-            Here's your weekly viewing schedule:
-          </p>
         </div>
 
         {/* Weekly Schedule */}
