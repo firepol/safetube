@@ -12,6 +12,10 @@ contextBridge.exposeInMainWorld(
     recordVideoWatching: (videoId: string, position: number, timeWatched: number) =>
       ipcRenderer.invoke('time-tracking:record-video-watching', videoId, position, timeWatched),
     getTimeTrackingState: () => ipcRenderer.invoke('time-tracking:get-time-tracking-state'),
-    getTimeLimits: () => ipcRenderer.invoke('time-tracking:get-time-limits')
+    getTimeLimits: () => ipcRenderer.invoke('time-tracking:get-time-limits'),
+    // Expose environment variables for logging
+    env: {
+      ELECTRON_LOG_VERBOSE: process.env.ELECTRON_LOG_VERBOSE
+    }
   }
 ); 

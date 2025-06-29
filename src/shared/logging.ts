@@ -18,7 +18,17 @@ function shouldLogVerbose(): boolean {
   }
 
   // In Electron app environment
-  return typeof process !== 'undefined' && process.env.ELECTRON_LOG_VERBOSE === 'true';
+  // Check main process environment variable
+  if (typeof process !== 'undefined' && process.env.ELECTRON_LOG_VERBOSE === 'true') {
+    return true;
+  }
+
+  // Check renderer process environment variable (exposed via preload)
+  if (typeof window !== 'undefined' && (window as any).electron?.env?.ELECTRON_LOG_VERBOSE === 'true') {
+    return true;
+  }
+
+  return false;
 }
 
 /**
