@@ -195,9 +195,16 @@ Each feature PRD must include:
   - **Audio warning system** - Web Audio API beep with fallback to system beep for better compatibility
   - **Improved time indicator styling** - horizontal progress bar with percent and color logic (green/orange/red)
   - **Video play state detection improvements** - better fallback to video element state
+  - **Unified logging system** - consolidated verbose logging across main and renderer processes with environment variable control
 - **Remaining Items**:
   - Add configuration for countdown, audio, and warning settings
 - **Recent Changes**:
+  - 2025-06-29: **Implemented unified logging system** - consolidated all verbose logging to use single `logVerbose` function with environment variable control
+  - 2025-06-29: **Fixed environment variable passing** - resolved issues with `ELECTRON_LOG_VERBOSE` not reaching renderer process via preload script
+  - 2025-06-29: **Added debugging capabilities** - built-in debugging for troubleshooting logging issues across main and renderer processes
+  - 2025-06-29: **Removed redundant logging systems** - eliminated separate renderer logger in favor of shared logging approach
+  - 2025-06-29: **Fixed frequent re-rendering logs** - moved component initialization logging to useEffect to prevent spam
+  - 2025-06-29: **Updated documentation** - comprehensive logging configuration guide with troubleshooting steps
   - 2025-06-28: **Implemented audio warning system with Web Audio API beep and fallback to system beep**
   - 2025-06-28: **Improved video play state detection with fallback to video element state**
   - 2025-06-28: **Fixed countdown overlay display and jumping issues**
@@ -235,7 +242,41 @@ Each feature PRD must include:
   - **Countdown overlay works perfectly in windowed mode** with proper positioning and visibility
   - **Audio warning system provides audio feedback in last 10 seconds with Web Audio API beep**
   - **Improved time indicator shows progress bar with color-coded status (green/orange/red)**
+  - **Unified logging system** - all verbose logging now uses single `logVerbose` function with environment variable control
   - Core functionality complete, needs configuration settings for countdown and audio preferences
+
+### 3.5. Logging System
+- **Status**: Completed
+- **PRD**: [Logging Configuration](../docs/logging-configuration.md)
+- **Current Sprint**: Sprint 2
+- **Blockers**: None
+- **Dependencies**: Project Setup
+- **Progress**: 100%
+- **Last Updated**: 2025-06-29
+- **Completed Items**:
+  - **Unified logging architecture** - single `logVerbose` function works across main and renderer processes
+  - **Environment variable control** - `ELECTRON_LOG_VERBOSE=true` enables verbose logging for development
+  - **Preload script integration** - environment variables passed safely to renderer process
+  - **Automatic environment detection** - distinguishes between test, main process, and renderer process contexts
+  - **Debugging capabilities** - built-in debugging for troubleshooting logging issues
+  - **TypeScript integration** - proper type definitions for `window.electron.env`
+  - **Performance optimization** - no unnecessary IPC calls or async operations
+  - **Comprehensive documentation** - detailed configuration guide with troubleshooting steps
+  - **Test environment support** - `TEST_LOG_VERBOSE=true` for test-specific logging
+  - **Error and warning logging** - `logError` and `logWarning` functions for always-on logging
+- **Remaining Items**: None
+- **Recent Changes**:
+  - 2025-06-29: **Consolidated logging systems** - removed redundant renderer logger, unified all logging through shared `logVerbose` function
+  - 2025-06-29: **Fixed environment variable passing** - resolved issues with `ELECTRON_LOG_VERBOSE` not reaching renderer process
+  - 2025-06-29: **Added debugging capabilities** - built-in debugging for troubleshooting logging issues
+  - 2025-06-29: **Fixed frequent re-rendering logs** - moved component initialization logging to useEffect
+  - 2025-06-29: **Updated documentation** - comprehensive logging configuration guide
+- **Notes**:
+  - All verbose logging now uses `logVerbose` function from `@/shared/logging`
+  - Environment variable `ELECTRON_LOG_VERBOSE=true` enables detailed logging for development
+  - Debugging output shows in terminal (`[Preload]`) and DevTools console (`[Logging Debug]`)
+  - Logging works seamlessly across main process, renderer process, and test environments
+  - No performance impact when verbose logging is disabled
 
 ### 4. Video History
 - **Status**: Not Started
