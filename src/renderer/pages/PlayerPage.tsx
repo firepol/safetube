@@ -19,6 +19,7 @@ export const PlayerPage: React.FC = () => {
   const loadingTimeoutRef = useRef<number | undefined>(undefined);
   
   // Test log to verify logging is working
+  console.log('[PlayerPage] Component initialized with video ID:', id);
   logVerbose('[PlayerPage] Component initialized with video ID:', id);
   
   // Time tracking state
