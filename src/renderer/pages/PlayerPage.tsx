@@ -18,6 +18,9 @@ export const PlayerPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const loadingTimeoutRef = useRef<number | undefined>(undefined);
   
+  // Test log to verify logging is working
+  logVerbose('[PlayerPage] Component initialized with video ID:', id);
+  
   // Time tracking state
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
