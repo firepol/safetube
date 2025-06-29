@@ -273,6 +273,128 @@ Defines available video sources (YouTube channels, playlists, DLNA servers, loca
 
 ---
 
+## Dual YouTube Player System
+
+The application supports two different YouTube player implementations to provide flexibility and optimal performance for different scenarios.
+
+### Player Types
+
+#### MediaSource Player (Existing)
+- **Technology**: Custom MediaSource API implementation
+- **Advantages**: Full control over video experience, no external dependencies
+- **Disadvantages**: Manual buffering, potential stuttering, complex implementation
+- **Use Case**: When maximum control over the video experience is required
+
+#### YouTube iframe Player (New)
+- **Technology**: YouTube Player API with iframe embedding
+- **Advantages**: Smooth adaptive streaming, optimized buffering, reliable playback
+- **Disadvantages**: Limited control over related videos, external API dependency
+- **Use Case**: When smooth playback is prioritized over feature control
+
+### Configuration
+
+#### YouTube Player Configuration (`youtubePlayer.json`)
+Controls which player type to use for YouTube videos:
+
+```json
+{
+  "youtubePlayerType": "iframe",
+  "youtubePlayerConfig": {
+    "iframe": {
+      "showRelatedVideos": false,
+      "customEndScreen": true,
+      "qualityControls": true,
+      "autoplay": true,
+      "controls": true
+    },
+    "mediasource": {
+      "maxQuality": "1080p",
+      "preferredLanguages": ["en"],
+      "fallbackToLowerQuality": true
+    }
+  },
+  "perVideoOverrides": {
+    "videoId1": {
+      "youtubePlayerType": "mediasource"
+    }
+  }
+}
+```
+
+#### Configuration Options
+
+- **`youtubePlayerType`**: Global player selection (`iframe` | `mediasource`)
+- **`iframe.showRelatedVideos`**: Disable related videos at end of video
+- **`iframe.customEndScreen`**: Use custom end screen overlay
+- **`iframe.qualityControls`**: Enable YouTube quality selection controls
+- **`mediasource.maxQuality`**: Maximum quality for MediaSource player
+- **`mediasource.preferredLanguages`**: Preferred audio languages
+- **`perVideoOverrides`**: Override global settings for specific videos
+
+### Player Selection Logic
+
+1. **Global Configuration**: Default player type for all YouTube videos
+2. **Per-Video Override**: Specific videos can override global setting
+3. **Fallback Mechanism**: If iframe fails, automatically fallback to MediaSource
+4. **Error Handling**: Graceful degradation when player initialization fails
+
+### Integration with Existing Systems
+
+#### Time Tracking
+- Both players integrate with existing time tracking system
+- Real-time updates during video playback
+- Resume functionality works with both players
+
+#### Video History
+- Watch history and progress tracking work with both players
+- Resume positions saved regardless of player type
+
+#### Configuration Management
+- Player configuration follows existing JSON file patterns
+- TypeScript interfaces ensure type safety
+- Backup and validation mechanisms apply to player config
+
+### Performance Characteristics
+
+#### MediaSource Player
+- **Loading**: Slower initial load due to stream analysis
+- **Playback**: May stutter on high-quality streams
+- **Memory**: Lower memory usage
+- **Network**: Direct stream access, no external dependencies
+
+#### YouTube iframe Player
+- **Loading**: Faster initial load with adaptive streaming
+- **Playback**: Smooth playback with quality adaptation
+- **Memory**: Higher memory usage due to iframe overhead
+- **Network**: YouTube's optimized CDN and adaptive streaming
+
+### Related Video Prevention
+
+#### iframe Player Strategy
+- **`rel=0` Parameter**: Disables related videos at end
+- **Custom End Screen**: Overlay prevents interaction with YouTube end screen
+- **Event Handling**: Detect video end and show custom interface
+- **Navigation Control**: Prevent navigation to related videos
+
+#### MediaSource Player Strategy
+- **Full Control**: Complete control over video experience
+- **Custom Interface**: No YouTube interface elements
+- **Navigation Prevention**: No external navigation possible
+
+### Migration and Testing
+
+#### A/B Testing Support
+- Easy switching between players via configuration
+- Performance comparison capabilities
+- User experience evaluation tools
+
+#### Rollback Strategy
+- Configuration-based feature toggling
+- No breaking changes to existing functionality
+- Immediate fallback to MediaSource if needed
+
+---
+
 ## Watch History
 
 - Local history saved in `watchHistory.json`

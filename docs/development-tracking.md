@@ -338,6 +338,35 @@ Each feature PRD must include:
   - Environment configuration template provided for easy setup
   - Documentation provides troubleshooting and maintenance guidance
 
+### 8. Dual YouTube Player System
+- **Status**: Not Started
+- **PRD**: [Dual YouTube Player System PRD](prds/08-dual-youtube-player-system.md)
+- **Current Sprint**: N/A
+- **Blockers**: None
+- **Dependencies**: Project Setup, Play Video, Time Tracking
+- **Progress**: 0%
+- **Last Updated**: 2025-06-29
+- **Completed Items**:
+  - Created comprehensive PRD for dual YouTube player system
+  - Added dual player system documentation to specifications.md
+  - Updated development tracking with new feature status
+- **Remaining Items**:
+  - Configuration system implementation
+  - YouTube iframe player implementation
+  - Player router implementation
+  - Testing and documentation
+- **Recent Changes**:
+  - 2025-06-29: **Created comprehensive PRD for dual YouTube player system**
+  - 2025-06-29: **Added dual player system documentation to specifications.md**
+  - 2025-06-29: **Updated development tracking with new feature status**
+- **Notes**:
+  - Feature addresses YouTube video stuttering issues with MediaSource player
+  - Provides configuration-based switching between MediaSource and iframe players
+  - Maintains backward compatibility with existing functionality
+  - Enables A/B testing between different player implementations
+  - Solves related video prevention concerns with iframe player
+  - No breaking changes to existing code or tests
+
 ## Status Legend
 
 - **Not Started**: Feature hasn't been implemented yet
