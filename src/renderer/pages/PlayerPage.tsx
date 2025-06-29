@@ -36,7 +36,6 @@ export const PlayerPage: React.FC = () => {
 
   // Log component initialization only once
   useEffect(() => {
-    console.log('[PlayerPage] Component initialized with video ID:', id);
     logVerbose('[PlayerPage] Component initialized with video ID:', id);
   }, [id]);
 

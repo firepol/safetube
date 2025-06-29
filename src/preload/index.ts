@@ -1,8 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-// Debug: Log what environment variables are available
-console.log('[Preload] Available env vars:', Object.keys(process.env).filter(key => key.includes('LOG')));
-console.log('[Preload] ELECTRON_LOG_VERBOSE value:', process.env.ELECTRON_LOG_VERBOSE);
+// Debug: Log what environment variables are available (only when verbose logging is enabled)
+if (process.env.ELECTRON_LOG_VERBOSE === 'true') {
+  console.log('[Preload] Available env vars:', Object.keys(process.env).filter(key => key.includes('LOG')));
+  console.log('[Preload] ELECTRON_LOG_VERBOSE value:', process.env.ELECTRON_LOG_VERBOSE);
+}
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object

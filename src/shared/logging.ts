@@ -28,15 +28,18 @@ function shouldLogVerbose(): boolean {
     return true;
   }
 
-  // Debug: Log what we're checking
-  console.log('[Logging Debug] shouldLogVerbose check:', {
-    hasProcess: typeof process !== 'undefined',
-    processEnv: typeof process !== 'undefined' ? process.env.ELECTRON_LOG_VERBOSE : 'undefined',
-    hasWindow: typeof window !== 'undefined',
-    windowElectron: typeof window !== 'undefined' ? (window as any).electron : 'undefined',
-    windowElectronEnv: typeof window !== 'undefined' ? (window as any).electron?.env : 'undefined',
-    windowElectronEnvValue: typeof window !== 'undefined' ? (window as any).electron?.env?.ELECTRON_LOG_VERBOSE : 'undefined'
-  });
+  // Debug: Log what we're checking - uncomment to see what's being checked (only when verbose is enabled)
+  if (typeof process !== 'undefined' && process.env.ELECTRON_LOG_VERBOSE === 'true' ||
+      typeof window !== 'undefined' && (window as any).electron?.env?.ELECTRON_LOG_VERBOSE === 'true') {
+    console.log('[Logging Debug] shouldLogVerbose check:', {
+      hasProcess: typeof process !== 'undefined',
+      processEnv: typeof process !== 'undefined' ? process.env.ELECTRON_LOG_VERBOSE : 'undefined',
+      hasWindow: typeof window !== 'undefined',
+      windowElectron: typeof window !== 'undefined' ? (window as any).electron : 'undefined',
+      windowElectronEnv: typeof window !== 'undefined' ? (window as any).electron?.env : 'undefined',
+      windowElectronEnvValue: typeof window !== 'undefined' ? (window as any).electron?.env?.ELECTRON_LOG_VERBOSE : 'undefined'
+    });
+  }
 
   return false;
 }
