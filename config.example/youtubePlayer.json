@@ -1,0 +1,27 @@
+{
+  "youtubePlayerType": "iframe",
+  "youtubePlayerConfig": {
+    "iframe": {
+      "showRelatedVideos": false,
+      "customEndScreen": true,
+      "qualityControls": true,
+      "autoplay": true,
+      "controls": true,
+      "modestbranding": true,
+      "rel": 0,
+      "fs": 1
+    },
+    "mediasource": {
+      "maxQuality": "1080p",
+      "preferredLanguages": ["en"],
+      "fallbackToLowerQuality": true,
+      "bufferSize": 30
+    }
+  },
+  "perVideoOverrides": {
+    "dQw4w9WgXcQ": {
+      "youtubePlayerType": "mediasource",
+      "reason": "Test video for MediaSource player"
+    }
+  }
+} 
