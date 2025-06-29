@@ -96,7 +96,7 @@ To debug logging issues, the system includes built-in debugging:
 3. **Verify Environment Variable**: Ensure `ELECTRON_LOG_VERBOSE=true` is set
 
 ### Debug Output
-When debugging is enabled, you'll see:
+When debugging is enabled **and verbose logging is turned on** (`ELECTRON_LOG_VERBOSE=true`), you'll see:
 ```
 [Preload] Available env vars: ['ELECTRON_LOG_VERBOSE']
 [Preload] ELECTRON_LOG_VERBOSE value: true
@@ -109,6 +109,8 @@ When debugging is enabled, you'll see:
   windowElectronEnvValue: "true"
 }
 ```
+
+**Note**: Debug output only appears when `ELECTRON_LOG_VERBOSE=true`. When verbose logging is disabled, no debug messages will be shown.
 
 ## Troubleshooting
 
