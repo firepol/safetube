@@ -2,6 +2,9 @@
  * Logging utility for controlling verbosity across different environments
  */
 
+// Cache for the verbose setting to avoid repeated IPC calls
+let verboseSettingCache: boolean | null = null;
+
 /**
  * Determines if verbose logging should be enabled based on the current environment
  */
@@ -25,8 +28,12 @@ function shouldLogVerbose(): boolean {
 
   // Check renderer process environment variable (exposed via IPC)
   if (typeof window !== 'undefined' && (window as any).electron?.getEnvVar) {
-    // We'll check this asynchronously, but for now return false to avoid blocking
-    // The actual check will be done in the async version
+    // Use cached value if available
+    if (verboseSettingCache !== null) {
+      return verboseSettingCache;
+    }
+    
+    // For now, return false and let the async version handle it
     return false;
   }
 
@@ -34,37 +41,19 @@ function shouldLogVerbose(): boolean {
 }
 
 /**
- * Async version of shouldLogVerbose for renderer process
+ * Initialize the verbose setting cache for renderer process
  */
-async function shouldLogVerboseAsync(): Promise<boolean> {
-  // Check if we're in a test environment
-  const isTestEnvironment =
-    typeof process !== 'undefined' && process.env.NODE_ENV === 'test' ||
-    typeof jest !== 'undefined' ||
-    typeof (globalThis as any).vitest !== 'undefined' ||
-    (typeof process !== 'undefined' && process.env.VITEST !== undefined);
-
-  if (isTestEnvironment) {
-    return typeof process !== 'undefined' && process.env.TEST_LOG_VERBOSE === 'true';
-  }
-
-  // In Electron app environment
-  // Check main process environment variable
-  if (typeof process !== 'undefined' && process.env.ELECTRON_LOG_VERBOSE === 'true') {
-    return true;
-  }
-
-  // Check renderer process environment variable (exposed via IPC)
+export async function initializeVerboseLogging(): Promise<void> {
   if (typeof window !== 'undefined' && (window as any).electron?.getEnvVar) {
     try {
       const value = await (window as any).electron.getEnvVar('ELECTRON_LOG_VERBOSE');
-      return value === 'true';
+      verboseSettingCache = value === 'true';
+      console.log('[Logging] Verbose logging initialized:', verboseSettingCache);
     } catch (error) {
-      return false;
+      verboseSettingCache = false;
+      console.error('[Logging] Failed to initialize verbose logging:', error);
     }
   }
-
-  return false;
 }
 
 /**
@@ -74,13 +63,6 @@ async function shouldLogVerboseAsync(): Promise<boolean> {
 export function logVerbose(...args: any[]): void {
   if (shouldLogVerbose()) {
     console.log(...args);
-  } else if (typeof window !== 'undefined' && (window as any).electron?.getEnvVar) {
-    // In renderer process, check asynchronously
-    shouldLogVerboseAsync().then(shouldLog => {
-      if (shouldLog) {
-        console.log(...args);
-      }
-    });
   }
 }
 
