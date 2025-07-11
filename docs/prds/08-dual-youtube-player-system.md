@@ -81,6 +81,13 @@ Implement a dual YouTube player system that allows switching between the existin
 - Clear error messages for configuration issues
 - Automatic recovery from player failures
 
+## Error Handling and Fallbacks
+
+- If a YouTube video has embedding disabled (embedding set to false), the application should detect this condition when attempting to load the video in the iframe player.
+- Upon detection, the app must automatically fall back to the standard MediaSource-based player logic for that video, ensuring continuity of playback and a seamless user experience.
+- The UI should display a clear message or indicator to inform the user that the fallback occurred due to embedding restrictions.
+- All error handling should be logged for diagnostics and future improvements.
+
 ## Testing Requirements
 
 ### Unit Tests
