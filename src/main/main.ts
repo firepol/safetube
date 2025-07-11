@@ -6,107 +6,109 @@ import * as url from 'url';
 import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking';
 import { logVerbose } from '../shared/logging';
 
-// Register all IPC handlers immediately
-console.log('[Main] Registering IPC handlers...');
+// Register IPC handlers function
+function registerIpcHandlers() {
+  console.log('[Main] Registering IPC handlers...');
 
-// Test handler to verify IPC is working
-ipcMain.handle('test-handler', async () => {
-  console.log('[Main] Test handler called successfully');
-  return 'test-success';
-});
+  // Test handler to verify IPC is working
+  ipcMain.handle('test-handler', async () => {
+    console.log('[Main] Test handler called successfully');
+    return 'test-success';
+  });
 
-// Handle local file access
-ipcMain.handle('get-local-file', async (_, filePath: string) => {
-  try {
-    // Convert file:// URL to local path
-    const localPath = filePath.replace('file://', '');
-    
-    // Check if file exists
-    if (!fs.existsSync(localPath)) {
-      throw new Error('File not found');
+  // Handle local file access
+  ipcMain.handle('get-local-file', async (_, filePath: string) => {
+    try {
+      // Convert file:// URL to local path
+      const localPath = filePath.replace('file://', '');
+      
+      // Check if file exists
+      if (!fs.existsSync(localPath)) {
+        throw new Error('File not found');
+      }
+
+      // Return the file:// URL
+      return `file://${localPath}`;
+    } catch (error) {
+      console.error('Error getting local file:', error);
+      throw error;
     }
+  });
 
-    // Return the file:// URL
-    return `file://${localPath}`;
-  } catch (error) {
-    console.error('Error getting local file:', error);
-    throw error;
-  }
-});
-
-// Handle player configuration loading
-ipcMain.handle('get-player-config', async () => {
-  console.log('[Main] get-player-config handler called');
-  try {
-    const configPath = path.join(process.cwd(), 'config', 'youtubePlayer.json');
-    console.log('[Main] Config path:', configPath);
-    if (!fs.existsSync(configPath)) {
-      console.log('[Main] Config file not found');
-      throw new Error('Player configuration file not found');
+  // Handle player configuration loading
+  ipcMain.handle('get-player-config', async () => {
+    console.log('[Main] get-player-config handler called');
+    try {
+      const configPath = path.join(process.cwd(), 'config', 'youtubePlayer.json');
+      console.log('[Main] Config path:', configPath);
+      if (!fs.existsSync(configPath)) {
+        console.log('[Main] Config file not found');
+        throw new Error('Player configuration file not found');
+      }
+      const configData = fs.readFileSync(configPath, 'utf8');
+      console.log('[Main] Config data loaded successfully');
+      return JSON.parse(configData);
+    } catch (error) {
+      console.error('Error loading player config:', error);
+      throw error;
     }
-    const configData = fs.readFileSync(configPath, 'utf8');
-    console.log('[Main] Config data loaded successfully');
-    return JSON.parse(configData);
-  } catch (error) {
-    console.error('Error loading player config:', error);
-    throw error;
-  }
-});
+  });
 
-// Handle DLNA file access
-ipcMain.handle('get-dlna-file', async (_, server: string, port: number, path: string) => {
-  logVerbose('Getting DLNA file:', { server, port, path });
-  const url = `http://${server}:${port}${path}`;
-  logVerbose('Returning DLNA URL:', url);
-  return url;
-});
+  // Handle DLNA file access
+  ipcMain.handle('get-dlna-file', async (_, server: string, port: number, path: string) => {
+    logVerbose('Getting DLNA file:', { server, port, path });
+    const url = `http://${server}:${port}${path}`;
+    logVerbose('Returning DLNA URL:', url);
+    return url;
+  });
 
-// Handle video streams
-ipcMain.handle('get-video-streams', async (_, videoId: string) => {
-  try {
-    logVerbose('Getting video streams for:', videoId);
-    // For now, return a mock response - you can implement actual YouTube API calls here
-    return {
-      streams: [
-        { url: `https://www.youtube.com/watch?v=${videoId}`, quality: 'default' }
-      ]
-    };
-  } catch (error) {
-    console.error('Error getting video streams:', error);
-    throw error;
-  }
-});
+  // Handle video streams
+  ipcMain.handle('get-video-streams', async (_, videoId: string) => {
+    try {
+      logVerbose('Getting video streams for:', videoId);
+      // For now, return a mock response - you can implement actual YouTube API calls here
+      return {
+        streams: [
+          { url: `https://www.youtube.com/watch?v=${videoId}`, quality: 'default' }
+        ]
+      };
+    } catch (error) {
+      console.error('Error getting video streams:', error);
+      throw error;
+    }
+  });
 
-// Time tracking IPC handlers
-ipcMain.handle('time-tracking:record-video-watching', async (_, videoId: string, position: number, timeWatched: number) => {
-  try {
-    await recordVideoWatching(videoId, position, timeWatched);
-    return { success: true };
-  } catch (error) {
-    console.error('Error recording video watching:', error);
-    throw error;
-  }
-});
+  // Time tracking IPC handlers
+  ipcMain.handle('time-tracking:record-video-watching', async (_, videoId: string, position: number, timeWatched: number) => {
+    try {
+      await recordVideoWatching(videoId, position, timeWatched);
+      return { success: true };
+    } catch (error) {
+      console.error('Error recording video watching:', error);
+      throw error;
+    }
+  });
 
-ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
-  try {
-    return await getTimeTrackingState();
-  } catch (error) {
-    console.error('Error getting time tracking state:', error);
-    throw error;
-  }
-});
+  ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
+    try {
+      return await getTimeTrackingState();
+    } catch (error) {
+      console.error('Error getting time tracking state:', error);
+      throw error;
+    }
+  });
 
-// Environment variable handler
-ipcMain.handle('get-env-var', async (_, varName: string) => {
-  console.log('[Main] get-env-var called with:', varName);
-  console.log('[Main] Available env vars:', Object.keys(process.env).filter(key => key.includes('LOG')));
-  const value = process.env[varName];
-  console.log('[Main] Returning value:', value);
-  return value;
-});
+  // Environment variable handler
+  ipcMain.handle('get-env-var', async (_, varName: string) => {
+    console.log('[Main] get-env-var called with:', varName);
+    console.log('[Main] Available env vars:', Object.keys(process.env).filter(key => key.includes('LOG')));
+    const value = process.env[varName];
+    console.log('[Main] Returning value:', value);
+    return value;
+  });
 
-console.log('[Main] IPC handlers registered successfully');
+  console.log('[Main] IPC handlers registered successfully');
+}
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -158,8 +160,12 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  console.log('[Main] App is ready, creating window...');
+  console.log('[Main] App is ready, registering IPC handlers...');
   
+  // Register IPC handlers first
+  registerIpcHandlers();
+  
+  // Then create the window
   createWindow();
 
   app.on('activate', () => {
