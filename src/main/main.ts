@@ -147,4 +147,19 @@ ipcMain.handle('get-env-var', async (_, varName: string) => {
   const value = process.env[varName];
   console.log('[Main] Returning value:', value);
   return value;
+});
+
+// Handle player configuration loading
+ipcMain.handle('get-player-config', async () => {
+  try {
+    const configPath = path.join(process.cwd(), 'config', 'youtubePlayer.json');
+    if (!fs.existsSync(configPath)) {
+      throw new Error('Player configuration file not found');
+    }
+    const configData = fs.readFileSync(configPath, 'utf8');
+    return JSON.parse(configData);
+  } catch (error) {
+    console.error('Error loading player config:', error);
+    throw error;
+  }
 }); 

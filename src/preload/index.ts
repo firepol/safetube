@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.invoke('time-tracking:record-video-watching', videoId, position, timeWatched),
     getTimeTrackingState: () => ipcRenderer.invoke('time-tracking:get-time-tracking-state'),
     getTimeLimits: () => ipcRenderer.invoke('time-tracking:get-time-limits'),
+    getPlayerConfig: () => ipcRenderer.invoke('get-player-config'),
     // Expose environment variables directly
     env: {
       ELECTRON_LOG_VERBOSE: process.env.ELECTRON_LOG_VERBOSE
