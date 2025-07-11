@@ -30,12 +30,16 @@ ipcMain.handle('get-local-file', async (_, filePath: string) => {
 
 // Handle player configuration loading
 ipcMain.handle('get-player-config', async () => {
+  console.log('[Main] get-player-config handler called');
   try {
     const configPath = path.join(process.cwd(), 'config', 'youtubePlayer.json');
+    console.log('[Main] Config path:', configPath);
     if (!fs.existsSync(configPath)) {
+      console.log('[Main] Config file not found');
       throw new Error('Player configuration file not found');
     }
     const configData = fs.readFileSync(configPath, 'utf8');
+    console.log('[Main] Config data loaded successfully');
     return JSON.parse(configData);
   } catch (error) {
     console.error('Error loading player config:', error);
@@ -109,6 +113,8 @@ function createWindow() {
       webSecurity: false // Allow cross-origin requests
     }
   });
+
+  console.log('[Main] Preload path:', path.join(__dirname, '../preload/index.js'));
 
   // In development, load from Vite dev server
   if (process.env.NODE_ENV === 'development') {
