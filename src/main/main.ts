@@ -9,6 +9,12 @@ import { logVerbose } from '../shared/logging';
 // Register all IPC handlers immediately
 console.log('[Main] Registering IPC handlers...');
 
+// Test handler to verify IPC is working
+ipcMain.handle('test-handler', async () => {
+  console.log('[Main] Test handler called successfully');
+  return 'test-success';
+});
+
 // Handle local file access
 ipcMain.handle('get-local-file', async (_, filePath: string) => {
   try {
@@ -153,12 +159,6 @@ function createWindow() {
 
 app.whenReady().then(() => {
   console.log('[Main] App is ready, creating window...');
-  
-  // Test handler to verify IPC is working
-  ipcMain.handle('test-handler', async () => {
-    console.log('[Main] Test handler called successfully');
-    return 'test-success';
-  });
   
   createWindow();
 

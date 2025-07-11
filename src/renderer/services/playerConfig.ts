@@ -18,6 +18,14 @@ export async function loadPlayerConfig(): Promise<PlayerConfigSchema> {
       console.log('[Renderer] IPC test failed:', testError);
     }
     
+    // Test the test handler
+    try {
+      const testHandlerResult = await window.electron.testHandler();
+      console.log('[Renderer] Test handler result:', testHandlerResult);
+    } catch (testHandlerError) {
+      console.log('[Renderer] Test handler failed:', testHandlerError);
+    }
+    
     const config: PlayerConfigSchema = await window.electron.getPlayerConfig();
     console.log('[Renderer] Config loaded successfully:', config);
 
