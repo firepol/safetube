@@ -1,4 +1,29 @@
 import { logVerbose } from '../../shared/logging';
+import type { PlayerConfigSchema } from '../types/playerConfig';
+
+/**
+ * Loads and validates the YouTube player configuration from the config directory.
+ * Returns the parsed PlayerConfigSchema object.
+ * Throws an error if the config is invalid or cannot be loaded.
+ */
+export function loadPlayerConfig(): PlayerConfigSchema {
+  // NOTE: In production, this should load from a secure location or via IPC/main process.
+  // For now, we use a static import for renderer-side dev/test.
+  // @ts-ignore
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const config: PlayerConfigSchema = require('../../../../config/youtubePlayer.json');
+
+  // Basic validation (expand as needed)
+  if (!config.youtubePlayerType || !config.youtubePlayerConfig) {
+    throw new Error('Invalid player config: missing required fields');
+  }
+  if (!['iframe', 'mediasource'].includes(config.youtubePlayerType)) {
+    throw new Error('Invalid player config: youtubePlayerType must be "iframe" or "mediasource"');
+  }
+  // Add more validation as needed
+
+  return config;
+}
 
 export interface YouTubePlayerConfig {
   iframe: {
