@@ -8,7 +8,18 @@ import type { PlayerConfigSchema } from '../types/playerConfig';
  */
 export async function loadPlayerConfig(): Promise<PlayerConfigSchema> {
   try {
+    console.log('[Renderer] Calling getPlayerConfig...');
+    
+    // Test if IPC is working at all
+    try {
+      const testResult = await window.electron.getLocalFile('test');
+      console.log('[Renderer] IPC test successful:', testResult);
+    } catch (testError) {
+      console.log('[Renderer] IPC test failed:', testError);
+    }
+    
     const config: PlayerConfigSchema = await window.electron.getPlayerConfig();
+    console.log('[Renderer] Config loaded successfully:', config);
 
     // Basic validation (expand as needed)
     if (!config.youtubePlayerType || !config.youtubePlayerConfig) {
