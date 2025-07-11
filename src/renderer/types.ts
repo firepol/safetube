@@ -35,6 +35,7 @@ declare global {
       getTimeTrackingState: () => Promise<{ currentDate: string; timeUsedToday: number; timeLimitToday: number; timeRemaining: number; isLimitReached: boolean }>;
       getTimeLimits: () => Promise<TimeLimits>;
       getPlayerConfig: () => Promise<any>;
+      testHandler: () => Promise<string>;
       env: {
         ELECTRON_LOG_VERBOSE?: string;
       };
