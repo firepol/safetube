@@ -19,7 +19,7 @@ export const PlayerRouter: React.FC = () => {
         setError(null);
 
         // Load configuration
-        const config = loadPlayerConfig();
+        const config = await loadPlayerConfig();
         
         // Check for per-video override
         if (videoId && config.perVideoOverrides?.[videoId]) {
