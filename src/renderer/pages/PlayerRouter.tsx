@@ -1,15 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { PlayerPage } from './PlayerPage';
 import { YouTubePlayerPage } from './YouTubePlayerPage';
 import { loadPlayerConfig } from '../services/playerConfig';
 import type { YouTubePlayerType } from '../types/playerConfig';
 
-interface PlayerRouterProps {
-  videoId?: string;
-  videoUrl?: string;
-}
-
-export const PlayerRouter: React.FC<PlayerRouterProps> = ({ videoId, videoUrl }) => {
+export const PlayerRouter: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const videoId = id;
   const [playerType, setPlayerType] = useState<YouTubePlayerType>('mediasource');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
