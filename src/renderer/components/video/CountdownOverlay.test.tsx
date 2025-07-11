@@ -1,4 +1,4 @@
-import { render, screen, waitFor, act } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi, afterEach, beforeAll, afterAll } from 'vitest';
 import { CountdownOverlay } from './CountdownOverlay';
 

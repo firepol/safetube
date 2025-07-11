@@ -21,7 +21,7 @@ interface CountdownOverlayProps {
 export const CountdownOverlay: React.FC<CountdownOverlayProps> = ({
   isVisible,
   timeRemainingSeconds,
-  isVideoPlaying,
+  // isVideoPlaying, // TODO: Use this prop when implementing play/pause functionality
   shouldShowCountdown,
   className = ''
 }) => {
