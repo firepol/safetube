@@ -74,6 +74,12 @@ export class YouTubeIframePlayer {
           throw new Error('YouTube IFrame API not available after loading');
         }
         
+        const el = document.getElementById(this.elementId);
+        console.log('[YouTube] About to create player, element:', el);
+        if (!el) {
+          throw new Error('YouTube player container element not found');
+        }
+        
         console.log('[YouTube] Creating player instance with API...');
         console.log('[YouTube] Element ID:', this.elementId);
         console.log('[YouTube] Options:', { videoId, ...options });
