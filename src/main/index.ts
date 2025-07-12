@@ -114,6 +114,29 @@ ipcMain.handle('get-player-config', async () => {
   }
 })
 
+// Handle video data loading
+ipcMain.handle('get-video-data', async (_, videoId: string) => {
+  try {
+    const videosPath = path.join(process.cwd(), 'src', 'renderer', 'data', 'videos.json')
+    log.info('Loading video data for:', videoId)
+    
+    if (!fs.existsSync(videosPath)) {
+      log.error('Videos data file not found:', videosPath)
+      throw new Error('Videos data file not found')
+    }
+    
+    const videosData = fs.readFileSync(videosPath, 'utf8')
+    const videos = JSON.parse(videosData)
+    const video = videos.find((v: any) => v.id === videoId)
+    
+    log.info('Video data loaded:', video ? video.type : 'not found')
+    return video
+  } catch (error) {
+    log.error('Error loading video data:', error)
+    throw error
+  }
+})
+
 // Time tracking IPC handlers
 ipcMain.handle('time-tracking:record-video-watching', async (event, videoId: string, position: number, timeWatched: number) => {
   try {

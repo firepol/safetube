@@ -11,6 +11,7 @@ export const PlayerRouter: React.FC = () => {
   const [playerType, setPlayerType] = useState<YouTubePlayerType>('mediasource');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<React.ReactNode | null>(null);
 
   useEffect(() => {
     const determinePlayerType = async () => {
@@ -28,11 +29,32 @@ export const PlayerRouter: React.FC = () => {
           setPlayerType(config.youtubePlayerType);
         }
 
+        // Route to appropriate player
+        if (config.youtubePlayerType === 'iframe' && videoId) {
+          try {
+            const video = await window.electron.getVideoData(videoId);
+            
+            if (video && video.type === 'youtube') {
+              console.log('[PlayerRouter] YouTube video, using iframe player');
+              setSelectedPlayer(<YouTubePlayerPage videoId={videoId} />);
+            } else {
+              console.log('[PlayerRouter] Non-YouTube video, using MediaSource player');
+              setSelectedPlayer(<PlayerPage />);
+            }
+          } catch (error) {
+            console.error('[PlayerRouter] Error getting video data:', error);
+            setSelectedPlayer(<PlayerPage />);
+          }
+        } else {
+          setSelectedPlayer(<PlayerPage />);
+        }
+
         setIsLoading(false);
       } catch (err) {
         console.error('Failed to load player config:', err);
         setError('Failed to load player configuration');
         setPlayerType('mediasource'); // Fallback to MediaSource
+        setSelectedPlayer(<PlayerPage />);
         setIsLoading(false);
       }
     };
@@ -56,22 +78,5 @@ export const PlayerRouter: React.FC = () => {
     );
   }
 
-  // Route to appropriate player
-  // Only use iframe player for YouTube videos when iframe is configured
-  if (playerType === 'iframe' && videoId) {
-    // Check if this is actually a YouTube video by looking up the video data
-    const videos = require('../data/videos.json');
-    const video = videos.find((v: any) => v.id === videoId);
-    
-    if (video && video.type === 'youtube') {
-      return <YouTubePlayerPage videoId={videoId} />;
-    } else {
-      // Fall back to MediaSource for non-YouTube videos
-      console.log('[PlayerRouter] Non-YouTube video, using MediaSource player');
-      return <PlayerPage />;
-    }
-  }
-
-  // Default to MediaSource player (existing PlayerPage)
-  return <PlayerPage />;
+  return selectedPlayer || <PlayerPage />;
 }; 

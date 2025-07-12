@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld(
     getTimeTrackingState: () => ipcRenderer.invoke('time-tracking:get-time-tracking-state'),
     getTimeLimits: () => ipcRenderer.invoke('time-tracking:get-time-limits'),
     getPlayerConfig: () => ipcRenderer.invoke('get-player-config'),
+    getVideoData: (videoId: string) => ipcRenderer.invoke('get-video-data', videoId),
     testHandler: () => ipcRenderer.invoke('test-handler'),
     // Expose environment variables directly
     env: {
