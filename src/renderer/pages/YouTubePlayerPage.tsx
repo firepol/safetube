@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { YouTubeIframePlayer } from '../services/youtubeIframe';
 
 interface YouTubePlayerPageProps {
@@ -6,6 +7,7 @@ interface YouTubePlayerPageProps {
 }
 
 export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId }) => {
+  const navigate = useNavigate();
   const playerRef = useRef<YouTubeIframePlayer | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -55,7 +57,13 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId })
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex flex-col items-center justify-center h-screen bg-black">
+        <button 
+          onClick={() => navigate('/')}
+          className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          ← Back to Videos
+        </button>
         <div className="text-red-500">Error: {error}</div>
       </div>
     );
@@ -63,14 +71,26 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId })
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div>Loading YouTube player...</div>
+      <div className="flex flex-col items-center justify-center h-screen bg-black">
+        <button 
+          onClick={() => navigate('/')}
+          className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          ← Back to Videos
+        </button>
+        <div className="text-white">Loading YouTube player...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex items-center justify-center h-screen bg-black">
+    <div className="flex flex-col items-center justify-center h-screen bg-black">
+      <button 
+        onClick={() => navigate('/')}
+        className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+      >
+        ← Back to Videos
+      </button>
       <div 
         id="youtube-player" 
         className="w-full max-w-4xl h-96"
