@@ -79,6 +79,18 @@ export class YouTubeIframePlayer {
       this.player = new (window as any).YT.Player(this.elementId, {
         videoId,
         ...options,
+        events: {
+          onReady: (event: any) => {
+            console.log('[YouTube] Player ready');
+            event.target.playVideo();
+          },
+          onStateChange: (event: any) => {
+            console.log('[YouTube] Player state changed:', event.data);
+          },
+          onError: (event: any) => {
+            console.error('[YouTube] Player error:', event.data);
+          }
+        }
       });
       
       console.log('[YouTube] Player instance created');
@@ -92,6 +104,18 @@ export class YouTubeIframePlayer {
         if (iframe) {
           console.log('[YouTube] Iframe src:', iframe.src);
           console.log('[YouTube] Iframe dimensions:', iframe.width, 'x', iframe.height);
+        } else {
+          console.log('[YouTube] Iframe not found, checking again in 2 seconds...');
+          setTimeout(() => {
+            const element2 = document.getElementById(this.elementId);
+            const iframe2 = element2?.querySelector('iframe');
+            console.log('[YouTube] Second check - Element found:', !!element2);
+            console.log('[YouTube] Second check - Iframe found:', !!iframe2);
+            if (iframe2) {
+              console.log('[YouTube] Iframe src:', iframe2.src);
+              console.log('[YouTube] Iframe dimensions:', iframe2.width, 'x', iframe2.height);
+            }
+          }, 2000);
         }
       }, 1000);
     } catch (error) {
