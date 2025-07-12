@@ -87,6 +87,33 @@ ipcMain.handle('get-dlna-file', async (event, server: string, port: number, path
   }
 })
 
+// Test handler to verify IPC is working
+ipcMain.handle('test-handler', async () => {
+  log.info('Test handler called successfully')
+  return 'test-success'
+})
+
+// Handle player configuration loading
+ipcMain.handle('get-player-config', async () => {
+  try {
+    const configPath = path.join(process.cwd(), 'config', 'youtubePlayer.json')
+    log.info('Loading player config from:', configPath)
+    
+    if (!fs.existsSync(configPath)) {
+      log.error('Player configuration file not found:', configPath)
+      throw new Error('Player configuration file not found')
+    }
+    
+    const configData = fs.readFileSync(configPath, 'utf8')
+    const config = JSON.parse(configData)
+    log.info('Player config loaded successfully')
+    return config
+  } catch (error) {
+    log.error('Error loading player config:', error)
+    throw error
+  }
+})
+
 // Time tracking IPC handlers
 ipcMain.handle('time-tracking:record-video-watching', async (event, videoId: string, position: number, timeWatched: number) => {
   try {
