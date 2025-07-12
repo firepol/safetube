@@ -57,13 +57,21 @@ export const PlayerRouter: React.FC = () => {
   }
 
   // Route to appropriate player
+  // Only use iframe player for YouTube videos when iframe is configured
   if (playerType === 'iframe' && videoId) {
-    return <YouTubePlayerPage videoId={videoId} />;
+    // Check if this is actually a YouTube video by looking up the video data
+    const videos = require('../data/videos.json');
+    const video = videos.find((v: any) => v.id === videoId);
+    
+    if (video && video.type === 'youtube') {
+      return <YouTubePlayerPage videoId={videoId} />;
+    } else {
+      // Fall back to MediaSource for non-YouTube videos
+      console.log('[PlayerRouter] Non-YouTube video, using MediaSource player');
+      return <PlayerPage />;
+    }
   }
 
   // Default to MediaSource player (existing PlayerPage)
-  // PlayerPage gets video ID from URL params, so we need to navigate to it
-  // For now, we'll need to handle this differently - the router should be used
-  // at a higher level where we can control the routing
   return <PlayerPage />;
 }; 
