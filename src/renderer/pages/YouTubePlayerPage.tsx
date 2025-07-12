@@ -57,45 +57,55 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId })
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-black">
-        <button 
-          onClick={() => navigate('/')}
-          className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          ← Back to Videos
-        </button>
-        <div className="text-red-500">Error: {error}</div>
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="p-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            ← Back
+          </button>
+          <div className="text-red-500">Error: {error}</div>
+        </div>
       </div>
     );
   }
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-screen bg-black">
-        <button 
-          onClick={() => navigate('/')}
-          className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          ← Back to Videos
-        </button>
-        <div className="text-white">Loading YouTube player...</div>
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="p-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            ← Back
+          </button>
+          <div className="text-lg mb-2">Loading YouTube player...</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-screen bg-black">
-      <button 
-        onClick={() => navigate('/')}
-        className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-      >
-        ← Back to Videos
-      </button>
-      <div 
-        id="youtube-player" 
-        className="w-full max-w-4xl h-96"
-        style={{ minHeight: '400px' }}
-      ></div>
+    <div className="flex flex-col min-h-screen bg-gray-100">
+      <div className="p-4">
+        <button
+          onClick={() => navigate(-1)}
+          className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          ← Back
+        </button>
+      </div>
+      <div className="flex-grow flex items-center justify-center p-4">
+        <div className="w-full max-w-4xl">
+          <div 
+            id="youtube-player" 
+            className="w-full h-96"
+            style={{ minHeight: '400px' }}
+          ></div>
+        </div>
+      </div>
     </div>
   );
 }; 

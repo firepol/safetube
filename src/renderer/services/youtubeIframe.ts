@@ -65,35 +65,59 @@ export class YouTubeIframePlayer {
     console.log('[YouTube] Mounting player for video:', videoId);
     
     try {
-      await loadYouTubeIframeAPI();
-      
-      // Double-check that the API is available
-      if (!(window as any).YT || !(window as any).YT.Player) {
-        throw new Error('YouTube IFrame API not available after loading');
-      }
-      
-      console.log('[YouTube] Creating player instance...');
-      console.log('[YouTube] Element ID:', this.elementId);
-      console.log('[YouTube] Options:', { videoId, ...options });
-      
-      this.player = new (window as any).YT.Player(this.elementId, {
-        videoId,
-        ...options,
-        events: {
-          onReady: (event: any) => {
-            console.log('[YouTube] Player ready');
-            event.target.playVideo();
-          },
-          onStateChange: (event: any) => {
-            console.log('[YouTube] Player state changed:', event.data);
-          },
-          onError: (event: any) => {
-            console.error('[YouTube] Player error:', event.data);
-          }
+      // Try the YouTube IFrame API first
+      try {
+        await loadYouTubeIframeAPI();
+        
+        // Double-check that the API is available
+        if (!(window as any).YT || !(window as any).YT.Player) {
+          throw new Error('YouTube IFrame API not available after loading');
         }
-      });
-      
-      console.log('[YouTube] Player instance created');
+        
+        console.log('[YouTube] Creating player instance with API...');
+        console.log('[YouTube] Element ID:', this.elementId);
+        console.log('[YouTube] Options:', { videoId, ...options });
+        
+        this.player = new (window as any).YT.Player(this.elementId, {
+          videoId,
+          ...options,
+          events: {
+            onReady: (event: any) => {
+              console.log('[YouTube] Player ready');
+              event.target.playVideo();
+            },
+            onStateChange: (event: any) => {
+              console.log('[YouTube] Player state changed:', event.data);
+            },
+            onError: (event: any) => {
+              console.error('[YouTube] Player error:', event.data);
+            }
+          }
+        });
+        
+        console.log('[YouTube] Player instance created with API');
+      } catch (apiError) {
+        console.warn('[YouTube] API approach failed, using direct iframe:', apiError);
+        
+        // Fallback to direct iframe
+        const element = document.getElementById(this.elementId);
+        if (!element) {
+          throw new Error('Player element not found');
+        }
+        
+        const iframe = document.createElement('iframe');
+        iframe.width = '100%';
+        iframe.height = '100%';
+        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&controls=1&showinfo=1&fs=1`;
+        iframe.frameBorder = '0';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        iframe.allowFullscreen = true;
+        
+        element.appendChild(iframe);
+        this.player = iframe;
+        
+        console.log('[YouTube] Direct iframe created');
+      }
       
       // Check if the iframe was created
       setTimeout(() => {
