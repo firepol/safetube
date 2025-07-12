@@ -73,12 +73,27 @@ export class YouTubeIframePlayer {
       }
       
       console.log('[YouTube] Creating player instance...');
+      console.log('[YouTube] Element ID:', this.elementId);
+      console.log('[YouTube] Options:', { videoId, ...options });
+      
       this.player = new (window as any).YT.Player(this.elementId, {
         videoId,
         ...options,
       });
       
       console.log('[YouTube] Player instance created');
+      
+      // Check if the iframe was created
+      setTimeout(() => {
+        const element = document.getElementById(this.elementId);
+        const iframe = element?.querySelector('iframe');
+        console.log('[YouTube] Element found:', !!element);
+        console.log('[YouTube] Iframe found:', !!iframe);
+        if (iframe) {
+          console.log('[YouTube] Iframe src:', iframe.src);
+          console.log('[YouTube] Iframe dimensions:', iframe.width, 'x', iframe.height);
+        }
+      }, 1000);
     } catch (error) {
       console.error('[YouTube] Error mounting player:', error);
       throw error;

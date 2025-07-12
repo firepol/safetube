@@ -24,12 +24,15 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId })
         
         playerRef.current = new YouTubeIframePlayer('youtube-player');
         await playerRef.current.mount(videoId, {
-          width: 640,
-          height: 360,
+          width: '100%',
+          height: '100%',
           playerVars: {
             autoplay: 1,
             modestbranding: 1,
             rel: 0, // Don't show related videos from other channels
+            controls: 1,
+            showinfo: 1,
+            fs: 1, // Allow fullscreen
           },
         });
         
@@ -67,8 +70,12 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId })
   }
 
   return (
-    <div className="flex items-center justify-center h-screen">
-      <div id="youtube-player"></div>
+    <div className="flex items-center justify-center h-screen bg-black">
+      <div 
+        id="youtube-player" 
+        className="w-full max-w-4xl h-96"
+        style={{ minHeight: '400px' }}
+      ></div>
     </div>
   );
 }; 
