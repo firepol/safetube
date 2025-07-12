@@ -117,13 +117,28 @@ ipcMain.handle('get-player-config', async () => {
 // Handle video data loading
 ipcMain.handle('get-video-data', async (_, videoId: string) => {
   try {
-    const videosPath = path.join(process.cwd(), 'src', 'renderer', 'data', 'videos.json')
-    log.info('Loading video data for:', videoId)
+    // Try different paths based on development vs production
+    const possiblePaths = [
+      path.join(process.cwd(), 'src', 'renderer', 'data', 'videos.json'),
+      path.join(__dirname, '..', 'renderer', 'data', 'videos.json'),
+      path.join(__dirname, '..', '..', 'src', 'renderer', 'data', 'videos.json'),
+      path.join(__dirname, '..', '..', '..', 'src', 'renderer', 'data', 'videos.json')
+    ]
     
-    if (!fs.existsSync(videosPath)) {
-      log.error('Videos data file not found:', videosPath)
+    let videosPath = null
+    for (const testPath of possiblePaths) {
+      if (fs.existsSync(testPath)) {
+        videosPath = testPath
+        break
+      }
+    }
+    
+    if (!videosPath) {
+      log.error('Videos data file not found, tried paths:', possiblePaths)
       throw new Error('Videos data file not found')
     }
+    
+    log.info('Loading video data for:', videoId, 'from:', videosPath)
     
     const videosData = fs.readFileSync(videosPath, 'utf8')
     const videos = JSON.parse(videosData)

@@ -99,6 +99,44 @@ ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
   }
 });
 
+// Handle video data loading
+ipcMain.handle('get-video-data', async (_, videoId: string) => {
+  try {
+    // Try different paths based on development vs production
+    const possiblePaths = [
+      path.join(process.cwd(), 'src', 'renderer', 'data', 'videos.json'),
+      path.join(__dirname, '..', 'renderer', 'data', 'videos.json'),
+      path.join(__dirname, '..', '..', 'src', 'renderer', 'data', 'videos.json'),
+      path.join(__dirname, '..', '..', '..', 'src', 'renderer', 'data', 'videos.json')
+    ];
+    
+    let videosPath = null;
+    for (const testPath of possiblePaths) {
+      if (fs.existsSync(testPath)) {
+        videosPath = testPath;
+        break;
+      }
+    }
+    
+    if (!videosPath) {
+      console.error('[Main] Videos data file not found, tried paths:', possiblePaths);
+      throw new Error('Videos data file not found');
+    }
+    
+    console.log('[Main] Loading video data for:', videoId, 'from:', videosPath);
+    
+    const videosData = fs.readFileSync(videosPath, 'utf8');
+    const videos = JSON.parse(videosData);
+    const video = videos.find((v: any) => v.id === videoId);
+    
+    console.log('[Main] Video data loaded:', video ? video.type : 'not found');
+    return video;
+  } catch (error) {
+    console.error('[Main] Error loading video data:', error);
+    throw error;
+  }
+});
+
 // Environment variable handler
 ipcMain.handle('get-env-var', async (_, varName: string) => {
   console.log('[Main] get-env-var called with:', varName);
