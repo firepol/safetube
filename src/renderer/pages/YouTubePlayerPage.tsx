@@ -61,6 +61,13 @@ export const YouTubePlayerPage: React.FC = () => {
     };
   }, [videoId]);
 
+  useEffect(() => {
+    if (containerRef.current && videoId) {
+      mountPlayer();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [containerRef.current, videoId]);
+
   if (error) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
@@ -113,18 +120,7 @@ export const YouTubePlayerPage: React.FC = () => {
             id="youtube-player"
             className="w-full h-96"
             style={{ minHeight: '400px' }}
-            ref={(el) => {
-              console.log('[YouTubePlayerPage] *** REF CALLBACK FIRED ***', el);
-              containerRef.current = el;
-              if (el) {
-                console.log('[YouTubePlayerPage] Container element ID:', el.id);
-                console.log('[YouTubePlayerPage] Container element in DOM:', document.getElementById('youtube-player'));
-                // Mount the player when the container is available
-                mountPlayer();
-              } else {
-                console.log('[YouTubePlayerPage] Ref callback called with null element');
-              }
-            }}
+            ref={containerRef}
           ></div>
           {/* Overlay for loading (but not error, since we handle error above) */}
           {isLoading && (
