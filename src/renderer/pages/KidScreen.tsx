@@ -48,6 +48,12 @@ export const KidScreen: React.FC = () => {
 
   return (
     <div className="p-4">
+      <button
+        className="mb-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+        onClick={() => navigate('/test-youtube-iframe')}
+      >
+        Test YouTube IFrame Page
+      </button>
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Kid-Friendly Videos</h1>
         <TimeIndicator initialState={timeTrackingState} />
