@@ -98,6 +98,7 @@ export const YouTubePlayerPage: React.FC = () => {
 
   console.log('[YouTubePlayerPage] Rendering component. isLoading:', isLoading, 'error:', error);
   console.log('[YouTubePlayerPage] About to render container div');
+  console.log('[YouTubePlayerPage] Main player JSX rendering');
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-100">
@@ -117,6 +118,7 @@ export const YouTubePlayerPage: React.FC = () => {
             className="w-full h-96"
             style={{ minHeight: '400px' }}
             ref={el => {
+              console.log('[YouTubePlayerPage] ref callback fired', el);
               containerRef.current = el;
               if (el) {
                 setTimeout(() => {
