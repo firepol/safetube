@@ -84,19 +84,24 @@ export class YouTubeIframePlayer {
         console.log('[YouTube] Element ID:', this.elementId);
         console.log('[YouTube] Options:', { videoId, ...options });
         
+        // Merge internal and external event handlers
+        const userEvents = (options && options.events) || {};
         this.player = new (window as any).YT.Player(this.elementId, {
           videoId,
           ...options,
           events: {
             onReady: (event: any) => {
               console.log('[YouTube] Player ready');
+              if (userEvents.onReady) userEvents.onReady(event);
               event.target.playVideo();
             },
             onStateChange: (event: any) => {
               console.log('[YouTube] Player state changed:', event.data);
+              if (userEvents.onStateChange) userEvents.onStateChange(event);
             },
             onError: (event: any) => {
               console.error('[YouTube] Player error:', event.data);
+              if (userEvents.onError) userEvents.onError(event);
             }
           }
         });
