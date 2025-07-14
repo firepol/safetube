@@ -53,15 +53,6 @@ export const YouTubePlayerPage: React.FC = () => {
   };
 
   useLayoutEffect(() => {
-    if (containerRef.current && videoId && !hasMountedRef.current) {
-      console.log('[YouTubePlayerPage] useLayoutEffect: about to call mountPlayer');
-      hasMountedRef.current = true;
-      try {
-        mountPlayer();
-      } catch (err) {
-        console.error('[YouTubePlayerPage] Error calling mountPlayer:', err);
-      }
-    }
     // Cleanup on unmount
     return () => {
       if (playerRef.current) {
@@ -125,7 +116,17 @@ export const YouTubePlayerPage: React.FC = () => {
             id="youtube-player"
             className="w-full h-96"
             style={{ minHeight: '400px' }}
-            ref={containerRef}
+            ref={el => {
+              containerRef.current = el;
+              if (el) {
+                setTimeout(() => {
+                  if (hasMountedRef.current) return;
+                  hasMountedRef.current = true;
+                  console.log('[YouTubePlayerPage] ref callback: about to call mountPlayer');
+                  mountPlayer();
+                }, 0);
+              }
+            }}
           ></div>
           {/* Overlay for loading (but not error, since we handle error above) */}
           {isLoading && (
