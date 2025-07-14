@@ -76,32 +76,10 @@ export class PlayerConfigService {
     }
 
     try {
-      // For now, use default configuration
-      // Later this will load from youtubePlayer.json
-      this.config = {
-        youtubePlayerType: 'mediasource',
-        youtubePlayerConfig: {
-          iframe: {
-            showRelatedVideos: false,
-            customEndScreen: false,
-            qualityControls: true,
-            autoplay: true,
-            controls: true,
-            modestbranding: true,
-            rel: 0,
-            fs: 1
-          },
-          mediasource: {
-            maxQuality: '1080p',
-            preferredLanguages: ['en'],
-            fallbackToLowerQuality: true,
-            bufferSize: 30
-          }
-        },
-        perVideoOverrides: {}
-      };
-
-      logVerbose('Loaded default YouTube player configuration:', this.config);
+      // Load from the actual config file via electron preload
+      const config: PlayerConfig = await window.electron.getPlayerConfig();
+      this.config = config;
+      logVerbose('Loaded YouTube player configuration from file:', this.config);
       return this.config;
     } catch (error) {
       console.error('Error loading YouTube player configuration:', error);
