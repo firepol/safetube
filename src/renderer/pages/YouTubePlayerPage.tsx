@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { YouTubeIframePlayer } from '../services/youtubeIframe';
 
@@ -10,6 +10,7 @@ export const YouTubePlayerPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   const videoId = 'FaLI0X1_Ljk'; // Hardcoded for debugging
+  const hasMountedRef = useRef(false);
 
   console.log('[YouTubePlayerPage] Component mounted with videoId:', videoId);
 
@@ -50,23 +51,21 @@ export const YouTubePlayerPage: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    console.log('[YouTubePlayerPage] useEffect triggered, videoId:', videoId);
-    
+  useLayoutEffect(() => {
+    if (containerRef.current && videoId && !hasMountedRef.current) {
+      hasMountedRef.current = true;
+      mountPlayer();
+    }
+    // Cleanup on unmount
     return () => {
       if (playerRef.current) {
         playerRef.current.destroy();
         playerRef.current = null;
       }
+      hasMountedRef.current = false;
     };
-  }, [videoId]);
-
-  useEffect(() => {
-    if (containerRef.current && videoId) {
-      mountPlayer();
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [containerRef.current, videoId]);
+  }, [videoId]);
 
   if (error) {
     return (
