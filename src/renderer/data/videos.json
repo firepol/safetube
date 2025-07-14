@@ -1,5 +1,14 @@
 [
   {
+    "id": "FaLI0X1_Ljk",
+    "type": "youtube",
+    "title": "DZ South: vs rogues and cheaters",
+    "thumbnail": "https://i.ytimg.com/vi/FaLI0X1_Ljk/sddefault.jpg",
+    "duration": 181,
+    "url": "https://www.youtube.com/watch?v=FaLI0X1_Ljk",
+    "preferredLanguages": ["en"]
+  },
+  {
     "id": "f2_3sQu7lA4",
     "type": "youtube",
     "title": "The Top 10 Goals of May | Top Goals | Serie A 2024/25",
@@ -73,10 +82,10 @@
   {
     "id": "local-1",
     "type": "local",
-    "title": "Tai Otoshi",
+    "title": "Sample Local",
     "thumbnail": "https://picsum.photos/id/38/300/200?grayscale",
     "duration": 300,
-    "url": "file:///path/to/your/videos/tai-otoshi.mp4"
+    "url": "/home/paul/projects/safetube/test-videos/sample-local.mp4"
   },
   {
     "id": "local-split",
