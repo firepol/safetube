@@ -15,6 +15,7 @@ export const YouTubePlayerPage: React.FC = () => {
   console.log('[YouTubePlayerPage] Component mounted with videoId:', videoId);
 
   const mountPlayer = async () => {
+    console.log('[YouTubePlayerPage] mountPlayer called');
     if (!videoId) {
       console.error('[YouTubePlayerPage] No video ID provided');
       setError('No video ID provided');
@@ -53,8 +54,13 @@ export const YouTubePlayerPage: React.FC = () => {
 
   useLayoutEffect(() => {
     if (containerRef.current && videoId && !hasMountedRef.current) {
+      console.log('[YouTubePlayerPage] useLayoutEffect: about to call mountPlayer');
       hasMountedRef.current = true;
-      mountPlayer();
+      try {
+        mountPlayer();
+      } catch (err) {
+        console.error('[YouTubePlayerPage] Error calling mountPlayer:', err);
+      }
     }
     // Cleanup on unmount
     return () => {
