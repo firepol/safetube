@@ -2,16 +2,14 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { YouTubeIframePlayer } from '../services/youtubeIframe';
 
-interface YouTubePlayerPageProps {
-  videoId?: string;
-}
-
-export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId }) => {
+export const YouTubePlayerPage: React.FC = () => {
   const navigate = useNavigate();
   const playerRef = useRef<YouTubeIframePlayer | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  const videoId = 'FaLI0X1_Ljk'; // Hardcoded for debugging
 
   console.log('[YouTubePlayerPage] Component mounted with videoId:', videoId);
 
