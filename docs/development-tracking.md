@@ -450,4 +450,12 @@ Each sprint should focus on completing one or more features. The status of each 
 ## Documentation Requirements
 - [Requirement 1]
 - [Requirement 2]
-``` 
+```
+
+---
+
+## Debugging Notes (to be cleaned up)
+
+- **Debug console logs** have been added throughout `YouTubePlayerPage.tsx` to trace mounting, ref assignment, and player lifecycle. These logs are temporary and should be removed once the player logic is confirmed stable.
+- A minimal test page exists at [`src/renderer/pages/TestYouTubeIframePage.tsx`](../src/renderer/pages/TestYouTubeIframePage.tsx) for verifying YouTube iframe embedding in isolation. This page is for debugging only and should be removed or cleaned up after resolving the main player issues.
+- Remember to clean up all debug logs and the test page before finalizing the feature. 

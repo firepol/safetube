@@ -3,6 +3,7 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { PlayerRouter } from './pages/PlayerRouter';
 import { TimeUpPage } from './pages/TimeUpPage';
+import { TestYouTubeIframePage } from './pages/TestYouTubeIframePage';
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
             <Route path="/" element={<KidScreen />} />
             <Route path="/player/:id" element={<PlayerRouter />} />
             <Route path="/time-up" element={<TimeUpPage />} />
+            <Route path="/test-youtube-iframe" element={<TestYouTubeIframePage />} />
           </Routes>
         </div>
       </BrowserRouter>
