@@ -430,6 +430,8 @@ Each feature PRD must include:
 - **Recent Changes**: None
 - **Notes**:
   - This feature will allow parents to configure YouTube channels, playlists, and local folders (with subfolders) as sources.
+  - Each YouTube channel and playlist source maintains a dedicated JSON cache file with all video details for efficient loading and minimal API usage.
+  - Local folder sources are scanned on demand and do not require a cache file.
   - Local folder navigation will support both hierarchical and flattened views, controlled by `maxDepth`.
   - All configuration remains JSON-based for now.
 

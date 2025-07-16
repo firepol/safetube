@@ -105,6 +105,12 @@ Each source is defined in the `videoSources.json` config like:
 - The `sortOrder` key controls display order for that source.
 - Only the specified `allowedFolder` or `path` is shown — nothing outside is accessible.
 
+### YouTube Channels & Playlists Caching
+- For each YouTube channel and playlist source, all video details are cached in a dedicated JSON file (one per source) in the `.cache/` directory.
+- This cache is updated efficiently: on first load, all videos are fetched and cached; on subsequent loads, only new videos since the last update are fetched and merged.
+- This minimizes API usage and ensures fast loading for large sources.
+- Local folder sources are scanned on demand and do not require a cache file.
+
 ---
 
 ## Time Management

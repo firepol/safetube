@@ -6,6 +6,8 @@ This feature expands SafeTube’s video source system to support:
 - Fetching and displaying videos from YouTube channels and playlists as configurable sources.
 - Treating YouTube playlists and channels as “folders” on the homepage, with videos shown in the order defined by the source.
 - Advanced local folder navigation, including support for subfolders, configurable maximum navigation depth, and “flattened” views for easier access to videos in nested folders.
+- **YouTube channel and playlist sources cache all video details in a dedicated JSON file per source for efficient loading and minimal API usage.**
+- **Local folder sources are scanned on demand and do not require a cache file.**
 
 ## User Stories
 
@@ -18,6 +20,7 @@ This feature expands SafeTube’s video source system to support:
 
 - Parent can add YouTube channels and playlists as sources in `videoSources.json`.
 - Videos from YouTube sources are fetched and displayed in the order defined by the source (playlist order, channel order, or configurable).
+- **Each YouTube channel and playlist source maintains a dedicated JSON cache file with all video details for that source.**
 - Parent can add a local folder as a source, with support for subfolders and configurable maximum navigation depth.
 - If `maxDepth` is 2, all videos in subfolders are shown together in a flat list; if 3, navigation is hierarchical.
 - UI allows navigation into subfolders as needed.
@@ -31,7 +34,8 @@ This feature expands SafeTube’s video source system to support:
   - `maxDepth` for local sources
   - `sortOrder` for all sources
 - Implement YouTube channel/playlist fetching (using YouTube Data API or scraping).
-- Implement local folder scanning with subfolder support and flattening logic.
+- **Cache all video details for each YouTube channel and playlist source in a dedicated JSON file (one per source) for efficient loading and minimal API usage.**
+- Implement local folder scanning with subfolder support and flattening logic (no cache file needed for local sources).
 - Update homepage (Kid Screen) to display sources as folders, and allow navigation as described.
 - TypeScript interfaces for all new/updated config structures.
 - Unit and integration tests for new source types and navigation logic.
@@ -55,4 +59,5 @@ This feature expands SafeTube’s video source system to support:
 
 - Update `specifications.md` with new source types and navigation logic.
 - Update `videoSources.json` example and schema documentation.
+- **Document that each YouTube channel and playlist source maintains a dedicated JSON cache file with all video details.**
 - Add migration notes for existing users (if needed). 
