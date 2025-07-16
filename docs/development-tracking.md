@@ -452,10 +452,3 @@ Each sprint should focus on completing one or more features. The status of each 
 - [Requirement 1]
 - [Requirement 2]
 ```
-
----
-
-## Debugging Notes (to be cleaned up)
-
-- **Debug console logs** have been added throughout `YouTubePlayerPage.tsx` to trace mounting, ref assignment, and player lifecycle. These logs are temporary and should be removed once the player logic is confirmed stable.
-- Remember to clean up all debug logs before finalizing the feature. 
