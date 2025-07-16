@@ -407,6 +407,7 @@ Each feature PRD must include:
   - Enables A/B testing between different player implementations
   - Solves related video prevention concerns with iframe player
   - No breaking changes to existing code or tests
+  - **Technical Limitation:** Due to browser security boundaries, navigation or link clicks inside a cross-origin YouTube iframe cannot be intercepted or tracked by Electron, except for new window/tab attempts. See the new section in specifications.md for details.
 
 ## Status Legend
 
