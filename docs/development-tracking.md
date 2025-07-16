@@ -412,6 +412,27 @@ Each feature PRD must include:
   - **Technical Limitation:** Due to browser security boundaries, navigation or link clicks inside a cross-origin YouTube iframe cannot be intercepted or tracked by Electron, except for new window/tab attempts. See the new section in specifications.md for details.
   - The dual player system is now the default, with robust configuration and fallback mechanisms.
 
+### 9. Advanced Video Sources & Local Folder Navigation
+- **Status**: Not Started
+- **PRD**: [Advanced Video Sources & Local Folder Navigation PRD](prds/09-advanced-video-sources.md)
+- **Current Sprint**: N/A
+- **Blockers**: None
+- **Dependencies**: Project Setup, Kid Screen
+- **Progress**: 0%
+- **Last Updated**: 2025-06-30
+- **Completed Items**: None
+- **Remaining Items**:
+  - Implement YouTube channel/playlist source support
+  - Implement local folder navigation with maxDepth and flattening
+  - Update homepage UI for new navigation logic
+  - Add tests for new source types and navigation
+  - Update documentation and configuration examples
+- **Recent Changes**: None
+- **Notes**:
+  - This feature will allow parents to configure YouTube channels, playlists, and local folders (with subfolders) as sources.
+  - Local folder navigation will support both hierarchical and flattened views, controlled by `maxDepth`.
+  - All configuration remains JSON-based for now.
+
 ## Status Legend
 
 - **Not Started**: Feature hasn't been implemented yet
