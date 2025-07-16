@@ -11,21 +11,14 @@
     "type": "youtube_playlist",
     "url": "https://www.youtube.com/playlist?list=PLxxxxxx",
     "title": "My Curated Playlist",
-    "sortOrder": "manual"
-  },
-  {
-    "id": "dlna1",
-    "type": "dlna",
-    "url": "http://192.168.1.100:8200",
-    "allowedFolder": "/Kids/Movies",
-    "title": "Kids Movies",
-    "sortOrder": "alphabetical"
+    "sortOrder": "playlistOrder"
   },
   {
     "id": "local1",
     "type": "local",
-    "path": "/path/to/your/local/videos",
+    "path": "/Users/paolo/Videos/Kids",
     "title": "Offline Cartoons",
-    "sortOrder": "alphabetical"
+    "sortOrder": "alphabetical",
+    "maxDepth": 2
   }
 ] 

@@ -2,24 +2,22 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { VideoGrid } from '../components/layout/VideoGrid';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
-import videos from '../data/videos.json';
+import { loadAllVideosFromSources } from '../lib/loadAllVideosFromSources';
 
 export const KidScreen: React.FC = () => {
   const navigate = useNavigate();
   const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
+  const [videos, setVideos] = useState<any[]>([]);
 
   useEffect(() => {
     const checkTimeLimits = async () => {
       try {
         const state = await window.electron.getTimeTrackingState();
-        
-        // If time limit is reached, redirect to time's up page
         if (state.isLimitReached) {
           navigate('/time-up');
           return;
         }
-        
         setTimeTrackingState({
           timeRemaining: state.timeRemaining,
           timeLimit: state.timeLimitToday,
@@ -28,13 +26,21 @@ export const KidScreen: React.FC = () => {
         });
       } catch (error) {
         console.error('Error checking time limits:', error);
-      } finally {
-        setIsLoading(false);
       }
     };
-
     checkTimeLimits();
   }, [navigate]);
+
+  useEffect(() => {
+    setIsLoading(true);
+    loadAllVideosFromSources()
+      .then(setVideos)
+      .catch((err) => {
+        console.error('Error loading videos from sources:', err);
+        setVideos([]);
+      })
+      .finally(() => setIsLoading(false));
+  }, []);
 
   if (isLoading) {
     return (
@@ -58,7 +64,7 @@ export const KidScreen: React.FC = () => {
           title: v.title,
           thumbnail: v.thumbnail,
           duration: Number(v.duration),
-          type: v.type as 'youtube' | 'dlna' | 'local'
+          type: v.type
         }))}
       />
     </div>
