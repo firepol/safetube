@@ -381,6 +381,25 @@ Controls which player type to use for YouTube videos:
 - **Custom Interface**: No YouTube interface elements
 - **Navigation Prevention**: No external navigation possible
 
+### Technical Limitation: YouTube iframe Navigation Control
+
+**Important Security Limitation:**
+
+Due to browser security boundaries (the Same-Origin Policy), Electron and all browsers cannot intercept, log, or block navigation or link clicks that occur inside a cross-origin iframe (such as YouTube), except for links that explicitly open a new window or tab (e.g., `target="_blank"` or `window.open`).
+
+- **What this means:**
+  - The app cannot track or reroute most in-iframe navigation, such as clicking related videos, channel links, or other YouTube UI elements inside the embedded player.
+  - Only new window/tab attempts can be intercepted and handled by Electron’s `setWindowOpenHandler`.
+  - This is a fundamental browser security boundary and cannot be bypassed by Electron or any web technology.
+
+- **Implication for SafeTube:**
+  - Most navigation within the YouTube iframe (e.g., clicking related videos) cannot be tracked or rerouted internally by the app.
+  - Only links that open a new window/tab can be intercepted and handled (e.g., to play a new video internally or block external navigation).
+  - This limitation is inherent to all Electron and web-based apps embedding YouTube or other cross-origin content.
+
+- **Workarounds:**
+  - The app uses YouTube Player API options (e.g., `rel=0`) and custom overlays to discourage or block related video navigation where possible, but cannot guarantee full prevention due to the above limitation.
+
 ### Migration and Testing
 
 #### A/B Testing Support
