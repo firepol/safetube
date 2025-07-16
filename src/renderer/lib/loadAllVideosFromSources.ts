@@ -32,26 +32,80 @@ function isVideoFile(filename: string): boolean {
   return /\.(mp4|mkv|webm|mov|avi)$/i.test(filename);
 }
 
-export async function loadAllVideosFromSources(configPath = 'config/videoSources.json'): Promise<any[]> {
-  // Load sources
-  const sources: VideoSource[] = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+export async function loadAllVideosFromSources(configPath = 'config/videoSources.json') {
+  const debug: string[] = [];
+  let sources: VideoSource[] = [];
+  try {
+    debug.push(`[Loader] Loading video sources from: ${configPath}`);
+    sources = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    debug.push(`[Loader] Loaded ${sources.length} sources.`);
+  } catch (err) {
+    debug.push(`[Loader] ERROR loading videoSources.json: ${err}`);
+    return { videos: [], debug };
+  }
   let allVideos: any[] = [];
   for (const source of sources) {
-    if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
-      const cache: YouTubeSourceCache = await CachedYouTubeSources.loadSourceVideos(source);
-      allVideos = allVideos.concat(cache.videos.map(v => ({
-        ...v,
-        type: 'youtube',
-        sourceId: source.id
-      })));
-    } else if (source.type === 'local') {
-      const maxDepth = source.maxDepth || 2;
-      const localVideos = await scanLocalFolder(source.path, maxDepth);
-      allVideos = allVideos.concat(localVideos.map(v => ({
-        ...v,
-        sourceId: source.id
-      })));
+    if (!source || typeof source !== 'object' || !('type' in source) || !('id' in source)) {
+      debug.push(`[Loader] WARNING: Skipping invalid source entry: ${JSON.stringify(source)}`);
+      continue;
+    }
+    debug.push(`[Loader] Processing source: ${(source as any).id} (${(source as any).type})`);
+    if ((source as any).type === 'youtube_channel' || (source as any).type === 'youtube_playlist') {
+      const typedSource = source as VideoSource;
+      try {
+        const cache: YouTubeSourceCache = await CachedYouTubeSources.loadSourceVideos(typedSource);
+        let sourceTitle = typedSource.title;
+        let sourceThumbnail = (typedSource as any).thumbnail;
+        // Fill in title/thumbnail if blank
+        if (!sourceTitle || !sourceThumbnail) {
+          // Try to get from cache (should be in cache.videos or via API)
+          if (cache && cache.videos.length > 0) {
+            if (!sourceTitle) {
+              if (typedSource.type === 'youtube_channel') {
+                sourceTitle = cache.videos[0].channelTitle || '';
+              } else if (typedSource.type === 'youtube_playlist') {
+                sourceTitle = cache.videos[0].playlistTitle || '';
+              }
+            }
+            if (!sourceThumbnail) {
+              if (typedSource.type === 'youtube_channel') {
+                sourceThumbnail = cache.videos[0].thumbnail || '';
+              } else if (typedSource.type === 'youtube_playlist') {
+                sourceThumbnail = cache.videos[0].thumbnail || '';
+              }
+            }
+          }
+        }
+        debug.push(`[Loader] YouTube source ${(typedSource as any).id}: ${cache.videos.length} videos loaded. Title: ${sourceTitle || typedSource.title}, Thumbnail: ${sourceThumbnail ? '[set]' : '[blank]'}`);
+        allVideos = allVideos.concat(cache.videos.map(v => ({
+          ...v,
+          type: 'youtube',
+          sourceId: typedSource.id,
+          sourceTitle: sourceTitle || typedSource.title,
+          sourceThumbnail: sourceThumbnail || '',
+        })));
+      } catch (err) {
+        debug.push(`[Loader] ERROR loading YouTube source ${(typedSource as any).id}: ${err}`);
+      }
+    } else if ((source as any).type === 'local') {
+      const typedSource = source as VideoSource;
+      try {
+        const maxDepth = (typedSource as any).maxDepth || 2;
+        const localVideos = await scanLocalFolder((typedSource as any).path, maxDepth);
+        debug.push(`[Loader] Local source ${(typedSource as any).id}: ${localVideos.length} videos found.`);
+        allVideos = allVideos.concat(localVideos.map(v => ({
+          ...v,
+          sourceId: (typedSource as any).id,
+          sourceTitle: (typedSource as any).title,
+          sourceThumbnail: '',
+        })));
+      } catch (err) {
+        debug.push(`[Loader] ERROR scanning local source ${(typedSource as any).id}: ${err}`);
+      }
+    } else {
+      debug.push(`[Loader] WARNING: Unsupported source type: ${(source as any).type} (id: ${(source as any).id}) - skipping.`);
     }
   }
-  return allVideos;
+  debug.push(`[Loader] Total videos loaded: ${allVideos.length}`);
+  return { videos: allVideos, debug };
 } 
