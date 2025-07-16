@@ -6,7 +6,6 @@ export function loadYouTubeIframeAPI(): Promise<void> {
   return new Promise((resolve, reject) => {
     // Check if API is already loaded
     if ((window as any).YT && (window as any).YT.Player) {
-      console.log('[YouTube] API already loaded');
       resolve();
       return;
     }
@@ -14,19 +13,14 @@ export function loadYouTubeIframeAPI(): Promise<void> {
     // Check if script is already being loaded
     const existingScript = document.getElementById('youtube-iframe-api');
     if (existingScript) {
-      console.log('[YouTube] Script already loading, waiting...');
       existingScript.addEventListener('load', () => {
-        console.log('[YouTube] Existing script loaded');
         resolve();
       });
       return;
     }
 
-    console.log('[YouTube] Loading YouTube IFrame API...');
-    
     // Set up the callback before loading the script
     (window as any).onYouTubeIframeAPIReady = () => {
-      console.log('[YouTube] API ready callback fired');
       resolve();
     };
 
@@ -34,10 +28,6 @@ export function loadYouTubeIframeAPI(): Promise<void> {
     const tag = document.createElement('script');
     tag.id = 'youtube-iframe-api';
     tag.src = 'https://www.youtube.com/iframe_api';
-    tag.onload = () => {
-      console.log('[YouTube] Script loaded');
-      // The script might not have fired the callback yet, so we wait
-    };
     tag.onerror = () => {
       console.error('[YouTube] Failed to load script');
       reject(new Error('Failed to load YouTube IFrame API'));
@@ -61,9 +51,7 @@ export class YouTubeIframePlayer {
   /**
    * Initializes the YouTube player and loads the given videoId.
    */
-  async mount(videoId: string, options: any = {}): Promise<void> {
-    console.log('[YouTube] Mounting player for video:', videoId);
-    
+  async mount(videoId: string, options: any = {}): Promise<void> {   
     try {
       // Try the YouTube IFrame API first
       try {
@@ -75,14 +63,9 @@ export class YouTubeIframePlayer {
         }
         
         const el = document.getElementById(this.elementId);
-        console.log('[YouTube] About to create player, element:', el);
         if (!el) {
           throw new Error('YouTube player container element not found');
         }
-        
-        console.log('[YouTube] Creating player instance with API...');
-        console.log('[YouTube] Element ID:', this.elementId);
-        console.log('[YouTube] Options:', { videoId, ...options });
         
         // Merge internal and external event handlers
         const userEvents = (options && options.events) || {};
@@ -91,12 +74,10 @@ export class YouTubeIframePlayer {
           ...options,
           events: {
             onReady: (event: any) => {
-              console.log('[YouTube] Player ready');
               if (userEvents.onReady) userEvents.onReady(event);
               event.target.playVideo();
             },
             onStateChange: (event: any) => {
-              console.log('[YouTube] Player state changed:', event.data);
               if (userEvents.onStateChange) userEvents.onStateChange(event);
             },
             onError: (event: any) => {
@@ -105,8 +86,6 @@ export class YouTubeIframePlayer {
             }
           }
         });
-        
-        console.log('[YouTube] Player instance created with API');
       } catch (apiError) {
         console.warn('[YouTube] API approach failed, using direct iframe:', apiError);
         
@@ -126,33 +105,7 @@ export class YouTubeIframePlayer {
         
         element.appendChild(iframe);
         this.player = iframe;
-        
-        console.log('[YouTube] Direct iframe created');
       }
-      
-      // Check if the iframe was created
-      setTimeout(() => {
-        const element = document.getElementById(this.elementId);
-        const iframe = element?.querySelector('iframe');
-        console.log('[YouTube] Element found:', !!element);
-        console.log('[YouTube] Iframe found:', !!iframe);
-        if (iframe) {
-          console.log('[YouTube] Iframe src:', iframe.src);
-          console.log('[YouTube] Iframe dimensions:', iframe.width, 'x', iframe.height);
-        } else {
-          console.log('[YouTube] Iframe not found, checking again in 2 seconds...');
-          setTimeout(() => {
-            const element2 = document.getElementById(this.elementId);
-            const iframe2 = element2?.querySelector('iframe');
-            console.log('[YouTube] Second check - Element found:', !!element2);
-            console.log('[YouTube] Second check - Iframe found:', !!iframe2);
-            if (iframe2) {
-              console.log('[YouTube] Iframe src:', iframe2.src);
-              console.log('[YouTube] Iframe dimensions:', iframe2.width, 'x', iframe2.height);
-            }
-          }, 2000);
-        }
-      }, 1000);
     } catch (error) {
       console.error('[YouTube] Error mounting player:', error);
       throw error;
@@ -163,7 +116,6 @@ export class YouTubeIframePlayer {
    * Destroys the YouTube player instance.
    */
   destroy() {
-    console.log('[YouTube] Destroying player');
     if (this.player && typeof this.player.destroy === 'function') {
       this.player.destroy();
     }

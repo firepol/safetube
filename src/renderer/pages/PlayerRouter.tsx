@@ -43,7 +43,6 @@ export const PlayerRouter: React.FC = () => {
         let video = null;
         try {
           video = await window.electron.getVideoData(videoId);
-          console.log('[PlayerRouter] Video data:', video);
         } catch (error) {
           console.error('[PlayerRouter] Error getting video data:', error);
           setSelectedPlayer(<PlayerPage />);
@@ -53,28 +52,21 @@ export const PlayerRouter: React.FC = () => {
 
         // Load configuration
         const config = await loadPlayerConfig();
-        console.log('[PlayerRouter] Config loaded:', config);
 
         // Check for per-video override
         let finalPlayerType = config.youtubePlayerType;
         if (videoId && config.perVideoOverrides?.[videoId]) {
           finalPlayerType = config.perVideoOverrides[videoId].youtubePlayerType;
-          console.log('[PlayerRouter] Using per-video override:', finalPlayerType);
         }
         setPlayerType(finalPlayerType);
 
         // Route to appropriate player based on video type and config
         if (video && video.type === 'youtube' && finalPlayerType === 'iframe') {
-          console.log('[PlayerRouter] YouTube video with iframe config, using YouTube iframe player');
           setSelectedPlayer(<YouTubePlayerPage videoId={videoId} />);
-          console.log('[PlayerRouter] Set YouTube iframe player component');
         } else {
-          console.log('[PlayerRouter] Using MediaSource player (video type:', video?.type, ', config type:', finalPlayerType, ')');
           setSelectedPlayer(<PlayerPage />);
-          console.log('[PlayerRouter] Set MediaSource player component');
         }
 
-        console.log('[PlayerRouter] Setting isLoading to false');
         setIsLoading(false);
       } catch (err) {
         console.error('Failed to load player config or video data:', err);

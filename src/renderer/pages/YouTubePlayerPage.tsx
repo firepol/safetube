@@ -36,7 +36,6 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId = 
   useEffect(() => {
     let cleanup = () => {};
     if (containerRef.current && videoId) {
-      console.log('[YouTubePlayerPage] containerRef ready for player mount:', containerRef.current);
       playerRef.current = new YouTubeIframePlayer(PLAYER_CONTAINER_ID);
       playerRef.current.mount(videoId, {
         width: '100%',
@@ -52,7 +51,6 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId = 
         events: {
           onReady: (event: any) => {
             ytPlayerInstance.current = event.target;
-            console.log('[YouTubePlayerPage] Player ready');
           },
           onStateChange: (event: any) => {
             // 1 = playing, 2 = paused, 0 = ended
@@ -62,7 +60,6 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId = 
                 timeTrackingRef.current.isTracking = true;
                 timeTrackingRef.current.lastUpdate = Date.now();
                 timeTrackingRef.current.intervalId = window.setInterval(recordTime, 1000);
-                console.log('[YouTubePlayerPage] Time tracking started');
               }
             } else if (event.data === 2 || event.data === 0) {
               // Paused or ended
@@ -73,13 +70,11 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId = 
                   timeTrackingRef.current.intervalId = null;
                 }
                 recordTime();
-                console.log('[YouTubePlayerPage] Time tracking stopped');
               }
             }
           },
         },
       });
-      console.log('[YouTubePlayerPage] YouTubeIframePlayer mounted');
       cleanup = () => {
         if (timeTrackingRef.current.intervalId) {
           clearInterval(timeTrackingRef.current.intervalId);
@@ -88,7 +83,6 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId = 
         if (playerRef.current) {
           playerRef.current.destroy();
           playerRef.current = null;
-          console.log('[YouTubePlayerPage] YouTubeIframePlayer destroyed');
         }
       };
     }
