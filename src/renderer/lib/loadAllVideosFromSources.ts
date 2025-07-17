@@ -3,6 +3,13 @@ import { CachedYouTubeSources } from '../services/cached-youtube-sources';
 import fs from 'fs';
 import path from 'path';
 
+function logDebug(msg: string) {
+  if (typeof window !== 'undefined' && (window as any).logVerbose) {
+    (window as any).logVerbose(msg);
+  }
+  console.log(msg);
+}
+
 // Helper to scan local folders recursively up to maxDepth
 async function scanLocalFolder(folderPath: string, maxDepth: number, currentDepth = 1): Promise<any[]> {
   let videos: any[] = [];
@@ -35,21 +42,26 @@ function isVideoFile(filename: string): boolean {
 export async function loadAllVideosFromSources(configPath = 'config/videoSources.json') {
   const debug: string[] = [];
   let sources: VideoSource[] = [];
+  logDebug(`[Loader] Starting loadAllVideosFromSources with configPath: ${configPath}`);
   try {
     debug.push(`[Loader] Loading video sources from: ${configPath}`);
     sources = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     debug.push(`[Loader] Loaded ${sources.length} sources.`);
+    logDebug(`[Loader] Loaded ${sources.length} sources from config.`);
   } catch (err) {
     debug.push(`[Loader] ERROR loading videoSources.json: ${err}`);
+    logDebug(`[Loader] ERROR loading videoSources.json: ${err}`);
     return { videos: [], debug };
   }
   let allVideos: any[] = [];
   for (const source of sources) {
     if (!source || typeof source !== 'object' || !('type' in source) || !('id' in source)) {
       debug.push(`[Loader] WARNING: Skipping invalid source entry: ${JSON.stringify(source)}`);
+      logDebug(`[Loader] WARNING: Skipping invalid source entry: ${JSON.stringify(source)}`);
       continue;
     }
     debug.push(`[Loader] Processing source: ${(source as any).id} (${(source as any).type})`);
+    logDebug(`[Loader] Processing source: ${(source as any).id} (${(source as any).type})`);
     if ((source as any).type === 'youtube_channel' || (source as any).type === 'youtube_playlist') {
       const typedSource = source as VideoSource;
       try {
@@ -58,7 +70,6 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         let sourceThumbnail = (typedSource as any).thumbnail;
         // Fill in title/thumbnail if blank
         if (!sourceTitle || !sourceThumbnail) {
-          // Try to get from cache (should be in cache.videos or via API)
           if (cache && cache.videos.length > 0) {
             if (!sourceTitle) {
               if (typedSource.type === 'youtube_channel') {
@@ -77,6 +88,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
           }
         }
         debug.push(`[Loader] YouTube source ${(typedSource as any).id}: ${cache.videos.length} videos loaded. Title: ${sourceTitle || typedSource.title}, Thumbnail: ${sourceThumbnail ? '[set]' : '[blank]'}`);
+        logDebug(`[Loader] YouTube source ${(typedSource as any).id}: ${cache.videos.length} videos loaded. Title: ${sourceTitle || typedSource.title}, Thumbnail: ${sourceThumbnail ? '[set]' : '[blank]'}`);
         allVideos = allVideos.concat(cache.videos.map(v => ({
           ...v,
           type: 'youtube',
@@ -86,6 +98,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         })));
       } catch (err) {
         debug.push(`[Loader] ERROR loading YouTube source ${(typedSource as any).id}: ${err}`);
+        logDebug(`[Loader] ERROR loading YouTube source ${(typedSource as any).id}: ${err}`);
       }
     } else if ((source as any).type === 'local') {
       const typedSource = source as VideoSource;
@@ -93,6 +106,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         const maxDepth = (typedSource as any).maxDepth || 2;
         const localVideos = await scanLocalFolder((typedSource as any).path, maxDepth);
         debug.push(`[Loader] Local source ${(typedSource as any).id}: ${localVideos.length} videos found.`);
+        logDebug(`[Loader] Local source ${(typedSource as any).id}: ${localVideos.length} videos found.`);
         allVideos = allVideos.concat(localVideos.map(v => ({
           ...v,
           sourceId: (typedSource as any).id,
@@ -101,11 +115,14 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         })));
       } catch (err) {
         debug.push(`[Loader] ERROR scanning local source ${(typedSource as any).id}: ${err}`);
+        logDebug(`[Loader] ERROR scanning local source ${(typedSource as any).id}: ${err}`);
       }
     } else {
       debug.push(`[Loader] WARNING: Unsupported source type: ${(source as any).type} (id: ${(source as any).id}) - skipping.`);
+      logDebug(`[Loader] WARNING: Unsupported source type: ${(source as any).type} (id: ${(source as any).id}) - skipping.`);
     }
   }
   debug.push(`[Loader] Total videos loaded: ${allVideos.length}`);
+  logDebug(`[Loader] Total videos loaded: ${allVideos.length}`);
   return { videos: allVideos, debug };
 } 
