@@ -1,4 +1,4 @@
-import { logVerboseRenderer } from '@/shared/logging';
+// import { logVerboseRenderer } from '@/shared/logging';
 
 interface AudioWarningConfig {
   countdownWarningSeconds: number;
@@ -43,11 +43,11 @@ class AudioWarningService {
         // Check if AudioContext is available (not available in test environment)
         if (typeof (window.AudioContext || (window as any).webkitAudioContext) === 'function') {
           this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-          logVerboseRenderer('[AudioWarning] Audio context initialized');
+          // logVerboseRenderer('[AudioWarning] Audio context initialized');
         } else {
           // AudioContext not available, disable system beep
           this.config.useSystemBeep = false;
-          logVerboseRenderer('[AudioWarning] AudioContext not available, using fallback beep');
+          // logVerboseRenderer('[AudioWarning] AudioContext not available, using fallback beep');
         }
       } catch (error) {
         console.error('Failed to initialize audio context:', error);
@@ -67,18 +67,17 @@ class AudioWarningService {
       lastBeepTime: 0,
     };
     this.stopBeeping();
-    logVerboseRenderer('[AudioWarning] State reset');
+    // logVerboseRenderer('[AudioWarning] State reset');
   }
 
   /**
    * Check if audio warnings should be triggered based on remaining time
    */
   checkAudioWarnings(timeRemainingSeconds: number, isVideoPlaying: boolean): void {
-    const roundedTime = Math.round(timeRemainingSeconds * 10) / 10;
-    logVerboseRenderer('[AudioWarning] Checking warnings - timeRemaining:', roundedTime, 'isVideoPlaying:', isVideoPlaying);
+    // logVerboseRenderer('[AudioWarning] Checking warnings - timeRemaining:', roundedTime, 'isVideoPlaying:', isVideoPlaying);
     
     if (!isVideoPlaying) {
-      logVerboseRenderer('[AudioWarning] Video not playing, skipping warnings');
+      // logVerboseRenderer('[AudioWarning] Video not playing, skipping warnings');
       return; // Don't play warnings when video is paused
     }
 
@@ -88,7 +87,7 @@ class AudioWarningService {
       timeRemainingSeconds > this.config.countdownWarningSeconds - 10 &&
       !this.state.hasPlayedCountdownWarning
     ) {
-      logVerboseRenderer('[AudioWarning] Triggering countdown warning at', roundedTime, 'seconds');
+      // logVerboseRenderer('[AudioWarning] Triggering countdown warning at', roundedTime, 'seconds');
       this.playCountdownWarning();
     }
 
@@ -99,7 +98,7 @@ class AudioWarningService {
       timeRemainingSeconds >= 0 &&
       !this.state.hasPlayedAudioWarning
     ) {
-      logVerboseRenderer('[AudioWarning] Triggering audio warning at', roundedTime, 'seconds (first time reaching <= 10)');
+      // logVerboseRenderer('[AudioWarning] Triggering audio warning at', roundedTime, 'seconds (first time reaching <= 10)');
       this.playAudioWarning();
     }
   }
@@ -111,7 +110,7 @@ class AudioWarningService {
     this.state.hasPlayedCountdownWarning = true;
     this.state.beepCount = 0;
     this.startBeeping(1000); // 1 second interval
-    logVerboseRenderer('[AudioWarning] Playing countdown warning beeps');
+    // logVerboseRenderer('[AudioWarning] Playing countdown warning beeps');
   }
 
   /**
@@ -121,7 +120,7 @@ class AudioWarningService {
     this.state.hasPlayedAudioWarning = true;
     this.state.beepCount = 0;
     this.startBeeping(1000); // 1 second interval for consistent timing
-    logVerboseRenderer('[AudioWarning] Playing audio warning beeps');
+    // logVerboseRenderer('[AudioWarning] Playing audio warning beeps');
   }
 
   /**
@@ -139,7 +138,7 @@ class AudioWarningService {
       // Stop countdown warning after exactly 10 beeps
       if (this.state.hasPlayedCountdownWarning && this.state.beepCount >= 10) {
         this.stopBeeping();
-        logVerboseRenderer('[AudioWarning] Countdown warning completed (10 beeps)');
+        // logVerboseRenderer('[AudioWarning] Countdown warning completed (10 beeps)');
         return;
       }
       
@@ -170,7 +169,7 @@ class AudioWarningService {
    * Play a single beep sound
    */
   private playBeep(): void {
-    logVerboseRenderer('[AudioWarning] Playing beep, useSystemBeep:', this.config.useSystemBeep);
+    // logVerboseRenderer('[AudioWarning] Playing beep, useSystemBeep:', this.config.useSystemBeep);
     
     // Try Web Audio API first (works better in Electron than system beep)
     const AudioContextClass = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
@@ -203,17 +202,17 @@ class AudioWarningService {
           gainNode.disconnect();
         };
         
-        logVerboseRenderer('[AudioWarning] Web Audio API beep played successfully');
+        // logVerboseRenderer('[AudioWarning] Web Audio API beep played successfully');
         return;
       } catch (e) {
-        logVerboseRenderer('[AudioWarning] Web Audio API beep failed, falling back to system beep:', e);
+        // logVerboseRenderer('[AudioWarning] Web Audio API beep failed, falling back to system beep:', e);
       }
     }
     
     // Fallback to system beep
-    logVerboseRenderer('[AudioWarning] Using system beep (console.log)');
+    // logVerboseRenderer('[AudioWarning] Using system beep (console.log)');
     // eslint-disable-next-line no-console
-    console.log('\x07');
+    // console.log('\x07');
   }
 
   /**

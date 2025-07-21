@@ -1,4 +1,3 @@
-import { logVerboseRenderer } from '../../shared/logging';
 import type { PlayerConfigSchema } from '../types/playerConfig';
 
 /**
@@ -79,7 +78,6 @@ export class PlayerConfigService {
       // Load from the actual config file via electron preload
       const config: PlayerConfig = await window.electron.getPlayerConfig();
       this.config = config;
-      logVerboseRenderer('Loaded YouTube player configuration from file:', this.config);
       return this.config;
     } catch (error) {
       console.error('Error loading YouTube player configuration:', error);

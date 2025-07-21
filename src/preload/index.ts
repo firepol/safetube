@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { loadAllVideosFromSources } from '../renderer/lib/loadAllVideosFromSources';
+import { loadAllVideosFromSources } from './loadAllVideosFromSources';
+// import { cachedYoutubeSources } from './cached-youtube-sources';
 
 // Debug: Log what environment variables are available (only when verbose logging is enabled)
 if (process.env.ELECTRON_LOG_VERBOSE === 'true') {
@@ -30,6 +31,9 @@ contextBridge.exposeInMainWorld(
     // Expose the loader to the renderer
     loadAllVideosFromSources: async () => {
       return await loadAllVideosFromSources();
-    }
+    },
+    // cachedYoutubeSources: () => {
+    //   return cachedYoutubeSources;
+    // }
   }
 ); 
