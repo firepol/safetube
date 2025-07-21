@@ -1,4 +1,4 @@
-import { logVerbose } from '@/shared/logging';
+import { logVerboseRenderer } from '@/shared/logging';
 import { YouTubeAPI } from '../youtube';
 import { testCache } from './test-cache';
 
@@ -7,12 +7,12 @@ export class CachedYouTubeAPI {
     // Check cache first
     const cached = testCache.getVideoDetails(videoId);
     if (cached) {
-      logVerbose(`[CACHE] Using cached video details for ${videoId}`);
+      logVerboseRenderer(`[CACHE] Using cached video details for ${videoId}`);
       return cached;
     }
 
     // Fetch from API and cache
-    logVerbose(`[CACHE] Fetching video details for ${videoId}`);
+    logVerboseRenderer(`[CACHE] Fetching video details for ${videoId}`);
     const details = await YouTubeAPI.getVideoDetails(videoId);
     testCache.setVideoDetails(videoId, details);
     return details;
@@ -22,12 +22,12 @@ export class CachedYouTubeAPI {
     // Check cache first
     const cached = testCache.getVideoStreams(videoId);
     if (cached) {
-      logVerbose(`[CACHE] Using cached video streams for ${videoId}`);
+      logVerboseRenderer(`[CACHE] Using cached video streams for ${videoId}`);
       return cached;
     }
 
     // Fetch from API and cache
-    logVerbose(`[CACHE] Fetching video streams for ${videoId}`);
+    logVerboseRenderer(`[CACHE] Fetching video streams for ${videoId}`);
     const result = await YouTubeAPI.getVideoStreams(videoId);
     testCache.setVideoStreams(videoId, result.videoStreams, result.audioTracks);
     return result;

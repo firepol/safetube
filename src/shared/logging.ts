@@ -2,57 +2,19 @@
  * Logging utility for controlling verbosity across different environments
  */
 
-/**
- * Determines if verbose logging should be enabled based on the current environment
- */
-function shouldLogVerbose(): boolean {
-  // Check if we're in a test environment
-  const isTestEnvironment =
-    typeof process !== 'undefined' && process.env.NODE_ENV === 'test' ||
-    typeof jest !== 'undefined' ||
-    typeof (globalThis as any).vitest !== 'undefined' ||
-    (typeof process !== 'undefined' && process.env.VITEST !== undefined);
-
-  if (isTestEnvironment) {
-    return typeof process !== 'undefined' && process.env.TEST_LOG_VERBOSE === 'true';
-  }
-
-  // In Electron app environment
-  // Check main process environment variable
-  if (typeof process !== 'undefined' && process.env.ELECTRON_LOG_VERBOSE === 'true') {
-    return true;
-  }
-
-  // Check renderer process environment variable (exposed via preload)
-  if (typeof window !== 'undefined' && (window as any).electron?.env?.ELECTRON_LOG_VERBOSE === 'true') {
-    return true;
-  }
-
-  // Debug: Log what we're checking - uncomment to see what's being checked (only when verbose is enabled)
-  if (typeof process !== 'undefined' && process.env.ELECTRON_LOG_VERBOSE === 'true' ||
-      typeof window !== 'undefined' && (window as any).electron?.env?.ELECTRON_LOG_VERBOSE === 'true') {
-    console.log('[Logging Debug] shouldLogVerbose check:', {
-      hasProcess: typeof process !== 'undefined',
-      processEnv: typeof process !== 'undefined' ? process.env.ELECTRON_LOG_VERBOSE : 'undefined',
-      hasWindow: typeof window !== 'undefined',
-      windowElectron: typeof window !== 'undefined' ? (window as any).electron : 'undefined',
-      windowElectronEnv: typeof window !== 'undefined' ? (window as any).electron?.env : 'undefined',
-      windowElectronEnvValue: typeof window !== 'undefined' ? (window as any).electron?.env?.ELECTRON_LOG_VERBOSE : 'undefined'
-    });
-  }
-
-  return false;
-}
-
-/**
- * Logs a message only if verbose logging is enabled for the current environment
- * @param args - Arguments to pass to console.log
- */
-export function logVerbose(...args: any[]): void {
-  if (shouldLogVerbose()) {
-    console.log(...args);
+export function logVerbose(...args: any[]) {
+  if (process.env.ELECTRON_LOG_VERBOSE === 'true') {
+    // eslint-disable-next-line no-console
+    console.log('[Main][Verbose]', ...args);
   }
 }
+
+export const logVerboseRenderer = (...args: any[]) => {
+  if (process.env.ELECTRON_LOG_VERBOSE === 'true') {
+    // eslint-disable-next-line no-console
+    console.log('[Renderer][Verbose]', ...args);
+  }
+};
 
 /**
  * Logs an error message (always logged, regardless of verbosity setting)

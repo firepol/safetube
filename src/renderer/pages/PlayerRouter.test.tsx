@@ -1,5 +1,4 @@
-import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { PlayerRouter } from './PlayerRouter';
 import { loadPlayerConfig } from '../services/playerConfig';
@@ -23,7 +22,7 @@ Object.defineProperty(window, 'electron', {
 });
 
 // Mock React Router with proper route context
-const MockPlayerRouter = ({ videoId }: { videoId: string }) => (
+const MockPlayerRouter = () => (
   <BrowserRouter>
     <Routes>
       <Route path="/player/:id" element={<PlayerRouter />} />
@@ -58,7 +57,7 @@ describe('PlayerRouter', () => {
       weekly: 25200
     });
 
-    const { container } = render(<MockPlayerRouter videoId="test-youtube" />);
+    render(<MockPlayerRouter />);
     
     // Navigate to the player route
     window.history.pushState({}, '', '/player/test-youtube');
@@ -92,7 +91,7 @@ describe('PlayerRouter', () => {
       weekly: 25200
     });
 
-    render(<MockPlayerRouter videoId="test-local" />);
+    render(<MockPlayerRouter />);
     
     // Navigate to the player route
     window.history.pushState({}, '', '/player/test-local');
@@ -122,7 +121,7 @@ describe('PlayerRouter', () => {
       weekly: 25200
     });
 
-    render(<MockPlayerRouter videoId="missing-video" />);
+    render(<MockPlayerRouter />);
     
     // Navigate to the player route
     window.history.pushState({}, '', '/player/missing-video');

@@ -1,6 +1,3 @@
-import { VideoStream, AudioTrack } from './services/youtube';
-import { TimeLimits } from '@/shared/types';
-
 export interface Video {
   id: string;
   type: 'local' | 'dlna' | 'youtube';
@@ -22,24 +19,26 @@ export interface Video {
   useJsonStreamUrls?: boolean;
 }
 
+export interface ElectronAPI {
+  send: (channel: string, data: any) => void;
+  receive: (channel: string, func: (...args: any[]) => void) => void;
+  removeListener: (channel: string, func: (...args: any[]) => void) => void;
+  getLocalFile: (filePath: string) => Promise<string>;
+  getDlnaFile: (server: string, port: number, path: string) => Promise<string>;
+  getVideoStreams: (videoId: string) => Promise<any>;
+  recordVideoWatching: (videoId: string, position: number, timeWatched: number) => Promise<void>;
+  getTimeTrackingState: () => Promise<any>;
+  getTimeLimits: () => Promise<any>;
+  getPlayerConfig: () => Promise<any>;
+  getVideoData: (videoId: string) => Promise<any>;
+  testHandler: () => Promise<any>;
+  env: {
+    ELECTRON_LOG_VERBOSE?: string;
+  };
+  loadAllVideosFromSources: () => Promise<{ videos: any[]; debug: string[] }>;
+}
 declare global {
   interface Window {
-    electron: {
-      send: (channel: string, data: any) => void;
-      receive: (channel: string, func: (...args: any[]) => void) => void;
-      removeListener: (channel: string, func: (...args: any[]) => void) => void;
-      getLocalFile: (filePath: string) => Promise<string>;
-      getDlnaFile: (server: string, port: number, path: string) => Promise<string>;
-      getVideoStreams: (videoId: string) => Promise<{ videoStreams: VideoStream[]; audioTracks: AudioTrack[] }>;
-      recordVideoWatching: (videoId: string, position: number, timeWatched: number) => Promise<{ success: boolean }>;
-      getTimeTrackingState: () => Promise<{ currentDate: string; timeUsedToday: number; timeLimitToday: number; timeRemaining: number; isLimitReached: boolean }>;
-      getTimeLimits: () => Promise<TimeLimits>;
-      getPlayerConfig: () => Promise<any>;
-      getVideoData: (videoId: string) => Promise<any>;
-      testHandler: () => Promise<string>;
-      env: {
-        ELECTRON_LOG_VERBOSE?: string;
-      };
-    };
+    electron: ElectronAPI;
   }
 } 

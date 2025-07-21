@@ -3,15 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { VideoGrid } from '../components/layout/VideoGrid';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 
-declare global {
-  interface ElectronAPI {
-    loadAllVideosFromSources: () => Promise<{ videos: any[]; debug: string[] }>;
-  }
-  interface Window {
-    electron: ElectronAPI;
-  }
-}
-
 export const KidScreen: React.FC = () => {
   const navigate = useNavigate();
   const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);

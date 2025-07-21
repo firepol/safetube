@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi, beforeEach } from 'vites
 import { YouTubeAPI } from './youtube';
 import { CachedYouTubeAPI } from './__tests__/cached-youtube';
 import { testCache } from './__tests__/test-cache';
-import { logVerbose } from '@/shared/logging';
+import { logVerboseRenderer } from '@/shared/logging';
 
 // Mock environment variables
 vi.stubEnv('VITE_YOUTUBE_API_KEY', 'test-api-key');
@@ -13,12 +13,12 @@ global.fetch = mockFetch;
 
 describe('YouTubeAPI', () => {
   beforeAll(() => {
-    logVerbose('Starting YouTube API tests with caching enabled');
+    logVerboseRenderer('Starting YouTube API tests with caching enabled');
   });
 
   afterAll(() => {
     const stats = testCache.getCacheStats();
-    logVerbose(`Test cache stats: ${stats.streams} streams, ${stats.details} details cached`);
+    logVerboseRenderer(`Test cache stats: ${stats.streams} streams, ${stats.details} details cached`);
   });
 
   beforeEach(() => {

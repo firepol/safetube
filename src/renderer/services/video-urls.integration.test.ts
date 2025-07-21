@@ -4,7 +4,7 @@ import { CachedYouTubeAPI as YouTubeAPI } from './__tests__/cached-youtube';
 import { testCache } from './__tests__/test-cache';
 import fs from 'fs';
 import path from 'path';
-import { logVerbose } from '@/shared/logging';
+import { logVerboseRenderer } from '@/shared/logging';
 
 // Set to true to save debug info
 const DEBUG_MODE = true;
@@ -49,12 +49,12 @@ interface DebugStreamInfo {
 
 describe('Video Stream URLs Integration Tests', () => {
   beforeAll(() => {
-    logVerbose('Starting video URLs integration tests with caching enabled');
+    logVerboseRenderer('Starting video URLs integration tests with caching enabled');
   });
 
   afterAll(() => {
     const stats = testCache.getCacheStats();
-    logVerbose(`Test cache stats: ${stats.streams} streams, ${stats.details} details cached`);
+    logVerboseRenderer(`Test cache stats: ${stats.streams} streams, ${stats.details} details cached`);
     testCache.debugCache();
   });
 

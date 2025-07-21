@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { CachedYouTubeAPI as YouTubeAPI } from './__tests__/cached-youtube';
 import { testCache } from './__tests__/test-cache';
-import { logVerbose } from '@/shared/logging';
+import { logVerboseRenderer } from '@/shared/logging';
 
 // Skip integration tests in CI environment
 // These tests require real YouTube API access and yt-dlp, which are unreliable in CI
@@ -39,12 +39,12 @@ testRunner('YouTubeAPI Integration', () => {
   };
 
   beforeAll(() => {
-    logVerbose('Starting YouTube API integration tests with caching enabled');
+    logVerboseRenderer('Starting YouTube API integration tests with caching enabled');
   });
 
   afterAll(() => {
     const stats = testCache.getCacheStats();
-    logVerbose(`Test cache stats: ${stats.streams} streams, ${stats.details} details cached`);
+    logVerboseRenderer(`Test cache stats: ${stats.streams} streams, ${stats.details} details cached`);
     testCache.debugCache();
   });
 
@@ -288,7 +288,7 @@ testRunner('YouTubeAPI Problematic Video Tests', () => {
     const { videoStreams, audioTracks } = await YouTubeAPI.getVideoStreams(problematicVideoId);
     
     // Log available streams for debugging
-    logVerbose('Available video streams:', videoStreams.map(s => ({
+    logVerboseRenderer('Available video streams:', videoStreams.map(s => ({
       quality: s.quality,
       mimeType: s.mimeType,
       height: s.height,
@@ -296,7 +296,7 @@ testRunner('YouTubeAPI Problematic Video Tests', () => {
       url: s.url.substring(0, 50) + '...'
     })));
     
-    logVerbose('Available audio tracks:', audioTracks.map(t => ({
+    logVerboseRenderer('Available audio tracks:', audioTracks.map(t => ({
       language: t.language,
       mimeType: t.mimeType,
       bitrate: t.bitrate,
@@ -325,7 +325,7 @@ testRunner('YouTubeAPI Problematic Video Tests', () => {
     // Test format compatibility
     const videoFormat = bestVideoStream?.mimeType.includes('webm') ? 'webm' : 'mp4';
     const audioFormat = bestAudioTrack?.mimeType.includes('webm') ? 'webm' : 'm4a';
-    logVerbose('Selected formats:', { videoFormat, audioFormat });
+    logVerboseRenderer('Selected formats:', { videoFormat, audioFormat });
     
     // Verify that we have a valid combination of formats
     expect(videoFormat).toBeTruthy();
