@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { loadAllVideosFromSources } from '../renderer/lib/loadAllVideosFromSources';
 
 // Debug: Log what environment variables are available (only when verbose logging is enabled)
 if (process.env.ELECTRON_LOG_VERBOSE === 'true') {
@@ -25,6 +26,10 @@ contextBridge.exposeInMainWorld(
     // Expose environment variables directly
     env: {
       ELECTRON_LOG_VERBOSE: process.env.ELECTRON_LOG_VERBOSE
+    },
+    // Expose the loader to the renderer
+    loadAllVideosFromSources: async () => {
+      return await loadAllVideosFromSources();
     }
   }
 ); 

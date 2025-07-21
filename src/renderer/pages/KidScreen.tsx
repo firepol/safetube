@@ -2,7 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { VideoGrid } from '../components/layout/VideoGrid';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
-import { loadAllVideosFromSources } from '../lib/loadAllVideosFromSources';
+
+declare global {
+  interface ElectronAPI {
+    loadAllVideosFromSources: () => Promise<{ videos: any[]; debug: string[] }>;
+  }
+  interface Window {
+    electron: ElectronAPI;
+  }
+}
 
 export const KidScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -35,18 +43,23 @@ export const KidScreen: React.FC = () => {
 
   useEffect(() => {
     setIsLoading(true);
-    loadAllVideosFromSources()
-      .then(({ videos, debug }) => {
-        setVideos(videos);
-        setLoaderDebug(debug);
-        setLoaderError(null);
-      })
-      .catch((err) => {
-        setVideos([]);
-        setLoaderDebug([]);
-        setLoaderError('Error loading videos from sources: ' + (err instanceof Error ? err.message : String(err)));
-      })
-      .finally(() => setIsLoading(false));
+    if (window.electron && window.electron.loadAllVideosFromSources) {
+      window.electron.loadAllVideosFromSources()
+        .then(({ videos, debug }: { videos: any[]; debug: string[] }) => {
+          setVideos(videos);
+          setLoaderDebug(debug);
+          setLoaderError(null);
+        })
+        .catch((err: unknown) => {
+          setVideos([]);
+          setLoaderDebug([]);
+          setLoaderError('Error loading videos from sources: ' + (err instanceof Error ? err.message : String(err)));
+        })
+        .finally(() => setIsLoading(false));
+    } else {
+      setLoaderError('window.electron.loadAllVideosFromSources is not available');
+      setIsLoading(false);
+    }
   }, []);
 
   if (isLoading) {
