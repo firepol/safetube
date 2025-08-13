@@ -6,9 +6,10 @@ const PLAYER_CONTAINER_ID = 'youtube-player-container';
 
 interface YouTubePlayerPageProps {
   videoId?: string;
+  videoTitle?: string;
 }
 
-export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId = '' }) => {
+export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId = '', videoTitle }) => {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YouTubeIframePlayer | null>(null);
@@ -98,7 +99,9 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId = 
         >
           ← Back
         </button>
-        <h1 className="text-2xl font-bold mb-4">YouTube Player Page (React)</h1>
+        {videoTitle && (
+          <h1 className="text-2xl font-bold mb-4">{videoTitle}</h1>
+        )}
         <div ref={containerRef} id={PLAYER_CONTAINER_ID} className="w-full max-w-2xl aspect-video bg-black mx-auto">
           {/* Custom player will be mounted here */}
         </div>

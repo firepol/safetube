@@ -327,13 +327,26 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
             let youtubeVideos: any[] = [];
             
             if (source.sourceType === 'youtube_channel') {
-              log.info('[Main] Fetching videos from YouTube channel:', source.channelId);
-              youtubeVideos = await youtubeAPI.getChannelVideos(source.channelId, 20);
+              let actualChannelId = source.channelId;
+              
+              // If it's a username (starts with @), resolve it to channel ID
+              if (source.channelId.startsWith('@')) {
+                log.info('[Main] Resolving username to channel ID:', source.channelId);
+                actualChannelId = await resolveUsernameToChannelId(source.channelId, apiKey);
+                if (!actualChannelId) {
+                  debugInfo.push(`[Main] Could not resolve username ${source.channelId} to channel ID`);
+                  continue;
+                }
+                log.info('[Main] Resolved username to channel ID:', actualChannelId);
+              }
+              
+              log.info('[Main] Fetching videos from YouTube channel:', actualChannelId);
+              youtubeVideos = await youtubeAPI.getChannelVideos(actualChannelId, 20);
               
               // Get channel details if title/thumbnail are missing
               if (!source.title || !source.thumbnail) {
                 try {
-                  const channelDetails = await youtubeAPI.getChannelDetails(source.channelId);
+                  const channelDetails = await youtubeAPI.getChannelDetails(actualChannelId);
                   if (!source.title) source.title = channelDetails.title;
                   if (!source.thumbnail) source.thumbnail = channelDetails.thumbnail;
                 } catch (error) {
@@ -423,6 +436,18 @@ function extractChannelId(url: string): string | null {
     }
     return null;
   } catch {
+    return null;
+  }
+}
+
+// Helper function to resolve username to channel ID
+async function resolveUsernameToChannelId(username: string, apiKey: string): Promise<string | null> {
+  try {
+    const youtubeAPI = new YouTubeAPI(apiKey);
+    const channelDetails = await youtubeAPI.getChannelDetails(username);
+    return channelDetails.channelId;
+  } catch (error) {
+    log.warn('[Main] Could not resolve username to channel ID:', username, error);
     return null;
   }
 }

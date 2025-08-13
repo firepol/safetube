@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import videos from '../data/videos.json';
 import { YouTubeAPI, VideoStream, AudioTrack } from '../services/youtube-api';
 import { PlayerConfigService } from '../services/playerConfig';
 import { Video } from '../types';
@@ -20,7 +19,7 @@ function getSrc(val: unknown): string {
 export const PlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const video = (videos as Video[]).find((v) => v.id === id);
+  const [video, setVideo] = useState<Video | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,6 +40,27 @@ export const PlayerPage: React.FC = () => {
     isTracking: false,
     lastUpdateTime: 0
   });
+
+  // Load video data when component mounts or ID changes
+  useEffect(() => {
+    const loadVideoData = async () => {
+      if (!id) return;
+      
+      try {
+        setIsLoading(true);
+        const videoData = await window.electron.getVideoData(id);
+        setVideo(videoData);
+        setError(null);
+      } catch (err) {
+        console.error('[PlayerPage] Error loading video data:', err);
+        setError('Video not found');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadVideoData();
+  }, [id]);
 
   // Log component initialization only once
   useEffect(() => {
@@ -757,7 +777,7 @@ export const PlayerPage: React.FC = () => {
     };
   }, []);
 
-  if (!video) {
+  if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
         <div className="p-4">
@@ -767,7 +787,26 @@ export const PlayerPage: React.FC = () => {
           >
             ← Back
           </button>
-          <div className="text-red-500">Video not found</div>
+          <div className="text-center">
+            <div className="text-lg mb-2">Loading video...</div>
+            <div className="text-sm text-gray-500">This may take a few moments</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !video) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="p-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            ← Back
+          </button>
+          <div className="text-red-500">{error || 'Video not found'}</div>
         </div>
       </div>
     );
