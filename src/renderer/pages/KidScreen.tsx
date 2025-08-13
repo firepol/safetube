@@ -37,9 +37,8 @@ export const KidScreen: React.FC = () => {
 
   useEffect(() => {
     setIsLoading(true);
-    const api = (window as any).electron;
-    if (api && api.loadAllVideosFromSources) {
-      api.loadAllVideosFromSources()
+    if (window.electron && window.electron.loadAllVideosFromSources) {
+      window.electron.loadAllVideosFromSources()
         .then(({ videos, debug }: { videos: any[]; debug: string[] }) => {
           setVideos(videos);
           setLoaderDebug(debug);
