@@ -572,6 +572,53 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
   }
 });
 
+// Handle getting paginated videos from a specific source
+ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumber: number) => {
+  try {
+    log.info('[Main] get-paginated-videos handler called:', { sourceId, pageNumber });
+    
+    // Check if we have videos loaded
+    if (!global.currentVideos || global.currentVideos.length === 0) {
+      log.warn('[Main] No videos loaded, cannot paginate');
+      throw new Error('No videos loaded');
+    }
+    
+    // Find the source and its videos
+    const sourceVideos = global.currentVideos.filter(video => video.sourceId === sourceId);
+    if (sourceVideos.length === 0) {
+      log.warn('[Main] No videos found for source:', sourceId);
+      throw new Error('Source not found');
+    }
+    
+    // Load pagination service
+    const { PaginationService } = await import('../preload/paginationService');
+    const paginationService = PaginationService.getInstance();
+    
+    // Get paginated videos
+    const pageVideos = paginationService.getPage(sourceId, pageNumber, sourceVideos);
+    const paginationState = paginationService.getPaginationState(sourceId, sourceVideos.length);
+    
+    log.info('[Main] Pagination result:', {
+      sourceId,
+      pageNumber,
+      videosReturned: pageVideos.length,
+      totalVideos: sourceVideos.length,
+      totalPages: paginationState.totalPages
+    });
+    
+    return {
+      videos: pageVideos,
+      paginationState: {
+        ...paginationState,
+        currentPage: pageNumber
+      }
+    };
+  } catch (error) {
+    log.error('[Main] Error getting paginated videos:', error);
+    throw error;
+  }
+});
+
 // Helper functions for parsing YouTube URLs
 const createWindow = (): void => {
   const preloadPath = path.join(__dirname, '../../preload/index.js');

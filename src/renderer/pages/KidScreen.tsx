@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SourceGrid } from '../components/layout/SourceGrid';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
+import { Pagination } from '../components/layout/Pagination';
 
 export const KidScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -9,6 +10,9 @@ export const KidScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [sources, setSources] = useState<any[]>([]);
   const [selectedSource, setSelectedSource] = useState<any>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPageVideos, setCurrentPageVideos] = useState<any[]>([]);
+  const [paginationState, setPaginationState] = useState<any>(null);
   const [loaderDebug, setLoaderDebug] = useState<string[]>([]);
   const [loaderError, setLoaderError] = useState<string | null>(null);
 
@@ -61,6 +65,38 @@ export const KidScreen: React.FC = () => {
     }
   }, []);
 
+  // Load videos for a specific page when source or page changes
+  useEffect(() => {
+    if (selectedSource && window.electron && window.electron.getPaginatedVideos) {
+      window.electron.getPaginatedVideos(selectedSource.id, currentPage)
+        .then((result: any) => {
+          setCurrentPageVideos(result.videos || []);
+          setPaginationState(result.paginationState || null);
+        })
+        .catch((err: unknown) => {
+          console.error('Error loading paginated videos:', err);
+          setCurrentPageVideos([]);
+          setPaginationState(null);
+        });
+    }
+  }, [selectedSource, currentPage]);
+
+  const handleSourceClick = (source: any) => {
+    setSelectedSource(source);
+    setCurrentPage(1); // Reset to first page when selecting a source
+  };
+
+  const handleBackClick = () => {
+    setSelectedSource(null);
+    setCurrentPage(1);
+    setCurrentPageVideos([]);
+    setPaginationState(null);
+  };
+
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -99,21 +135,27 @@ export const KidScreen: React.FC = () => {
         <h1 className="text-2xl font-bold">Kid-Friendly Videos</h1>
         <TimeIndicator initialState={timeTrackingState} />
       </div>
-      <SourceGrid 
-        sources={sources} 
-        onSourceClick={(source) => setSelectedSource(source)}
-      />
       
-      {/* Show videos when a source is selected */}
+      {/* Sources Container - Hidden when a source is selected */}
+      {!selectedSource && (
+        <div className="sources-container">
+          <SourceGrid 
+            sources={sources} 
+            onSourceClick={handleSourceClick}
+          />
+        </div>
+      )}
+      
+      {/* Videos Container - Shown when a source is selected */}
       {selectedSource && (
-        <div className="mt-8">
+        <div className="videos-container">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => setSelectedSource(null)}
+                onClick={handleBackClick}
                 className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
               >
-                ← Back to Sources
+                ← Back
               </button>
               <h2 className="text-xl font-semibold">{selectedSource.title}</h2>
               <span className="text-sm text-gray-500">({selectedSource.videoCount} videos)</span>
@@ -121,8 +163,8 @@ export const KidScreen: React.FC = () => {
           </div>
           
           {/* Video Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {selectedSource.videos.map((video: any) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
+            {currentPageVideos.map((video: any) => (
               <div
                 key={video.id}
                 className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105"
@@ -160,6 +202,16 @@ export const KidScreen: React.FC = () => {
               </div>
             ))}
           </div>
+          
+          {/* Pagination */}
+          {paginationState && paginationState.totalPages > 1 && (
+            <Pagination
+              currentPage={paginationState.currentPage}
+              totalPages={paginationState.totalPages}
+              onPageChange={handlePageChange}
+              className="mb-6"
+            />
+          )}
         </div>
       )}
       

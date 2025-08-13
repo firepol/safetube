@@ -44,4 +44,27 @@ export interface YouTubeSourceCache {
     url: string;
     [key: string]: any;
   }>;
+}
+
+// Pagination configuration
+export interface PaginationConfig {
+  pageSize: number;
+  cacheDurationMinutes: number;
+  maxCachedPages: number;
+}
+
+// Pagination state for a source
+export interface PaginationState {
+  currentPage: number;
+  totalPages: number;
+  totalVideos: number;
+  pageSize: number;
+}
+
+// Cached page data
+export interface CachedPage {
+  pageNumber: number;
+  videos: any[];
+  timestamp: number;
+  sourceId: string;
 } 
