@@ -444,7 +444,7 @@ function extractChannelId(url: string): string | null {
 async function resolveUsernameToChannelId(username: string, apiKey: string): Promise<string | null> {
   try {
     const youtubeAPI = new YouTubeAPI(apiKey);
-    const channelDetails = await youtubeAPI.getChannelDetails(username);
+    const channelDetails = await youtubeAPI.searchChannelByUsername(username);
     return channelDetails.channelId;
   } catch (error) {
     log.warn('[Main] Could not resolve username to channel ID:', username, error);
@@ -515,7 +515,7 @@ function scanFolderRecursive(currentPath: string, currentDepth: number, maxDepth
             thumbnail: 'https://via.placeholder.com/300x200?text=Local+Video',
             duration: 0, // TODO: Extract duration in next phase
             type: 'local',
-            path: `file://${itemPath}`,
+            video: `file://${itemPath}`, // Use 'video' instead of 'path' to match PlayerPage expectations
             filename: item,
             extension: ext,
             size: stats.size,

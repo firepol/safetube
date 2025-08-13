@@ -86,6 +86,31 @@ export class YouTubeAPI {
       throw error;
     }
   }
+
+  // Search for channel by username
+  async searchChannelByUsername(username: string): Promise<any> {
+    try {
+      const response = await this.makeRequest(
+        `${this.baseUrl}/search?part=snippet&q=${username}&type=channel&maxResults=1&key=${this.apiKey}`
+      );
+      
+      if (!response.items || response.items.length === 0) {
+        throw new Error(`No channel found for username: ${username}`);
+      }
+      
+      const channel = response.items[0];
+      return {
+        channelId: channel.id.channelId,
+        title: channel.snippet.title,
+        description: channel.snippet.description,
+        thumbnail: channel.snippet.thumbnails?.high?.url || channel.snippet.thumbnails?.medium?.url || channel.snippet.thumbnails?.default?.url
+      };
+      
+    } catch (error) {
+      console.error('[YouTubeAPI] Error searching channel by username:', error);
+      throw error;
+    }
+  }
   
   // Get playlist details (title, description, thumbnail)
   async getPlaylistDetails(playlistId: string): Promise<any> {
