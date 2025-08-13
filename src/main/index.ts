@@ -181,7 +181,46 @@ ipcMain.handle('time-tracking:get-time-limits', async () => {
   }
 })
 
+// Handle loading videos from sources
+ipcMain.handle('load-all-videos-from-sources', async () => {
+  try {
+    log.info('[Main] load-all-videos-from-sources handler called');
+    
+    // For now, return a simple response to test the IPC
+    // TODO: Implement the actual video source loading logic here
+    return {
+      videos: [
+        {
+          id: 'test-1',
+          title: 'Test Video 1',
+          thumbnail: 'https://via.placeholder.com/300x200',
+          duration: 120,
+          type: 'youtube'
+        },
+        {
+          id: 'test-2', 
+          title: 'Test Video 2',
+          thumbnail: 'https://via.placeholder.com/300x200',
+          duration: 180,
+          type: 'local'
+        }
+      ],
+      debug: [
+        '[Main] IPC handler working correctly',
+        '[Main] Returning test videos for now',
+        '[Main] TODO: Implement actual video source loading'
+      ]
+    };
+  } catch (error) {
+    log.error('[Main] Error loading videos from sources:', error);
+    throw error;
+  }
+});
+
 const createWindow = (): void => {
+  const preloadPath = path.join(__dirname, '../../preload/index.js');
+  log.info('[Main] Preload path:', preloadPath);
+
   log.info('Creating main window')
   // Create the browser window.
   const mainWindow = new BrowserWindow({
@@ -190,35 +229,37 @@ const createWindow = (): void => {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, '../../preload/index.js'),
+      preload: preloadPath,
       webSecurity: false, // Allow loading local files
     },
   })
 
-  // and load the index.html of the app.
-  if (isDev) {
-    log.debug('Loading development URL: http://localhost:5173')
-    // Wait for the dev server to be ready
-    const waitForDevServer = async () => {
+  const devUrl = 'http://localhost:5173'
+  const prodIndexPath = path.join(__dirname, '../../renderer/index.html');
+  log.debug('Loading production URL:', prodIndexPath);
+
+  const waitForDevServer = async (retries = 30, delayMs = 200): Promise<boolean> => {
+    for (let i = 0; i < retries; i++) {
       try {
-        const response = await fetch('http://localhost:5173')
-        if (response.ok) {
-          mainWindow.loadURL('http://localhost:5173')
-          // Open the DevTools.
-          log.debug('Opening DevTools')
-          mainWindow.webContents.openDevTools()
-        }
-      } catch (error) {
-        log.error('Dev server not ready, retrying in 1 second...', error)
-        setTimeout(waitForDevServer, 1000)
-      }
+        const res = await fetch(devUrl)
+        if (res.ok) return true
+      } catch {}
+      await new Promise(r => setTimeout(r, delayMs))
     }
-    waitForDevServer()
-  } else {
-    const indexPath = path.join(__dirname, '../renderer/index.html')
-    log.debug('Loading production URL:', indexPath)
-    mainWindow.loadFile(indexPath)
+    return false
   }
+
+  ;(async () => {
+    const useDev = await waitForDevServer()
+    if (useDev) {
+      log.debug('Loading development URL:', devUrl)
+      await mainWindow.loadURL(devUrl)
+      mainWindow.webContents.openDevTools()
+    } else {
+      log.debug('Loading production URL:', prodIndexPath)
+      await mainWindow.loadFile(prodIndexPath)
+    }
+  })()
 
   // Log any errors that occur during page load
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {

@@ -14,7 +14,10 @@ export const KidScreen: React.FC = () => {
   useEffect(() => {
     const checkTimeLimits = async () => {
       try {
-        const state = await window.electron.getTimeTrackingState();
+        if (!(window as any).electron || !(window as any).electron.getTimeTrackingState) {
+          throw new Error('window.electron.getTimeTrackingState not available');
+        }
+        const state = await (window as any).electron.getTimeTrackingState();
         if (state.isLimitReached) {
           navigate('/time-up');
           return;
@@ -34,8 +37,9 @@ export const KidScreen: React.FC = () => {
 
   useEffect(() => {
     setIsLoading(true);
-    if (window.electron && window.electron.loadAllVideosFromSources) {
-      window.electron.loadAllVideosFromSources()
+    const api = (window as any).electron;
+    if (api && api.loadAllVideosFromSources) {
+      api.loadAllVideosFromSources()
         .then(({ videos, debug }: { videos: any[]; debug: string[] }) => {
           setVideos(videos);
           setLoaderDebug(debug);

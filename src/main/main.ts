@@ -146,6 +146,8 @@ ipcMain.handle('get-env-var', async (_, varName: string) => {
   return value;
 });
 
+
+
 console.log('[Main] IPC handlers registered successfully');
 
 // Register IPC handlers function (for app.whenReady if needed)
@@ -154,27 +156,24 @@ function registerIpcHandlers() {
 }
 
 function createWindow() {
+  const preloadPath = path.join(__dirname, '../preload/index.js');
+  console.log('[Main] Preload path:', preloadPath);
+
   const mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
-      nodeIntegration: true,
+      nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, '../preload/index.js'),
+      preload: preloadPath,
       webSecurity: false // Allow cross-origin requests
     }
   });
 
-  console.log('[Main] Preload path:', path.join(__dirname, '../preload/index.js'));
-
-  // In development, load from Vite dev server
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:5173');
-    mainWindow.webContents.openDevTools();
-  } else {
-    // In production, load the built index.html
-    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
-  }
+  // In production, load the built index.html
+  const indexPath = path.join(__dirname, '../../renderer/index.html');
+  console.log('[Main] Loading renderer HTML:', indexPath);
+  mainWindow.loadFile(indexPath);
 
   // Add headers to all requests
   mainWindow.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
