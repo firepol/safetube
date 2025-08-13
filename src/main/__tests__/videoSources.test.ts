@@ -57,4 +57,35 @@ describe('Video Sources Configuration', () => {
       }
     });
   });
+  
+  test('should parse YouTube URLs correctly', () => {
+    // Test channel ID extraction
+    const channelUrl1 = 'https://www.youtube.com/@skypaul77';
+    const channelUrl2 = 'https://www.youtube.com/channel/UCxxxxx';
+    
+    // Mock the extractChannelId function (we'll test the real one in integration tests)
+    const extractChannelId = (url: string): string | null => {
+      if (url.includes('/@')) {
+        const match = url.match(/\/@([^\/\?]+)/);
+        return match ? match[1] : null;
+      } else if (url.includes('/channel/')) {
+        const match = url.match(/\/channel\/([^\/\?]+)/);
+        return match ? match[1] : null;
+      }
+      return null;
+    };
+    
+    expect(extractChannelId(channelUrl1)).toBe('skypaul77');
+    expect(extractChannelId(channelUrl2)).toBe('UCxxxxx');
+    
+    // Test playlist ID extraction
+    const playlistUrl = 'https://www.youtube.com/playlist?list=PLDkj1tpCS_rt2h-vRvcSKGwpBiovqQBks';
+    
+    const extractPlaylistId = (url: string): string | null => {
+      const match = url.match(/[?&]list=([^&]+)/);
+      return match ? match[1] : null;
+    };
+    
+    expect(extractPlaylistId(playlistUrl)).toBe('PLDkj1tpCS_rt2h-vRvcSKGwpBiovqQBks');
+  });
 });

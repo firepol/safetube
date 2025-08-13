@@ -194,6 +194,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
       log.warn('[Main] videoSources.json not found, returning empty result');
       return {
         videos: [],
+        sources: [],
         debug: [
           '[Main] videoSources.json not found at: ' + configPath,
           '[Main] Please create config/videoSources.json with your video sources'
@@ -209,31 +210,71 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
       sourceTypes: videoSources.map((s: any) => s.type)
     });
     
-    // For now, return the parsed config as debug info
+    // Step 2: Parse each source into structured objects
+    const parsedSources = videoSources.map((source: any) => {
+      const parsed: any = {
+        id: source.id,
+        type: source.type,
+        title: source.title,
+        sortOrder: source.sortOrder
+      };
+      
+      // Parse type-specific fields
+      if (source.type === 'skypaul77' || source.type === 'youtube_channel') {
+        parsed.url = source.url;
+        parsed.channelId = extractChannelId(source.url);
+        parsed.sourceType = 'youtube_channel';
+      } else if (source.type === 'youtube_playlist') {
+        parsed.url = source.url;
+        parsed.playlistId = extractPlaylistId(source.url);
+        parsed.sourceType = 'youtube_playlist';
+      } else if (source.type === 'local') {
+        parsed.path = source.path;
+        parsed.maxDepth = source.maxDepth || 2; // Default to 2 if not specified
+        parsed.sourceType = 'local_folder';
+      } else if (source.type === 'dlna') {
+        parsed.url = source.url;
+        parsed.allowedFolder = source.allowedFolder;
+        parsed.sourceType = 'dlna_server';
+        // Note: DLNA will be deferred for now
+      }
+      
+      return parsed;
+    });
+    
+    log.info('[Main] Successfully parsed sources:', parsedSources.map((s: any) => ({
+      id: s.id,
+      type: s.type,
+      sourceType: s.sourceType
+    })));
+    
+    // For now, return the parsed sources as debug info
     // TODO: Implement actual video loading in next steps
     return {
       videos: [
         {
           id: 'test-1',
-          title: 'Test Video 1 (Config Loaded)',
+          title: 'Test Video 1 (Sources Parsed)',
           thumbnail: 'https://via.placeholder.com/300x200',
           duration: 120,
           type: 'youtube'
         },
         {
           id: 'test-2', 
-          title: 'Test Video 2 (Config Loaded)',
+          title: 'Test Video 2 (Sources Parsed)',
           thumbnail: 'https://via.placeholder.com/300x200',
           duration: 180,
           type: 'local'
         }
       ],
+      sources: parsedSources,
       debug: [
         '[Main] IPC handler working correctly',
         '[Main] Successfully loaded videoSources.json',
         '[Main] Found ' + videoSources.length + ' video sources',
-        '[Main] Source types: ' + videoSources.map((s: any) => s.type).join(', '),
-        '[Main] TODO: Implement actual video source loading in next steps'
+        '[Main] Successfully parsed ' + parsedSources.length + ' sources',
+                 '[Main] Source types: ' + parsedSources.map((s: any) => s.sourceType).join(', '),
+        '[Main] TODO: Implement actual video loading in next steps'
       ]
     };
   } catch (error) {
@@ -241,6 +282,31 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
     throw error;
   }
 });
+
+// Helper functions for parsing YouTube URLs
+function extractChannelId(url: string): string | null {
+  try {
+    if (url.includes('/@')) {
+      const match = url.match(/\/@([^\/\?]+)/);
+      return match ? match[1] : null;
+    } else if (url.includes('/channel/')) {
+      const match = url.match(/\/channel\/([^\/\?]+)/);
+      return match ? match[1] : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function extractPlaylistId(url: string): string | null {
+  try {
+    const match = url.match(/[?&]list=([^&]+)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
 
 const createWindow = (): void => {
   const preloadPath = path.join(__dirname, '../../preload/index.js');
