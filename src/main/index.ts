@@ -624,17 +624,165 @@ ipcMain.handle('load-videos-from-sources', async () => {
   try {
     log.info('[Main] load-videos-from-sources handler called');
     
-    // Import and use the new source system
-    const { loadAllVideosFromSources } = await import('../preload/loadAllVideosFromSources');
-    const result = await loadAllVideosFromSources();
+    // Read video sources configuration
+    const configPath = path.join(process.cwd(), 'config', 'videoSources.json');
+    if (!fs.existsSync(configPath)) {
+      log.warn('[Main] videoSources.json not found');
+      return { videosBySource: [], debug: ['videoSources.json not found'] };
+    }
     
-    // Extract all videos from the grouped structure and store them globally
+    const configData = fs.readFileSync(configPath, 'utf8');
+    const videoSources = JSON.parse(configData);
+    
+    const videosBySource: any[] = [];
     const allVideos: any[] = [];
-    if (result.videosBySource) {
-      for (const source of result.videosBySource) {
-        if (source.videos && Array.isArray(source.videos)) {
-          allVideos.push(...source.videos);
+    
+    // Process each source
+    for (const source of videoSources) {
+      try {
+        if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
+          // Handle YouTube sources in main process where API key is available
+          const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
+          if (!apiKey) {
+            log.warn('[Main] YouTube API key not configured, skipping YouTube sources');
+            videosBySource.push({
+              id: source.id,
+              type: source.type,
+              title: source.title,
+              thumbnail: '',
+              videoCount: 0,
+              videos: [],
+              paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
+            });
+            continue;
+          }
+          
+          const youtubeAPI = new YouTubeAPI(apiKey);
+          let videos: any[] = [];
+          
+          if (source.type === 'youtube_channel') {
+            const channelId = extractChannelId(source.url);
+            if (!channelId) {
+              log.warn('[Main] Could not extract channel ID from URL:', source.url);
+              continue;
+            }
+            videos = await youtubeAPI.getChannelVideos(channelId, 50);
+            // Transform the video objects to match our expected format
+            videos = videos.map(v => ({
+              id: v.id,
+              type: 'youtube' as const,
+              title: v.title,
+              thumbnail: v.thumbnail || '',
+              duration: 0, // Duration not available from channel videos
+              url: `https://www.youtube.com/watch?v=${v.id}`,
+              preferredLanguages: ['en'],
+              sourceId: source.id,
+              sourceTitle: source.title,
+              sourceThumbnail: v.thumbnail || '',
+            }));
+          } else if (source.type === 'youtube_playlist') {
+            const playlistId = extractPlaylistId(source.url);
+            if (!playlistId) {
+              log.warn('[Main] Could not extract playlist ID from URL:', source.url);
+              continue;
+            }
+            videos = await youtubeAPI.getPlaylistVideos(playlistId, 50);
+            // Transform the video objects to match our expected format
+            videos = videos.map(v => ({
+              id: v.id,
+              type: 'youtube' as const,
+              title: v.title,
+              thumbnail: v.thumbnail || '',
+              duration: 0, // Duration not available from playlist videos
+              url: `https://www.youtube.com/watch?v=${v.id}`,
+              preferredLanguages: ['en'],
+              sourceId: source.id,
+              sourceTitle: source.title,
+              sourceThumbnail: v.thumbnail || '',
+            }));
+          }
+          
+          // Create pagination state
+          const paginationState = {
+            currentPage: 1,
+            totalPages: Math.ceil(videos.length / 50),
+            totalVideos: videos.length,
+            pageSize: 50
+          };
+          
+          videosBySource.push({
+            id: source.id,
+            type: source.type,
+            title: source.title,
+            thumbnail: videos.length > 0 ? videos[0].thumbnail : '',
+            videoCount: videos.length,
+            videos: videos,
+            paginationState: paginationState
+          });
+          
+          allVideos.push(...videos);
+          
+        } else if (source.type === 'local') {
+          // Handle local sources
+          const maxDepth = source.maxDepth || 2;
+          const localVideos = await scanLocalFolder(source.path, maxDepth);
+          
+          const videos = localVideos.map(v => ({
+            id: v.id,
+            type: 'local' as const,
+            title: v.title,
+            thumbnail: v.thumbnail || '',
+            duration: v.duration || 0,
+            url: v.url || v.id,
+            video: v.video || undefined,
+            audio: v.audio || undefined,
+            sourceId: source.id,
+            sourceTitle: source.title,
+            sourceThumbnail: '',
+          }));
+          
+          const paginationState = {
+            currentPage: 1,
+            totalPages: Math.ceil(videos.length / 50),
+            totalVideos: videos.length,
+            pageSize: 50
+          };
+          
+          videosBySource.push({
+            id: source.id,
+            type: source.type,
+            title: source.title,
+            thumbnail: '',
+            videoCount: videos.length,
+            videos: videos,
+            paginationState: paginationState
+          });
+          
+          allVideos.push(...videos);
+          
+        } else if (source.type === 'dlna') {
+          // Handle DLNA sources (placeholder for now)
+          videosBySource.push({
+            id: source.id,
+            type: source.type,
+            title: source.title,
+            thumbnail: '',
+            videoCount: 0,
+            videos: [],
+            paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
+          });
         }
+      } catch (error) {
+        log.error('[Main] Error processing source:', source.id, error);
+        videosBySource.push({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          thumbnail: '',
+          videoCount: 0,
+          videos: [],
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
+        });
       }
     }
     
@@ -643,15 +791,23 @@ ipcMain.handle('load-videos-from-sources', async () => {
     
     log.info('[Main] Loaded videos from new source system:', {
       totalVideos: allVideos.length,
-      sources: result.videosBySource?.length || 0
+      sources: videosBySource.length
     });
     
-    return result;
+    return { videosBySource, debug: [`Loaded ${videosBySource.length} sources with ${allVideos.length} total videos`] };
   } catch (error) {
     log.error('[Main] Error loading videos from sources:', error);
     throw error;
   }
 });
+
+// Helper function to parse ISO duration
+function parseISODuration(iso: string): number {
+  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+  if (!match) return 0;
+  const [, h, m, s] = match;
+  return (parseInt(h || '0') * 3600) + (parseInt(m || '0') * 60) + parseInt(s || '0');
+}
 
 // Helper functions for parsing YouTube URLs
 const createWindow = (): void => {
