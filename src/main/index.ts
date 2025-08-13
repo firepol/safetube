@@ -8,6 +8,15 @@ import fs from 'fs'
 import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking'
 import { readTimeLimits } from '../shared/fileUtils'
 
+// Load environment variables from .env file
+import dotenv from 'dotenv'
+dotenv.config()
+
+// Debug: Log environment variables
+log.info('[Main] Environment variables loaded');
+log.info('[Main] YOUTUBE_API_KEY:', process.env.YOUTUBE_API_KEY ? '***configured***' : 'NOT configured');
+log.info('[Main] NODE_ENV:', process.env.NODE_ENV);
+
 // Global type declaration for current videos
 declare global {
   var currentVideos: any[];
@@ -127,12 +136,22 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
     
     // First try to find the video in our current video sources
     // This will be populated when loadAllVideosFromSources is called
+    log.info('[Main] Checking global.currentVideos:', {
+      exists: !!global.currentVideos,
+      length: global.currentVideos?.length || 0,
+      videoIds: global.currentVideos?.map((v: any) => v.id) || []
+    });
+    
     if (global.currentVideos && global.currentVideos.length > 0) {
       const video = global.currentVideos.find((v: any) => v.id === videoId);
       if (video) {
         log.info('[Main] Video found in current sources:', video.title);
         return video;
+      } else {
+        log.warn('[Main] Video not found in current sources. Looking for:', videoId);
       }
+    } else {
+      log.warn('[Main] global.currentVideos is empty or undefined');
     }
     
     // Fallback: Try the old videos.json system
