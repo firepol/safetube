@@ -3,9 +3,15 @@ import { app, BrowserWindow, ipcMain } from 'electron'
 import log from './logger'
 import { Client } from 'node-ssdp'
 import { setupYouTubeHandlers } from './youtube'
+import { YouTubeAPI } from './youtube-api'
 import fs from 'fs'
 import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking'
 import { readTimeLimits } from '../shared/fileUtils'
+
+// Global type declaration for current videos
+declare global {
+  var currentVideos: any[];
+}
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -114,10 +120,22 @@ ipcMain.handle('get-player-config', async () => {
   }
 })
 
-// Handle video data loading
+// Handle video data loading - now integrated with video sources
 ipcMain.handle('get-video-data', async (_, videoId: string) => {
   try {
-    // Try different paths based on development vs production
+    log.info('[Main] Loading video data for:', videoId);
+    
+    // First try to find the video in our current video sources
+    // This will be populated when loadAllVideosFromSources is called
+    if (global.currentVideos && global.currentVideos.length > 0) {
+      const video = global.currentVideos.find((v: any) => v.id === videoId);
+      if (video) {
+        log.info('[Main] Video found in current sources:', video.title);
+        return video;
+      }
+    }
+    
+    // Fallback: Try the old videos.json system
     const possiblePaths = [
       path.join(process.cwd(), 'src', 'renderer', 'data', 'videos.json'),
       path.join(__dirname, '..', 'renderer', 'data', 'videos.json'),
@@ -134,20 +152,20 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
     }
     
     if (!videosPath) {
-      log.error('Videos data file not found, tried paths:', possiblePaths)
+      log.warn('[Main] Videos data file not found, tried paths:', possiblePaths)
       throw new Error('Videos data file not found')
     }
     
-    log.info('Loading video data for:', videoId, 'from:', videosPath)
+    log.info('[Main] Loading video data from fallback path:', videosPath)
     
     const videosData = fs.readFileSync(videosPath, 'utf8')
     const videos = JSON.parse(videosData)
     const video = videos.find((v: any) => v.id === videoId)
     
-    log.info('Video data loaded:', video ? video.type : 'not found')
+    log.info('[Main] Video data loaded from fallback:', video ? video.type : 'not found')
     return video
   } catch (error) {
-    log.error('Error loading video data:', error)
+    log.error('[Main] Error loading video data:', error)
     throw error
   }
 })
@@ -278,8 +296,65 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
           debugInfo.push(`[Main] Loaded ${localVideos.length} videos from local source: ${source.title}`);
           
         } else if (source.sourceType === 'youtube_channel' || source.sourceType === 'youtube_playlist') {
-          // TODO: Implement YouTube video loading in next phase
-          debugInfo.push(`[Main] YouTube source ${source.title} - TODO: implement in next phase`);
+          try {
+            // Initialize YouTube API (you'll need to add your API key to config)
+            const apiKey = process.env.YOUTUBE_API_KEY || 'your-api-key-here';
+            if (apiKey === 'your-api-key-here') {
+              debugInfo.push(`[Main] YouTube source ${source.title} - API key not configured`);
+              continue;
+            }
+            
+            const youtubeAPI = new YouTubeAPI(apiKey);
+            let youtubeVideos: any[] = [];
+            
+            if (source.sourceType === 'youtube_channel') {
+              log.info('[Main] Fetching videos from YouTube channel:', source.channelId);
+              youtubeVideos = await youtubeAPI.getChannelVideos(source.channelId, 20);
+              
+              // Get channel details if title/thumbnail are missing
+              if (!source.title || !source.thumbnail) {
+                try {
+                  const channelDetails = await youtubeAPI.getChannelDetails(source.channelId);
+                  if (!source.title) source.title = channelDetails.title;
+                  if (!source.thumbnail) source.thumbnail = channelDetails.thumbnail;
+                } catch (error) {
+                  log.warn('[Main] Could not fetch channel details:', error);
+                }
+              }
+              
+            } else if (source.sourceType === 'youtube_playlist') {
+              log.info('[Main] Fetching videos from YouTube playlist:', source.playlistId);
+              youtubeVideos = await youtubeAPI.getPlaylistVideos(source.playlistId, 20);
+              
+              // Get playlist details if title/thumbnail are missing
+              if (!source.title || !source.thumbnail) {
+                try {
+                  const playlistDetails = await youtubeAPI.getPlaylistDetails(source.playlistId);
+                  if (!source.title) source.title = playlistDetails.title;
+                  if (!source.thumbnail) source.thumbnail = playlistDetails.thumbnail;
+                } catch (error) {
+                  log.warn('[Main] Could not fetch playlist details:', error);
+                }
+              }
+            }
+            
+            // Add source info to each video
+            const videosWithSource = youtubeVideos.map(video => ({
+              ...video,
+              sourceId: source.id,
+              sourceTitle: source.title,
+              sourceType: 'youtube',
+              // Add duration placeholder (will be extracted in next phase)
+              duration: 0
+            }));
+            
+            allVideos.push(...videosWithSource);
+            debugInfo.push(`[Main] Loaded ${youtubeVideos.length} videos from YouTube source: ${source.title}`);
+            
+          } catch (error) {
+            log.error('[Main] Error loading YouTube videos:', error);
+            debugInfo.push(`[Main] Error loading YouTube source ${source.title}: ${error}`);
+          }
           
         } else if (source.sourceType === 'dlna_server') {
           // TODO: Implement DLNA video loading in next phase
@@ -302,6 +377,9 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
         ]
       };
     }
+    
+    // Store videos globally so the player can access them
+    global.currentVideos = allVideos;
     
     return {
       videos: allVideos,
