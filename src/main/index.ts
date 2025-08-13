@@ -619,6 +619,40 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
   }
 });
 
+// Handle loading videos from new source system
+ipcMain.handle('load-videos-from-sources', async () => {
+  try {
+    log.info('[Main] load-videos-from-sources handler called');
+    
+    // Import and use the new source system
+    const { loadAllVideosFromSources } = await import('../preload/loadAllVideosFromSources');
+    const result = await loadAllVideosFromSources();
+    
+    // Extract all videos from the grouped structure and store them globally
+    const allVideos: any[] = [];
+    if (result.videosBySource) {
+      for (const source of result.videosBySource) {
+        if (source.videos && Array.isArray(source.videos)) {
+          allVideos.push(...source.videos);
+        }
+      }
+    }
+    
+    // Store videos globally so the player can access them
+    global.currentVideos = allVideos;
+    
+    log.info('[Main] Loaded videos from new source system:', {
+      totalVideos: allVideos.length,
+      sources: result.videosBySource?.length || 0
+    });
+    
+    return result;
+  } catch (error) {
+    log.error('[Main] Error loading videos from sources:', error);
+    throw error;
+  }
+});
+
 // Helper functions for parsing YouTube URLs
 const createWindow = (): void => {
   const preloadPath = path.join(__dirname, '../../preload/index.js');

@@ -24,6 +24,8 @@ contextBridge.exposeInMainWorld(
     testHandler: () => ipcRenderer.invoke('test-handler'),
     // New IPC handler for loading videos from sources
     loadAllVideosFromSources: () => ipcRenderer.invoke('load-all-videos-from-sources'),
+    // New IPC handler for loading videos from new source system
+    loadVideosFromSources: () => ipcRenderer.invoke('load-videos-from-sources'),
     // New IPC handler for getting paginated videos from a specific source
     getPaginatedVideos: (sourceId: string, pageNumber: number) => 
       ipcRenderer.invoke('get-paginated-videos', sourceId, pageNumber),

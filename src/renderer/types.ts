@@ -36,6 +36,7 @@ export interface ElectronAPI {
     ELECTRON_LOG_VERBOSE?: string;
   };
   loadAllVideosFromSources: () => Promise<{ videos: any[]; debug: string[] }>;
+  loadVideosFromSources: () => Promise<{ videosBySource: any[]; debug: string[] }>;
   getPaginatedVideos: (sourceId: string, pageNumber: number) => Promise<{ videos: any[]; paginationState: any }>;
 }
 declare global {

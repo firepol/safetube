@@ -42,8 +42,8 @@ export const KidScreen: React.FC = () => {
 
   useEffect(() => {
     setIsLoading(true);
-    if (window.electron && window.electron.loadAllVideosFromSources) {
-      window.electron.loadAllVideosFromSources()
+    if (window.electron && window.electron.loadVideosFromSources) {
+      window.electron.loadVideosFromSources()
         .then((result: any) => {
           const { videosBySource, debug } = result;
           setSources(videosBySource || []);
@@ -60,7 +60,7 @@ export const KidScreen: React.FC = () => {
         })
         .finally(() => setIsLoading(false));
     } else {
-      setLoaderError('window.electron.loadAllVideosFromSources is not available');
+      setLoaderError('window.electron.loadVideosFromSources is not available');
       setIsLoading(false);
     }
   }, []);
@@ -170,7 +170,7 @@ export const KidScreen: React.FC = () => {
                 className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105"
                 onClick={() => {
                   if (video.type === 'youtube') {
-                    navigate(`/youtube-player/${video.id}`, { 
+                    navigate(`/player/${video.id}`, { 
                       state: { videoTitle: video.title } 
                     });
                   } else if (video.type === 'local') {

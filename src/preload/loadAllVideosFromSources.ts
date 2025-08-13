@@ -94,8 +94,25 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         logDebug(`[Loader] YouTube source ${(typedSource as any).id}: ${cache.videos.length} videos loaded. Title: ${sourceTitle || typedSource.title}, Thumbnail: ${sourceThumbnail ? '[set]' : '[blank]'}`);
         
         const videos = cache.videos.map(v => ({
-          ...v,
-          type: 'youtube',
+          id: v.id,
+          type: 'youtube' as const,
+          title: v.title,
+          thumbnail: v.thumbnail || '',
+          duration: v.duration || 0,
+          url: v.url || `https://www.youtube.com/watch?v=${v.id}`,
+          // For local videos with separate streams (not applicable for YouTube)
+          video: undefined,
+          audio: undefined,
+          // For YouTube videos
+          streamUrl: undefined,
+          audioStreamUrl: undefined,
+          resumeAt: undefined,
+          server: undefined,
+          port: undefined,
+          path: undefined,
+          preferredLanguages: v.preferredLanguages || ['en'],
+          useJsonStreamUrls: false,
+          // Additional properties for source management
           sourceId: typedSource.id,
           sourceTitle: sourceTitle || typedSource.title,
           sourceThumbnail: sourceThumbnail || '',
@@ -125,7 +142,25 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         logDebug(`[Loader] Local source ${(typedSource as any).id}: ${localVideos.length} videos found.`);
         
         const videos = localVideos.map(v => ({
-          ...v,
+          id: v.id,
+          type: 'local' as const,
+          title: v.title,
+          thumbnail: v.thumbnail || '',
+          duration: v.duration || 0,
+          url: v.url || v.id,
+          // For local videos with separate streams
+          video: v.video || undefined,
+          audio: v.audio || undefined,
+          // For YouTube videos (not applicable for local)
+          streamUrl: undefined,
+          audioStreamUrl: undefined,
+          resumeAt: undefined,
+          server: undefined,
+          port: undefined,
+          path: undefined,
+          preferredLanguages: undefined,
+          useJsonStreamUrls: undefined,
+          // Additional properties for source management
           sourceId: (typedSource as any).id,
           sourceTitle: (typedSource as any).title,
           sourceThumbnail: '',
