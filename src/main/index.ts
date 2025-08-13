@@ -22,6 +22,118 @@ declare global {
   var currentVideos: any[];
 }
 
+// Helper function to resolve username to channel ID
+async function resolveUsernameToChannelId(username: string, apiKey: string): Promise<string | null> {
+  try {
+    const youtubeAPI = new YouTubeAPI(apiKey);
+    const channelDetails = await youtubeAPI.searchChannelByUsername(username);
+    return channelDetails.channelId;
+  } catch (error) {
+    log.warn('[Main] Could not resolve username to channel ID:', username, error);
+    return null;
+  }
+}
+
+// Helper functions for parsing YouTube URLs
+function extractChannelId(url: string): string | null {
+  try {
+    if (url.includes('/@')) {
+      const match = url.match(/\/@([^\/\?]+)/);
+      return match ? match[1] : null;
+    } else if (url.includes('/channel/')) {
+      const match = url.match(/\/channel\/([^\/\?]+)/);
+      return match ? match[1] : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function extractPlaylistId(url: string): string | null {
+  try {
+    const match = url.match(/[?&]list=([^&]+)/);
+    return match ? match[1] : null;
+  } catch {
+    return null;
+  }
+}
+
+// Helper function for scanning local folders
+async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<any[]> {
+  const videos: any[] = [];
+  const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
+  
+  try {
+    // Resolve relative paths from project root
+    const absolutePath = path.isAbsolute(folderPath) ? folderPath : path.join(process.cwd(), folderPath);
+    log.info('[Main] Scanning local folder:', absolutePath);
+    
+    if (!fs.existsSync(absolutePath)) {
+      log.warn('[Main] Local folder does not exist:', absolutePath);
+      return [];
+    }
+    
+    // Start scanning from the root folder
+    scanFolderRecursive(absolutePath, 0, maxDepth, videos, supportedExtensions);
+    
+    log.info('[Main] Local folder scan complete, found', videos.length, 'videos');
+    return videos;
+    
+  } catch (error) {
+    log.error('[Main] Error scanning local folder:', folderPath, error);
+    return [];
+  }
+}
+
+// Recursive function to scan folders (defined outside to avoid strict mode issues)
+function scanFolderRecursive(currentPath: string, currentDepth: number, maxDepth: number, videos: any[], supportedExtensions: string[]): void {
+  if (currentDepth > maxDepth) {
+    return;
+  }
+  
+  try {
+    const items = fs.readdirSync(currentPath);
+    
+    for (const item of items) {
+      const itemPath = path.join(currentPath, item);
+      const stats = fs.statSync(itemPath);
+      
+      if (stats.isDirectory()) {
+        // Recursively scan subdirectories
+        scanFolderRecursive(itemPath, currentDepth + 1, maxDepth, videos, supportedExtensions);
+      } else if (stats.isFile()) {
+        // Check if it's a video file
+        const ext = path.extname(item).toLowerCase();
+        if (supportedExtensions.includes(ext)) {
+          const relativePath = path.relative(process.cwd(), itemPath);
+          const video = {
+            id: `local-${relativePath.replace(/[^a-zA-Z0-9]/g, '-')}`,
+            title: path.basename(item, ext),
+            thumbnail: 'https://via.placeholder.com/300x200?text=Local+Video',
+            duration: 0, // TODO: Extract duration in next phase
+            type: 'local',
+            video: `file://${itemPath}`, // Use 'video' instead of 'path' to match PlayerPage expectations
+            filename: item,
+            extension: ext,
+            size: stats.size,
+            modified: stats.mtime
+          };
+          videos.push(video);
+          log.info('[Main] Found video:', {
+            id: video.id,
+            title: video.title,
+            relativePath,
+            absolutePath: itemPath
+          });
+        }
+      }
+    }
+  } catch (error) {
+    log.error('[Main] Error scanning folder:', currentPath, error);
+  }
+}
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
   app.quit()
@@ -425,117 +537,6 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
 });
 
 // Helper functions for parsing YouTube URLs
-function extractChannelId(url: string): string | null {
-  try {
-    if (url.includes('/@')) {
-      const match = url.match(/\/@([^\/\?]+)/);
-      return match ? match[1] : null;
-    } else if (url.includes('/channel/')) {
-      const match = url.match(/\/channel\/([^\/\?]+)/);
-      return match ? match[1] : null;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-// Helper function to resolve username to channel ID
-async function resolveUsernameToChannelId(username: string, apiKey: string): Promise<string | null> {
-  try {
-    const youtubeAPI = new YouTubeAPI(apiKey);
-    const channelDetails = await youtubeAPI.searchChannelByUsername(username);
-    return channelDetails.channelId;
-  } catch (error) {
-    log.warn('[Main] Could not resolve username to channel ID:', username, error);
-    return null;
-  }
-}
-
-function extractPlaylistId(url: string): string | null {
-  try {
-    const match = url.match(/[?&]list=([^&]+)/);
-    return match ? match[1] : null;
-  } catch {
-    return null;
-  }
-}
-
-// Helper function for scanning local folders
-async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<any[]> {
-  const videos: any[] = [];
-  const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
-  
-  try {
-    // Resolve relative paths from project root
-    const absolutePath = path.isAbsolute(folderPath) ? folderPath : path.join(process.cwd(), folderPath);
-    log.info('[Main] Scanning local folder:', absolutePath);
-    
-    if (!fs.existsSync(absolutePath)) {
-      log.warn('[Main] Local folder does not exist:', absolutePath);
-      return [];
-    }
-    
-    // Start scanning from the root folder
-    scanFolderRecursive(absolutePath, 0, maxDepth, videos, supportedExtensions);
-    
-    log.info('[Main] Local folder scan complete, found', videos.length, 'videos');
-    return videos;
-    
-  } catch (error) {
-    log.error('[Main] Error scanning local folder:', folderPath, error);
-    return [];
-  }
-}
-
-// Recursive function to scan folders (defined outside to avoid strict mode issues)
-function scanFolderRecursive(currentPath: string, currentDepth: number, maxDepth: number, videos: any[], supportedExtensions: string[]): void {
-  if (currentDepth > maxDepth) {
-    return;
-  }
-  
-  try {
-    const items = fs.readdirSync(currentPath);
-    
-    for (const item of items) {
-      const itemPath = path.join(currentPath, item);
-      const stats = fs.statSync(itemPath);
-      
-      if (stats.isDirectory()) {
-        // Recursively scan subdirectories
-        scanFolderRecursive(itemPath, currentDepth + 1, maxDepth, videos, supportedExtensions);
-      } else if (stats.isFile()) {
-        // Check if it's a video file
-        const ext = path.extname(item).toLowerCase();
-        if (supportedExtensions.includes(ext)) {
-          const relativePath = path.relative(process.cwd(), itemPath);
-          const video = {
-            id: `local-${relativePath.replace(/[^a-zA-Z0-9]/g, '-')}`,
-            title: path.basename(item, ext),
-            thumbnail: 'https://via.placeholder.com/300x200?text=Local+Video',
-            duration: 0, // TODO: Extract duration in next phase
-            type: 'local',
-            video: `file://${itemPath}`, // Use 'video' instead of 'path' to match PlayerPage expectations
-            filename: item,
-            extension: ext,
-            size: stats.size,
-            modified: stats.mtime
-          };
-          videos.push(video);
-          log.info('[Main] Found video:', {
-            id: video.id,
-            title: video.title,
-            relativePath,
-            absolutePath: itemPath
-          });
-        }
-      }
-    }
-  } catch (error) {
-    log.error('[Main] Error scanning folder:', currentPath, error);
-  }
-}
-
 const createWindow = (): void => {
   const preloadPath = path.join(__dirname, '../../preload/index.js');
   log.info('[Main] Preload path:', preloadPath);
