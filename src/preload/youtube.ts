@@ -146,13 +146,21 @@ export interface AudioTrack {
   bitrate?: number;
 }
 
-const API_KEY = process.env.YOUTUBE_API_KEY;
+let API_KEY: string | null = null;
 const BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
 export class YouTubeAPI {
+  static setApiKey(apiKey: string) {
+    API_KEY = apiKey;
+  }
+  
   private static async fetch<T>(endpoint: string, params: Record<string, string>): Promise<T> {
+    if (!API_KEY) {
+      throw new Error('YouTube API key not set. Call YouTubeAPI.setApiKey() first.');
+    }
+    
     const queryParams = new URLSearchParams({
-      key: API_KEY || '',
+      key: API_KEY,
       ...params,
     });
     const response = await fetch(`${BASE_URL}/${endpoint}?${queryParams}`);

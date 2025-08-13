@@ -69,6 +69,39 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
     if ((source as any).type === 'youtube_channel' || (source as any).type === 'youtube_playlist') {
       const typedSource = source as VideoSource;
       try {
+        // Get API key from main process through IPC
+        let apiKey: string | null = null;
+        try {
+          if (typeof window !== 'undefined' && (window as any).electron && (window as any).electron.getYouTubeApiKey) {
+            apiKey = await (window as any).electron.getYouTubeApiKey();
+          }
+        } catch (err) {
+          debug.push(`[Loader] WARNING: Could not get YouTube API key: ${err}`);
+        }
+        
+        if (!apiKey) {
+          debug.push(`[Loader] WARNING: YouTube API key not available, skipping YouTube source ${typedSource.id}`);
+          videosBySource.push({
+            id: typedSource.id,
+            type: (typedSource as any).type,
+            title: typedSource.title,
+            thumbnail: '',
+            videoCount: 0,
+            videos: [],
+            paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
+          });
+          continue;
+        }
+        
+        // Set the API key in the YouTubeAPI class
+        if (typeof window !== 'undefined' && (window as any).setYouTubeApiKey) {
+          (window as any).setYouTubeApiKey(apiKey);
+        }
+        
+        // Import and set the API key in the YouTubeAPI class
+        const { YouTubeAPI } = await import('./youtube');
+        YouTubeAPI.setApiKey(apiKey);
+        
         const cache: YouTubeSourceCache = await CachedYouTubeSources.loadSourceVideos(typedSource);
         let sourceTitle = typedSource.title;
         let sourceThumbnail = (typedSource as any).thumbnail;
@@ -100,19 +133,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
           thumbnail: v.thumbnail || '',
           duration: v.duration || 0,
           url: v.url || `https://www.youtube.com/watch?v=${v.id}`,
-          // For local videos with separate streams (not applicable for YouTube)
-          video: undefined,
-          audio: undefined,
-          // For YouTube videos
-          streamUrl: undefined,
-          audioStreamUrl: undefined,
-          resumeAt: undefined,
-          server: undefined,
-          port: undefined,
-          path: undefined,
           preferredLanguages: v.preferredLanguages || ['en'],
-          useJsonStreamUrls: false,
-          // Additional properties for source management
           sourceId: typedSource.id,
           sourceTitle: sourceTitle || typedSource.title,
           sourceThumbnail: sourceThumbnail || '',
@@ -132,6 +153,16 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
       } catch (err) {
         debug.push(`[Loader] ERROR loading YouTube source ${(typedSource as any).id}: ${err}`);
         logDebug(`[Loader] ERROR loading YouTube source ${(typedSource as any).id}: ${err}`);
+        // Add empty source to maintain structure
+        videosBySource.push({
+          id: typedSource.id,
+          type: (typedSource as any).type,
+          title: typedSource.title,
+          thumbnail: '',
+          videoCount: 0,
+          videos: [],
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
+        });
       }
     } else if ((source as any).type === 'local') {
       const typedSource = source as VideoSource;

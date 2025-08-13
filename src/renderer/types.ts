@@ -37,6 +37,7 @@ export interface ElectronAPI {
   };
   loadAllVideosFromSources: () => Promise<{ videos: any[]; debug: string[] }>;
   loadVideosFromSources: () => Promise<{ videosBySource: any[]; debug: string[] }>;
+  getYouTubeApiKey: () => Promise<string | null>;
   getPaginatedVideos: (sourceId: string, pageNumber: number) => Promise<{ videos: any[]; paginationState: any }>;
 }
 declare global {
