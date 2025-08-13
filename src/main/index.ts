@@ -14,7 +14,7 @@ dotenv.config()
 
 // Debug: Log environment variables
 log.info('[Main] Environment variables loaded');
-log.info('[Main] YOUTUBE_API_KEY:', process.env.YOUTUBE_API_KEY ? '***configured***' : 'NOT configured');
+log.info('[Main] YOUTUBE_API_KEY:', process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY ? '***configured***' : 'NOT configured');
 log.info('[Main] NODE_ENV:', process.env.NODE_ENV);
 
 // Global type declaration for current videos
@@ -317,7 +317,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
         } else if (source.sourceType === 'youtube_channel' || source.sourceType === 'youtube_playlist') {
           try {
             // Initialize YouTube API (you'll need to add your API key to config)
-            const apiKey = process.env.YOUTUBE_API_KEY || 'your-api-key-here';
+                              const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || 'your-api-key-here';
             if (apiKey === 'your-api-key-here') {
               debugInfo.push(`[Main] YouTube source ${source.title} - API key not configured`);
               continue;
@@ -497,7 +497,12 @@ function scanFolderRecursive(currentPath: string, currentDepth: number, maxDepth
             modified: stats.mtime
           };
           videos.push(video);
-          log.info('[Main] Found video:', video.title, 'at', relativePath);
+          log.info('[Main] Found video:', {
+            id: video.id,
+            title: video.title,
+            relativePath,
+            absolutePath: itemPath
+          });
         }
       }
     }
