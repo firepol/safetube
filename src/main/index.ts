@@ -186,20 +186,43 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
   try {
     log.info('[Main] load-all-videos-from-sources handler called');
     
-    // For now, return a simple response to test the IPC
-    // TODO: Implement the actual video source loading logic here
+    // Step 1: Read and parse videoSources.json configuration
+    const configPath = path.join(process.cwd(), 'config', 'videoSources.json');
+    log.info('[Main] Reading video sources config from:', configPath);
+    
+    if (!fs.existsSync(configPath)) {
+      log.warn('[Main] videoSources.json not found, returning empty result');
+      return {
+        videos: [],
+        debug: [
+          '[Main] videoSources.json not found at: ' + configPath,
+          '[Main] Please create config/videoSources.json with your video sources'
+        ]
+      };
+    }
+    
+    const configData = fs.readFileSync(configPath, 'utf8');
+    const videoSources = JSON.parse(configData);
+    
+    log.info('[Main] Successfully parsed video sources config:', {
+      sourceCount: videoSources.length,
+      sourceTypes: videoSources.map((s: any) => s.type)
+    });
+    
+    // For now, return the parsed config as debug info
+    // TODO: Implement actual video loading in next steps
     return {
       videos: [
         {
           id: 'test-1',
-          title: 'Test Video 1',
+          title: 'Test Video 1 (Config Loaded)',
           thumbnail: 'https://via.placeholder.com/300x200',
           duration: 120,
           type: 'youtube'
         },
         {
           id: 'test-2', 
-          title: 'Test Video 2',
+          title: 'Test Video 2 (Config Loaded)',
           thumbnail: 'https://via.placeholder.com/300x200',
           duration: 180,
           type: 'local'
@@ -207,8 +230,10 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
       ],
       debug: [
         '[Main] IPC handler working correctly',
-        '[Main] Returning test videos for now',
-        '[Main] TODO: Implement actual video source loading'
+        '[Main] Successfully loaded videoSources.json',
+        '[Main] Found ' + videoSources.length + ' video sources',
+        '[Main] Source types: ' + videoSources.map((s: any) => s.type).join(', '),
+        '[Main] TODO: Implement actual video source loading in next steps'
       ]
     };
   } catch (error) {
