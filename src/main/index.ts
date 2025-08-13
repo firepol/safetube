@@ -34,12 +34,15 @@ async function resolveUsernameToChannelId(username: string, apiKey: string): Pro
   }
 }
 
+// Force TypeScript to include this function by exporting it (even if not used elsewhere)
+export { resolveUsernameToChannelId };
+
 // Helper functions for parsing YouTube URLs
 function extractChannelId(url: string): string | null {
   try {
     if (url.includes('/@')) {
       const match = url.match(/\/@([^\/\?]+)/);
-      return match ? match[1] : null;
+      return match ? `@${match[1]}` : null; // Return with @ prefix for usernames
     } else if (url.includes('/channel/')) {
       const match = url.match(/\/channel\/([^\/\?]+)/);
       return match ? match[1] : null;
@@ -334,6 +337,11 @@ ipcMain.handle('time-tracking:get-time-limits', async () => {
 ipcMain.handle('load-all-videos-from-sources', async () => {
   try {
     log.info('[Main] load-all-videos-from-sources handler called');
+    log.info('[Main] Helper functions available:', {
+      resolveUsernameToChannelId: typeof resolveUsernameToChannelId,
+      extractChannelId: typeof extractChannelId,
+      scanLocalFolder: typeof scanLocalFolder
+    });
     
     // Step 1: Read and parse videoSources.json configuration
     const configPath = path.join(process.cwd(), 'config', 'videoSources.json');
@@ -441,15 +449,32 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
             if (source.sourceType === 'youtube_channel') {
               let actualChannelId = source.channelId;
               
+              log.info('[Main] Processing YouTube channel source:', {
+                sourceId: source.id,
+                channelId: source.channelId,
+                startsWithAt: source.channelId?.startsWith('@'),
+                type: typeof source.channelId
+              });
+              
               // If it's a username (starts with @), resolve it to channel ID
-              if (source.channelId.startsWith('@')) {
+              if (source.channelId && source.channelId.startsWith('@')) {
                 log.info('[Main] Resolving username to channel ID:', source.channelId);
-                actualChannelId = await resolveUsernameToChannelId(source.channelId, apiKey);
-                if (!actualChannelId) {
-                  debugInfo.push(`[Main] Could not resolve username ${source.channelId} to channel ID`);
+                log.info('[Main] About to call resolveUsernameToChannelId function');
+                try {
+                  actualChannelId = await resolveUsernameToChannelId(source.channelId, apiKey);
+                  log.info('[Main] Username resolution result:', { username: source.channelId, resolvedId: actualChannelId });
+                  if (!actualChannelId) {
+                    debugInfo.push(`[Main] Could not resolve username ${source.channelId} to channel ID`);
+                    continue;
+                  }
+                  log.info('[Main] Resolved username to channel ID:', actualChannelId);
+                } catch (error) {
+                  log.error('[Main] Error resolving username:', error);
+                  debugInfo.push(`[Main] Error resolving username ${source.channelId}: ${error}`);
                   continue;
                 }
-                log.info('[Main] Resolved username to channel ID:', actualChannelId);
+              } else {
+                log.info('[Main] Not a username, using channel ID directly:', source.channelId);
               }
               
               log.info('[Main] Fetching videos from YouTube channel:', actualChannelId);
