@@ -248,34 +248,65 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
       sourceType: s.sourceType
     })));
     
-    // For now, return the parsed sources as debug info
-    // TODO: Implement actual video loading in next steps
-    return {
-      videos: [
-        {
-          id: 'test-1',
-          title: 'Test Video 1 (Sources Parsed)',
-          thumbnail: 'https://via.placeholder.com/300x200',
-          duration: 120,
-          type: 'youtube'
-        },
-        {
-          id: 'test-2', 
-          title: 'Test Video 2 (Sources Parsed)',
-          thumbnail: 'https://via.placeholder.com/300x200',
-          duration: 180,
-          type: 'local'
+        // Step 3: Load videos from local sources
+    const allVideos: any[] = [];
+    const debugInfo: string[] = [
+      '[Main] IPC handler working correctly',
+      '[Main] Successfully loaded videoSources.json',
+      '[Main] Found ' + videoSources.length + ' video sources',
+      '[Main] Successfully parsed ' + parsedSources.length + ' sources',
+      '[Main] Source types: ' + parsedSources.map((s: any) => s.sourceType).join(', ')
+    ];
+    
+    // Process each source type
+    for (const source of parsedSources) {
+      try {
+        if (source.sourceType === 'local_folder') {
+          log.info('[Main] Scanning local folder:', source.path);
+          const localVideos = await scanLocalFolder(source.path, source.maxDepth);
+          log.info('[Main] Found', localVideos.length, 'videos in local folder');
+          
+          // Add source info to each video
+          const videosWithSource = localVideos.map(video => ({
+            ...video,
+            sourceId: source.id,
+            sourceTitle: source.title,
+            sourceType: 'local'
+          }));
+          
+          allVideos.push(...videosWithSource);
+          debugInfo.push(`[Main] Loaded ${localVideos.length} videos from local source: ${source.title}`);
+          
+        } else if (source.sourceType === 'youtube_channel' || source.sourceType === 'youtube_playlist') {
+          // TODO: Implement YouTube video loading in next phase
+          debugInfo.push(`[Main] YouTube source ${source.title} - TODO: implement in next phase`);
+          
+        } else if (source.sourceType === 'dlna_server') {
+          // TODO: Implement DLNA video loading in next phase
+          debugInfo.push(`[Main] DLNA source ${source.title} - TODO: implement in next phase`);
         }
-      ],
+      } catch (error) {
+        log.error('[Main] Error processing source:', source.id, error);
+        debugInfo.push(`[Main] Error processing source ${source.title}: ${error}`);
+      }
+    }
+    
+    // If no videos found, return empty result
+    if (allVideos.length === 0) {
+      return {
+        videos: [],
+        sources: parsedSources,
+        debug: [
+          ...debugInfo,
+          '[Main] No videos found from any sources'
+        ]
+      };
+    }
+    
+    return {
+      videos: allVideos,
       sources: parsedSources,
-      debug: [
-        '[Main] IPC handler working correctly',
-        '[Main] Successfully loaded videoSources.json',
-        '[Main] Found ' + videoSources.length + ' video sources',
-        '[Main] Successfully parsed ' + parsedSources.length + ' sources',
-                 '[Main] Source types: ' + parsedSources.map((s: any) => s.sourceType).join(', '),
-        '[Main] TODO: Implement actual video loading in next steps'
-      ]
+      debug: debugInfo
     };
   } catch (error) {
     log.error('[Main] Error loading videos from sources:', error);
@@ -305,6 +336,76 @@ function extractPlaylistId(url: string): string | null {
     return match ? match[1] : null;
   } catch {
     return null;
+  }
+}
+
+// Helper function for scanning local folders
+async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<any[]> {
+  const videos: any[] = [];
+  const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
+  
+  try {
+    // Resolve relative paths from project root
+    const absolutePath = path.isAbsolute(folderPath) ? folderPath : path.join(process.cwd(), folderPath);
+    log.info('[Main] Scanning local folder:', absolutePath);
+    
+    if (!fs.existsSync(absolutePath)) {
+      log.warn('[Main] Local folder does not exist:', absolutePath);
+      return [];
+    }
+    
+    // Start scanning from the root folder
+    scanFolderRecursive(absolutePath, 0, maxDepth, videos, supportedExtensions);
+    
+    log.info('[Main] Local folder scan complete, found', videos.length, 'videos');
+    return videos;
+    
+  } catch (error) {
+    log.error('[Main] Error scanning local folder:', folderPath, error);
+    return [];
+  }
+}
+
+// Recursive function to scan folders (defined outside to avoid strict mode issues)
+function scanFolderRecursive(currentPath: string, currentDepth: number, maxDepth: number, videos: any[], supportedExtensions: string[]): void {
+  if (currentDepth > maxDepth) {
+    return;
+  }
+  
+  try {
+    const items = fs.readdirSync(currentPath);
+    
+    for (const item of items) {
+      const itemPath = path.join(currentPath, item);
+      const stats = fs.statSync(itemPath);
+      
+      if (stats.isDirectory()) {
+        // Recursively scan subdirectories
+        scanFolderRecursive(itemPath, currentDepth + 1, maxDepth, videos, supportedExtensions);
+      } else if (stats.isFile()) {
+        // Check if it's a video file
+        const ext = path.extname(item).toLowerCase();
+        if (supportedExtensions.includes(ext)) {
+          const relativePath = path.relative(process.cwd(), itemPath);
+          const video = {
+            id: `local-${relativePath.replace(/[^a-zA-Z0-9]/g, '-')}`,
+            title: path.basename(item, ext),
+            thumbnail: 'https://via.placeholder.com/300x200?text=Local+Video',
+            duration: 0, // TODO: Extract duration in next phase
+            type: 'local',
+            path: `file://${itemPath}`,
+            filename: item,
+            extension: ext,
+            size: stats.size,
+            modified: stats.mtime
+          };
+          videos.push(video);
+          log.info('[Main] Found video:', video.title, 'at', relativePath);
+        }
+      }
+    }
+  } catch (error) {
+    log.error('[Main] Error scanning folder:', currentPath, error);
   }
 }
 
