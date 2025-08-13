@@ -478,7 +478,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
               }
               
               log.info('[Main] Fetching videos from YouTube channel:', actualChannelId);
-              youtubeVideos = await youtubeAPI.getChannelVideos(actualChannelId, 20);
+              youtubeVideos = await youtubeAPI.getChannelVideos(actualChannelId, 50); // Fetch 50 videos max per page
               
               // Get channel details if title/thumbnail are missing
               if (!source.title || !source.thumbnail) {
@@ -493,7 +493,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
               
             } else if (source.sourceType === 'youtube_playlist') {
               log.info('[Main] Fetching videos from YouTube playlist:', source.playlistId);
-              youtubeVideos = await youtubeAPI.getPlaylistVideos(source.playlistId, 20);
+              youtubeVideos = await youtubeAPI.getPlaylistVideos(source.playlistId, 50); // Fetch 50 videos max per page
               
               // Get playlist details if title/thumbnail are missing
               if (!source.title || !source.thumbnail) {
@@ -512,7 +512,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
               ...video,
               sourceId: source.id,
               sourceTitle: source.title,
-              sourceType: 'youtube',
+              sourceType: source.sourceType, // Keep original source type (youtube_channel or youtube_playlist)
               // Add duration placeholder (will be extracted in next phase)
               duration: 0
             }));
@@ -550,9 +550,20 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
     // Store videos globally so the player can access them
     global.currentVideos = allVideos;
     
+    // Group videos by source for the UI
+    const videosBySource = parsedSources.map((source: any) => {
+      const sourceVideos = allVideos.filter(video => video.sourceId === source.id);
+      return {
+        ...source,
+        videos: sourceVideos,
+        videoCount: sourceVideos.length
+      };
+    });
+    
     return {
-      videos: allVideos,
+      videos: allVideos, // Keep flat list for backward compatibility
       sources: parsedSources,
+      videosBySource, // New grouped structure for UI
       debug: debugInfo
     };
   } catch (error) {
