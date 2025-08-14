@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { YouTubeAPI, VideoStream, AudioTrack } from '../services/youtube-api';
 import { PlayerConfigService } from '../services/playerConfig';
 import { Video } from '../types';
@@ -19,6 +19,7 @@ function getSrc(val: unknown): string {
 export const PlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [video, setVideo] = useState<Video | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -777,12 +778,21 @@ export const PlayerPage: React.FC = () => {
     };
   }, []);
 
+  const handleBackClick = () => {
+    const returnTo = (location.state as any)?.returnTo;
+    if (returnTo) {
+      navigate(returnTo);
+    } else {
+      navigate(-1);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
         <div className="p-4">
           <button
-            onClick={() => navigate(-1)}
+            onClick={handleBackClick}
             className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             ← Back
@@ -801,7 +811,7 @@ export const PlayerPage: React.FC = () => {
       <div className="flex flex-col min-h-screen bg-gray-100">
         <div className="p-4">
           <button
-            onClick={() => navigate(-1)}
+            onClick={handleBackClick}
             className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             ← Back
@@ -817,7 +827,7 @@ export const PlayerPage: React.FC = () => {
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
           <button
-            onClick={() => navigate(-1)}
+            onClick={handleBackClick}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
             ← Back
