@@ -39,7 +39,7 @@ function isVideoFile(filename: string): boolean {
   return /\.(mp4|mkv|webm|mov|avi)$/i.test(filename);
 }
 
-export async function loadAllVideosFromSources(configPath = 'config/videoSources.json') {
+export async function loadAllVideosFromSources(configPath = 'config/videoSources.json', apiKey?: string | null) {
   const debug: string[] = [];
   let sources: VideoSource[] = [];
   logDebug(`[Loader] Starting loadAllVideosFromSources with configPath: ${configPath}`);
@@ -69,16 +69,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
     if ((source as any).type === 'youtube_channel' || (source as any).type === 'youtube_playlist') {
       const typedSource = source as VideoSource;
       try {
-        // Get API key from main process through IPC
-        let apiKey: string | null = null;
-        try {
-          if (typeof window !== 'undefined' && (window as any).electron && (window as any).electron.getYouTubeApiKey) {
-            apiKey = await (window as any).electron.getYouTubeApiKey();
-          }
-        } catch (err) {
-          debug.push(`[Loader] WARNING: Could not get YouTube API key: ${err}`);
-        }
-        
+        // Check if API key is available
         if (!apiKey) {
           debug.push(`[Loader] WARNING: YouTube API key not available, skipping YouTube source ${typedSource.id}`);
           videosBySource.push({
@@ -91,11 +82,6 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
             paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
           });
           continue;
-        }
-        
-        // Set the API key in the YouTubeAPI class
-        if (typeof window !== 'undefined' && (window as any).setYouTubeApiKey) {
-          (window as any).setYouTubeApiKey(apiKey);
         }
         
         // Import and set the API key in the YouTubeAPI class

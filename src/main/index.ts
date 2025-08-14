@@ -624,9 +624,17 @@ ipcMain.handle('load-videos-from-sources', async () => {
   try {
     log.info('[Main] load-videos-from-sources handler called');
     
+    // Get YouTube API key first
+    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      log.warn('[Main] YouTube API key not configured');
+    } else {
+      log.info('[Main] YouTube API key available');
+    }
+    
     // Import and use the new source system
     const { loadAllVideosFromSources } = await import('../preload/loadAllVideosFromSources');
-    const result = await loadAllVideosFromSources();
+    const result = await loadAllVideosFromSources('config/videoSources.json', apiKey);
     
     // Extract all videos from the grouped structure and store them globally
     const allVideos: any[] = [];
