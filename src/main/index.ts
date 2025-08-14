@@ -2,8 +2,25 @@ import path from 'path'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import log from './logger'
 import { Client } from 'node-ssdp'
+import { setupYouTubeHandlers } from './youtube'
 import { YouTubeAPI } from './youtube-api'
 import fs from 'fs'
+import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking'
+import { readTimeLimits } from '../shared/fileUtils'
+
+// Load environment variables from .env file
+import dotenv from 'dotenv'
+dotenv.config()
+
+// Debug: Log environment variables
+log.info('[Main] Environment variables loaded');
+log.info('[Main] YOUTUBE_API_KEY:', process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY ? '***configured***' : 'NOT configured');
+log.info('[Main] NODE_ENV:', process.env.NODE_ENV);
+
+// Global type declaration for current videos
+declare global {
+  var currentVideos: any[];
+}
 
 // Helper function for scanning local folders
 async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<any[]> {
