@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SourceGrid } from '../components/layout/SourceGrid';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
-import { Pagination } from '../components/layout/Pagination';
 
 export const KidScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -69,14 +68,6 @@ export const KidScreen: React.FC = () => {
 
   const handleSourceClick = (source: any) => {
     navigate(`/source/${source.id}`);
-  };
-
-  const handleBackClick = () => {
-    // This function is no longer needed
-  };
-
-  const handlePageChange = (pageNumber: number) => {
-    // This function is no longer needed
   };
 
   if (isLoading) {
