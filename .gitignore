@@ -60,3 +60,6 @@ Thumbs.db
 
 # User configuration (contains user data)
 config/ 
+
+# Cache
+.cache

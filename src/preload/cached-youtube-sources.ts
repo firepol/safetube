@@ -28,7 +28,19 @@ export class CachedYouTubeSources {
     let newVideos: any[] = [];
     if (source.type === 'youtube_channel') {
       const channelId = extractChannelId(source.url);
-      const allVideos = await YouTubeAPI.getChannelVideos(channelId, 50);
+      let actualChannelId = channelId;
+      
+      // If it's a username (starts with @), resolve it to channel ID first
+      if (channelId.startsWith('@')) {
+        try {
+          const channelDetails = await YouTubeAPI.searchChannelByUsername(channelId);
+          actualChannelId = channelDetails.channelId;
+        } catch (error) {
+          throw new Error(`Could not resolve username ${channelId} to channel ID: ${error}`);
+        }
+      }
+      
+      const allVideos = await YouTubeAPI.getChannelVideos(actualChannelId, 50);
       newVideos = await fetchNewYouTubeVideos(allVideos, cache?.videos || []);
     } else if (source.type === 'youtube_playlist') {
       const playlistId = extractPlaylistId(source.url);
@@ -49,8 +61,16 @@ export class CachedYouTubeSources {
 }
 
 function extractChannelId(url: string): string {
+  // Handle @username format (e.g., https://www.youtube.com/@skypaul77)
+  if (url.includes('/@')) {
+    const match = url.match(/\/@([^\/\?]+)/);
+    if (match) return `@${match[1]}`; // Return with @ prefix for usernames
+  }
+  
+  // Handle /channel/ format (e.g., https://www.youtube.com/channel/UC...)
   const match = url.match(/channel\/([\w-]+)/);
   if (match) return match[1];
+  
   throw new Error('Unsupported channel URL');
 }
 function extractPlaylistId(url: string): string {

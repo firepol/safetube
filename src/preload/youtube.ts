@@ -256,6 +256,29 @@ export class YouTubeAPI {
     return this.getPlaylistVideos(channel.contentDetails.relatedPlaylists.uploads, maxResults);
   }
 
+  static async searchChannelByUsername(username: string): Promise<{ channelId: string; title: string; thumbnail: string }> {
+    // Remove @ prefix if present
+    const cleanUsername = username.startsWith('@') ? username.slice(1) : username;
+    
+    const data = await YouTubeAPI.fetch<{ items: any[] }>('search', {
+      part: 'snippet',
+      q: cleanUsername,
+      type: 'channel',
+      maxResults: '1'
+    });
+    
+    if (!data.items?.[0]) {
+      throw new Error(`Channel not found for username: ${username}`);
+    }
+    
+    const channel = data.items[0];
+    return {
+      channelId: channel.id.channelId,
+      title: channel.snippet.title,
+      thumbnail: channel.snippet.thumbnails?.high?.url || ''
+    };
+  }
+
   // Helper to convert ISO 8601 duration to seconds
   static parseDuration(duration: string): number {
     const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);

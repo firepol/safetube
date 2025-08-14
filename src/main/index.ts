@@ -2,24 +2,70 @@ import path from 'path'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import log from './logger'
 import { Client } from 'node-ssdp'
-import { setupYouTubeHandlers } from './youtube'
 import { YouTubeAPI } from './youtube-api'
 import fs from 'fs'
-import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking'
-import { readTimeLimits } from '../shared/fileUtils'
 
-// Load environment variables from .env file
-import dotenv from 'dotenv'
-dotenv.config()
+// Helper function for scanning local folders
+async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<any[]> {
+  const videos: any[] = [];
+  const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
+  
+  try {
+    // Resolve relative paths from project root
+    const absolutePath = path.isAbsolute(folderPath) ? folderPath : path.join(process.cwd(), folderPath);
 
-// Debug: Log environment variables
-log.info('[Main] Environment variables loaded');
-log.info('[Main] YOUTUBE_API_KEY:', process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY ? '***configured***' : 'NOT configured');
-log.info('[Main] NODE_ENV:', process.env.NODE_ENV);
+    log.info('[Main] Scanning local folder:', absolutePath);
+    
+    if (!fs.existsSync(absolutePath)) {
+      log.warn('[Main] Local folder does not exist:', absolutePath);
+      return videos;
+    }
 
-// Global type declaration for current videos
-declare global {
-  var currentVideos: any[];
+    // Recursive function to scan folders
+    async function scanFolder(currentPath: string, depth: number): Promise<void> {
+      if (depth > maxDepth) return;
+      
+      try {
+        const items = fs.readdirSync(currentPath);
+        
+        for (const item of items) {
+          const itemPath = path.join(currentPath, item);
+          const stat = fs.statSync(itemPath);
+          
+          if (stat.isDirectory()) {
+            await scanFolder(itemPath, depth + 1);
+          } else if (stat.isFile()) {
+            const ext = path.extname(item).toLowerCase();
+            if (supportedExtensions.includes(ext)) {
+              // Generate a unique ID for the video
+              const videoId = `local_${path.relative(process.cwd(), itemPath).replace(/[^a-zA-Z0-9]/g, '_')}`;
+              
+              videos.push({
+                id: videoId,
+                title: path.basename(item, ext),
+                thumbnail: '',
+                duration: 0, // Duration would need to be extracted from video metadata
+                url: itemPath,
+                video: itemPath,
+                audio: undefined,
+                preferredLanguages: ['en']
+              });
+            }
+          }
+        }
+      } catch (error) {
+        log.warn('[Main] Error scanning folder:', currentPath, error);
+      }
+    }
+
+    await scanFolder(absolutePath, 0);
+    log.info('[Main] Found videos in local folder:', videos.length);
+    
+  } catch (error) {
+    log.error('[Main] Error scanning local folder:', error);
+  }
+  
+  return videos;
 }
 
 // Helper function to resolve username to channel ID
@@ -59,81 +105,6 @@ function extractPlaylistId(url: string): string | null {
     return match ? match[1] : null;
   } catch {
     return null;
-  }
-}
-
-// Helper function for scanning local folders
-async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<any[]> {
-  const videos: any[] = [];
-  const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
-  
-  try {
-    // Resolve relative paths from project root
-    const absolutePath = path.isAbsolute(folderPath) ? folderPath : path.join(process.cwd(), folderPath);
-    log.info('[Main] Scanning local folder:', absolutePath);
-    
-    if (!fs.existsSync(absolutePath)) {
-      log.warn('[Main] Local folder does not exist:', absolutePath);
-      return [];
-    }
-    
-    // Start scanning from the root folder
-    scanFolderRecursive(absolutePath, 0, maxDepth, videos, supportedExtensions);
-    
-    log.info('[Main] Local folder scan complete, found', videos.length, 'videos');
-    return videos;
-    
-  } catch (error) {
-    log.error('[Main] Error scanning local folder:', folderPath, error);
-    return [];
-  }
-}
-
-// Recursive function to scan folders (defined outside to avoid strict mode issues)
-function scanFolderRecursive(currentPath: string, currentDepth: number, maxDepth: number, videos: any[], supportedExtensions: string[]): void {
-  if (currentDepth > maxDepth) {
-    return;
-  }
-  
-  try {
-    const items = fs.readdirSync(currentPath);
-    
-    for (const item of items) {
-      const itemPath = path.join(currentPath, item);
-      const stats = fs.statSync(itemPath);
-      
-      if (stats.isDirectory()) {
-        // Recursively scan subdirectories
-        scanFolderRecursive(itemPath, currentDepth + 1, maxDepth, videos, supportedExtensions);
-      } else if (stats.isFile()) {
-        // Check if it's a video file
-        const ext = path.extname(item).toLowerCase();
-        if (supportedExtensions.includes(ext)) {
-          const relativePath = path.relative(process.cwd(), itemPath);
-          const video = {
-            id: `local-${relativePath.replace(/[^a-zA-Z0-9]/g, '-')}`,
-            title: path.basename(item, ext),
-            thumbnail: 'https://via.placeholder.com/300x200?text=Local+Video',
-            duration: 0, // TODO: Extract duration in next phase
-            type: 'local',
-            video: `file://${itemPath}`, // Use 'video' instead of 'path' to match PlayerPage expectations
-            filename: item,
-            extension: ext,
-            size: stats.size,
-            modified: stats.mtime
-          };
-          videos.push(video);
-          log.info('[Main] Found video:', {
-            id: video.id,
-            title: video.title,
-            relativePath,
-            absolutePath: itemPath
-          });
-        }
-      }
-    }
-  } catch (error) {
-    log.error('[Main] Error scanning folder:', currentPath, error);
   }
 }
 
