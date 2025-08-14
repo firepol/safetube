@@ -584,7 +584,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     
     // Get paginated videos
     const pageVideos = paginationService.getPage(sourceId, pageNumber, sourceVideos);
-    const paginationState = paginationService.getPaginationState(sourceId, sourceVideos.length);
+    const paginationState = paginationService.getPaginationState(sourceId, sourceVideos.length, pageNumber);
     
     log.info('[Main] Pagination result:', {
       sourceId,

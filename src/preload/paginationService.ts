@@ -81,10 +81,10 @@ export class PaginationService {
     }
   }
 
-  public getPaginationState(sourceId: string, totalVideos: number): PaginationState {
+  public getPaginationState(sourceId: string, totalVideos: number, currentPage: number = 1): PaginationState {
     const totalPages = Math.ceil(totalVideos / this.config.pageSize);
     return {
-      currentPage: 1,
+      currentPage,
       totalPages,
       totalVideos,
       pageSize: this.config.pageSize
