@@ -166,11 +166,69 @@ export class YouTubeAPI {
       key: API_KEY,
       ...params,
     });
-    const response = await fetch(`${BASE_URL}/${endpoint}?${queryParams}`);
-    if (!response.ok) {
-      throw new Error(`YouTube API error: ${response.statusText}`);
+    
+    const url = `${BASE_URL}/${endpoint}?${queryParams}`;
+    
+    try {
+      // Use Node.js fetch if available, fallback to global fetch
+      let response: Response;
+      if (typeof globalThis.fetch === 'function') {
+        response = await globalThis.fetch(url);
+      } else {
+        // Fallback for older Node.js versions
+        const https = require('https');
+        const http = require('http');
+        
+        return new Promise((resolve, reject) => {
+          const urlObj = new URL(url);
+          const client = urlObj.protocol === 'https:' ? https : http;
+          
+          const req = client.request(url, (res: any) => {
+            let data = '';
+            res.on('data', (chunk: any) => data += chunk);
+            res.on('end', () => {
+              try {
+                if (res.statusCode >= 200 && res.statusCode < 300) {
+                  resolve(JSON.parse(data));
+                } else {
+                  reject(new Error(`HTTP ${res.statusCode}: ${res.statusMessage}`));
+                }
+              } catch (e) {
+                reject(new Error(`Failed to parse response: ${e}`));
+              }
+            });
+          });
+          
+          req.on('error', reject);
+          req.setTimeout(10000, () => req.destroy());
+          req.end();
+        });
+      }
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`YouTube API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      
+      return response.json();
+    } catch (error) {
+      console.error(`[YouTubeAPI] Fetch failed for ${endpoint}:`, error);
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('fetch failed')) {
+          throw new Error(`Network error: Unable to reach YouTube API. Please check your internet connection.`);
+        } else if (error.message.includes('403')) {
+          throw new Error(`YouTube API access denied. Please check your API key.`);
+        } else if (error.message.includes('429')) {
+          throw new Error(`YouTube API rate limit exceeded. Please try again later.`);
+        } else if (error.message.includes('500')) {
+          throw new Error(`YouTube API server error. Please try again later.`);
+        }
+      }
+      
+      throw new Error(`YouTube API request failed: ${error instanceof Error ? error.message : String(error)}`);
     }
-    return response.json();
   }
 
   static async getVideoDetails(videoId: string): Promise<YouTubeVideo> {

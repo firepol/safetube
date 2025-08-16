@@ -29,28 +29,48 @@ export class CachedYouTubeSources {
     let totalVideos = 0;
     let sourceThumbnail = '';
     
-    if (source.type === 'youtube_channel') {
-      const channelId = extractChannelId(source.url);
-      let actualChannelId = channelId;
-      
-      // If it's a username (starts with @), resolve it to channel ID first
-      if (channelId.startsWith('@')) {
-        try {
-          const channelDetails = await YouTubeAPI.searchChannelByUsername(channelId);
-          actualChannelId = channelDetails.channelId;
-        } catch (error) {
-          throw new Error(`Could not resolve username ${channelId} to channel ID: ${error}`);
+    try {
+      if (source.type === 'youtube_channel') {
+        const channelId = extractChannelId(source.url);
+        let actualChannelId = channelId;
+        
+        // If it's a username (starts with @), resolve it to channel ID first
+        if (channelId.startsWith('@')) {
+          try {
+            const channelDetails = await YouTubeAPI.searchChannelByUsername(channelId);
+            actualChannelId = channelDetails.channelId;
+          } catch (error) {
+            console.warn(`[CachedYouTubeSources] Could not resolve username ${channelId} to channel ID:`, error);
+            // Fallback: try to use the username directly
+            actualChannelId = channelId;
+          }
         }
+        
+        const result = await YouTubeAPI.getChannelVideos(actualChannelId, 50);
+        totalVideos = result.totalResults;
+        newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || []);
+      } else if (source.type === 'youtube_playlist') {
+        const playlistId = extractPlaylistId(source.url);
+        const result = await YouTubeAPI.getPlaylistVideos(playlistId, 50);
+        totalVideos = result.totalResults;
+        newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || []);
       }
+    } catch (error) {
+      console.warn(`[CachedYouTubeSources] YouTube API failed for source ${source.id}:`, error);
       
-      const result = await YouTubeAPI.getChannelVideos(actualChannelId, 50);
-      totalVideos = result.totalResults;
-      newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || []);
-    } else if (source.type === 'youtube_playlist') {
-      const playlistId = extractPlaylistId(source.url);
-      const result = await YouTubeAPI.getPlaylistVideos(playlistId, 50);
-      totalVideos = result.totalResults;
-      newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || []);
+      // If we have cached data, use it as fallback
+      if (cache && cache.videos.length > 0) {
+        console.log(`[CachedYouTubeSources] Using cached data as fallback for source ${source.id}`);
+        totalVideos = cache.totalVideos || cache.videos.length;
+        newVideos = [];
+        sourceThumbnail = cache.thumbnail || '';
+      } else {
+        // No cache available, create minimal fallback
+        console.log(`[CachedYouTubeSources] Creating minimal fallback for source ${source.id}`);
+        totalVideos = 0;
+        newVideos = [];
+        sourceThumbnail = '';
+      }
     }
     
     const videos = [...(cache?.videos || []), ...newVideos];
