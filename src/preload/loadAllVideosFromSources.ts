@@ -125,14 +125,14 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
           sourceThumbnail: sourceThumbnail || '',
         }));
 
-        const paginationState = paginationService.getPaginationState(typedSource.id, videos.length);
+        const paginationState = paginationService.getPaginationState(typedSource.id, cache.totalVideos || videos.length);
         
         videosBySource.push({
           id: typedSource.id,
           type: (typedSource as any).type,
           title: sourceTitle || typedSource.title,
           thumbnail: sourceThumbnail || '',
-          videoCount: videos.length,
+          videoCount: cache.totalVideos || videos.length, // Use total count from cache
           videos: videos,
           paginationState: paginationState
         });

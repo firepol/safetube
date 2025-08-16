@@ -26,6 +26,9 @@ export class CachedYouTubeSources {
     }
     const now = new Date().toISOString();
     let newVideos: any[] = [];
+    let totalVideos = 0;
+    let sourceThumbnail = '';
+    
     if (source.type === 'youtube_channel') {
       const channelId = extractChannelId(source.url);
       let actualChannelId = channelId;
@@ -40,20 +43,31 @@ export class CachedYouTubeSources {
         }
       }
       
-      const allVideos = await YouTubeAPI.getChannelVideos(actualChannelId, 50);
-      newVideos = await fetchNewYouTubeVideos(allVideos, cache?.videos || []);
+      const result = await YouTubeAPI.getChannelVideos(actualChannelId, 50);
+      totalVideos = result.totalResults;
+      newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || []);
     } else if (source.type === 'youtube_playlist') {
       const playlistId = extractPlaylistId(source.url);
-      const allVideos = await YouTubeAPI.getPlaylistVideos(playlistId, 50);
-      newVideos = await fetchNewYouTubeVideos(allVideos, cache?.videos || []);
+      const result = await YouTubeAPI.getPlaylistVideos(playlistId, 50);
+      totalVideos = result.totalResults;
+      newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || []);
     }
+    
     const videos = [...(cache?.videos || []), ...newVideos];
+    
+    // Get thumbnail from first video if available
+    if (videos.length > 0 && videos[0].thumbnail) {
+      sourceThumbnail = videos[0].thumbnail;
+    }
+    
     const updatedCache: YouTubeSourceCache = {
       sourceId: source.id,
       type: source.type,
       lastFetched: now,
       lastVideoDate: videos.length > 0 ? videos[0].publishedAt : cache?.lastVideoDate,
       videos,
+      totalVideos,
+      thumbnail: sourceThumbnail
     };
     fs.writeFileSync(cacheFile, JSON.stringify(updatedCache, null, 2), 'utf-8');
     return updatedCache;

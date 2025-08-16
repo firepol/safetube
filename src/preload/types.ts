@@ -44,6 +44,8 @@ export interface YouTubeSourceCache {
     url: string;
     [key: string]: any;
   }>;
+  totalVideos?: number; // Total videos in the channel/playlist
+  thumbnail?: string; // Thumbnail for the source (from first video)
 }
 
 // Pagination configuration

@@ -104,6 +104,9 @@ const PlaylistItemSchema = z.object({
 const PlaylistSchema = z.object({
   items: z.array(PlaylistItemSchema),
   nextPageToken: z.string().optional(),
+  pageInfo: z.object({
+    totalResults: z.number(),
+  }),
 });
 
 const ChannelSchema = z.object({
@@ -231,13 +234,16 @@ export class YouTubeAPI {
     }
   }
 
-  static async getPlaylistVideos(playlistId: string, maxResults = 50): Promise<string[]> {
+  static async getPlaylistVideos(playlistId: string, maxResults = 50): Promise<{ videoIds: string[], totalResults: number }> {
     const data = await YouTubeAPI.fetch<YouTubePlaylist>('playlistItems', {
       part: 'snippet',
       playlistId,
       maxResults: maxResults.toString(),
     });
-    return data.items.map(item => item.snippet.resourceId.videoId);
+    return {
+      videoIds: data.items.map(item => item.snippet.resourceId.videoId),
+      totalResults: data.pageInfo.totalResults
+    };
   }
 
   static async getChannelDetails(channelId: string): Promise<YouTubeChannel> {
@@ -251,7 +257,7 @@ export class YouTubeAPI {
     return ChannelSchema.parse(data.items[0]);
   }
 
-  static async getChannelVideos(channelId: string, maxResults = 50): Promise<string[]> {
+  static async getChannelVideos(channelId: string, maxResults = 50): Promise<{ videoIds: string[], totalResults: number }> {
     const channel = await this.getChannelDetails(channelId);
     return this.getPlaylistVideos(channel.contentDetails.relatedPlaylists.uploads, maxResults);
   }
