@@ -578,19 +578,33 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       throw new Error('Source not found');
     }
     
+    // Get the source data to find the total count
+    const { loadAllVideosFromSources } = await import('../preload/loadAllVideosFromSources');
+    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
+    const sourceData = await loadAllVideosFromSources('config/videoSources.json', apiKey);
+    
+    // Find the specific source to get its total count
+    const foundSource = sourceData.videosBySource?.find(s => s.id === sourceId);
+    if (!foundSource) {
+      throw new Error('Source not found in source data');
+    }
+    
+    // Use the total count from the source data, not just the loaded videos
+    const totalVideos = foundSource.videoCount || sourceVideos.length;
+    
     // Load pagination service
     const { PaginationService } = await import('../preload/paginationService');
     const paginationService = PaginationService.getInstance();
     
     // Get paginated videos
     const pageVideos = paginationService.getPage(sourceId, pageNumber, sourceVideos);
-    const paginationState = paginationService.getPaginationState(sourceId, sourceVideos.length, pageNumber);
+    const paginationState = paginationService.getPaginationState(sourceId, totalVideos, pageNumber);
     
     log.info('[Main] Pagination result:', {
       sourceId,
       pageNumber,
       videosReturned: pageVideos.length,
-      totalVideos: sourceVideos.length,
+      totalVideos: totalVideos,
       totalPages: paginationState.totalPages
     });
     

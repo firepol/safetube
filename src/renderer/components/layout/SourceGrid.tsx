@@ -3,8 +3,7 @@ import React from 'react';
 interface VideoSource {
   id: string;
   title: string;
-  type: string;
-  sourceType: string;
+  type: string; // Changed from sourceType to type
   videos: any[];
   videoCount: number;
   thumbnail?: string;
@@ -24,17 +23,9 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
   };
 
   const getSourceThumbnail = (source: VideoSource) => {
-    // For YouTube sources, try to get the first video thumbnail or channel thumbnail
-    if (source.sourceType === 'youtube_channel' || source.sourceType === 'youtube_playlist') {
-      if (source.videos.length > 0 && source.videos[0].thumbnail) {
-        return (
-          <img 
-            src={source.videos[0].thumbnail} 
-            alt={source.title}
-            className="w-full h-full object-cover"
-          />
-        );
-      } else if (source.thumbnail) {
+    // For YouTube sources, use the source thumbnail (which comes from first video)
+    if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
+      if (source.thumbnail) {
         return (
           <img 
             src={source.thumbnail} 
@@ -45,8 +36,8 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
       }
     }
     
-    // For local folders, show folder icon
-    if (source.sourceType === 'local_folder') {
+    // For local sources, show folder icon
+    if (source.type === 'local') {
       return (
         <div className="w-full h-full bg-blue-100 flex items-center justify-center">
           <div className="text-6xl text-blue-500">📁</div>
@@ -57,7 +48,7 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
     // Default fallback
     return (
       <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-        <div className="text-4xl text-gray-500">{getSourceIcon(source.sourceType)}</div>
+        <div className="text-4xl text-gray-500">{getSourceIcon(source.type)}</div>
       </div>
     );
   };
@@ -68,9 +59,9 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
         return '📺';
       case 'youtube_playlist':
         return '📋';
-      case 'local_folder':
+      case 'local':
         return '📁';
-      case 'dlna_server':
+      case 'dlna':
         return '🌐';
       default:
         return '📹';
@@ -83,9 +74,9 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
         return 'YouTube Channel';
       case 'youtube_playlist':
         return 'YouTube Playlist';
-      case 'local_folder':
+      case 'local':
         return 'Local Folder';
-      case 'dlna_server':
+      case 'dlna':
         return 'DLNA Server';
       default:
         return 'Video Source';
@@ -108,8 +99,8 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
           {/* Source Info */}
           <div className="p-4">
             <div className="flex items-center space-x-2 mb-2">
-              <div className="text-2xl">{getSourceIcon(source.sourceType)}</div>
-              <div className="text-sm text-gray-500">{getSourceTypeLabel(source.sourceType)}</div>
+              <div className="text-2xl">{getSourceIcon(source.type)}</div>
+              <div className="text-sm text-gray-500">{getSourceTypeLabel(source.type)}</div>
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">{source.title}</h3>
             <p className="text-sm text-gray-400">{source.videoCount} videos</p>
