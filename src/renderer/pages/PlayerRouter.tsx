@@ -12,6 +12,8 @@ export const PlayerRouter: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<React.ReactNode | null>(null);
+  
+  console.log('[PlayerRouter] Component rendered with id:', id, 'videoId:', videoId);
 
   useEffect(() => {
     const determinePlayerType = async () => {
@@ -83,6 +85,8 @@ export const PlayerRouter: React.FC = () => {
           console.log('[PlayerRouter] Using PlayerPage (mediasource)');
           setSelectedPlayer(<PlayerPage />);
         }
+        
+        console.log('[PlayerRouter] Final selected player:', selectedPlayer ? 'set' : 'not set');
 
         setIsLoading(false);
       } catch (err) {
