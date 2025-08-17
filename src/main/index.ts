@@ -55,7 +55,15 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
             const ext = path.extname(item).toLowerCase();
             if (supportedExtensions.includes(ext)) {
               // Generate a unique ID using base64 encoding of the file path
-              const videoId = encodeFilePath(itemPath);
+              let videoId: string;
+              try {
+                videoId = encodeFilePath(itemPath);
+                log.info('[Main] Generated encoded ID for local video:', { originalPath: itemPath, encodedId: videoId });
+              } catch (error) {
+                log.error('[Main] Error encoding file path, using fallback ID:', error);
+                // Fallback: use a hash-based ID
+                videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
+              }
               
               videos.push({
                 id: videoId,
