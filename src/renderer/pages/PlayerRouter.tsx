@@ -76,6 +76,9 @@ export const PlayerRouter: React.FC = () => {
         if (video && video.type === 'youtube' && finalPlayerType === 'iframe') {
           console.log('[PlayerRouter] Using YouTubePlayerPage (iframe)');
           setSelectedPlayer(<YouTubePlayerPage />);
+        } else if (video && (video.type === 'local' || video.type === 'dlna')) {
+          console.log('[PlayerRouter] Using PlayerPage for local/DLNA video');
+          setSelectedPlayer(<PlayerPage />);
         } else {
           console.log('[PlayerRouter] Using PlayerPage (mediasource)');
           setSelectedPlayer(<PlayerPage />);
