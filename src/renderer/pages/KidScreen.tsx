@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SourceGrid } from '../components/layout/SourceGrid';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
@@ -12,6 +12,7 @@ export const KidScreen: React.FC = () => {
   const [loaderDebug, setLoaderDebug] = useState<string[]>([]);
   const [timeTrackingState, setTimeTrackingState] = useState<any>(null);
   const { showWarning } = useRateLimit();
+  const warningShownRef = useRef(false);
 
   useEffect(() => {
     const checkTimeLimits = async () => {
@@ -48,13 +49,14 @@ export const KidScreen: React.FC = () => {
           
           // Check if any sources are using cached data due to API failures
           const hasCachedData = videosBySource?.some((source: any) => source.usingCachedData);
-          if (hasCachedData) {
+          if (hasCachedData && !warningShownRef.current) {
             const cachedSource = videosBySource.find((source: any) => source.usingCachedData);
             if (cachedSource?.lastFetched) {
               showWarning(cachedSource.lastFetched);
             } else {
               showWarning();
             }
+            warningShownRef.current = true;
           }
           
           // Log the new structure for debugging
@@ -70,7 +72,7 @@ export const KidScreen: React.FC = () => {
       setLoaderError('window.electron.loadVideosFromSources is not available');
       setIsLoading(false);
     }
-  }, [showWarning]);
+  }, []); // Remove showWarning dependency to prevent infinite loop
 
   // Load videos for a specific page when source or page changes
   useEffect(() => {

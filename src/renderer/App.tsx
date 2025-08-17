@@ -5,7 +5,7 @@ import { PlayerRouter } from './pages/PlayerRouter';
 import { TimeUpPage } from './pages/TimeUpPage';
 import { SourcePage } from './pages/SourcePage';
 import { RateLimitWarning } from './components/layout/RateLimitWarning';
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
 // Context for managing rate limit warning state
 interface RateLimitContextType {
@@ -33,16 +33,16 @@ const RateLimitProvider: React.FC<RateLimitProviderProps> = ({ children }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [lastFetched, setLastFetched] = useState<string>();
 
-  const showWarning = (lastFetched?: string) => {
+  const showWarning = useCallback((lastFetched?: string) => {
     setIsVisible(true);
     if (lastFetched) {
       setLastFetched(lastFetched);
     }
-  };
+  }, []);
 
-  const hideWarning = () => {
+  const hideWarning = useCallback(() => {
     setIsVisible(false);
-  };
+  }, []);
 
   return (
     <RateLimitContext.Provider value={{ showWarning, hideWarning, isVisible, lastFetched }}>
