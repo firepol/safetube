@@ -581,12 +581,12 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     
     // Calculate the page token for YouTube API pagination
     const pageSize = 50;
-    const pageToken = pageNumber > 1 ? await getPageTokenForPage(sourceId, foundSource, pageNumber) : undefined;
+    const pageToken: string | undefined = pageNumber > 1 ? await getPageTokenForPage(sourceId, foundSource, pageNumber) : undefined;
     
     // Fetch videos for the specific page
     let pageVideos: any[] = [];
     if (foundSource.type === 'youtube_channel' || foundSource.type === 'youtube_playlist') {
-      pageVideos = await fetchVideosForPage(foundSource, pageNumber, pageSize, pageToken, apiKey);
+      pageVideos = await fetchVideosForPage(foundSource, pageNumber, pageSize, pageToken || undefined, apiKey);
     } else {
       // For local sources, use the existing pagination logic
       const { PaginationService } = await import('../preload/paginationService');
