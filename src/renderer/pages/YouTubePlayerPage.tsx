@@ -266,44 +266,7 @@ export const YouTubePlayerPage: React.FC = () => {
     };
   }, [isVideoPlaying, video, updateTimeTracking]);
 
-  // Event handlers for the base component
-  const handleVideoPlay = useCallback(() => {
-    setIsVideoPlaying(true);
-    startTimeTracking();
-  }, [startTimeTracking]);
 
-  const handleVideoPause = useCallback(() => {
-    setIsVideoPlaying(false);
-    stopTimeTracking();
-  }, [stopTimeTracking]);
-
-  const handleVideoEnded = useCallback(() => {
-    setIsVideoPlaying(false);
-    stopTimeTracking();
-  }, [stopTimeTracking]);
-
-  const handleVideoTimeUpdate = useCallback(() => {
-    // This is handled by the polling interval for YouTube iframe
-  }, []);
-
-  const handleVideoSeeking = useCallback(() => {
-    // Update time tracking when seeking
-    updateTimeTracking();
-  }, [updateTimeTracking]);
-
-  const handleVideoSeeked = useCallback(() => {
-    // Update time tracking after seeking
-    updateTimeTracking();
-  }, [updateTimeTracking]);
-
-  const handleVideoError = useCallback((error: string) => {
-    setError(error);
-    setIsLoading(false);
-  }, []);
-
-  const handleVideoLoaded = useCallback(() => {
-    setIsLoading(false);
-  }, []);
 
   return (
     <BasePlayerPage
@@ -313,14 +276,6 @@ export const YouTubePlayerPage: React.FC = () => {
       isVideoPlaying={isVideoPlaying}
       timeRemainingSeconds={timeRemainingSeconds}
       countdownWarningSeconds={countdownWarningSeconds}
-      onVideoPlay={handleVideoPlay}
-      onVideoPause={handleVideoPause}
-      onVideoEnded={handleVideoEnded}
-      onVideoTimeUpdate={handleVideoTimeUpdate}
-      onVideoSeeking={handleVideoSeeking}
-      onVideoSeeked={handleVideoSeeked}
-      onVideoError={handleVideoError}
-      onVideoLoaded={handleVideoLoaded}
 
     >
       <div ref={containerRef} id={PLAYER_CONTAINER_ID} className="w-full aspect-video bg-black">

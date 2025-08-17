@@ -716,14 +716,6 @@ export const PlayerPage: React.FC = () => {
       isVideoPlaying={isVideoPlaying}
       timeRemainingSeconds={timeRemainingSeconds}
       countdownWarningSeconds={countdownWarningSeconds}
-      onVideoPlay={handleVideoPlay}
-      onVideoPause={handleVideoPause}
-      onVideoEnded={handleVideoEnded}
-      onVideoTimeUpdate={handleVideoTimeUpdate}
-      onVideoSeeking={handleVideoSeeking}
-      onVideoSeeked={handleVideoSeeked}
-      onVideoError={handleVideoError}
-      onVideoLoaded={handleVideoLoaded}
 
     >
       <video

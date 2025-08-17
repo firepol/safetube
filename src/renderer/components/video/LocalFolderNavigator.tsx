@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 interface FolderItem {
   name: string;
@@ -27,15 +26,13 @@ interface FolderContents {
 interface LocalFolderNavigatorProps {
   sourcePath: string;
   maxDepth: number;
-  currentPath?: string;
   onBackClick: () => void;
   onVideoClick: (video: VideoItem) => void;
 }
 
-export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> => ({
+export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   sourcePath,
   maxDepth,
-  currentPath = sourcePath,
   onBackClick,
   onVideoClick
 }) => {
