@@ -13,7 +13,6 @@ export const SourcePage: React.FC = () => {
   const [currentPageVideos, setCurrentPageVideos] = useState<any[]>([]);
   const [paginationState, setPaginationState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sourceConfig, setSourceConfig] = useState<any>(null);
 
   const currentPage = page ? parseInt(page) : 1;
 
@@ -101,25 +100,8 @@ export const SourcePage: React.FC = () => {
     loadSourceAndVideos();
   }, [sourceId, currentPage]);
 
-  // Load source configuration for local sources
-  useEffect(() => {
-    const getSourceConfig = async () => {
-      try {
-        // Load the videoSources.json to get the full configuration
-        const response = await fetch('/config/videoSources.json');
-        const sources = await response.json();
-        const sourceConfig = sources.find((s: any) => s.id === sourceId);
-        return sourceConfig;
-      } catch (error) {
-        console.error('Error loading source config:', error);
-        return null;
-      }
-    };
-
-    if (source && source.type === 'local') {
-      getSourceConfig().then(setSourceConfig);
-    }
-  }, [source, sourceId]);
+  // For local sources, we need to get the maxDepth from the source data
+  // The source object should already contain this information from the backend
 
   const handleBackClick = () => {
     navigate('/');
@@ -196,30 +178,13 @@ export const SourcePage: React.FC = () => {
   // Check if this is a local source that should use the navigator
   const isLocalSource = source?.type === 'local';
   
-  const maxDepth = sourceConfig?.maxDepth || 2;
-  const sourcePath = sourceConfig?.path || source?.path || source?.url;
+  // For local sources, get maxDepth from the source data
+  // The backend should provide this information when loading the source
+  const maxDepth = source?.maxDepth || 2;
+  const sourcePath = source?.path || source?.url;
 
   // For local sources, use the folder navigator
   if (isLocalSource) {
-    if (!sourceConfig) {
-      return (
-        <div className="p-4">
-          <div className="flex items-center justify-between mb-4">
-            <button
-              onClick={handleBackClick}
-              className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-            >
-              ← Back to Sources
-            </button>
-            <h1 className="text-2xl font-bold">Loading...</h1>
-          </div>
-          <div className="text-center py-12">
-            <div className="text-lg">Loading folder configuration...</div>
-          </div>
-        </div>
-      );
-    }
-    
     return (
       <LocalFolderNavigator
         sourcePath={sourcePath}

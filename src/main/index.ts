@@ -1053,7 +1053,9 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
           thumbnail: '',
           videoCount: 0,
           videos: [],
-          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 } // Will be updated with actual config
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }, // Will be updated with actual config
+          maxDepth: source.maxDepth, // Pass through maxDepth for navigation
+          path: source.path // Pass through path for navigation
         });
       }
     } else if (source.type === 'local') {
@@ -1083,7 +1085,9 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
           thumbnail: '',
           videoCount: videos.length,
           videos: videos,
-          paginationState: { currentPage: 1, totalPages: 1, totalVideos: videos.length, pageSize: 50 } // Will be updated with actual config
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: videos.length, pageSize: 50 }, // Will be updated with actual config
+          maxDepth: source.maxDepth, // Pass through maxDepth for navigation
+          path: source.path // Pass through path for navigation
         });
       } catch (err) {
         log.error('[Main] ERROR scanning local source:', source.id, err);
@@ -1094,7 +1098,9 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
           thumbnail: '',
           videoCount: 0,
           videos: [],
-          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 } // Will be updated with actual config
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }, // Will be updated with actual config
+          maxDepth: source.maxDepth, // Pass through maxDepth for navigation
+          path: source.path // Pass through path for navigation
         });
       }
     } else {
