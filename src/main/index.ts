@@ -241,63 +241,35 @@ ipcMain.handle('get-player-config', async () => {
   }
 })
 
-// Handle video data loading - now integrated with video sources
+// Handle video data loading - ONLY from new source system
 ipcMain.handle('get-video-data', async (_, videoId: string) => {
   try {
     log.info('[Main] Loading video data for:', videoId);
     
-    // First try to find the video in our current video sources
-    // This will be populated when loadAllVideosFromSources is called
+    // Only use the new source system - no fallback to old videos.json
+    if (!global.currentVideos || global.currentVideos.length === 0) {
+      log.error('[Main] No videos loaded from source system. Video sources may not be initialized.');
+      throw new Error('Video sources not initialized. Please restart the app.');
+    }
+    
     log.info('[Main] Checking global.currentVideos:', {
       exists: !!global.currentVideos,
-      length: global.currentVideos?.length || 0,
-      videoIds: global.currentVideos?.map((v: any) => v.id) || []
+      length: global.currentVideos.length,
+      videoIds: global.currentVideos.map((v: any) => v.id).slice(0, 5) // Show first 5 IDs
     });
     
-    if (global.currentVideos && global.currentVideos.length > 0) {
-      const video = global.currentVideos.find((v: any) => v.id === videoId);
-      if (video) {
-        log.info('[Main] Video found in current sources:', video.title);
-        return video;
-      } else {
-        log.warn('[Main] Video not found in current sources. Looking for:', videoId);
-      }
+    const video = global.currentVideos.find((v: any) => v.id === videoId);
+    if (video) {
+      log.info('[Main] Video found in source system:', { id: video.id, type: video.type, title: video.title });
+      return video;
     } else {
-      log.warn('[Main] global.currentVideos is empty or undefined');
+      log.error('[Main] Video not found in source system:', videoId);
+      log.info('[Main] Available video IDs:', global.currentVideos.map((v: any) => v.id));
+      throw new Error(`Video with ID '${videoId}' not found in any source`);
     }
-    
-    // Fallback: Try the old videos.json system
-    const possiblePaths = [
-      path.join(process.cwd(), 'src', 'renderer', 'data', 'videos.json'),
-      path.join(__dirname, '..', 'renderer', 'data', 'videos.json'),
-      path.join(__dirname, '..', '..', 'src', 'renderer', 'data', 'videos.json'),
-      path.join(__dirname, '..', '..', '..', 'src', 'renderer', 'data', 'videos.json')
-    ]
-    
-    let videosPath = null
-    for (const testPath of possiblePaths) {
-      if (fs.existsSync(testPath)) {
-        videosPath = testPath
-        break
-      }
-    }
-    
-    if (!videosPath) {
-      log.warn('[Main] Videos data file not found, tried paths:', possiblePaths)
-      throw new Error('Videos data file not found')
-    }
-    
-    log.info('[Main] Loading video data from fallback path:', videosPath)
-    
-    const videosData = fs.readFileSync(videosPath, 'utf8')
-    const videos = JSON.parse(videosData)
-    const video = videos.find((v: any) => v.id === videoId)
-    
-    log.info('[Main] Video data loaded from fallback:', video ? video.type : 'not found')
-    return video
   } catch (error) {
-    log.error('[Main] Error loading video data:', error)
-    throw error
+    log.error('[Main] Error loading video data:', error);
+    throw error;
   }
 })
 

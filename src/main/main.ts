@@ -99,38 +99,26 @@ ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
   }
 });
 
-// Handle video data loading
+// Handle video data loading - ONLY from new source system
 ipcMain.handle('get-video-data', async (_, videoId: string) => {
   try {
-    // Try different paths based on development vs production
-    const possiblePaths = [
-      path.join(process.cwd(), 'src', 'renderer', 'data', 'videos.json'),
-      path.join(__dirname, '..', 'renderer', 'data', 'videos.json'),
-      path.join(__dirname, '..', '..', 'src', 'renderer', 'data', 'videos.json'),
-      path.join(__dirname, '..', '..', '..', 'src', 'renderer', 'data', 'videos.json')
-    ];
+    console.log('[Main] Loading video data for:', videoId);
     
-    let videosPath = null;
-    for (const testPath of possiblePaths) {
-      if (fs.existsSync(testPath)) {
-        videosPath = testPath;
-        break;
-      }
+    // Only use the new source system - no fallback to old videos.json
+    if (!global.currentVideos || global.currentVideos.length === 0) {
+      console.error('[Main] No videos loaded from source system. Video sources may not be initialized.');
+      throw new Error('Video sources not initialized. Please restart the app.');
     }
     
-    if (!videosPath) {
-      console.error('[Main] Videos data file not found, tried paths:', possiblePaths);
-      throw new Error('Videos data file not found');
+    const video = global.currentVideos.find((v: any) => v.id === videoId);
+    if (video) {
+      console.log('[Main] Video found in source system:', { id: video.id, type: video.type, title: video.title });
+      return video;
+    } else {
+      console.error('[Main] Video not found in source system:', videoId);
+      console.info('[Main] Available video IDs:', global.currentVideos.map((v: any) => v.id));
+      throw new Error(`Video with ID '${videoId}' not found in any source`);
     }
-    
-    console.log('[Main] Loading video data for:', videoId, 'from:', videosPath);
-    
-    const videosData = fs.readFileSync(videosPath, 'utf8');
-    const videos = JSON.parse(videosData);
-    const video = videos.find((v: any) => v.id === videoId);
-    
-    console.log('[Main] Video data loaded:', video ? video.type : 'not found');
-    return video;
   } catch (error) {
     console.error('[Main] Error loading video data:', error);
     throw error;
