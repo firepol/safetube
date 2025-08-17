@@ -91,7 +91,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
             thumbnail: '',
             videoCount: 0,
             videos: [],
-            paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
+            paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 } // Will be updated with actual config
           });
           continue;
         }
@@ -161,7 +161,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
           thumbnail: '',
           videoCount: 0,
           videos: [],
-          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 } // Will be updated with actual config
         });
       }
     } else if ((source as any).type === 'local') {

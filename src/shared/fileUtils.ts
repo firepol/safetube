@@ -106,6 +106,20 @@ export async function writeVideoSources(videoSources: VideoSource[]): Promise<vo
 }
 
 /**
+ * Reads pagination configuration
+ */
+export async function readPaginationConfig(): Promise<{ pageSize: number; cacheDurationMinutes: number; maxCachedPages: number }> {
+  return readJsonFile<{ pageSize: number; cacheDurationMinutes: number; maxCachedPages: number }>('pagination.json');
+}
+
+/**
+ * Writes pagination configuration
+ */
+export async function writePaginationConfig(config: { pageSize: number; cacheDurationMinutes: number; maxCachedPages: number }): Promise<void> {
+  await writeJsonFile('pagination.json', config);
+}
+
+/**
  * Creates a backup of all configuration files
  */
 export async function backupConfig(): Promise<void> {

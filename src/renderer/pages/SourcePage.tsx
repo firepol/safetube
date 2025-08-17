@@ -86,7 +86,7 @@ export const SourcePage: React.FC = () => {
             currentPage: 1,
             totalPages: 1,
             totalVideos: foundSource.videos?.length || 0,
-            pageSize: 50
+            pageSize: 50 // Will be updated with actual config
           });
         }
       } catch (err) {

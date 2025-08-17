@@ -420,6 +420,17 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
             const youtubeAPI = new YouTubeAPI(apiKey);
             let youtubeVideos: any[] = [];
             
+            // Read page size from pagination config once for both channel and playlist
+            let pageSize = 50; // Default fallback
+            try {
+              const { readPaginationConfig } = await import('../shared/fileUtils');
+              const paginationConfig = await readPaginationConfig();
+              pageSize = paginationConfig.pageSize;
+              log.info('[Main] Using page size from config for YouTube API:', pageSize);
+            } catch (error) {
+              log.warn('[Main] Could not read pagination config, using default page size:', error);
+            }
+            
             if (source.sourceType === 'youtube_channel') {
               let actualChannelId = source.channelId;
               
@@ -452,7 +463,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
               }
               
               log.info('[Main] Fetching videos from YouTube channel:', actualChannelId);
-              youtubeVideos = await youtubeAPI.getChannelVideos(actualChannelId, 50); // Fetch 50 videos max per page
+              youtubeVideos = await youtubeAPI.getChannelVideos(actualChannelId, pageSize); // Fetch videos using config page size
               
               // Get channel details if title/thumbnail are missing
               if (!source.title || !source.thumbnail) {
@@ -467,7 +478,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
               
             } else if (source.sourceType === 'youtube_playlist') {
               log.info('[Main] Fetching videos from YouTube playlist:', source.playlistId);
-              youtubeVideos = await youtubeAPI.getPlaylistVideos(source.playlistId, 50); // Fetch 50 videos max per page
+              youtubeVideos = await youtubeAPI.getPlaylistVideos(source.playlistId, pageSize); // Fetch videos using config page size
               
               // Get playlist details if title/thumbnail are missing
               if (!source.title || !source.thumbnail) {
@@ -596,7 +607,17 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     // Get all videos for this source
     const allVideos = foundSource.videos || [];
     const totalVideos = allVideos.length;
-    const pageSize = 50;
+    
+    // Read page size from pagination config
+    let pageSize = 50; // Default fallback
+    try {
+      const { readPaginationConfig } = await import('../shared/fileUtils');
+      const paginationConfig = await readPaginationConfig();
+      pageSize = paginationConfig.pageSize;
+      log.info('[Main] Using page size from config:', pageSize);
+    } catch (error) {
+      log.warn('[Main] Could not read pagination config, using default page size:', error);
+    }
     
     // Calculate pagination
     const startIndex = (pageNumber - 1) * pageSize;
@@ -610,7 +631,8 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       pageNumber,
       videosReturned: pageVideos.length,
       totalVideos: totalVideos,
-      totalPages: totalPages
+      totalPages: totalPages,
+      pageSize: pageSize
     });
     
     return {
@@ -824,7 +846,7 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
           thumbnail: '',
           videoCount: 0,
           videos: [],
-          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 } // Will be updated with actual config
         });
       }
     } else if (source.type === 'local') {
@@ -854,7 +876,7 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
           thumbnail: '',
           videoCount: videos.length,
           videos: videos,
-          paginationState: { currentPage: 1, totalPages: 1, totalVideos: videos.length, pageSize: 50 }
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: videos.length, pageSize: 50 } // Will be updated with actual config
         });
       } catch (err) {
         log.error('[Main] ERROR scanning local source:', source.id, err);
@@ -865,7 +887,7 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
           thumbnail: '',
           videoCount: 0,
           videos: [],
-          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 } // Will be updated with actual config
         });
       }
     } else {

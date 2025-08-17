@@ -440,11 +440,11 @@ export class YouTubeAPI {
     }
   }
 
-  static async getPlaylistVideos(playlistId: string, maxResults = 50, pageToken?: string): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {
+  static async getPlaylistVideos(playlistId: string, maxResults?: number, pageToken?: string): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {
     const params: Record<string, string> = {
       part: 'snippet',
       playlistId,
-      maxResults: maxResults.toString(),
+      maxResults: (maxResults || 50).toString(),
     };
     
     if (pageToken) {
@@ -470,12 +470,12 @@ export class YouTubeAPI {
     return ChannelSchema.parse(data.items[0]);
   }
 
-  static async getChannelVideos(channelId: string, maxResults = 50, pageToken?: string): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {
+  static async getChannelVideos(channelId: string, maxResults?: number, pageToken?: string): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {
     const channel = await this.getChannelDetails(channelId);
     return this.getPlaylistVideos(channel.contentDetails.relatedPlaylists.uploads, maxResults, pageToken);
   }
 
-  static async getVideosForPage(sourceId: string, pageNumber: number, pageSize: number = 50): Promise<{ videos: any[], totalResults: number }> {
+  static async getVideosForPage(sourceId: string, pageNumber: number, pageSize?: number): Promise<{ videos: any[], totalResults: number }> {
     try {
       // This method will be called from the main process with source details
       // For now, we'll need to get the source info to determine the type and ID
