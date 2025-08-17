@@ -412,6 +412,11 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
           const localVideos = await scanLocalFolder(source.path, source.maxDepth);
           log.info('[Main] Found', localVideos.length, 'videos in local folder');
           
+          // Debug: Log the first few local video IDs
+          if (localVideos.length > 0) {
+            log.info('[Main] Sample local video IDs:', localVideos.slice(0, 3).map(v => ({ id: v.id, title: v.title, url: v.url })));
+          }
+          
           // Add source info to each video
           const videosWithSource = localVideos.map(video => ({
             ...video,
@@ -538,6 +543,12 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
     
     // Store videos globally so the player can access them
     global.currentVideos = allVideos;
+    
+    // Debug: Log some sample video IDs from global.currentVideos
+    if (allVideos.length > 0) {
+      const sampleVideos = allVideos.slice(0, 5);
+      log.info('[Main] Sample videos in global.currentVideos:', sampleVideos.map(v => ({ id: v.id, type: v.type, title: v.title, sourceId: v.sourceId })));
+    }
     
     // Group videos by source for the UI
     const videosBySource = parsedSources.map((source: any) => {
