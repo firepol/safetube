@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { YouTubeAPI, VideoStream, AudioTrack } from '../services/youtube-api';
 import { PlayerConfigService } from '../services/playerConfig';
 import { Video } from '../types';
@@ -21,6 +21,7 @@ function getSrc(val: unknown): string {
 
 export const PlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [video, setVideo] = useState<Video | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -559,6 +560,9 @@ export const PlayerPage: React.FC = () => {
               console.error('Error exiting fullscreen:', error);
             }
           }
+          
+          // Navigate to Time's Up page
+          navigate('/time-up');
         }
       } catch (error) {
         console.error('Error monitoring time limits:', error);

@@ -3,6 +3,16 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { PlayerPage } from './PlayerPage';
 import { vi } from 'vitest';
 
+// Mock useNavigate
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate
+  };
+});
+
 // Mock console.error to suppress error messages during tests
 const originalConsoleError = console.error;
 beforeAll(() => {
@@ -34,6 +44,36 @@ beforeAll(() => {
         { url: 'https://test/video.mp4', quality: '720p', mimeType: 'video/mp4' }
       ],
       audioTracks: []
+    }),
+    getVideoData: vi.fn().mockImplementation((id: string) => {
+      const videos = {
+        'f2_3sQu7lA4': {
+          id: 'f2_3sQu7lA4',
+          title: 'The Top 10 Goals of May | Top Goals | Serie A 2024/25',
+          type: 'youtube',
+          thumbnail: 'https://test/thumbnail.jpg',
+          duration: 1800,
+          resumeAt: undefined
+        },
+        'local-1': {
+          id: 'local-1',
+          title: 'Tai Otoshi',
+          type: 'local',
+          video: 'test-video.mp4',
+          audio: 'test-audio.mp3',
+          duration: 120,
+          resumeAt: undefined
+        },
+        'dlna-1': {
+          id: 'dlna-1',
+          title: 'Star Trek: Lower Decks S04E01 DLNA',
+          type: 'dlna',
+          url: 'http://test/dlna.mp4',
+          duration: 1800,
+          resumeAt: undefined
+        }
+      };
+      return Promise.resolve(videos[id as keyof typeof videos] || null);
     })
   } as any;
 });
@@ -200,6 +240,6 @@ describe('PlayerPage', () => {
     const mockedGetTimeTrackingState = vi.mocked(window.electron.getTimeTrackingState);
     expect(mockedGetTimeTrackingState.mock.calls.length).toBeGreaterThanOrEqual(2);
     // Verify navigation to Time's Up page
-    expect(screen.getByText("Time's Up Page")).toBeInTheDocument();
+    expect(mockNavigate).toHaveBeenCalledWith('/time-up');
   });
 });

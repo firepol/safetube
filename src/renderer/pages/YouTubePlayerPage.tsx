@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { YouTubeIframePlayer } from '../services/youtubeIframe';
 import { BasePlayerPage } from './BasePlayerPage';
 import { Video } from '../types';
@@ -8,6 +8,7 @@ const PLAYER_CONTAINER_ID = 'youtube-player-container';
 
 export const YouTubePlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YouTubeIframePlayer | null>(null);
   const ytPlayerInstance = useRef<any>(null);
@@ -58,6 +59,8 @@ export const YouTubePlayerPage: React.FC = () => {
             if (ytPlayerInstance.current && ytPlayerInstance.current.pauseVideo) {
               ytPlayerInstance.current.pauseVideo();
             }
+            // Navigate to Time's Up page
+            navigate('/time-up');
           }
         }
       } catch (error) {
@@ -101,6 +104,9 @@ export const YouTubePlayerPage: React.FC = () => {
               console.error('Error exiting fullscreen:', error);
             }
           }
+          
+          // Navigate to Time's Up page
+          navigate('/time-up');
         }
       } catch (error) {
         console.error('Error monitoring time limits:', error);
