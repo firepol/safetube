@@ -63,3 +63,5 @@ config/
 
 # Cache
 .cache
+
+test-videos/
