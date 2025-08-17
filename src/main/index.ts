@@ -594,7 +594,13 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     // Fetch videos for the specific page
     let pageVideos: any[] = [];
     if (foundSource.type === 'youtube_channel' || foundSource.type === 'youtube_playlist') {
-      pageVideos = await fetchVideosForPage(originalSource, pageNumber, pageSize, pageToken || undefined);
+      // For YouTube sources, use cached data instead of making API calls
+      const allVideos = foundSource.videos || [];
+      const startIndex = (pageNumber - 1) * pageSize;
+      const endIndex = startIndex + pageSize;
+      pageVideos = allVideos.slice(startIndex, endIndex);
+      
+      log.info(`[Main] Using cached data for YouTube source ${sourceId}, page ${pageNumber}: ${pageVideos.length} videos from ${allVideos.length} total cached videos`);
     } else {
       // For local sources, use the existing pagination logic
       const { PaginationService } = await import('../preload/paginationService');
