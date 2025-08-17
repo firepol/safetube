@@ -13,6 +13,7 @@ export const SourcePage: React.FC = () => {
   const [currentPageVideos, setCurrentPageVideos] = useState<any[]>([]);
   const [paginationState, setPaginationState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sourceConfig, setSourceConfig] = useState<any>(null);
 
   const currentPage = page ? parseInt(page) : 1;
 
@@ -100,6 +101,26 @@ export const SourcePage: React.FC = () => {
     loadSourceAndVideos();
   }, [sourceId, currentPage]);
 
+  // Load source configuration for local sources
+  useEffect(() => {
+    const getSourceConfig = async () => {
+      try {
+        // Load the videoSources.json to get the full configuration
+        const response = await fetch('/config/videoSources.json');
+        const sources = await response.json();
+        const sourceConfig = sources.find((s: any) => s.id === sourceId);
+        return sourceConfig;
+      } catch (error) {
+        console.error('Error loading source config:', error);
+        return null;
+      }
+    };
+
+    if (source && source.type === 'local') {
+      getSourceConfig().then(setSourceConfig);
+    }
+  }, [source, sourceId]);
+
   const handleBackClick = () => {
     navigate('/');
   };
@@ -173,32 +194,10 @@ export const SourcePage: React.FC = () => {
   }
 
   // Check if this is a local source that should use the navigator
-  const isLocalSource = source.type === 'local';
-  
-  // Get the source configuration to find path and maxDepth
-  const getSourceConfig = async () => {
-    try {
-      // Load the videoSources.json to get the full configuration
-      const response = await fetch('/config/videoSources.json');
-      const sources = await response.json();
-      const sourceConfig = sources.find((s: any) => s.id === sourceId);
-      return sourceConfig;
-    } catch (error) {
-      console.error('Error loading source config:', error);
-      return null;
-    }
-  };
-  
-  const [sourceConfig, setSourceConfig] = useState<any>(null);
-  
-  useEffect(() => {
-    if (isLocalSource) {
-      getSourceConfig().then(setSourceConfig);
-    }
-  }, [isLocalSource, sourceId]);
+  const isLocalSource = source?.type === 'local';
   
   const maxDepth = sourceConfig?.maxDepth || 2;
-  const sourcePath = sourceConfig?.path || source.path || source.url;
+  const sourcePath = sourceConfig?.path || source?.path || source?.url;
 
   // For local sources, use the folder navigator
   if (isLocalSource) {
