@@ -129,3 +129,61 @@ export async function backupConfig(): Promise<void> {
     }
   }
 } 
+
+/**
+ * Encode a file path to make it URL-safe for routing
+ * Uses base64 encoding and replaces problematic characters
+ */
+export function encodeFilePath(filePath: string): string {
+  try {
+    // Convert to base64 and replace problematic characters
+    const base64 = btoa(filePath);
+    return base64.replace(/[+/=]/g, (match) => {
+      switch (match) {
+        case '+': return '-';
+        case '/': return '_';
+        case '=': return '';
+        default: return match;
+      }
+    });
+  } catch (error) {
+    console.error('Error encoding file path:', error);
+    // Fallback: replace problematic characters with underscores
+    return filePath.replace(/[\/\\:]/g, '_').replace(/\s+/g, '_');
+  }
+}
+
+/**
+ * Decode a file path ID back to the original path
+ * Reverses the base64 encoding
+ */
+export function decodeFilePath(encodedPath: string): string {
+  try {
+    // Restore base64 characters
+    const base64 = encodedPath.replace(/[-_]/g, (match) => {
+      switch (match) {
+        case '-': return '+';
+        case '_': return '/';
+        default: return match;
+      }
+    });
+    
+    // Add padding if needed
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
+    
+    return atob(padded);
+  } catch (error) {
+    console.error('Error decoding file path:', error);
+    // Fallback: return the encoded path as-is
+    return encodedPath;
+  }
+}
+
+/**
+ * Check if a string is an encoded file path
+ * Useful for determining if a video ID is a local file
+ */
+export function isEncodedFilePath(id: string): boolean {
+  // Encoded paths are typically longer and contain only safe characters
+  return id.length > 10 && /^[a-zA-Z0-9_-]+$/.test(id);
+} 

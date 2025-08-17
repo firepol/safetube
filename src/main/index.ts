@@ -6,7 +6,7 @@ import { setupYouTubeHandlers } from './youtube'
 import { YouTubeAPI } from './youtube-api'
 import fs from 'fs'
 import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking'
-import { readTimeLimits } from '../shared/fileUtils'
+import { readTimeLimits, encodeFilePath } from '../shared/fileUtils'
 
 // Load environment variables from .env file
 import dotenv from 'dotenv'
@@ -54,8 +54,8 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
           } else if (stat.isFile()) {
             const ext = path.extname(item).toLowerCase();
             if (supportedExtensions.includes(ext)) {
-              // Generate a unique ID for the video
-              const videoId = `local_${path.relative(process.cwd(), itemPath).replace(/[^a-zA-Z0-9]/g, '_')}`;
+              // Generate a unique ID using base64 encoding of the file path
+              const videoId = encodeFilePath(itemPath);
               
               videos.push({
                 id: videoId,
@@ -65,7 +65,8 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
                 url: itemPath,
                 video: itemPath,
                 audio: undefined,
-                preferredLanguages: ['en']
+                preferredLanguages: ['en'],
+                type: 'local' // Add explicit type for routing
               });
             }
           }
