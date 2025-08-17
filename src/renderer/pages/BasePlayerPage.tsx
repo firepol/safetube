@@ -21,6 +21,8 @@ export interface BasePlayerPageProps {
   onVideoError: (error: string) => void;
   onVideoLoaded: () => void;
   children: React.ReactNode;
+  /** Function to get current video time for time tracking (optional) */
+  getCurrentVideoTime?: () => number;
 }
 
 export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
@@ -56,6 +58,9 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
 
   // Time tracking functions
   const startTimeTracking = useCallback(() => {
+    // Only handle time tracking if getCurrentVideoTime is provided
+    if (!getCurrentVideoTime) return;
+    
     if (!timeTrackingRef.current.isTracking) {
       timeTrackingRef.current = {
         startTime: Date.now(),
@@ -64,9 +69,13 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
         lastUpdateTime: Date.now()
       };
     }
-  }, []);
+  }, [getCurrentVideoTime]);
 
   const updateTimeTracking = useCallback(async () => {
+    // Only handle time tracking if getCurrentVideoTime is provided
+    // Otherwise, let the child component handle it
+    if (!getCurrentVideoTime) return;
+    
     if (timeTrackingRef.current.isTracking && video) {
       const currentTime = Date.now();
       const timeWatched = (currentTime - timeTrackingRef.current.lastUpdateTime) / 1000;
@@ -77,22 +86,26 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
 
         // Record the time watched
         if (video) {
+          const videoCurrentTime = getCurrentVideoTime();
           await window.electron.recordVideoWatching(
             video.id,
-            0, // Current time will be handled by the specific player implementation
+            videoCurrentTime,
             timeWatched
           );
         }
       }
     }
-  }, [video]);
+  }, [video, getCurrentVideoTime]);
 
   const stopTimeTracking = useCallback(async () => {
+    // Only handle time tracking if getCurrentVideoTime is provided
+    if (!getCurrentVideoTime) return;
+    
     if (timeTrackingRef.current.isTracking) {
       await updateTimeTracking();
       timeTrackingRef.current.isTracking = false;
     }
-  }, [updateTimeTracking]);
+  }, [updateTimeTracking, getCurrentVideoTime]);
 
   // Check time limits on mount and when video changes
   useEffect(() => {

@@ -603,30 +603,90 @@ export const PlayerPage: React.FC = () => {
     };
   }, [videoRef.current]);
 
+  // Time tracking state
+  const timeTrackingRef = useRef<{
+    startTime: number;
+    totalWatched: number;
+    isTracking: boolean;
+    lastUpdateTime: number;
+  }>({
+    startTime: 0,
+    totalWatched: 0,
+    isTracking: false,
+    lastUpdateTime: 0
+  });
+
+  // Time tracking functions
+  const startTimeTracking = useCallback(() => {
+    if (!timeTrackingRef.current.isTracking) {
+      timeTrackingRef.current = {
+        startTime: Date.now(),
+        totalWatched: 0,
+        isTracking: true,
+        lastUpdateTime: Date.now()
+      };
+    }
+  }, []);
+
+  const updateTimeTracking = useCallback(async () => {
+    if (timeTrackingRef.current.isTracking && video) {
+      const currentTime = Date.now();
+      const timeWatched = (currentTime - timeTrackingRef.current.lastUpdateTime) / 1000;
+      
+      if (timeWatched >= 1) {
+        timeTrackingRef.current.totalWatched += timeWatched;
+        timeTrackingRef.current.lastUpdateTime = currentTime;
+
+        // Record the time watched
+        if (videoRef.current) {
+          await window.electron.recordVideoWatching(
+            video.id,
+            videoRef.current.currentTime,
+            timeWatched
+          );
+        }
+      }
+    }
+  }, [video]);
+
+  const stopTimeTracking = useCallback(async () => {
+    if (timeTrackingRef.current.isTracking) {
+      await updateTimeTracking();
+      timeTrackingRef.current.isTracking = false;
+    }
+  }, [updateTimeTracking]);
+
   // Event handlers for the base component
   const handleVideoPlay = useCallback(() => {
     setIsVideoPlaying(true);
-  }, []);
+    startTimeTracking();
+  }, [startTimeTracking]);
 
   const handleVideoPause = useCallback(() => {
     setIsVideoPlaying(false);
-  }, []);
+    stopTimeTracking();
+  }, [stopTimeTracking]);
 
   const handleVideoEnded = useCallback(() => {
     setIsVideoPlaying(false);
-  }, []);
+    stopTimeTracking();
+  }, [stopTimeTracking]);
 
   const handleVideoTimeUpdate = useCallback(() => {
-    // This will be handled by the base component
-  }, []);
+    // Throttle time update events to prevent excessive calls
+    if (!timeTrackingRef.current.lastUpdateTime || 
+        Date.now() - timeTrackingRef.current.lastUpdateTime > 1000) {
+      updateTimeTracking();
+    }
+  }, [updateTimeTracking]);
 
   const handleVideoSeeking = useCallback(() => {
-    // This will be handled by the base component
-  }, []);
+    updateTimeTracking();
+  }, [updateTimeTracking]);
 
   const handleVideoSeeked = useCallback(() => {
-    // This will be handled by the base component
-  }, []);
+    updateTimeTracking();
+  }, [updateTimeTracking]);
 
   const handleVideoError = useCallback((error: string) => {
     setError(error);
@@ -653,6 +713,7 @@ export const PlayerPage: React.FC = () => {
       onVideoSeeked={handleVideoSeeked}
       onVideoError={handleVideoError}
       onVideoLoaded={handleVideoLoaded}
+
     >
       <video
         ref={videoRef}

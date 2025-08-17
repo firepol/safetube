@@ -232,6 +232,7 @@ export const YouTubePlayerPage: React.FC = () => {
       onVideoSeeked={handleVideoSeeked}
       onVideoError={handleVideoError}
       onVideoLoaded={handleVideoLoaded}
+      getCurrentVideoTime={() => ytPlayerInstance.current?.getCurrentTime?.() || 0}
     >
       <div ref={containerRef} id={PLAYER_CONTAINER_ID} className="w-full aspect-video bg-black">
         {/* YouTube player will be mounted here */}
