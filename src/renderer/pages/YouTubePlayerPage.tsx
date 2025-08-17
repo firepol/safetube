@@ -1,44 +1,145 @@
-import React, { useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useParams } from 'react-router-dom';
 import { YouTubeIframePlayer } from '../services/youtubeIframe';
+import { BasePlayerPage } from './BasePlayerPage';
+import { Video } from '../types';
 
 const PLAYER_CONTAINER_ID = 'youtube-player-container';
 
-interface YouTubePlayerPageProps {
-  videoId?: string;
-  videoTitle?: string;
-}
-
-export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId = '', videoTitle }) => {
-  const navigate = useNavigate();
+export const YouTubePlayerPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YouTubeIframePlayer | null>(null);
   const ytPlayerInstance = useRef<any>(null);
-  const timeTrackingRef = useRef({
-    isTracking: false,
-    lastUpdate: Date.now(),
-    totalWatched: 0,
-    intervalId: null as null | number,
-  });
+  
+  // State for the base component
+  const [video, setVideo] = useState<Video | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
+  const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
+  const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
 
-  // Helper to record time
-  const recordTime = async () => {
-    if (!ytPlayerInstance.current || !videoId) return;
-    const currentTime = ytPlayerInstance.current.getCurrentTime ? ytPlayerInstance.current.getCurrentTime() : 0;
-    const now = Date.now();
-    const timeWatched = (now - timeTrackingRef.current.lastUpdate) / 1000;
-    if (timeWatched > 0.5) {
-      await window.electron.recordVideoWatching(videoId, currentTime, timeWatched);
-      timeTrackingRef.current.totalWatched += timeWatched;
-      timeTrackingRef.current.lastUpdate = now;
-    }
-  };
+  // Load video data when component mounts
+  useEffect(() => {
+    const loadVideoData = async () => {
+      if (!id) return;
+      
+      try {
+        setIsLoading(true);
+        const videoData = await window.electron.getVideoData(id);
+        setVideo(videoData);
+        setError(null);
+      } catch (err) {
+        console.error('[YouTubePlayerPage] Error loading video data:', err);
+        setError('Video not found');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
+    loadVideoData();
+  }, [id]);
+
+  // Check time limits on mount and when video changes
+  useEffect(() => {
+    let isMounted = true;
+    
+    const checkTimeLimits = async () => {
+      if (!video || !isMounted) return;
+      
+      try {
+        const state = await window.electron.getTimeTrackingState();
+        if (isMounted) {
+          setTimeRemainingSeconds(state.timeRemaining);
+          
+          // If limit is reached, don't allow playback
+          if (state.isLimitReached) {
+            if (ytPlayerInstance.current && ytPlayerInstance.current.pauseVideo) {
+              ytPlayerInstance.current.pauseVideo();
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking time limits:', error);
+      }
+    };
+
+    checkTimeLimits();
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [video?.id]);
+
+  // Continuous time limit monitoring during video playback
+  useEffect(() => {
+    if (!video) return;
+    
+    let isMounted = true;
+    let intervalId: number | undefined;
+    
+    const monitorTimeLimits = async () => {
+      try {
+        const state = await window.electron.getTimeTrackingState();
+        if (!isMounted) return;
+        
+        // Update time remaining for countdown overlay
+        setTimeRemainingSeconds(state.timeRemaining);
+        
+        if (state.isLimitReached) {
+          // Stop video playback
+          if (ytPlayerInstance.current && ytPlayerInstance.current.pauseVideo) {
+            ytPlayerInstance.current.pauseVideo();
+          }
+          
+          // Exit fullscreen if in fullscreen mode
+          if (document.fullscreenElement) {
+            try {
+              await document.exitFullscreen();
+            } catch (error) {
+              console.error('Error exiting fullscreen:', error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error monitoring time limits:', error);
+      }
+    };
+    
+    // Check time limits every 1 second during video playback for more precise audio warning timing
+    intervalId = window.setInterval(monitorTimeLimits, 1000);
+    
+    return () => {
+      isMounted = false;
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [video]);
+
+  // Fetch countdown configuration
+  useEffect(() => {
+    const fetchCountdownConfig = async () => {
+      try {
+        const timeLimits = await window.electron.getTimeLimits();
+        const countdownSeconds = timeLimits.countdownWarningSeconds ?? 60;
+        setCountdownWarningSeconds(countdownSeconds);
+      } catch (error) {
+        console.error('Error fetching countdown configuration:', error);
+        // Keep default values
+      }
+    };
+
+    fetchCountdownConfig();
+  }, []);
+
+  // Initialize YouTube player
   useEffect(() => {
     let cleanup = () => {};
-    if (containerRef.current && videoId) {
+    if (containerRef.current && id && !isLoading) {
       playerRef.current = new YouTubeIframePlayer(PLAYER_CONTAINER_ID);
-      playerRef.current.mount(videoId, {
+      playerRef.current.mount(id, {
         width: '100%',
         height: '100%',
         playerVars: {
@@ -52,35 +153,26 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId = 
         events: {
           onReady: (event: any) => {
             ytPlayerInstance.current = event.target;
+            setIsLoading(false);
           },
           onStateChange: (event: any) => {
             // 1 = playing, 2 = paused, 0 = ended
             if (event.data === 1) {
               // Playing
-              if (!timeTrackingRef.current.isTracking) {
-                timeTrackingRef.current.isTracking = true;
-                timeTrackingRef.current.lastUpdate = Date.now();
-                timeTrackingRef.current.intervalId = window.setInterval(recordTime, 1000);
-              }
+              setIsVideoPlaying(true);
             } else if (event.data === 2 || event.data === 0) {
               // Paused or ended
-              if (timeTrackingRef.current.isTracking) {
-                timeTrackingRef.current.isTracking = false;
-                if (timeTrackingRef.current.intervalId) {
-                  clearInterval(timeTrackingRef.current.intervalId);
-                  timeTrackingRef.current.intervalId = null;
-                }
-                recordTime();
-              }
+              setIsVideoPlaying(false);
             }
+          },
+          onError: (event: any) => {
+            console.error('YouTube player error:', event);
+            setError('Failed to load YouTube video');
+            setIsLoading(false);
           },
         },
       });
       cleanup = () => {
-        if (timeTrackingRef.current.intervalId) {
-          clearInterval(timeTrackingRef.current.intervalId);
-          timeTrackingRef.current.intervalId = null;
-        }
         if (playerRef.current) {
           playerRef.current.destroy();
           playerRef.current = null;
@@ -88,24 +180,62 @@ export const YouTubePlayerPage: React.FC<YouTubePlayerPageProps> = ({ videoId = 
       };
     }
     return cleanup;
-  }, [videoId]);
+      }, [id, isLoading]);
+
+  // Event handlers for the base component
+  const handleVideoPlay = useCallback(() => {
+    setIsVideoPlaying(true);
+  }, []);
+
+  const handleVideoPause = useCallback(() => {
+    setIsVideoPlaying(false);
+  }, []);
+
+  const handleVideoEnded = useCallback(() => {
+    setIsVideoPlaying(false);
+  }, []);
+
+  const handleVideoTimeUpdate = useCallback(() => {
+    // This will be handled by the base component
+  }, []);
+
+  const handleVideoSeeking = useCallback(() => {
+    // This will be handled by the base component
+  }, []);
+
+  const handleVideoSeeked = useCallback(() => {
+    // This will be handled by the base component
+  }, []);
+
+  const handleVideoError = useCallback((error: string) => {
+    setError(error);
+    setIsLoading(false);
+  }, []);
+
+  const handleVideoLoaded = useCallback(() => {
+    setIsLoading(false);
+  }, []);
 
   return (
-    <div className="flex flex-col min-h-screen items-center justify-center bg-gray-100">
-      <div className="p-4 w-full max-w-4xl">
-        <button
-          onClick={() => navigate(-1)}
-          className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-        >
-          ← Back
-        </button>
-        {videoTitle && (
-          <h1 className="text-2xl font-bold mb-4">{videoTitle}</h1>
-        )}
-        <div ref={containerRef} id={PLAYER_CONTAINER_ID} className="w-full max-w-2xl aspect-video bg-black mx-auto">
-          {/* Custom player will be mounted here */}
-        </div>
+    <BasePlayerPage
+      video={video}
+      isLoading={isLoading}
+      error={error}
+      isVideoPlaying={isVideoPlaying}
+      timeRemainingSeconds={timeRemainingSeconds}
+      countdownWarningSeconds={countdownWarningSeconds}
+      onVideoPlay={handleVideoPlay}
+      onVideoPause={handleVideoPause}
+      onVideoEnded={handleVideoEnded}
+      onVideoTimeUpdate={handleVideoTimeUpdate}
+      onVideoSeeking={handleVideoSeeking}
+      onVideoSeeked={handleVideoSeeked}
+      onVideoError={handleVideoError}
+      onVideoLoaded={handleVideoLoaded}
+    >
+      <div ref={containerRef} id={PLAYER_CONTAINER_ID} className="w-full aspect-video bg-black">
+        {/* YouTube player will be mounted here */}
       </div>
-    </div>
+    </BasePlayerPage>
   );
 }; 

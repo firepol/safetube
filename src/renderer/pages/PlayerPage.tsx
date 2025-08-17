@@ -1,12 +1,9 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { YouTubeAPI, VideoStream, AudioTrack } from '../services/youtube-api';
 import { PlayerConfigService } from '../services/playerConfig';
 import { Video } from '../types';
-import { TimeIndicator } from '../components/layout/TimeIndicator';
-import { CountdownOverlay } from '../components/video/CountdownOverlay';
-// import { logVerboseRenderer } from '@/shared/logging';
-import { audioWarningService } from '../services/audioWarning';
+import { BasePlayerPage } from './BasePlayerPage';
 
 function getSrc(val: unknown): string {
   if (typeof val === 'string') return val;
@@ -18,8 +15,6 @@ function getSrc(val: unknown): string {
 
 export const PlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
-  const location = useLocation();
   const [video, setVideo] = useState<Video | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,17 +25,6 @@ export const PlayerPage: React.FC = () => {
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
-  const timeTrackingRef = useRef<{
-    startTime: number;
-    totalWatched: number;
-    isTracking: boolean;
-    lastUpdateTime: number;
-  }>({
-    startTime: 0,
-    totalWatched: 0,
-    isTracking: false,
-    lastUpdateTime: 0
-  });
 
   // Load video data when component mounts or ID changes
   useEffect(() => {
@@ -63,11 +47,6 @@ export const PlayerPage: React.FC = () => {
     loadVideoData();
   }, [id]);
 
-  // Log component initialization only once
-  useEffect(() => {
-    // console.log('[PlayerPage] Component initialized with video ID:', id);
-  }, [id]);
-
   useEffect(() => {
     if (video && video.resumeAt && videoRef.current) {
       videoRef.current.currentTime = video.resumeAt;
@@ -80,15 +59,11 @@ export const PlayerPage: React.FC = () => {
         try {
           // Handle separate video and audio files
           if (video.video && video.audio) {
-            // console.log('Loading split local files:', { video: video.video, audio: video.audio });
-            
             // Get video file URL
             const videoPath = await window.electron.getLocalFile(video.video);
-            // console.log('Received video file path:', videoPath);
             
             // Get audio file URL
             const audioPath = await window.electron.getLocalFile(video.audio);
-            // console.log('Received audio file path:', audioPath);
 
             if (videoRef.current) {
               // Create a hidden audio element
@@ -164,9 +139,7 @@ export const PlayerPage: React.FC = () => {
             }
           } else if (video.url) {
             // Handle single file
-            // console.log('Loading local file:', video.url);
             const path = await window.electron.getLocalFile(video.url);
-            // console.log('Received local file path:', path);
             
             if (videoRef.current) {
               videoRef.current.src = getSrc(path);
@@ -211,9 +184,7 @@ export const PlayerPage: React.FC = () => {
           const server = url.hostname;
           const port = parseInt(url.port);
           const path = url.pathname;
-          // console.log('Loading DLNA video:', { server, port, path });
           const dlnaUrl = await window.electron.getDlnaFile(server, port, path);
-          // console.log('Received DLNA URL:', dlnaUrl);
           if (videoRef.current) {
             videoRef.current.src = getSrc(dlnaUrl);
           }
@@ -266,8 +237,6 @@ export const PlayerPage: React.FC = () => {
           };
 
           if (video.useJsonStreamUrls && video.streamUrl) {
-            // console.log('Using pre-defined stream URL from JSON:', video.streamUrl);
-            
             videoStream = {
               url: video.streamUrl,
               quality: 'predefined',
@@ -281,25 +250,12 @@ export const PlayerPage: React.FC = () => {
                 language: 'en',
                 mimeType: video.audioStreamUrl.includes('webm') ? 'audio/webm' : 'audio/mp4'
               };
-              // console.log('Using pre-defined audio stream:', video.audioStreamUrl);
-            } else {
-              // console.log('No audio stream provided - video only mode');
             }
           } else {
-            // console.log('Fetching available streams for video:', video.id);
             const { videoStreams, audioTracks } = await window.electron.getVideoStreams(video.id);
             
             // Get MediaSource configuration for max quality
             const mediaSourceConfig = await PlayerConfigService.getMediaSourceConfig();
-            // console.log('MediaSource configuration:', mediaSourceConfig);
-            
-            // Log available audio tracks
-            // console.log('Available audio tracks:', audioTracks.map((t: AudioTrack) => ({
-            //   language: t.language,
-            //   mimeType: t.mimeType,
-            //   bitrate: t.bitrate,
-            //   url: t.url.substring(0, 50) + '...'
-            // })));
             
             // Use the proper stream selection functions with max quality limit
             const highestQuality = YouTubeAPI.getHighestQualityStream(
@@ -308,11 +264,6 @@ export const PlayerPage: React.FC = () => {
               mediaSourceConfig.preferredLanguages,
               mediaSourceConfig.maxQuality
             );
-            // console.log('Highest quality stream result:', {
-            //   ...highestQuality,
-            //   videoUrl: highestQuality.videoUrl.substring(0, 50) + '...',
-            //   audioUrl: highestQuality.audioUrl ? highestQuality.audioUrl.substring(0, 50) + '...' : undefined
-            // });
             
             videoStream = {
               url: highestQuality.videoUrl,
@@ -326,15 +277,7 @@ export const PlayerPage: React.FC = () => {
                 language: highestQuality.audioLanguage || 'en',
                 mimeType: highestQuality.audioUrl.includes('webm') ? 'audio/webm' : 'audio/m4a'
               };
-              // console.log('Selected audio track:', {
-              //   ...audioTrack,
-              //   url: audioTrack.url.substring(0, 50) + '...'
-              // });
-            } else {
-              // console.log('No audio track selected - video only mode. Audio tracks were available:', audioTracks.length > 0);
             }
-
-            // console.log('Selected video stream:', videoStream);
           }
 
           if (!videoStream?.url) {
@@ -343,7 +286,6 @@ export const PlayerPage: React.FC = () => {
 
           // For video-only entries, we can use direct playback
           if (!audioTrack) {
-            // console.log('Using direct playback for video-only stream');
             if (videoRef.current) {
               videoRef.current.src = videoStream.url;
               setIsLoading(false);
@@ -432,8 +374,6 @@ export const PlayerPage: React.FC = () => {
               ? 'audio/webm; codecs="opus"'
               : 'audio/mp4; codecs="mp4a.40.2"';
 
-            // console.log('Using MIME types:', { videoMimeType, audioMimeType });
-
             // Create source buffers for video and audio
             if (mediaSource.readyState !== 'open') {
               throw new Error('MediaSource is not in open state');
@@ -441,19 +381,13 @@ export const PlayerPage: React.FC = () => {
 
             try {
               videoBuffer = mediaSource.addSourceBuffer(videoMimeType);
-              // console.log('Created video source buffer');
-              
               audioBuffer = mediaSource.addSourceBuffer(audioMimeType);
-              // console.log('Created audio source buffer');
             } catch (e) {
               console.error('Error creating source buffers:', e);
               // If we fail to create the source buffers, try with a more generic MIME type
               if (videoStream.mimeType.includes('webm')) {
                 videoBuffer = mediaSource.addSourceBuffer('video/webm');
-                // console.log('Created video source buffer with generic MIME type');
-                
                 audioBuffer = mediaSource.addSourceBuffer('audio/webm');
-                // console.log('Created audio source buffer with generic MIME type');
               } else {
                 throw e;
               }
@@ -476,7 +410,6 @@ export const PlayerPage: React.FC = () => {
               while (isMediaSourceActive && mediaSource) {
                 const { done, value } = await reader.read();
                 if (done) {
-                  // console.log(`${type} stream complete`);
                   break;
                 }
 
@@ -503,7 +436,6 @@ export const PlayerPage: React.FC = () => {
             };
 
             // Start streaming both video and audio
-            // console.log('Starting video and audio streams...');
             await Promise.all([
               streamData(videoStream.url, videoBuffer, 'video'),
               streamData(audioTrack.url, audioBuffer, 'audio')
@@ -517,7 +449,6 @@ export const PlayerPage: React.FC = () => {
               }
 
               if (isMediaSourceActive && mediaSource && mediaSource.readyState === 'open') {
-                // console.log('All data streamed, ending stream');
                 mediaSource.endOfStream();
               }
             }
@@ -557,68 +488,8 @@ export const PlayerPage: React.FC = () => {
     };
   }, [isLoading]);
 
-  // Time tracking functions
-  const startTimeTracking = useCallback(() => {
-    // console.log('[TimeTracking] startTimeTracking called');
-    if (!timeTrackingRef.current.isTracking) {
-      timeTrackingRef.current = {
-        startTime: Date.now(),
-        totalWatched: 0,
-        isTracking: true,
-        lastUpdateTime: Date.now()
-      };
-      // console.log('[TimeTracking] Time tracking started:', timeTrackingRef.current);
-    } else {
-      // console.log('[TimeTracking] Time tracking already active');
-    }
-  }, []);
-
-  const updateTimeTracking = useCallback(async () => {
-    // console.log('[TimeTracking] updateTimeTracking called, isTracking:', timeTrackingRef.current.isTracking);
-    if (timeTrackingRef.current.isTracking && video) {
-      const currentTime = Date.now();
-      const timeWatched = (currentTime - timeTrackingRef.current.lastUpdateTime) / 1000; // Convert to seconds
-      
-      // Only update if at least 1 second has passed to prevent excessive updates
-      if (timeWatched >= 1) {
-        timeTrackingRef.current.totalWatched += timeWatched;
-        timeTrackingRef.current.lastUpdateTime = currentTime;
-
-        // Record the time watched
-        if (videoRef.current) {
-          // console.log('[TimeTracking] updateTimeTracking:', {
-          //   videoId: video.id,
-          //   currentTime: videoRef.current.currentTime,
-          //   timeWatched
-          // });
-          await window.electron.recordVideoWatching(
-            video.id,
-            videoRef.current.currentTime,
-            timeWatched
-          );
-        } else {
-          // console.log('[TimeTracking] videoRef.current is null');
-        }
-      }
-    } else {
-      // console.log('[TimeTracking] Not tracking - isTracking is false or no video');
-    }
-  }, [video]);
-
-  const stopTimeTracking = useCallback(async () => {
-    // console.log('[TimeTracking] stopTimeTracking called, isTracking:', timeTrackingRef.current.isTracking);
-    if (timeTrackingRef.current.isTracking) {
-      await updateTimeTracking();
-      timeTrackingRef.current.isTracking = false;
-      // console.log('[TimeTracking] Time tracking stopped');
-    }
-  }, [updateTimeTracking]);
-
   // Check time limits on mount and when video changes
   useEffect(() => {
-    // console.log('[TimeTracking] PlayerPage useEffect triggered for video:', video?.id);
-    // console.log('[TimeTracking] window.electron available functions:', Object.keys(window.electron || {}));
-    
     let isMounted = true;
     
     const checkTimeLimits = async () => {
@@ -631,7 +502,6 @@ export const PlayerPage: React.FC = () => {
           
           // If limit is reached, don't allow playback
           if (state.isLimitReached) {
-            // console.log('[TimeTracking] Daily time limit reached');
             if (videoRef.current) {
               videoRef.current.pause();
             }
@@ -664,25 +534,7 @@ export const PlayerPage: React.FC = () => {
         // Update time remaining for countdown overlay
         setTimeRemainingSeconds(state.timeRemaining);
         
-        // Check for audio warnings
-        const roundedTimeRemaining = Math.round(state.timeRemaining * 10) / 10;
-        // console.log('[AudioWarning] Current isVideoPlaying state:', isVideoPlaying);
-        // console.log('[AudioWarning] Video element paused state:', videoRef.current?.paused);
-        
-        // Use video element's actual state as fallback if isVideoPlaying state is incorrect
-        const actualVideoPlaying = videoRef.current ? !videoRef.current.paused : false;
-        // console.log('[AudioWarning] Actual video playing state:', actualVideoPlaying);
-        
-        // Use the more reliable state (actual video state if different from React state)
-        const finalVideoPlaying = isVideoPlaying || actualVideoPlaying;
-        // console.log('[AudioWarning] Final video playing state used for warnings:', finalVideoPlaying);
-        
-        // console.log('[PlayerPage] Calling audio warning service with:', { timeRemaining: roundedTimeRemaining, isVideoPlaying: finalVideoPlaying });
-        audioWarningService.checkAudioWarnings(roundedTimeRemaining, finalVideoPlaying);
-        
         if (state.isLimitReached) {
-          // console.log('[TimeTracking] Time limit reached during playback - implementing Time\'s Up behavior');
-          
           // Stop video playback
           if (videoRef.current) {
             videoRef.current.pause();
@@ -692,14 +544,10 @@ export const PlayerPage: React.FC = () => {
           if (document.fullscreenElement) {
             try {
               await document.exitFullscreen();
-              // console.log('[TimeTracking] Exited fullscreen mode');
             } catch (error) {
               console.error('Error exiting fullscreen:', error);
             }
           }
-          
-          // Navigate to Time's Up page
-          navigate('/time-up');
         }
       } catch (error) {
         console.error('Error monitoring time limits:', error);
@@ -715,27 +563,15 @@ export const PlayerPage: React.FC = () => {
         clearInterval(intervalId);
       }
     };
-  }, [video, navigate]);
+  }, [video]);
 
-  // Fetch countdown configuration and update video play state
+  // Fetch countdown configuration
   useEffect(() => {
     const fetchCountdownConfig = async () => {
       try {
         const timeLimits = await window.electron.getTimeLimits();
         const countdownSeconds = timeLimits.countdownWarningSeconds ?? 60;
-        const audioWarningSeconds = timeLimits.audioWarningSeconds ?? 10;
-        const useSystemBeep = timeLimits.useSystemBeep ?? true;
-        const customBeepSound = timeLimits.customBeepSound;
-        
         setCountdownWarningSeconds(countdownSeconds);
-        
-        // Initialize audio warning service
-        await audioWarningService.initialize({
-          countdownWarningSeconds: countdownSeconds,
-          audioWarningSeconds: audioWarningSeconds,
-          useSystemBeep: useSystemBeep,
-          customBeepSound: customBeepSound,
-        });
       } catch (error) {
         console.error('Error fetching countdown configuration:', error);
         // Keep default values
@@ -750,14 +586,10 @@ export const PlayerPage: React.FC = () => {
     if (!videoRef.current) return;
 
     const handlePlay = () => {
-      // console.log('[VideoState] DOM play event fired - setting isVideoPlaying to true');
       setIsVideoPlaying(true);
-      // Reset audio warning state when video starts playing
-      audioWarningService.resetState();
     };
 
     const handlePause = () => {
-      // console.log('[VideoState] DOM pause event fired - setting isVideoPlaying to false');
       setIsVideoPlaying(false);
     };
 
@@ -771,141 +603,75 @@ export const PlayerPage: React.FC = () => {
     };
   }, [videoRef.current]);
 
-  // Cleanup audio warning service on unmount
-  useEffect(() => {
-    return () => {
-      audioWarningService.destroy();
-    };
+  // Event handlers for the base component
+  const handleVideoPlay = useCallback(() => {
+    setIsVideoPlaying(true);
   }, []);
 
-  const handleBackClick = () => {
-    const returnTo = (location.state as any)?.returnTo;
-    if (returnTo) {
-      navigate(returnTo);
-    } else {
-      navigate(-1);
-    }
-  };
+  const handleVideoPause = useCallback(() => {
+    setIsVideoPlaying(false);
+  }, []);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col min-h-screen bg-gray-100">
-        <div className="p-4">
-          <button
-            onClick={handleBackClick}
-            className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            ← Back
-          </button>
-          <div className="text-center">
-            <div className="text-lg mb-2">Loading video...</div>
-            <div className="text-sm text-gray-500">This may take a few moments</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const handleVideoEnded = useCallback(() => {
+    setIsVideoPlaying(false);
+  }, []);
 
-  if (error || !video) {
-    return (
-      <div className="flex flex-col min-h-screen bg-gray-100">
-        <div className="p-4">
-          <button
-            onClick={handleBackClick}
-            className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            ← Back
-          </button>
-          <div className="text-red-500">{error || 'Video not found'}</div>
-        </div>
-      </div>
-    );
-  }
+  const handleVideoTimeUpdate = useCallback(() => {
+    // This will be handled by the base component
+  }, []);
+
+  const handleVideoSeeking = useCallback(() => {
+    // This will be handled by the base component
+  }, []);
+
+  const handleVideoSeeked = useCallback(() => {
+    // This will be handled by the base component
+  }, []);
+
+  const handleVideoError = useCallback((error: string) => {
+    setError(error);
+    setIsLoading(false);
+  }, []);
+
+  const handleVideoLoaded = useCallback(() => {
+    setIsLoading(false);
+  }, []);
 
   return (
-    <div className="flex flex-col min-h-screen bg-gray-100">
-      <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={handleBackClick}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            ← Back
-          </button>
-          <TimeIndicator realTime={true} updateInterval={3000} />
-        </div>
-        <h1 className="text-2xl font-bold mb-4">{video.title}</h1>
-        {isLoading && (
-          <div className="text-center mb-4">
-            <div className="text-lg mb-2">Loading video...</div>
-            <div className="text-sm text-gray-500">This may take a few moments</div>
-          </div>
-        )}
-        {error && (
-          <div className="text-center text-red-500 mb-4">
-            <div className="text-lg mb-2">Error: {error}</div>
-            <div className="text-sm">The video may be unavailable or the stream may have expired</div>
-          </div>
-        )}
-      </div>
-      <div className="flex-grow flex items-center justify-center p-4">
-        <div className="w-full max-w-4xl relative">
-          <video
-            ref={videoRef}
-            className="w-full"
-            controls
-            autoPlay
-            playsInline
-            onPlay={() => {
-              // console.log('[TimeTracking] Video onPlay event fired');
-              // console.log('[VideoState] React onPlay - current isVideoPlaying state:', isVideoPlaying);
-              setIsVideoPlaying(true);
-              startTimeTracking();
-            }}
-            onPause={() => {
-              // console.log('[TimeTracking] Video onPause event fired');
-              // console.log('[VideoState] React onPause - current isVideoPlaying state:', isVideoPlaying);
-              setIsVideoPlaying(false);
-              stopTimeTracking();
-            }}
-            onEnded={() => {
-              // console.log('[TimeTracking] Video onEnded event fired');
-              stopTimeTracking();
-            }}
-            onTimeUpdate={() => {
-              // Throttle time update events to prevent excessive calls
-              if (!timeTrackingRef.current.lastUpdateTime || 
-                  Date.now() - timeTrackingRef.current.lastUpdateTime > 1000) {
-                // console.log('[TimeTracking] Video onTimeUpdate event fired');
-                updateTimeTracking();
-              }
-            }}
-            onSeeking={() => {
-              // console.log('[TimeTracking] Video onSeeking event fired');
-              updateTimeTracking();
-            }}
-            onSeeked={() => {
-              // console.log('[TimeTracking] Video onSeeked event fired');
-              updateTimeTracking();
-            }}
-            onError={(e) => {
-              console.error('Video error:', e);
-              setError('Failed to play video - the stream may have expired');
-              setIsLoading(false);
-            }}
-            onLoadedData={() => {
-              // console.log('Video loaded successfully');
-              setIsLoading(false);
-            }}
-          />
-          <CountdownOverlay
-            isVisible={!isLoading && !error}
-            timeRemainingSeconds={timeRemainingSeconds}
-            isVideoPlaying={isVideoPlaying}
-            shouldShowCountdown={timeRemainingSeconds <= countdownWarningSeconds && timeRemainingSeconds > 0}
-          />
-        </div>
-      </div>
-    </div>
+    <BasePlayerPage
+      video={video}
+      isLoading={isLoading}
+      error={error}
+      isVideoPlaying={isVideoPlaying}
+      timeRemainingSeconds={timeRemainingSeconds}
+      countdownWarningSeconds={countdownWarningSeconds}
+      onVideoPlay={handleVideoPlay}
+      onVideoPause={handleVideoPause}
+      onVideoEnded={handleVideoEnded}
+      onVideoTimeUpdate={handleVideoTimeUpdate}
+      onVideoSeeking={handleVideoSeeking}
+      onVideoSeeked={handleVideoSeeked}
+      onVideoError={handleVideoError}
+      onVideoLoaded={handleVideoLoaded}
+    >
+      <video
+        ref={videoRef}
+        className="w-full"
+        controls
+        autoPlay
+        playsInline
+        onPlay={handleVideoPlay}
+        onPause={handleVideoPause}
+        onEnded={handleVideoEnded}
+        onTimeUpdate={handleVideoTimeUpdate}
+        onSeeking={handleVideoSeeking}
+        onSeeked={handleVideoSeeked}
+        onError={(e) => {
+          console.error('Video error:', e);
+          handleVideoError('Failed to play video - the stream may have expired');
+        }}
+        onLoadedData={handleVideoLoaded}
+      />
+    </BasePlayerPage>
   );
 }; 

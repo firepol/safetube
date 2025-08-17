@@ -62,7 +62,7 @@ export const PlayerRouter: React.FC = () => {
 
         // Route to appropriate player based on video type and config
         if (video && video.type === 'youtube' && finalPlayerType === 'iframe') {
-          setSelectedPlayer(<YouTubePlayerPage videoId={videoId} />);
+          setSelectedPlayer(<YouTubePlayerPage />);
         } else {
           setSelectedPlayer(<PlayerPage />);
         }
