@@ -746,9 +746,25 @@ async function fetchVideosForPage(source: any, pageNumber: number, pageSize: num
     }
     
     // Fetch video details for the IDs
-    const videoDetails = await Promise.all(
-      videoIds.map(id => YouTubeAPI.getVideoDetails(id))
-    );
+    const videoDetailsPromises = videoIds.map(async (id) => {
+      try {
+        return await YouTubeAPI.getVideoDetails(id);
+      } catch (error) {
+        log.warn(`[Main] Failed to get details for video ${id}:`, error);
+        return null; // Return null for failed videos
+      }
+    });
+    
+    const videoDetailsResults = await Promise.all(videoDetailsPromises);
+    
+    // Filter out null results (failed videos) and transform to expected format
+    const videoDetails = videoDetailsResults.filter(v => v !== null);
+    
+    if (videoDetails.length === 0) {
+      log.warn(`[Main] No valid videos found for page ${pageNumber} of source ${source.id}`);
+    } else {
+      log.info(`[Main] Successfully fetched ${videoDetails.length} videos for page ${pageNumber} (${videoIds.length - videoDetails.length} failed)`);
+    }
     
     // Transform to the expected video format
     return videoDetails.map(v => ({
