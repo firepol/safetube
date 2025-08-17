@@ -99,6 +99,36 @@ ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
   }
 });
 
+// Logging configuration IPC handlers
+ipcMain.handle('logging:set-verbose', async (_, enabled: boolean) => {
+  try {
+    // Set environment variable for main process
+    process.env.ELECTRON_LOG_VERBOSE = enabled ? 'true' : 'false';
+    
+    // Send message to all renderer processes to update their localStorage
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach(window => {
+      if (!window.isDestroyed()) {
+        window.webContents.send('logging:verbose-changed', enabled);
+      }
+    });
+    
+    return { success: true, verbose: enabled };
+  } catch (error) {
+    console.error('Error setting verbose logging:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('logging:get-verbose', async () => {
+  try {
+    return { verbose: process.env.ELECTRON_LOG_VERBOSE === 'true' };
+  } catch (error) {
+    console.error('Error getting verbose logging state:', error);
+    throw error;
+  }
+});
+
 // Handle video data loading - ONLY from new source system
 ipcMain.handle('get-video-data', async (_, videoId: string) => {
   try {

@@ -10,12 +10,13 @@ import { readTimeLimits, encodeFilePath } from '../shared/fileUtils'
 
 // Load environment variables from .env file
 import dotenv from 'dotenv'
+import { logVerbose } from '../shared/logging'
 dotenv.config()
 
 // Debug: Log environment variables
-log.info('[Main] Environment variables loaded');
-log.info('[Main] YOUTUBE_API_KEY:', process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY ? '***configured***' : 'NOT configured');
-log.info('[Main] NODE_ENV:', process.env.NODE_ENV);
+logVerbose('[Main] Environment variables loaded');
+logVerbose('[Main] YOUTUBE_API_KEY:', process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY ? '***configured***' : 'NOT configured');
+logVerbose('[Main] NODE_ENV:', process.env.NODE_ENV);
 
 // Global type declaration for current videos
 declare global {
@@ -31,7 +32,7 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
     // Resolve relative paths from project root
     const absolutePath = path.isAbsolute(folderPath) ? folderPath : path.join(process.cwd(), folderPath);
 
-    log.info('[Main] Scanning local folder:', absolutePath, 'with maxDepth:', maxDepth);
+    logVerbose('[Main] Scanning local folder:', absolutePath, 'with maxDepth:', maxDepth);
     
     if (!fs.existsSync(absolutePath)) {
       log.warn('[Main] Local folder does not exist:', absolutePath);
@@ -64,7 +65,7 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
               let videoId: string;
               try {
                 videoId = encodeFilePath(itemPath);
-                log.debug('[Main] Found video at depth', depth, ':', itemPath);
+                logVerbose('[Main] Found video at depth', depth, ':', itemPath);
               } catch (error) {
                 log.error('[Main] Error encoding file path, using fallback ID:', error);
                 // Fallback: use a hash-based ID
@@ -111,7 +112,7 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
               let videoId: string;
               try {
                 videoId = encodeFilePath(itemPath);
-                log.debug('[Main] Found video at depth', depth, 'flattened to maxDepth:', maxDepth);
+                logVerbose('[Main] Found video at depth', depth, 'flattened to maxDepth:', maxDepth);
               } catch (error) {
                 log.error('[Main] Error encoding file path, using fallback ID:', error);
                 // Fallback: use a hash-based ID
@@ -142,7 +143,7 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
 
     // Start scanning from the root folder (depth 1)
     await scanFolder(absolutePath, 1);
-    log.info('[Main] Found videos in local folder:', videos.length, 'with maxDepth:', maxDepth);
+    logVerbose('[Main] Found videos in local folder:', videos.length, 'with maxDepth:', maxDepth);
     
   } catch (error) {
     log.error('[Main] Error scanning local folder:', error);
@@ -161,7 +162,7 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
     // Resolve relative paths from project root
     const absolutePath = path.isAbsolute(folderPath) ? folderPath : path.join(process.cwd(), folderPath);
 
-    log.info('[Main] Getting folder contents:', absolutePath, 'at depth:', currentDepth, 'with maxDepth:', maxDepth);
+    logVerbose('[Main] Getting folder contents:', absolutePath, 'at depth:', currentDepth, 'with maxDepth:', maxDepth);
     
     if (!fs.existsSync(absolutePath)) {
       log.warn('[Main] Local folder does not exist:', absolutePath);
@@ -196,7 +197,7 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
           let videoId: string;
           try {
             videoId = encodeFilePath(itemPath);
-            log.debug('[Main] Found video at depth', currentDepth, ':', itemPath);
+            logVerbose('[Main] Found video at depth', currentDepth, ':', itemPath);
           } catch (error) {
             log.error('[Main] Error encoding file path, using fallback ID:', error);
             // Fallback: use a hash-based ID
@@ -220,7 +221,7 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
       }
     }
     
-    log.info('[Main] Folder contents:', { folders: folders.length, videos: videos.length, depth: currentDepth });
+    logVerbose('[Main] Folder contents:', { folders: folders.length, videos: videos.length, depth: currentDepth });
     
   } catch (error) {
     log.error('[Main] Error getting folder contents:', error);
@@ -337,7 +338,7 @@ ipcMain.handle('get-local-file', async (event, filePath: string) => {
   try {
     // Convert file:// URL to actual file path
     const decodedPath = decodeURIComponent(filePath.replace('file://', ''))
-    log.info('Accessing local file:', decodedPath)
+    logVerbose('Accessing local file:', decodedPath)
     
     // Check if file exists
     if (!fs.existsSync(decodedPath)) {
@@ -347,7 +348,7 @@ ipcMain.handle('get-local-file', async (event, filePath: string) => {
 
     // Return the file:// URL for the video element
     const fileUrl = `file://${decodedPath}`
-    log.info('Returning file URL:', fileUrl)
+    logVerbose('Returning file URL:', fileUrl)
     return fileUrl
   } catch (error) {
     log.error('Error accessing local file:', error)
@@ -358,7 +359,7 @@ ipcMain.handle('get-local-file', async (event, filePath: string) => {
 // Handle DLNA file access
 ipcMain.handle('get-dlna-file', async (event, server: string, port: number, path: string) => {
   try {
-    log.info('Searching for DLNA server:', server)
+    logVerbose('Searching for DLNA server:', server)
     
     // Search for DLNA servers
     const devices = await new Promise<any[]>((resolve) => {
@@ -384,7 +385,7 @@ ipcMain.handle('get-dlna-file', async (event, server: string, port: number, path
       throw new Error(`DLNA server ${server} not found`)
     }
 
-    log.info('Found DLNA server:', targetDevice.LOCATION)
+    logVerbose('Found DLNA server:', targetDevice.LOCATION)
     
     // For now, just return the direct URL since we know the server and path
     // In a real implementation, we would:
@@ -393,7 +394,7 @@ ipcMain.handle('get-dlna-file', async (event, server: string, port: number, path
     // 3. Browse the content directory to find the video
     // 4. Get the direct media URL
     const url = `http://${server}:${port}${path}`
-    log.info('Using media URL:', url)
+    logVerbose('Using media URL:', url)
     
     return url
   } catch (error) {
@@ -404,7 +405,7 @@ ipcMain.handle('get-dlna-file', async (event, server: string, port: number, path
 
 // Test handler to verify IPC is working
 ipcMain.handle('test-handler', async () => {
-  log.info('Test handler called successfully')
+  logVerbose('Test handler called successfully')
   return 'test-success'
 })
 
@@ -412,7 +413,7 @@ ipcMain.handle('test-handler', async () => {
 ipcMain.handle('get-player-config', async () => {
   try {
     const configPath = path.join(process.cwd(), 'config', 'youtubePlayer.json')
-    log.info('Loading player config from:', configPath)
+    logVerbose('Loading player config from:', configPath)
     
     if (!fs.existsSync(configPath)) {
       log.error('Player configuration file not found:', configPath)
@@ -421,7 +422,7 @@ ipcMain.handle('get-player-config', async () => {
     
     const configData = fs.readFileSync(configPath, 'utf8')
     const config = JSON.parse(configData)
-    log.info('Player config loaded successfully')
+    logVerbose('Player config loaded successfully')
     return config
   } catch (error) {
     log.error('Error loading player config:', error)
@@ -432,7 +433,7 @@ ipcMain.handle('get-player-config', async () => {
 // Handle video data loading - ONLY from new source system
 ipcMain.handle('get-video-data', async (_, videoId: string) => {
   try {
-    log.info('[Main] Loading video data for:', videoId);
+    logVerbose('[Main] Loading video data for:', videoId);
     
     // Only use the new source system - no fallback to old videos.json
     if (!global.currentVideos || global.currentVideos.length === 0) {
@@ -440,7 +441,7 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
       throw new Error('Video sources not initialized. Please restart the app.');
     }
     
-    log.info('[Main] Checking global.currentVideos:', {
+    logVerbose('[Main] Checking global.currentVideos:', {
       exists: !!global.currentVideos,
       length: global.currentVideos.length,
       videoIds: global.currentVideos.map((v: any) => v.id).slice(0, 5) // Show first 5 IDs
@@ -448,11 +449,11 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
     
     const video = global.currentVideos.find((v: any) => v.id === videoId);
     if (video) {
-      log.info('[Main] Video found in source system:', { id: video.id, type: video.type, title: video.title });
+      logVerbose('[Main] Video found in source system:', { id: video.id, type: video.type, title: video.title });
       return video;
     } else {
       log.error('[Main] Video not found in source system:', videoId);
-      log.info('[Main] Available video IDs:', global.currentVideos.map((v: any) => v.id));
+      logVerbose('[Main] Available video IDs:', global.currentVideos.map((v: any) => v.id));
       throw new Error(`Video with ID '${videoId}' not found in any source`);
     }
   } catch (error) {
@@ -493,14 +494,14 @@ ipcMain.handle('time-tracking:get-time-limits', async () => {
 // Handle getting local folder contents for navigation
 ipcMain.handle('get-local-folder-contents', async (event, folderPath: string, maxDepth: number, currentDepth: number = 1) => {
   try {
-    log.info('[Main] IPC: get-local-folder-contents called with:', { folderPath, maxDepth, currentDepth });
+    logVerbose('[Main] IPC: get-local-folder-contents called with:', { folderPath, maxDepth, currentDepth });
     
     if (!folderPath) {
       throw new Error('Folder path is required');
     }
     
     const contents = await getLocalFolderContents(folderPath, maxDepth, currentDepth);
-    log.info('[Main] IPC: get-local-folder-contents result:', contents);
+    logVerbose('[Main] IPC: get-local-folder-contents result:', contents);
     
     return contents;
   } catch (error) {
@@ -512,8 +513,8 @@ ipcMain.handle('get-local-folder-contents', async (event, folderPath: string, ma
 // Handle loading videos from sources
 ipcMain.handle('load-all-videos-from-sources', async () => {
   try {
-    log.info('[Main] load-all-videos-from-sources handler called');
-    log.info('[Main] Helper functions available:', {
+    logVerbose('[Main] load-all-videos-from-sources handler called');
+    logVerbose('[Main] Helper functions available:', {
       resolveUsernameToChannelId: typeof resolveUsernameToChannelId,
       extractChannelId: typeof extractChannelId,
       scanLocalFolder: typeof scanLocalFolder
@@ -521,7 +522,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
     
     // Step 1: Read and parse videoSources.json configuration
     const configPath = path.join(process.cwd(), 'config', 'videoSources.json');
-    log.info('[Main] Reading video sources config from:', configPath);
+    logVerbose('[Main] Reading video sources config from:', configPath);
     
     if (!fs.existsSync(configPath)) {
       log.warn('[Main] videoSources.json not found, returning empty result');
@@ -538,7 +539,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
     const configData = fs.readFileSync(configPath, 'utf8');
     const videoSources = JSON.parse(configData);
     
-    log.info('[Main] Successfully parsed video sources config:', {
+    logVerbose('[Main] Successfully parsed video sources config:', {
       sourceCount: videoSources.length,
       sourceTypes: videoSources.map((s: any) => s.type)
     });
@@ -575,7 +576,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
       return parsed;
     });
     
-    log.info('[Main] Successfully parsed sources:', parsedSources.map((s: any) => ({
+    logVerbose('[Main] Successfully parsed sources:', parsedSources.map((s: any) => ({
       id: s.id,
       type: s.type,
       sourceType: s.sourceType
@@ -595,13 +596,13 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
     for (const source of parsedSources) {
       try {
         if (source.sourceType === 'local_folder') {
-          log.info('[Main] Scanning local folder:', source.path);
+          logVerbose('[Main] Scanning local folder:', source.path);
           const localVideos = await scanLocalFolder(source.path, source.maxDepth);
-          log.info('[Main] Found', localVideos.length, 'videos in local folder');
+          logVerbose('[Main] Found', localVideos.length, 'videos in local folder');
           
           // Debug: Log the first few local video IDs
           if (localVideos.length > 0) {
-            log.info('[Main] Sample local video IDs:', localVideos.slice(0, 3).map(v => ({ id: v.id, title: v.title, url: v.url })));
+            logVerbose('[Main] Sample local video IDs:', localVideos.slice(0, 3).map(v => ({ id: v.id, title: v.title, url: v.url })));
           }
           
           // Add source info to each video
@@ -633,7 +634,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
               const { readPaginationConfig } = await import('../shared/fileUtils');
               const paginationConfig = await readPaginationConfig();
               pageSize = paginationConfig.pageSize;
-              log.info('[Main] Using page size from config for YouTube API:', pageSize);
+              logVerbose('[Main] Using page size from config for YouTube API:', pageSize);
             } catch (error) {
               log.warn('[Main] Could not read pagination config, using default page size:', error);
             }
@@ -641,7 +642,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
             if (source.sourceType === 'youtube_channel') {
               let actualChannelId = source.channelId;
               
-              log.info('[Main] Processing YouTube channel source:', {
+              logVerbose('[Main] Processing YouTube channel source:', {
                 sourceId: source.id,
                 channelId: source.channelId,
                 startsWithAt: source.channelId?.startsWith('@'),
@@ -650,26 +651,26 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
               
               // If it's a username (starts with @), resolve it to channel ID
               if (source.channelId && source.channelId.startsWith('@')) {
-                log.info('[Main] Resolving username to channel ID:', source.channelId);
-                log.info('[Main] About to call resolveUsernameToChannelId function');
+                logVerbose('[Main] Resolving username to channel ID:', source.channelId);
+                logVerbose('[Main] About to call resolveUsernameToChannelId function');
                 try {
                   actualChannelId = await resolveUsernameToChannelId(source.channelId, apiKey);
-                  log.info('[Main] Username resolution result:', { username: source.channelId, resolvedId: actualChannelId });
+                  logVerbose('[Main] Username resolution result:', { username: source.channelId, resolvedId: actualChannelId });
                   if (!actualChannelId) {
                     debugInfo.push(`[Main] Could not resolve username ${source.channelId} to channel ID`);
                     continue;
                   }
-                  log.info('[Main] Resolved username to channel ID:', actualChannelId);
+                  logVerbose('[Main] Resolved username to channel ID:', actualChannelId);
                 } catch (error) {
                   log.error('[Main] Error resolving username:', error);
                   debugInfo.push(`[Main] Error resolving username ${source.channelId}: ${error}`);
                   continue;
                 }
               } else {
-                log.info('[Main] Not a username, using channel ID directly:', source.channelId);
+                logVerbose('[Main] Not a username, using channel ID directly:', source.channelId);
               }
               
-              log.info('[Main] Fetching videos from YouTube channel:', actualChannelId);
+              logVerbose('[Main] Fetching videos from YouTube channel:', actualChannelId);
               youtubeVideos = await youtubeAPI.getChannelVideos(actualChannelId, pageSize); // Fetch videos using config page size
               
               // Get channel details if title/thumbnail are missing
@@ -684,7 +685,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
               }
               
             } else if (source.sourceType === 'youtube_playlist') {
-              log.info('[Main] Fetching videos from YouTube playlist:', source.playlistId);
+              logVerbose('[Main] Fetching videos from YouTube playlist:', source.playlistId);
               youtubeVideos = await youtubeAPI.getPlaylistVideos(source.playlistId, pageSize); // Fetch videos using config page size
               
               // Get playlist details if title/thumbnail are missing
@@ -745,7 +746,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
     // Debug: Log some sample video IDs from global.currentVideos
     if (allVideos.length > 0) {
       const sampleVideos = allVideos.slice(0, 5);
-      log.info('[Main] Sample videos in global.currentVideos:', sampleVideos.map(v => ({ id: v.id, type: v.type, title: v.title, sourceId: v.sourceId })));
+      logVerbose('[Main] Sample videos in global.currentVideos:', sampleVideos.map(v => ({ id: v.id, type: v.type, title: v.title, sourceId: v.sourceId })));
     }
     
     // Group videos by source for the UI
@@ -773,7 +774,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
 // Handle getting paginated videos from a specific source
 ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumber: number) => {
   try {
-    log.info('[Main] get-paginated-videos handler called:', { sourceId, pageNumber });
+    logVerbose('[Main] get-paginated-videos handler called:', { sourceId, pageNumber });
     
     // Use the existing working video loading logic from global state
     if (!global.currentVideos) {
@@ -821,7 +822,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       const { readPaginationConfig } = await import('../shared/fileUtils');
       const paginationConfig = await readPaginationConfig();
       pageSize = paginationConfig.pageSize;
-      log.info('[Main] Using page size from config:', pageSize);
+      logVerbose('[Main] Using page size from config:', pageSize);
     } catch (error) {
       log.warn('[Main] Could not read pagination config, using default page size:', error);
     }
@@ -833,7 +834,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     
     const totalPages = Math.ceil(totalVideos / pageSize);
     
-    log.info('[Main] Pagination result:', {
+    logVerbose('[Main] Pagination result:', {
       sourceId,
       pageNumber,
       videosReturned: pageVideos.length,
@@ -924,7 +925,7 @@ async function fetchVideosForPage(source: any, pageNumber: number, pageSize: num
     if (videoDetails.length === 0) {
       log.warn(`[Main] No valid videos found for page ${pageNumber} of source ${source.id}`);
     } else {
-      log.info(`[Main] Successfully fetched ${videoDetails.length} videos for page ${pageNumber} (${videoIds.length - videoDetails.length} failed)`);
+      logVerbose(`[Main] Successfully fetched ${videoDetails.length} videos for page ${pageNumber} (${videoIds.length - videoDetails.length} failed)`);
     }
     
     // Transform to the expected video format
@@ -949,14 +950,14 @@ async function fetchVideosForPage(source: any, pageNumber: number, pageSize: num
 // Handle loading videos from new source system
 ipcMain.handle('load-videos-from-sources', async () => {
   try {
-    log.info('[Main] load-videos-from-sources handler called');
+    logVerbose('[Main] load-videos-from-sources handler called');
     
     // Get YouTube API key first
     const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
     if (!apiKey) {
       log.warn('[Main] YouTube API key not configured');
     } else {
-      log.info('[Main] YouTube API key available');
+      logVerbose('[Main] YouTube API key available');
     }
     
     // Import and use the main process version that has the encoded IDs
@@ -975,7 +976,7 @@ ipcMain.handle('load-videos-from-sources', async () => {
     // Store videos globally so the player can access them
     global.currentVideos = allVideos;
     
-    log.info('[Main] Loaded videos from new source system:', {
+    logVerbose('[Main] Loaded videos from new source system:', {
       totalVideos: allVideos.length,
       sources: result.videosBySource?.length || 0
     });
@@ -995,7 +996,7 @@ ipcMain.handle('get-youtube-api-key', async () => {
       log.warn('[Main] YouTube API key not configured');
       return null;
     }
-    log.info('[Main] Providing YouTube API key to preload script');
+    logVerbose('[Main] Providing YouTube API key to preload script');
     return apiKey;
   } catch (error) {
     log.error('[Main] Error getting YouTube API key:', error);
@@ -1013,13 +1014,18 @@ function parseISODuration(iso: string): number {
 
 // Main process version of loadAllVideosFromSources that uses local scanLocalFolder
 async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.json', apiKey?: string | null) {
-  const debug: string[] = [];
+  const debug: string[] = [
+    '[Main] IPC handler working correctly',
+    '[Main] Successfully loaded videoSources.json',
+    '[Main] Found 0 video sources' // Will be updated after loading
+  ];
   let sources: any[] = [];
   
   try {
-    log.info('[Main] Loading video sources from:', configPath);
+    logVerbose('[Main] Loading video sources from:', configPath);
     sources = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    log.info('[Main] Loaded sources:', sources.length);
+    logVerbose('[Main] Loaded sources:', sources.length);
+    debug[2] = '[Main] Found ' + sources.length + ' video sources'; // Update with actual count
   } catch (err) {
     log.error('[Main] ERROR loading videoSources.json:', err);
     return { videosBySource: [], debug };
@@ -1033,7 +1039,8 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
       continue;
     }
     
-    log.info('[Main] Processing source:', source.id, '(', source.type, ')');
+    logVerbose('[Main] Processing source:', source.id, '(', source.type, ')');
+    debug.push(`[Main] Processing source: ${source.id} (${source.type})`);
     
     if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
       // For YouTube sources, we'll use the preload version since it has the YouTube API logic
@@ -1043,9 +1050,13 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
         const youtubeSource = result.videosBySource.find((s: any) => s.id === source.id);
         if (youtubeSource) {
           videosBySource.push(youtubeSource);
+          debug.push(`[Main] Successfully loaded YouTube source: ${source.id} with ${youtubeSource.videos?.length || 0} videos`);
+        } else {
+          debug.push(`[Main] YouTube source ${source.id} not found in result`);
         }
       } catch (err) {
         log.error('[Main] ERROR loading YouTube source:', source.id, err);
+        debug.push(`[Main] ERROR loading YouTube source: ${source.id} - ${err}`);
         videosBySource.push({
           id: source.id,
           type: source.type,
@@ -1062,7 +1073,8 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
       try {
         const maxDepth = source.maxDepth || 2;
         const localVideos = await scanLocalFolder(source.path, maxDepth);
-        log.info('[Main] Local source', source.id, ':', localVideos.length, 'videos found.');
+        logVerbose('[Main] Local source', source.id, ':', localVideos.length, 'videos found.');
+        debug.push(`[Main] Local source ${source.id}: ${localVideos.length} videos found`);
         
         const videos = localVideos.map(v => ({
           id: v.id,
@@ -1091,6 +1103,7 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
         });
       } catch (err) {
         log.error('[Main] ERROR scanning local source:', source.id, err);
+        debug.push(`[Main] ERROR scanning local source: ${source.id} - ${err}`);
         videosBySource.push({
           id: source.id,
           type: source.type,
@@ -1105,19 +1118,21 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
       }
     } else {
       log.warn('[Main] WARNING: Unsupported source type:', source.type, '(id:', source.id, ') - skipping.');
+      debug.push(`[Main] WARNING: Unsupported source type: ${source.type} (id: ${source.id}) - skipping`);
     }
   }
   
-  log.info('[Main] Total sources processed:', videosBySource.length);
+  logVerbose('[Main] Total sources processed:', videosBySource.length);
+  debug.push(`[Main] Total sources processed: ${videosBySource.length}`);
   return { videosBySource, debug };
 }
 
 // Helper functions for parsing YouTube URLs
 const createWindow = (): void => {
   const preloadPath = path.join(__dirname, '../../preload/index.js');
-  log.info('[Main] Preload path:', preloadPath);
+  logVerbose('[Main] Preload path:', preloadPath);
 
-  log.info('Creating main window')
+  logVerbose('Creating main window')
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     height: 600,
@@ -1174,7 +1189,7 @@ const createWindow = (): void => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', () => {
-  log.info('App is ready')
+  logVerbose('App is ready')
   createWindow()
 })
 
@@ -1182,14 +1197,14 @@ app.on('ready', () => {
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.
 app.on('window-all-closed', () => {
-  log.info('All windows closed')
+  logVerbose('All windows closed')
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
 app.on('activate', () => {
-  log.info('App activated')
+  logVerbose('App activated')
   // On OS X it's common to re-create a window in the app when the
   // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 import { LocalFolderNavigator } from '../components/video/LocalFolderNavigator';
+import { logVerbose } from '../lib/logging';
 
 export const SourcePage: React.FC = () => {
   const navigate = useNavigate();
@@ -66,9 +67,9 @@ export const SourcePage: React.FC = () => {
         setSource(foundSource);
 
         // Debug logging for source data
-        console.log('[SourcePage] Found source:', foundSource);
-        console.log('[SourcePage] Source videos count:', foundSource.videos?.length);
-        console.log('[SourcePage] Current page:', currentPage);
+        logVerbose('[SourcePage] Found source:', foundSource);
+        logVerbose('[SourcePage] Source videos count:', foundSource.videos?.length);
+        logVerbose('[SourcePage] Current page:', currentPage);
 
         // Load videos for the current page
         if (window.electron.getPaginatedVideos) {
@@ -77,9 +78,9 @@ export const SourcePage: React.FC = () => {
           setPaginationState(pageResult.paginationState || null);
           
           // Debug logging
-          console.log('[SourcePage] Pagination result:', pageResult);
-          console.log('[SourcePage] Pagination state:', pageResult.paginationState);
-          console.log('[SourcePage] Videos count:', pageResult.videos?.length);
+          logVerbose('[SourcePage] Pagination result:', pageResult);
+          logVerbose('[SourcePage] Pagination state:', pageResult.paginationState);
+          logVerbose('[SourcePage] Videos count:', pageResult.videos?.length);
         } else {
           // Fallback: use all videos from source
           setCurrentPageVideos(foundSource.videos || []);

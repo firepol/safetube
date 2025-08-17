@@ -4,6 +4,7 @@ import { PlayerPage } from './PlayerPage';
 import { YouTubePlayerPage } from './YouTubePlayerPage';
 import { loadPlayerConfig } from '../services/playerConfig';
 import type { YouTubePlayerType } from '../types/playerConfig';
+import { logVerbose } from '../lib/logging';
 
 export const PlayerRouter: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -13,7 +14,7 @@ export const PlayerRouter: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<React.ReactNode | null>(null);
   
-  console.log('[PlayerRouter] Component rendered with id:', id, 'videoId:', videoId);
+  logVerbose('[PlayerRouter] Component rendered with id:', id, 'videoId:', videoId);
 
   useEffect(() => {
     const determinePlayerType = async () => {
@@ -45,7 +46,7 @@ export const PlayerRouter: React.FC = () => {
         let video = null;
         try {
           video = await window.electron.getVideoData(videoId);
-          console.log('[PlayerRouter] Video data loaded:', { 
+          logVerbose('[PlayerRouter] Video data loaded:', { 
             id: video?.id, 
             type: video?.type, 
             title: video?.title 
@@ -68,7 +69,7 @@ export const PlayerRouter: React.FC = () => {
         setPlayerType(finalPlayerType);
 
         // Route to appropriate player based on video type and config
-        console.log('[PlayerRouter] Routing decision:', { 
+        logVerbose('[PlayerRouter] Routing decision:', { 
           videoType: video?.type, 
           finalPlayerType, 
           isYouTube: video?.type === 'youtube',
@@ -76,17 +77,17 @@ export const PlayerRouter: React.FC = () => {
         });
         
         if (video && video.type === 'youtube' && finalPlayerType === 'iframe') {
-          console.log('[PlayerRouter] Using YouTubePlayerPage (iframe)');
+          logVerbose('[PlayerRouter] Using YouTubePlayerPage (iframe)');
           setSelectedPlayer(<YouTubePlayerPage />);
         } else if (video && (video.type === 'local' || video.type === 'dlna')) {
-          console.log('[PlayerRouter] Using PlayerPage for local/DLNA video');
+          logVerbose('[PlayerRouter] Using PlayerPage for local/DLNA video');
           setSelectedPlayer(<PlayerPage />);
         } else {
-          console.log('[PlayerRouter] Using PlayerPage (mediasource)');
+          logVerbose('[PlayerRouter] Using PlayerPage (mediasource)');
           setSelectedPlayer(<PlayerPage />);
         }
         
-        console.log('[PlayerRouter] Final selected player:', selectedPlayer ? 'set' : 'not set');
+        logVerbose('[PlayerRouter] Final selected player:', selectedPlayer ? 'set' : 'not set');
 
         setIsLoading(false);
       } catch (err) {

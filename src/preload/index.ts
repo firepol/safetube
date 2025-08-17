@@ -37,6 +37,9 @@ contextBridge.exposeInMainWorld(
     // Expose environment variables directly
     env: {
       ELECTRON_LOG_VERBOSE: process.env.ELECTRON_LOG_VERBOSE
-    }
+    },
+    // Logging configuration methods
+    setVerboseLogging: (enabled: boolean) => ipcRenderer.invoke('logging:set-verbose', enabled),
+    getVerboseLogging: () => ipcRenderer.invoke('logging:get-verbose')
   }
 );

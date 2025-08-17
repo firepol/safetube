@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { SourceGrid } from '../components/layout/SourceGrid';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
 import { useRateLimit } from '../App';
+import { logVerbose } from '../lib/logging';
 
 export const KidScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -60,7 +61,7 @@ export const KidScreen: React.FC = () => {
           }
           
           // Log the new structure for debugging
-          console.log('Loaded videos by source:', videosBySource);
+          logVerbose('Loaded videos by source:', videosBySource);
         })
         .catch((err: unknown) => {
           setSources([]);

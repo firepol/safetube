@@ -11,4 +11,9 @@ interface ElectronAPI {
   recordVideoWatching: (videoId: string, position: number, timeWatched: number) => Promise<{ success: boolean }>;
   getTimeTrackingState: () => Promise<{ currentDate: string; timeUsedToday: number; timeLimitToday: number; timeRemaining: number; isLimitReached: boolean }>;
   getPlayerConfig: () => Promise<any>;
+  getVideoData: (id: string) => Promise<any>;
+  getTimeLimits: () => Promise<any>;
+  getDlnaFile: (server: string, port: number, path: string) => Promise<string>;
+  setVerboseLogging: (enabled: boolean) => Promise<{ success: boolean; verbose: boolean }>;
+  getVerboseLogging: () => Promise<{ verbose: boolean }>;
 } 
