@@ -558,9 +558,9 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     log.info('[Main] get-paginated-videos handler called:', { sourceId, pageNumber });
     
     // Get the source data to find the total count and source details
-    const { loadAllVideosFromSources } = await import('../preload/loadAllVideosFromSources');
+    // Use the main process version that has the encoded IDs
     const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
-    const sourceData = await loadAllVideosFromSources('config/videoSources.json', apiKey);
+    const sourceData = await loadAllVideosFromSourcesMain('config/videoSources.json', apiKey);
     
     // Find the specific source to get its total count
     const foundSource = sourceData.videosBySource?.find(s => s.id === sourceId);
@@ -796,9 +796,8 @@ ipcMain.handle('load-videos-from-sources', async () => {
       log.info('[Main] YouTube API key available');
     }
     
-    // Import and use the new source system
-    const { loadAllVideosFromSources } = await import('../preload/loadAllVideosFromSources');
-    const result = await loadAllVideosFromSources('config/videoSources.json', apiKey);
+    // Import and use the main process version that has the encoded IDs
+    const result = await loadAllVideosFromSourcesMain('config/videoSources.json', apiKey);
     
     // Extract all videos from the grouped structure and store them globally
     const allVideos: any[] = [];
