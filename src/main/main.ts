@@ -201,11 +201,27 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   console.log('[Main] App is ready, registering IPC handlers...');
   
   // Register IPC handlers first
   registerIpcHandlers();
+  
+  // Initialize video sources on startup
+  try {
+    console.log('[Main] Initializing video sources...');
+    const { loadAllVideosFromSources } = await import('../preload/loadAllVideosFromSources');
+    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
+    const result = await loadAllVideosFromSources('config/videoSources.json', apiKey);
+    console.log('[Main] Videos loaded on startup:', { totalVideos: result.videosBySource?.length || 0, sources: result.videosBySource?.length || 0 });
+    
+    // Store videos globally for access by other handlers
+    // Extract all videos from the videosBySource structure
+    const allVideos = result.videosBySource?.flatMap(source => source.videos || []) || [];
+    global.currentVideos = allVideos;
+  } catch (error) {
+    console.error('[Main] Error loading videos on startup:', error);
+  }
   
   // Then create the window
   createWindow();
