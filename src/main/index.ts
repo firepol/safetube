@@ -586,7 +586,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     // Fetch videos for the specific page
     let pageVideos: any[] = [];
     if (foundSource.type === 'youtube_channel' || foundSource.type === 'youtube_playlist') {
-      pageVideos = await fetchVideosForPage(foundSource, pageNumber, pageSize, pageToken || undefined, apiKey);
+      pageVideos = await fetchVideosForPage(foundSource, pageNumber, pageSize, pageToken || undefined);
     } else {
       // For local sources, use the existing pagination logic
       const { PaginationService } = await import('../preload/paginationService');
@@ -691,8 +691,15 @@ async function getPageTokenForPage(sourceId: string, source: any, pageNumber: nu
 }
 
 // Helper function to fetch videos for a specific page
-async function fetchVideosForPage(source: any, pageNumber: number, pageSize: number, pageToken: string | undefined, apiKey: string): Promise<any[]> {
+async function fetchVideosForPage(source: any, pageNumber: number, pageSize: number, pageToken: string | undefined): Promise<any[]> {
   try {
+    // Get API key from environment
+    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      log.warn('[Main] YouTube API key not available for fetching videos');
+      return [];
+    }
+    
     const { YouTubeAPI } = await import('../preload/youtube');
     YouTubeAPI.setApiKey(apiKey);
     
