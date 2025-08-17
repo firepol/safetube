@@ -12,6 +12,7 @@ export const KidScreen: React.FC = () => {
   const [loaderError, setLoaderError] = useState<string | null>(null);
   const [loaderDebug, setLoaderDebug] = useState<string[]>([]);
   const [timeTrackingState, setTimeTrackingState] = useState<any>(null);
+  const [isVerboseLogging, setIsVerboseLogging] = useState(false);
   const { showWarning } = useRateLimit();
   const warningShownRef = useRef(false);
 
@@ -37,6 +38,21 @@ export const KidScreen: React.FC = () => {
     };
     checkTimeLimits();
   }, [navigate]);
+
+  // Check verbose logging status
+  useEffect(() => {
+    const checkVerboseLogging = () => {
+      try {
+        // Check localStorage for verbose logging setting
+        const isVerbose = localStorage.getItem('ELECTRON_LOG_VERBOSE') === 'true';
+        setIsVerboseLogging(isVerbose);
+      } catch (error) {
+        console.error('Error checking verbose logging status:', error);
+        setIsVerboseLogging(false);
+      }
+    };
+    checkVerboseLogging();
+  }, []);
 
   useEffect(() => {
     setIsLoading(true);
@@ -132,12 +148,15 @@ export const KidScreen: React.FC = () => {
         />
       </div>
       
-      <details className="mt-4">
-        <summary className="cursor-pointer text-xs text-gray-500">Loader Debug Info</summary>
-        <pre className="bg-gray-100 p-2 rounded text-xs max-w-xl overflow-x-auto text-left">
-          {loaderDebug.join('\n')}
-        </pre>
-      </details>
+      {/* Only show debug info if verbose logging is enabled */}
+      {isVerboseLogging && (
+        <details className="mt-4">
+          <summary className="cursor-pointer text-xs text-gray-500">Loader Debug Info</summary>
+          <pre className="bg-gray-100 p-2 rounded text-xs max-w-xl overflow-x-auto text-left">
+            {loaderDebug.join('\n')}
+          </pre>
+        </details>
+      )}
     </div>
   );
 }; 
