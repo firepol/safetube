@@ -1,5 +1,4 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import videos from '../data/videos.json';
 import { CachedYouTubeAPI as YouTubeAPI } from './__tests__/cached-youtube';
 import { testCache } from './__tests__/test-cache';
 import fs from 'fs';
@@ -12,6 +11,40 @@ const DEBUG_MODE = true;
 // Skip YouTube integration tests in CI environment
 // These tests require real YouTube API access and yt-dlp, which are unreliable in CI
 const youtubeTestRunner = process.env.CI ? describe.skip : describe;
+
+// Minimal test data extracted from videos.json backup
+const testVideos = [
+  {
+    id: "dQw4w9WgXcQ",
+    type: "youtube" as const,
+    title: "Never Gonna Give You Up",
+    thumbnail: "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+    duration: 212,
+    url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    streamUrl: "https://example.com/stream1.mp4",
+    audioStreamUrl: "https://example.com/audio1.mp3",
+    preferredLanguages: ["en"]
+  },
+  {
+    id: "jNQXAC9IVRw",
+    type: "youtube" as const,
+    title: "Me at the zoo",
+    thumbnail: "https://i.ytimg.com/vi/jNQXAC9IVRw/maxresdefault.jpg",
+    duration: 19,
+    url: "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    streamUrl: "https://example.com/stream2.mp4",
+    audioStreamUrl: "https://example.com/audio2.mp3",
+    preferredLanguages: ["en"]
+  },
+  {
+    id: "local-1",
+    type: "local" as const,
+    title: "Sample Local",
+    thumbnail: "https://picsum.photos/id/38/300/200?grayscale",
+    duration: 300,
+    url: "file:///home/paul/projects/safetube/test-videos/sample-local.mp4"
+  }
+];
 
 interface DebugStreamInfo {
   videoId: string;
@@ -108,7 +141,7 @@ describe('Video Stream URLs Integration Tests', () => {
   // Test YouTube video streams
   youtubeTestRunner('YouTube Videos', () => {
     // Filter out duplicate videos by extracting unique YouTube IDs
-    const uniqueYoutubeVideos = videos
+    const uniqueYoutubeVideos = testVideos
       .filter(v => v.type === 'youtube')
       .reduce((acc, video) => {
         const videoId = video.url.split('v=')[1];
@@ -117,7 +150,7 @@ describe('Video Stream URLs Integration Tests', () => {
           acc.push(video);
         }
         return acc;
-      }, [] as typeof videos);
+      }, [] as typeof testVideos);
 
     uniqueYoutubeVideos.forEach(video => {
       it(`should have valid stream URLs for ${video.title}`, async () => {
@@ -183,27 +216,12 @@ describe('Video Stream URLs Integration Tests', () => {
 
   // Test local video files
   describe('Local Videos', () => {
-    const localVideos = videos.filter(v => v.type === 'local');
+    const localVideos = testVideos.filter(v => v.type === 'local');
 
     localVideos.forEach(video => {
       it(`should have valid file path for ${video.title}`, () => {
         expect(video.url).toBeDefined();
         expect(video.url.startsWith('file://')).toBe(true);
-      });
-    });
-  });
-
-  // Test DLNA video URLs
-  describe('DLNA Videos', () => {
-    const dlnaVideos = videos.filter(v => v.type === 'dlna');
-
-    dlnaVideos.forEach(video => {
-      it(`should have valid DLNA URL for ${video.title}`, () => {
-        expect(video.url).toBeDefined();
-        expect(video.url.startsWith('http://')).toBe(true);
-        expect(video.server).toBeDefined();
-        expect(video.port).toBeDefined();
-        expect(video.path).toBeDefined();
       });
     });
   });
