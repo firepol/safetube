@@ -1,33 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SourceGrid } from '../components/layout/SourceGrid';
-import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
+import { TimeIndicator } from '../components/layout/TimeIndicator';
+import { useRateLimit } from '../App';
 
 export const KidScreen: React.FC = () => {
   const navigate = useNavigate();
-  const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
-  const [isLoading, setIsLoading] = useState(true);
   const [sources, setSources] = useState<any[]>([]);
-  const [loaderDebug, setLoaderDebug] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [loaderError, setLoaderError] = useState<string | null>(null);
+  const [loaderDebug, setLoaderDebug] = useState<string[]>([]);
+  const [timeTrackingState, setTimeTrackingState] = useState<any>(null);
+  const { showWarning } = useRateLimit();
 
   useEffect(() => {
     const checkTimeLimits = async () => {
       try {
-        if (!(window as any).electron || !(window as any).electron.getTimeTrackingState) {
-          throw new Error('window.electron.getTimeTrackingState not available');
+        if (window.electron && window.electron.getTimeTrackingState) {
+          const state = await window.electron.getTimeTrackingState();
+          if (state.isLimitReached) {
+            navigate('/time-up');
+            return;
+          }
+          setTimeTrackingState({
+            timeRemaining: state.timeRemaining,
+            timeLimit: state.timeLimitToday,
+            timeUsed: state.timeUsedToday,
+            isLimitReached: state.isLimitReached
+          });
         }
-        const state = await (window as any).electron.getTimeTrackingState();
-        if (state.isLimitReached) {
-          navigate('/time-up');
-          return;
-        }
-        setTimeTrackingState({
-          timeRemaining: state.timeRemaining,
-          timeLimit: state.timeLimitToday,
-          timeUsed: state.timeUsedToday,
-          isLimitReached: state.isLimitReached
-        });
       } catch (error) {
         console.error('Error checking time limits:', error);
       }
@@ -45,6 +46,17 @@ export const KidScreen: React.FC = () => {
           setLoaderDebug(debug || []);
           setLoaderError(null);
           
+          // Check if any sources are using cached data due to API failures
+          const hasCachedData = videosBySource?.some((source: any) => source.usingCachedData);
+          if (hasCachedData) {
+            const cachedSource = videosBySource.find((source: any) => source.usingCachedData);
+            if (cachedSource?.lastFetched) {
+              showWarning(cachedSource.lastFetched);
+            } else {
+              showWarning();
+            }
+          }
+          
           // Log the new structure for debugging
           console.log('Loaded videos by source:', videosBySource);
         })
@@ -58,7 +70,7 @@ export const KidScreen: React.FC = () => {
       setLoaderError('window.electron.loadVideosFromSources is not available');
       setIsLoading(false);
     }
-  }, []);
+  }, [showWarning]);
 
   // Load videos for a specific page when source or page changes
   useEffect(() => {

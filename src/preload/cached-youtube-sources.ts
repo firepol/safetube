@@ -28,6 +28,7 @@ export class CachedYouTubeSources {
     let newVideos: any[] = [];
     let totalVideos = 0;
     let sourceThumbnail = '';
+    let usingCachedData = false;
     
     try {
       if (source.type === 'youtube_channel') {
@@ -58,18 +59,20 @@ export class CachedYouTubeSources {
     } catch (error) {
       console.warn(`[CachedYouTubeSources] YouTube API failed for source ${source.id}:`, error);
       
-      // If we have cached data, use it as fallback
+      // Always use cached data as fallback when API fails
       if (cache && cache.videos.length > 0) {
-        console.log(`[CachedYouTubeSources] Using cached data as fallback for source ${source.id}`);
+        console.log(`[CachedYouTubeSources] Using cached data as fallback for source ${source.id} (API failed)`);
         totalVideos = cache.totalVideos || cache.videos.length;
         newVideos = [];
         sourceThumbnail = cache.thumbnail || '';
+        usingCachedData = true;
       } else {
         // No cache available, create minimal fallback
-        console.log(`[CachedYouTubeSources] Creating minimal fallback for source ${source.id}`);
+        console.log(`[CachedYouTubeSources] Creating minimal fallback for source ${source.id} (no cache available)`);
         totalVideos = 0;
         newVideos = [];
         sourceThumbnail = '';
+        usingCachedData = true;
       }
     }
     
@@ -87,7 +90,8 @@ export class CachedYouTubeSources {
       lastVideoDate: videos.length > 0 ? videos[0].publishedAt : cache?.lastVideoDate,
       videos,
       totalVideos,
-      thumbnail: sourceThumbnail
+      thumbnail: sourceThumbnail,
+      usingCachedData // Add flag to indicate if we're using cached data
     };
     fs.writeFileSync(cacheFile, JSON.stringify(updatedCache, null, 2), 'utf-8');
     return updatedCache;
