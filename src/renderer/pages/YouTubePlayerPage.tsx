@@ -134,58 +134,7 @@ export const YouTubePlayerPage: React.FC = () => {
     fetchCountdownConfig();
   }, []);
 
-  // Initialize YouTube player
-  useEffect(() => {
-    let cleanup = () => {};
-    if (containerRef.current && id && !isLoading) {
-      playerRef.current = new YouTubeIframePlayer(PLAYER_CONTAINER_ID);
-      playerRef.current.mount(id, {
-        width: '100%',
-        height: '100%',
-        playerVars: {
-          autoplay: 1,
-          modestbranding: 1,
-          rel: 0,
-          controls: 1,
-          showinfo: 1,
-          fs: 1,
-        },
-        events: {
-          onReady: (event: any) => {
-            ytPlayerInstance.current = event.target;
-            setIsLoading(false);
-          },
-          onStateChange: (event: any) => {
-            console.log('[YouTubePlayerPage] YouTube player state changed:', event.data);
-            // 1 = playing, 2 = paused, 0 = ended
-            if (event.data === 1) {
-              // Playing
-              console.log('[YouTubePlayerPage] Video started playing');
-              setIsVideoPlaying(true);
-            } else if (event.data === 2 || event.data === 0) {
-              // Paused or ended
-              console.log('[YouTubePlayerPage] Video paused/ended');
-              setIsVideoPlaying(false);
-            }
-          },
-          onError: (event: any) => {
-            console.error('YouTube player error:', event);
-            setError('Failed to load YouTube video');
-            setIsLoading(false);
-          },
-        },
-      });
-      cleanup = () => {
-        if (playerRef.current) {
-          playerRef.current.destroy();
-          playerRef.current = null;
-        }
-      };
-    }
-    return cleanup;
-      }, [id, isLoading]);
-
-  // Time tracking state
+    // Time tracking state
   const timeTrackingRef = useRef<{
     startTime: number;
     totalWatched: number;
@@ -245,6 +194,61 @@ export const YouTubePlayerPage: React.FC = () => {
       timeTrackingRef.current.isTracking = false;
     }
   }, [updateTimeTracking]);
+
+  // Initialize YouTube player
+  useEffect(() => {
+    let cleanup = () => {};
+    if (containerRef.current && id && !isLoading) {
+      playerRef.current = new YouTubeIframePlayer(PLAYER_CONTAINER_ID);
+      playerRef.current.mount(id, {
+        width: '100%',
+        height: '100%',
+        playerVars: {
+          autoplay: 1,
+          modestbranding: 1,
+          rel: 0,
+          controls: 1,
+          showinfo: 1,
+          fs: 1,
+        },
+        events: {
+          onReady: (event: any) => {
+            ytPlayerInstance.current = event.target;
+            setIsLoading(false);
+          },
+          onStateChange: (event: any) => {
+            console.log('[YouTubePlayerPage] YouTube player state changed:', event.data);
+            // 1 = playing, 2 = paused, 0 = ended
+            if (event.data === 1) {
+              // Playing
+              console.log('[YouTubePlayerPage] Video started playing');
+              setIsVideoPlaying(true);
+              // Call the time tracking function directly
+              startTimeTracking();
+            } else if (event.data === 2 || event.data === 0) {
+              // Paused or ended
+              console.log('[YouTubePlayerPage] Video paused/ended');
+              setIsVideoPlaying(false);
+              // Call the time tracking function directly
+              stopTimeTracking();
+            }
+          },
+          onError: (event: any) => {
+            console.error('YouTube player error:', event);
+            setError('Failed to load YouTube video');
+            setIsLoading(false);
+          },
+        },
+      });
+      cleanup = () => {
+        if (playerRef.current) {
+          playerRef.current.destroy();
+          playerRef.current = null;
+        }
+      };
+    }
+    return cleanup;
+  }, [id, isLoading, startTimeTracking, stopTimeTracking]);
 
   // Polling-based time tracking for YouTube iframe player
   useEffect(() => {
