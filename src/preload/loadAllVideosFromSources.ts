@@ -4,11 +4,11 @@ import { PaginationService } from './paginationService';
 import fs from 'fs';
 import path from 'path';
 
-function logDebug(msg: string) {
-  if (typeof window !== 'undefined' && (window as any).logVerbose) {
-    (window as any).logVerbose(msg);
+// Local logging function that follows the same pattern as logVerbose
+function logVerbose(...args: any[]) {
+  if (process.env.ELECTRON_LOG_VERBOSE === 'true') {
+    console.log('[Preload][Verbose]', ...args);
   }
-  console.log(msg);
 }
 
 // Helper to scan local folders recursively up to maxDepth
@@ -24,7 +24,7 @@ async function scanLocalFolder(folderPath: string, maxDepth: number, currentDept
       if (entry.isDirectory()) {
         // If we're at maxDepth, flatten all content from this directory
         if (currentDepth === maxDepth) {
-          console.log('[Preload] At maxDepth', currentDepth, 'flattening content from:', fullPath);
+          logVerbose('[Preload] At maxDepth', currentDepth, 'flattening content from:', fullPath);
           // Recursively scan deeper content but mark it as being at maxDepth
           const deeperVideos = await scanFolderDeeper(fullPath, currentDepth + 1);
           videos = videos.concat(deeperVideos);
@@ -38,7 +38,7 @@ async function scanLocalFolder(folderPath: string, maxDepth: number, currentDept
         let videoId: string;
         try {
           videoId = Buffer.from(fullPath).toString('base64');
-          console.log('[Preload] Found video at depth', currentDepth, ':', fullPath);
+          logVerbose('[Preload] Found video at depth', currentDepth, ':', fullPath);
         } catch (error) {
           console.error('[Preload] Error encoding file path, using fallback ID:', error);
           videoId = `local_${Buffer.from(fullPath).toString('hex').substring(0, 16)}`;
@@ -84,7 +84,7 @@ async function scanFolderDeeper(folderPath: string, currentDepth: number): Promi
         let videoId: string;
         try {
           videoId = Buffer.from(fullPath).toString('base64');
-          console.log('[Preload] Found video at depth', currentDepth, 'flattened to maxDepth');
+          logVerbose('[Preload] Found video at depth', currentDepth, 'flattened to maxDepth');
         } catch (error) {
           console.error('[Preload] Error encoding file path, using fallback ID:', error);
           videoId = `local_${Buffer.from(fullPath).toString('hex').substring(0, 16)}`;
@@ -119,15 +119,15 @@ function isVideoFile(filename: string): boolean {
 export async function loadAllVideosFromSources(configPath = 'config/videoSources.json', apiKey?: string | null) {
   const debug: string[] = [];
   let sources: VideoSource[] = [];
-  logDebug(`[Loader] Starting loadAllVideosFromSources with configPath: ${configPath}`);
+  logVerbose(`[Loader] Starting loadAllVideosFromSources with configPath: ${configPath}`);
   try {
     debug.push(`[Loader] Loading video sources from: ${configPath}`);
     sources = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     debug.push(`[Loader] Loaded ${sources.length} sources.`);
-    logDebug(`[Loader] Loaded ${sources.length} sources from config.`);
+    logVerbose(`[Loader] Loaded ${sources.length} sources from config.`);
   } catch (err) {
     debug.push(`[Loader] ERROR loading videoSources.json: ${err}`);
-    logDebug(`[Loader] ERROR loading videoSources.json: ${err}`);
+    logVerbose(`[Loader] ERROR loading videoSources.json: ${err}`);
     return { videosBySource: [], debug };
   }
 
@@ -137,11 +137,11 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
   for (const source of sources) {
     if (!source || typeof source !== 'object' || !('type' in source) || !('id' in source)) {
       debug.push(`[Loader] WARNING: Skipping invalid source entry: ${JSON.stringify(source)}`);
-      logDebug(`[Loader] WARNING: Skipping invalid source entry: ${JSON.stringify(source)}`);
+      logVerbose(`[Loader] WARNING: Skipping invalid source entry: ${JSON.stringify(source)}`);
       continue;
     }
     debug.push(`[Loader] Processing source: ${(source as any).id} (${(source as any).type})`);
-    logDebug(`[Loader] Processing source: ${(source as any).id} (${(source as any).type})`);
+    logVerbose(`[Loader] Processing source: ${(source as any).id} (${(source as any).type})`);
     
     if ((source as any).type === 'youtube_channel' || (source as any).type === 'youtube_playlist') {
       const typedSource = source as VideoSource;
@@ -187,7 +187,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
           }
         }
         debug.push(`[Loader] YouTube source ${(typedSource as any).id}: ${cache.videos.length} videos loaded. Title: ${sourceTitle || typedSource.title}, Thumbnail: ${sourceThumbnail ? '[set]' : '[blank]'}`);
-        logDebug(`[Loader] YouTube source ${(typedSource as any).id}: ${cache.videos.length} videos loaded. Title: ${sourceTitle || typedSource.title}, Thumbnail: ${sourceThumbnail ? '[set]' : '[blank]'}`);
+        logVerbose(`[Loader] YouTube source ${(typedSource as any).id}: ${cache.videos.length} videos loaded. Title: ${sourceTitle || typedSource.title}, Thumbnail: ${sourceThumbnail ? '[set]' : '[blank]'}`);
         
         const videos = cache.videos.map(v => ({
           id: v.id,
@@ -217,7 +217,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         });
       } catch (err) {
         debug.push(`[Loader] ERROR loading YouTube source ${(typedSource as any).id}: ${err}`);
-        logDebug(`[Loader] ERROR loading YouTube source ${(typedSource as any).id}: ${err}`);
+        logVerbose(`[Loader] ERROR loading YouTube source ${(typedSource as any).id}: ${err}`);
         // Add empty source to maintain structure
         videosBySource.push({
           id: typedSource.id,
@@ -235,7 +235,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         const maxDepth = (typedSource as any).maxDepth || 2;
         const localVideos = await scanLocalFolder((typedSource as any).path, maxDepth);
         debug.push(`[Loader] Local source ${(typedSource as any).id}: ${localVideos.length} videos found.`);
-        logDebug(`[Loader] Local source ${(typedSource as any).id}: ${localVideos.length} videos found.`);
+        logVerbose(`[Loader] Local source ${(typedSource as any).id}: ${localVideos.length} videos found.`);
         
         const videos = localVideos.map(v => ({
           id: v.id,
@@ -275,15 +275,15 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         });
       } catch (err) {
         debug.push(`[Loader] ERROR scanning local source ${(typedSource as any).id}: ${err}`);
-        logDebug(`[Loader] ERROR scanning local source ${(typedSource as any).id}: ${err}`);
+        logVerbose(`[Loader] ERROR scanning local source ${(typedSource as any).id}: ${err}`);
       }
     } else {
       debug.push(`[Loader] WARNING: Unsupported source type: ${(source as any).type} (id: ${(source as any).id}) - skipping.`);
-      logDebug(`[Loader] WARNING: Unsupported source type: ${(source as any).type} (id: ${(source as any).id}) - skipping.`);
+      logVerbose(`[Loader] WARNING: Unsupported source type: ${(source as any).type} (id: ${(source as any).id}) - skipping.`);
     }
   }
   
   debug.push(`[Loader] Total sources processed: ${videosBySource.length}`);
-  logDebug(`[Loader] Total sources processed: ${videosBySource.length}`);
+  logVerbose(`[Loader] Total sources processed: ${videosBySource.length}`);
   return { videosBySource, debug };
 } 
