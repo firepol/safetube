@@ -40,7 +40,8 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
   onVideoSeeked,
   onVideoError,
   onVideoLoaded,
-  children
+  children,
+  getCurrentVideoTime
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
