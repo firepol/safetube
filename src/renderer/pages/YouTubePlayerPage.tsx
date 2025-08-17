@@ -182,30 +182,105 @@ export const YouTubePlayerPage: React.FC = () => {
     return cleanup;
       }, [id, isLoading]);
 
+  // Time tracking state
+  const timeTrackingRef = useRef<{
+    startTime: number;
+    totalWatched: number;
+    isTracking: boolean;
+    lastUpdateTime: number;
+    lastVideoTime: number;
+  }>({
+    startTime: 0,
+    totalWatched: 0,
+    isTracking: false,
+    lastUpdateTime: Date.now(),
+    lastVideoTime: 0
+  });
+
+  // Time tracking functions
+  const startTimeTracking = useCallback(() => {
+    if (!timeTrackingRef.current.isTracking) {
+      timeTrackingRef.current = {
+        startTime: Date.now(),
+        totalWatched: 0,
+        isTracking: true,
+        lastUpdateTime: Date.now(),
+        lastVideoTime: ytPlayerInstance.current?.getCurrentTime?.() || 0
+      };
+    }
+  }, []);
+
+  const updateTimeTracking = useCallback(async () => {
+    if (timeTrackingRef.current.isTracking && video && ytPlayerInstance.current) {
+      const currentTime = Date.now();
+      const timeWatched = (currentTime - timeTrackingRef.current.lastUpdateTime) / 1000;
+      
+      if (timeWatched >= 1) {
+        timeTrackingRef.current.totalWatched += timeWatched;
+        timeTrackingRef.current.lastUpdateTime = currentTime;
+
+        // Record the time watched
+        const videoCurrentTime = ytPlayerInstance.current.getCurrentTime();
+        await window.electron.recordVideoWatching(
+          video.id,
+          videoCurrentTime,
+          timeWatched
+        );
+        
+        timeTrackingRef.current.lastVideoTime = videoCurrentTime;
+      }
+    }
+  }, [video]);
+
+  const stopTimeTracking = useCallback(async () => {
+    if (timeTrackingRef.current.isTracking) {
+      await updateTimeTracking();
+      timeTrackingRef.current.isTracking = false;
+    }
+  }, [updateTimeTracking]);
+
+  // Polling-based time tracking for YouTube iframe player
+  useEffect(() => {
+    if (!isVideoPlaying || !video) return;
+
+    const intervalId = setInterval(() => {
+      updateTimeTracking();
+    }, 1000); // Update every second
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isVideoPlaying, video, updateTimeTracking]);
+
   // Event handlers for the base component
   const handleVideoPlay = useCallback(() => {
     setIsVideoPlaying(true);
-  }, []);
+    startTimeTracking();
+  }, [startTimeTracking]);
 
   const handleVideoPause = useCallback(() => {
     setIsVideoPlaying(false);
-  }, []);
+    stopTimeTracking();
+  }, [stopTimeTracking]);
 
   const handleVideoEnded = useCallback(() => {
     setIsVideoPlaying(false);
-  }, []);
+    stopTimeTracking();
+  }, [stopTimeTracking]);
 
   const handleVideoTimeUpdate = useCallback(() => {
-    // This will be handled by the base component
+    // This is handled by the polling interval for YouTube iframe
   }, []);
 
   const handleVideoSeeking = useCallback(() => {
-    // This will be handled by the base component
-  }, []);
+    // Update time tracking when seeking
+    updateTimeTracking();
+  }, [updateTimeTracking]);
 
   const handleVideoSeeked = useCallback(() => {
-    // This will be handled by the base component
-  }, []);
+    // Update time tracking after seeking
+    updateTimeTracking();
+  }, [updateTimeTracking]);
 
   const handleVideoError = useCallback((error: string) => {
     setError(error);
@@ -232,7 +307,7 @@ export const YouTubePlayerPage: React.FC = () => {
       onVideoSeeked={handleVideoSeeked}
       onVideoError={handleVideoError}
       onVideoLoaded={handleVideoLoaded}
-      getCurrentVideoTime={() => ytPlayerInstance.current?.getCurrentTime?.() || 0}
+
     >
       <div ref={containerRef} id={PLAYER_CONTAINER_ID} className="w-full aspect-video bg-black">
         {/* YouTube player will be mounted here */}
