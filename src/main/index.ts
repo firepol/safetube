@@ -565,39 +565,39 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
   try {
     log.info('[Main] get-paginated-videos handler called:', { sourceId, pageNumber });
     
-    // Check if we have videos loaded
-    if (!global.currentVideos || global.currentVideos.length === 0) {
-      log.warn('[Main] No videos loaded, cannot paginate');
-      throw new Error('No videos loaded');
-    }
-    
-    // Find the source and its videos
-    const sourceVideos = global.currentVideos.filter(video => video.sourceId === sourceId);
-    if (sourceVideos.length === 0) {
-      log.warn('[Main] No videos found for source:', sourceId);
-      throw new Error('Source not found');
-    }
-    
-    // Get the source data to find the total count
+    // Get the source data to find the total count and source details
     const { loadAllVideosFromSources } = await import('../preload/loadAllVideosFromSources');
     const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
     const sourceData = await loadAllVideosFromSources('config/videoSources.json', apiKey);
     
-    // Find the specific source to get its total count
+    // Find the specific source to get its details
     const foundSource = sourceData.videosBySource?.find(s => s.id === sourceId);
     if (!foundSource) {
       throw new Error('Source not found in source data');
     }
     
-    // Use the total count from the source data, not just the loaded videos
-    const totalVideos = foundSource.videoCount || sourceVideos.length;
+    // Use the total count from the source data
+    const totalVideos = foundSource.videoCount || 0;
     
-    // Load pagination service
+    // Calculate the page token for YouTube API pagination
+    const pageSize = 50;
+    const pageToken = pageNumber > 1 ? await getPageTokenForPage(sourceId, foundSource, pageNumber, apiKey) : undefined;
+    
+    // Fetch videos for the specific page
+    let pageVideos: any[] = [];
+    if (foundSource.type === 'youtube_channel' || foundSource.type === 'youtube_playlist') {
+      pageVideos = await fetchVideosForPage(foundSource, pageNumber, pageSize, pageToken, apiKey);
+    } else {
+      // For local sources, use the existing pagination logic
+      const { PaginationService } = await import('../preload/paginationService');
+      const paginationService = PaginationService.getInstance();
+      const allVideos = global.currentVideos?.filter(video => video.sourceId === sourceId) || [];
+      pageVideos = paginationService.getPage(sourceId, pageNumber, allVideos);
+    }
+    
+    // Load pagination service for state calculation
     const { PaginationService } = await import('../preload/paginationService');
     const paginationService = PaginationService.getInstance();
-    
-    // Get paginated videos
-    const pageVideos = paginationService.getPage(sourceId, pageNumber, sourceVideos);
     const paginationState = paginationService.getPaginationState(sourceId, totalVideos, pageNumber);
     
     log.info('[Main] Pagination result:', {
@@ -620,6 +620,132 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     throw error;
   }
 });
+
+// Helper function to get page token for a specific page
+async function getPageTokenForPage(sourceId: string, source: any, pageNumber: number, apiKey: string): Promise<string | undefined> {
+  if (pageNumber <= 1) return undefined;
+  
+  try {
+    // For YouTube sources, we need to iterate through pages to get to the requested page
+    // This is not efficient but YouTube API doesn't provide direct page access
+    const { YouTubeAPI } = await import('../preload/youtube');
+    YouTubeAPI.setApiKey(apiKey);
+    
+    let currentPage = 1;
+    let nextPageToken: string | undefined;
+    
+    // Iterate through pages until we reach the target page
+    while (currentPage < pageNumber) {
+      if (source.type === 'youtube_channel') {
+        const channelId = extractChannelId(source.url);
+        if (!channelId) {
+          log.warn(`[Main] Could not extract channel ID from URL: ${source.url}`);
+          break;
+        }
+        
+        let actualChannelId = channelId;
+        
+        if (channelId.startsWith('@')) {
+          try {
+            const channelDetails = await YouTubeAPI.searchChannelByUsername(channelId);
+            actualChannelId = channelDetails.channelId;
+          } catch (error) {
+            log.warn(`[Main] Could not resolve username ${channelId} to channel ID:`, error);
+            actualChannelId = channelId;
+          }
+        }
+        
+        const result = await YouTubeAPI.getChannelVideos(actualChannelId, 50, nextPageToken || undefined);
+        nextPageToken = result.nextPageToken;
+      } else if (source.type === 'youtube_playlist') {
+        const playlistId = extractPlaylistId(source.url);
+        if (!playlistId) {
+          log.warn(`[Main] Could not extract playlist ID from URL: ${source.url}`);
+          break;
+        }
+        
+        const result = await YouTubeAPI.getPlaylistVideos(playlistId, 50, nextPageToken || undefined);
+        nextPageToken = result.nextPageToken;
+      }
+      
+      currentPage++;
+      
+      if (!nextPageToken) {
+        log.warn(`[Main] No more pages available for source ${sourceId} at page ${pageNumber}`);
+        break;
+      }
+    }
+    
+    return nextPageToken;
+  } catch (error) {
+    log.error(`[Main] Error getting page token for page ${pageNumber}:`, error);
+    return undefined;
+  }
+}
+
+// Helper function to fetch videos for a specific page
+async function fetchVideosForPage(source: any, pageNumber: number, pageSize: number, pageToken: string | undefined, apiKey: string): Promise<any[]> {
+  try {
+    const { YouTubeAPI } = await import('../preload/youtube');
+    YouTubeAPI.setApiKey(apiKey);
+    
+    let videoIds: string[] = [];
+    
+    if (source.type === 'youtube_channel') {
+      const channelId = extractChannelId(source.url);
+      if (!channelId) {
+        log.warn(`[Main] Could not extract channel ID from URL: ${source.url}`);
+        return [];
+      }
+      
+      let actualChannelId = channelId;
+      
+      if (channelId.startsWith('@')) {
+        try {
+          const channelDetails = await YouTubeAPI.searchChannelByUsername(channelId);
+          actualChannelId = channelDetails.channelId;
+        } catch (error) {
+          log.warn(`[Main] Could not resolve username ${channelId} to channel ID:`, error);
+          actualChannelId = channelId;
+        }
+      }
+      
+      const result = await YouTubeAPI.getChannelVideos(actualChannelId, pageSize, pageToken);
+      videoIds = result.videoIds;
+    } else if (source.type === 'youtube_playlist') {
+      const playlistId = extractPlaylistId(source.url);
+      if (!playlistId) {
+        log.warn(`[Main] Could not extract playlist ID from URL: ${source.url}`);
+        return [];
+      }
+      
+      const result = await YouTubeAPI.getPlaylistVideos(playlistId, pageSize, pageToken);
+      videoIds = result.videoIds;
+    }
+    
+    // Fetch video details for the IDs
+    const videoDetails = await Promise.all(
+      videoIds.map(id => YouTubeAPI.getVideoDetails(id))
+    );
+    
+    // Transform to the expected video format
+    return videoDetails.map(v => ({
+      id: v.id,
+      type: 'youtube' as const,
+      title: v.snippet.title,
+      thumbnail: v.snippet.thumbnails.high.url || '',
+      duration: YouTubeAPI.parseDuration(v.contentDetails.duration),
+      url: `https://www.youtube.com/watch?v=${v.id}`,
+      preferredLanguages: ['en'],
+      sourceId: source.id,
+      sourceTitle: source.title,
+      sourceThumbnail: source.thumbnail || '',
+    }));
+  } catch (error) {
+    log.error(`[Main] Error fetching videos for page ${pageNumber}:`, error);
+    return [];
+  }
+}
 
 // Handle loading videos from new source system
 ipcMain.handle('load-videos-from-sources', async () => {

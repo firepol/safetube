@@ -292,15 +292,22 @@ export class YouTubeAPI {
     }
   }
 
-  static async getPlaylistVideos(playlistId: string, maxResults = 50): Promise<{ videoIds: string[], totalResults: number }> {
-    const data = await YouTubeAPI.fetch<YouTubePlaylist>('playlistItems', {
+  static async getPlaylistVideos(playlistId: string, maxResults = 50, pageToken?: string): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {
+    const params: Record<string, string> = {
       part: 'snippet',
       playlistId,
       maxResults: maxResults.toString(),
-    });
+    };
+    
+    if (pageToken) {
+      params.pageToken = pageToken;
+    }
+    
+    const data = await YouTubeAPI.fetch<YouTubePlaylist>('playlistItems', params);
     return {
       videoIds: data.items.map(item => item.snippet.resourceId.videoId),
-      totalResults: data.pageInfo.totalResults
+      totalResults: data.pageInfo.totalResults,
+      nextPageToken: data.nextPageToken
     };
   }
 
@@ -315,9 +322,20 @@ export class YouTubeAPI {
     return ChannelSchema.parse(data.items[0]);
   }
 
-  static async getChannelVideos(channelId: string, maxResults = 50): Promise<{ videoIds: string[], totalResults: number }> {
+  static async getChannelVideos(channelId: string, maxResults = 50, pageToken?: string): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {
     const channel = await this.getChannelDetails(channelId);
-    return this.getPlaylistVideos(channel.contentDetails.relatedPlaylists.uploads, maxResults);
+    return this.getPlaylistVideos(channel.contentDetails.relatedPlaylists.uploads, maxResults, pageToken);
+  }
+
+  static async getVideosForPage(sourceId: string, pageNumber: number, pageSize: number = 50): Promise<{ videos: any[], totalResults: number }> {
+    try {
+      // This method will be called from the main process with source details
+      // For now, we'll need to get the source info to determine the type and ID
+      throw new Error('getVideosForPage should be called from main process with source details');
+    } catch (error) {
+      console.error('[YouTubeAPI] Error in getVideosForPage:', error);
+      throw error;
+    }
   }
 
   static async searchChannelByUsername(username: string): Promise<{ channelId: string; title: string; thumbnail: string }> {
