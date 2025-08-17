@@ -11,39 +11,104 @@ function logDebug(msg: string) {
   console.log(msg);
 }
 
+// Helper to scan local folders recursively up to maxDepth
 async function scanLocalFolder(folderPath: string, maxDepth: number, currentDepth = 1): Promise<any[]> {
   let videos: any[] = [];
-  if (currentDepth > maxDepth) return videos;
-  const entries = fs.readdirSync(folderPath, { withFileTypes: true });
-  for (const entry of entries) {
-    const fullPath = path.join(folderPath, entry.name);
-    if (entry.isDirectory()) {
-      if (currentDepth < maxDepth) {
-        videos = videos.concat(await scanLocalFolder(fullPath, maxDepth, currentDepth + 1));
-      }
-    } else if (entry.isFile() && isVideoFile(entry.name)) {
-      // Generate encoded ID for local video to avoid routing issues
-      let videoId: string;
-      try {
-        videoId = Buffer.from(fullPath).toString('base64');
-        console.log('[Preload] Generated encoded ID for local video:', { originalPath: fullPath, encodedId: videoId });
-      } catch (error) {
-        console.error('[Preload] Error encoding file path, using fallback ID:', error);
-        videoId = `local_${Buffer.from(fullPath).toString('hex').substring(0, 16)}`;
-      }
+  
+  try {
+    const entries = fs.readdirSync(folderPath, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(folderPath, entry.name);
       
-      videos.push({
-        id: videoId,
-        type: 'local',
-        title: path.basename(entry.name, path.extname(entry.name)),
-        thumbnail: '',
-        duration: 0,
-        url: fullPath, // Keep original path for internal use
-        video: fullPath,
-        audio: undefined
-      });
+      if (entry.isDirectory()) {
+        // If we're at maxDepth, flatten all content from this directory
+        if (currentDepth === maxDepth) {
+          console.log('[Preload] At maxDepth', currentDepth, 'flattening content from:', fullPath);
+          // Recursively scan deeper content but mark it as being at maxDepth
+          const deeperVideos = await scanFolderDeeper(fullPath, currentDepth + 1);
+          videos = videos.concat(deeperVideos);
+        } else {
+          // Continue scanning normally
+          const subVideos = await scanLocalFolder(fullPath, maxDepth, currentDepth + 1);
+          videos = videos.concat(subVideos);
+        }
+      } else if (entry.isFile() && isVideoFile(entry.name)) {
+        // Generate encoded ID for local video to avoid routing issues
+        let videoId: string;
+        try {
+          videoId = Buffer.from(fullPath).toString('base64');
+          console.log('[Preload] Found video at depth', currentDepth, ':', fullPath);
+        } catch (error) {
+          console.error('[Preload] Error encoding file path, using fallback ID:', error);
+          videoId = `local_${Buffer.from(fullPath).toString('hex').substring(0, 16)}`;
+        }
+        
+        videos.push({
+          id: videoId,
+          type: 'local',
+          title: path.basename(entry.name, path.extname(entry.name)),
+          thumbnail: '',
+          duration: 0,
+          url: fullPath, // Keep original path for internal use
+          video: fullPath,
+          audio: undefined,
+          depth: currentDepth, // Track the depth where this video was found
+          relativePath: path.relative(folderPath, fullPath) // Track relative path for debugging
+        });
+      }
     }
+  } catch (error) {
+    console.error('[Preload] Error scanning folder:', folderPath, error);
   }
+  
+  return videos;
+}
+
+// Function to scan deeper content when flattening at maxDepth
+async function scanFolderDeeper(folderPath: string, currentDepth: number): Promise<any[]> {
+  let videos: any[] = [];
+  
+  try {
+    const entries = fs.readdirSync(folderPath, { withFileTypes: true });
+    
+    for (const entry of entries) {
+      const fullPath = path.join(folderPath, entry.name);
+      
+      if (entry.isDirectory()) {
+        // Continue scanning deeper recursively
+        const deeperVideos = await scanFolderDeeper(fullPath, currentDepth + 1);
+        videos = videos.concat(deeperVideos);
+      } else if (entry.isFile() && isVideoFile(entry.name)) {
+        // Generate encoded ID for local video to avoid routing issues
+        let videoId: string;
+        try {
+          videoId = Buffer.from(fullPath).toString('base64');
+          console.log('[Preload] Found video at depth', currentDepth, 'flattened to maxDepth');
+        } catch (error) {
+          console.error('[Preload] Error encoding file path, using fallback ID:', error);
+          videoId = `local_${Buffer.from(fullPath).toString('hex').substring(0, 16)}`;
+        }
+        
+        videos.push({
+          id: videoId,
+          type: 'local',
+          title: path.basename(entry.name, path.extname(entry.name)),
+          thumbnail: '',
+          duration: 0,
+          url: fullPath, // Keep original path for internal use
+          video: fullPath,
+          audio: undefined,
+          depth: currentDepth - 1, // Mark as being at the previous depth (flattened)
+          relativePath: path.relative(folderPath, fullPath), // Track relative path for debugging
+          flattened: true // Mark as flattened content
+        });
+      }
+    }
+  } catch (error) {
+    console.error('[Preload] Error scanning deeper folder for flattening:', folderPath, error);
+  }
+  
   return videos;
 }
 

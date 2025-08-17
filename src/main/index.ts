@@ -31,17 +31,15 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
     // Resolve relative paths from project root
     const absolutePath = path.isAbsolute(folderPath) ? folderPath : path.join(process.cwd(), folderPath);
 
-    log.info('[Main] Scanning local folder:', absolutePath);
+    log.info('[Main] Scanning local folder:', absolutePath, 'with maxDepth:', maxDepth);
     
     if (!fs.existsSync(absolutePath)) {
       log.warn('[Main] Local folder does not exist:', absolutePath);
       return videos;
     }
 
-    // Recursive function to scan folders
-    async function scanFolder(currentPath: string, depth: number): Promise<void> {
-      if (depth > maxDepth) return;
-      
+    // Recursive function to scan folders with flattening behavior
+    const scanFolder = async (currentPath: string, depth: number): Promise<void> => {
       try {
         const items = fs.readdirSync(currentPath);
         
@@ -50,7 +48,15 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
           const stat = fs.statSync(itemPath);
           
           if (stat.isDirectory()) {
-            await scanFolder(itemPath, depth + 1);
+            // If we're at maxDepth, flatten all content from this directory
+            if (depth === maxDepth) {
+              log.debug('[Main] At maxDepth', depth, 'flattening content from:', itemPath);
+              // Recursively scan deeper content but mark it as being at maxDepth
+              await scanFolderDeeper(itemPath, depth + 1);
+            } else {
+              // Continue scanning normally
+              await scanFolder(itemPath, depth + 1);
+            }
           } else if (stat.isFile()) {
             const ext = path.extname(item).toLowerCase();
             if (supportedExtensions.includes(ext)) {
@@ -58,7 +64,7 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
               let videoId: string;
               try {
                 videoId = encodeFilePath(itemPath);
-                log.info('[Main] Generated encoded ID for local video:', { originalPath: itemPath, encodedId: videoId });
+                log.debug('[Main] Found video at depth', depth, ':', itemPath);
               } catch (error) {
                 log.error('[Main] Error encoding file path, using fallback ID:', error);
                 // Fallback: use a hash-based ID
@@ -74,7 +80,9 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
                 video: itemPath,
                 audio: undefined,
                 preferredLanguages: ['en'],
-                type: 'local' // Add explicit type for routing
+                type: 'local', // Add explicit type for routing
+                depth: depth, // Track the depth where this video was found
+                relativePath: path.relative(absolutePath, itemPath) // Track relative path for debugging
               });
             }
           }
@@ -82,10 +90,59 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
       } catch (error) {
         log.warn('[Main] Error scanning folder:', currentPath, error);
       }
-    }
+    };
 
-    await scanFolder(absolutePath, 0);
-    log.info('[Main] Found videos in local folder:', videos.length);
+    // Function to scan deeper content when flattening at maxDepth
+    const scanFolderDeeper = async (currentPath: string, depth: number): Promise<void> => {
+      try {
+        const items = fs.readdirSync(currentPath);
+        
+        for (const item of items) {
+          const itemPath = path.join(currentPath, item);
+          const stat = fs.statSync(itemPath);
+          
+          if (stat.isDirectory()) {
+            // Continue scanning deeper recursively
+            await scanFolderDeeper(itemPath, depth + 1);
+          } else if (stat.isFile()) {
+            const ext = path.extname(item).toLowerCase();
+            if (supportedExtensions.includes(ext)) {
+              // Generate a unique ID using base64 encoding of the file path
+              let videoId: string;
+              try {
+                videoId = encodeFilePath(itemPath);
+                log.debug('[Main] Found video at depth', depth, 'flattened to maxDepth:', maxDepth);
+              } catch (error) {
+                log.error('[Main] Error encoding file path, using fallback ID:', error);
+                // Fallback: use a hash-based ID
+                videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
+              }
+              
+              videos.push({
+                id: videoId,
+                title: path.basename(item, ext),
+                thumbnail: '',
+                duration: 0, // Duration would need to be extracted from video metadata
+                url: itemPath,
+                video: itemPath,
+                audio: undefined,
+                preferredLanguages: ['en'],
+                type: 'local', // Add explicit type for routing
+                depth: maxDepth, // Mark as being at maxDepth (flattened)
+                relativePath: path.relative(absolutePath, itemPath), // Track relative path for debugging
+                flattened: true // Mark as flattened content
+              });
+            }
+          }
+        }
+      } catch (error) {
+        log.warn('[Main] Error scanning deeper folder for flattening:', currentPath, error);
+      }
+    };
+
+    // Start scanning from the root folder (depth 1)
+    await scanFolder(absolutePath, 1);
+    log.info('[Main] Found videos in local folder:', videos.length, 'with maxDepth:', maxDepth);
     
   } catch (error) {
     log.error('[Main] Error scanning local folder:', error);
