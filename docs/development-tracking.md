@@ -413,27 +413,49 @@ Each feature PRD must include:
   - The dual player system is now the default, with robust configuration and fallback mechanisms.
 
 ### 9. Advanced Video Sources & Local Folder Navigation
-- **Status**: Not Started
+- **Status**: In Progress
 - **PRD**: [Advanced Video Sources & Local Folder Navigation PRD](prds/09-advanced-video-sources.md)
-- **Current Sprint**: N/A
+- **Current Sprint**: Sprint 3
 - **Blockers**: None
 - **Dependencies**: Project Setup, Kid Screen
-- **Progress**: 0%
-- **Last Updated**: 2025-06-30
-- **Completed Items**: None
+- **Progress**: 70%
+- **Last Updated**: 2025-08-17
+- **Completed Items**:
+  - **Configuration system** - `videoSources.json` with support for `youtube_channel`, `youtube_playlist`, and `local` source types
+  - **YouTube API integration** - Channel and playlist fetching with caching (one JSON file per source)
+  - **Local folder scanning** - Recursive scanning with `maxDepth` support and video file discovery
+  - **Source grouping** - Videos grouped by source with proper metadata and counts
+  - **Homepage UI** - Sources displayed as clickable thumbnail "folders" instead of expandable sections
+  - **Navigation system** - Clicking a source shows all its videos in a grid view with back button
+  - **Pagination support** - Basic pagination for large video collections (50 videos per page)
+  - **Video ID encoding** - Local video paths properly encoded for player compatibility
+  - **Source thumbnails** - YouTube sources show first video thumbnail, local sources show folder icons
+  - **Error handling** - Graceful handling of missing sources, API failures, and configuration issues
 - **Remaining Items**:
-  - Implement YouTube channel/playlist source support
-  - Implement local folder navigation with maxDepth and flattening
-  - Update homepage UI for new navigation logic
-  - Add tests for new source types and navigation
-  - Update documentation and configuration examples
-- **Recent Changes**: None
+  - **Hierarchical navigation for maxDepth: 3** - Currently only implements flattened view (maxDepth: 2 behavior)
+  - **Subfolder navigation UI** - Need to show subfolders as clickable items when maxDepth > 2
+  - **Folder vs file display logic** - Distinguish between showing subfolders vs flattening all videos
+  - **Navigation breadcrumbs** - Show current folder path when navigating subfolders
+  - **Tests for hierarchical navigation** - Unit and integration tests for maxDepth: 3 behavior
+- **Recent Changes**:
+  - 2025-08-17: **Fixed pagination handler** - resolved video ID transformation issue where encoded IDs were being converted to full paths
+  - 2025-08-17: **Fixed local video routing** - ensured source system loads on startup for proper video playback
+  - 2025-08-17: **Implemented base64 encoding** - local video file paths properly encoded for player compatibility
+  - 2025-08-16: **Fixed pagination state calculation** - corrected total count and source thumbnails for YouTube sources
+  - 2025-08-14: **Implemented source page routing** - proper navigation for source pages with pagination support
+  - 2025-08-14: **Fixed YouTube username resolution** - restored channel ID extraction for @username URLs
+  - 2025-08-13: **Implemented folder-based UI** - converted expandable folders to clickable thumbnail navigation
+  - 2025-08-13: **Added local folder scanning** - recursive scanning with configurable maxDepth support
+  - 2025-07-17: **Initial implementation** - started video source loading system with configuration parsing
 - **Notes**:
-  - This feature will allow parents to configure YouTube channels, playlists, and local folders (with subfolders) as sources.
-  - Each YouTube channel and playlist source maintains a dedicated JSON cache file with all video details for efficient loading and minimal API usage.
-  - Local folder sources are scanned on demand and do not require a cache file.
-  - Local folder navigation will support both hierarchical and flattened views, controlled by `maxDepth`.
-  - All configuration remains JSON-based for now.
+  - **Current implementation only supports flattened view (maxDepth: 2 behavior)** - all videos from subfolders are shown together in a flat list
+  - **Hierarchical navigation (maxDepth: 3) is NOT implemented** - this is a key missing feature per PRD requirements
+  - **Local folder scanning works correctly** - finds all video files up to specified maxDepth
+  - **YouTube sources work with proper caching** - one JSON cache file per source for efficiency
+  - **UI navigation is working** - sources display as folders, clicking shows videos, back button returns to sources
+  - **Pagination is functional** - handles large video collections without performance issues
+  - **Video playback integration working** - local videos are found and properly encoded for player compatibility
+  - **Next major milestone**: Implement hierarchical navigation for maxDepth: 3 to show subfolders as clickable items instead of flattening all videos
 
 ## Status Legend
 
