@@ -570,10 +570,18 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
     const sourceData = await loadAllVideosFromSources('config/videoSources.json', apiKey);
     
-    // Find the specific source to get its details
+    // Find the specific source to get its total count
     const foundSource = sourceData.videosBySource?.find(s => s.id === sourceId);
     if (!foundSource) {
       throw new Error('Source not found in source data');
+    }
+    
+    // Get the original source configuration with URL from the config file
+    const fs = require('fs');
+    const videoSourcesConfig = JSON.parse(fs.readFileSync('config/videoSources.json', 'utf-8'));
+    const originalSource = videoSourcesConfig.find((s: any) => s.id === sourceId);
+    if (!originalSource) {
+      throw new Error('Original source configuration not found');
     }
     
     // Use the total count from the source data
@@ -581,12 +589,12 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     
     // Calculate the page token for YouTube API pagination
     const pageSize = 50;
-    const pageToken: string | undefined = pageNumber > 1 ? await getPageTokenForPage(sourceId, foundSource, pageNumber) : undefined;
+    const pageToken: string | undefined = pageNumber > 1 ? await getPageTokenForPage(sourceId, originalSource, pageNumber) : undefined;
     
     // Fetch videos for the specific page
     let pageVideos: any[] = [];
     if (foundSource.type === 'youtube_channel' || foundSource.type === 'youtube_playlist') {
-      pageVideos = await fetchVideosForPage(foundSource, pageNumber, pageSize, pageToken || undefined);
+      pageVideos = await fetchVideosForPage(originalSource, pageNumber, pageSize, pageToken || undefined);
     } else {
       // For local sources, use the existing pagination logic
       const { PaginationService } = await import('../preload/paginationService');
