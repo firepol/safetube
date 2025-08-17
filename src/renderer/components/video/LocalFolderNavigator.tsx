@@ -32,7 +32,7 @@ interface LocalFolderNavigatorProps {
   onVideoClick: (video: VideoItem) => void;
 }
 
-export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
+export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> => ({
   sourcePath,
   maxDepth,
   currentPath = sourcePath,
@@ -43,12 +43,13 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [navigationStack, setNavigationStack] = useState<string[]>([sourcePath]);
+  const [currentFolderPath, setCurrentFolderPath] = useState(sourcePath);
 
   const currentDepth = navigationStack.length;
 
   useEffect(() => {
     loadFolderContents();
-  }, [currentPath]);
+  }, [currentFolderPath]);
 
   const loadFolderContents = async () => {
     try {
@@ -59,7 +60,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
         throw new Error('getLocalFolderContents not available');
       }
 
-      const result = await window.electron.getLocalFolderContents(currentPath, maxDepth, currentDepth);
+      const result = await window.electron.getLocalFolderContents(currentFolderPath, maxDepth, currentDepth);
       setContents(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -70,6 +71,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
 
   const handleFolderClick = (folder: FolderItem) => {
     setNavigationStack(prev => [...prev, folder.path]);
+    setCurrentFolderPath(folder.path);
     setContents(null); // Clear contents to show loading state
   };
 
@@ -77,6 +79,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     if (navigationStack.length > 1) {
       const newStack = navigationStack.slice(0, -1);
       setNavigationStack(newStack);
+      setCurrentFolderPath(newStack[newStack.length - 1]);
       setContents(null); // Clear contents to show loading state
     } else {
       onBackClick();
@@ -84,10 +87,10 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   };
 
   const getCurrentFolderName = () => {
-    if (currentPath === sourcePath) {
+    if (currentFolderPath === sourcePath) {
       return 'Root';
     }
-    return currentPath.split('/').pop() || 'Unknown';
+    return currentFolderPath.split('/').pop() || 'Unknown';
   };
 
   const getBreadcrumbPath = () => {
