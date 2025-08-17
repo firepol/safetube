@@ -6,10 +6,16 @@ import { Video } from '../types';
 import { BasePlayerPage } from './BasePlayerPage';
 
 function getSrc(val: unknown): string {
-  if (typeof val === 'string') return val;
+  console.log('[PlayerPage] getSrc called with:', val);
+  if (typeof val === 'string') {
+    console.log('[PlayerPage] getSrc returning string:', val);
+    return val;
+  }
   if (val && typeof val === 'object' && 'url' in val && typeof (val as any).url === 'string') {
+    console.log('[PlayerPage] getSrc returning object url:', (val as any).url);
     return (val as any).url;
   }
+  console.log('[PlayerPage] getSrc returning empty string');
   return '';
 }
 
@@ -55,7 +61,9 @@ export const PlayerPage: React.FC = () => {
 
   useEffect(() => {
     const loadLocalFile = async () => {
+      console.log('[PlayerPage] loadLocalFile called, video:', video);
       if (video?.type === 'local') {
+        console.log('[PlayerPage] Processing local video:', { id: video.id, title: video.title, video: video.video, audio: video.audio, url: video.url });
         try {
           // Handle separate video and audio files
           if (video.video && video.audio) {
@@ -139,10 +147,13 @@ export const PlayerPage: React.FC = () => {
             }
           } else if (video.url) {
             // Handle single file
+            console.log('[PlayerPage] Loading single local file:', video.url);
             const path = await window.electron.getLocalFile(video.url);
+            console.log('[PlayerPage] Local file path resolved:', path);
             
             if (videoRef.current) {
               videoRef.current.src = getSrc(path);
+              console.log('[PlayerPage] Set video src to:', getSrc(path));
               // Add event listeners for debugging
               videoRef.current.addEventListener('error', (e) => {
                 console.error('Video element error:', e);
