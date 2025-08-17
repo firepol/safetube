@@ -43,6 +43,11 @@ export const PlayerRouter: React.FC = () => {
         let video = null;
         try {
           video = await window.electron.getVideoData(videoId);
+          console.log('[PlayerRouter] Video data loaded:', { 
+            id: video?.id, 
+            type: video?.type, 
+            title: video?.title 
+          });
         } catch (error) {
           console.error('[PlayerRouter] Error getting video data:', error);
           setSelectedPlayer(<PlayerPage />);
@@ -61,9 +66,18 @@ export const PlayerRouter: React.FC = () => {
         setPlayerType(finalPlayerType);
 
         // Route to appropriate player based on video type and config
+        console.log('[PlayerRouter] Routing decision:', { 
+          videoType: video?.type, 
+          finalPlayerType, 
+          isYouTube: video?.type === 'youtube',
+          shouldUseIframe: finalPlayerType === 'iframe'
+        });
+        
         if (video && video.type === 'youtube' && finalPlayerType === 'iframe') {
+          console.log('[PlayerRouter] Using YouTubePlayerPage (iframe)');
           setSelectedPlayer(<YouTubePlayerPage />);
         } else {
+          console.log('[PlayerRouter] Using PlayerPage (mediasource)');
           setSelectedPlayer(<PlayerPage />);
         }
 
