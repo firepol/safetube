@@ -581,7 +581,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     
     // Calculate the page token for YouTube API pagination
     const pageSize = 50;
-    const pageToken = pageNumber > 1 ? await getPageTokenForPage(sourceId, foundSource, pageNumber, apiKey) : undefined;
+    const pageToken = pageNumber > 1 ? await getPageTokenForPage(sourceId, foundSource, pageNumber) : undefined;
     
     // Fetch videos for the specific page
     let pageVideos: any[] = [];
@@ -622,10 +622,17 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
 });
 
 // Helper function to get page token for a specific page
-async function getPageTokenForPage(sourceId: string, source: any, pageNumber: number, apiKey: string): Promise<string | undefined> {
+async function getPageTokenForPage(sourceId: string, source: any, pageNumber: number): Promise<string | undefined> {
   if (pageNumber <= 1) return undefined;
   
   try {
+    // Get API key from environment
+    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
+    if (!apiKey) {
+      log.warn('[Main] YouTube API key not available for pagination');
+      return undefined;
+    }
+    
     // For YouTube sources, we need to iterate through pages to get to the requested page
     // This is not efficient but YouTube API doesn't provide direct page access
     const { YouTubeAPI } = await import('../preload/youtube');
