@@ -70,4 +70,17 @@ export interface CachedPage {
   videos: any[];
   timestamp: number;
   sourceId: string;
+}
+
+// Processed source data returned by loadAllVideosFromSources
+export interface ProcessedSource {
+  id: string;
+  type: string;
+  title: string;
+  thumbnail: string;
+  videoCount: number;
+  videos: any[];
+  paginationState: PaginationState;
+  usingCachedData?: boolean;
+  lastFetched?: string;
 } 

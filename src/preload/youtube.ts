@@ -331,6 +331,25 @@ export class YouTubeAPI {
       
       if (!response.ok) {
         const errorText = await response.text();
+        
+        // Try to parse the error response to get specific error details
+        try {
+          const errorData = JSON.parse(errorText);
+          if (errorData.error) {
+            if (errorData.error.code === 403 && errorData.error.reason === 'quotaExceeded') {
+              throw new Error(`YouTube API quota exceeded. Please try again later.`);
+            } else if (errorData.error.code === 403) {
+              throw new Error(`YouTube API access denied. Please check your API key.`);
+            } else if (errorData.error.code === 429) {
+              throw new Error(`YouTube API rate limit exceeded. Please try again later.`);
+            } else {
+              throw new Error(`YouTube API error: ${errorData.error.message || errorData.error.code}`);
+            }
+          }
+        } catch (parseError) {
+          // If we can't parse the error response, use the generic error
+        }
+        
         throw new Error(`YouTube API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
       

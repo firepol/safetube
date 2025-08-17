@@ -134,7 +134,9 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
           thumbnail: sourceThumbnail || '',
           videoCount: cache.totalVideos || videos.length, // Use total count from cache
           videos: videos,
-          paginationState: paginationState
+          paginationState: paginationState,
+          usingCachedData: cache.usingCachedData || false, // Pass through the cached data flag
+          lastFetched: cache.lastFetched // Pass through when data was last fetched
         });
       } catch (err) {
         debug.push(`[Loader] ERROR loading YouTube source ${(typedSource as any).id}: ${err}`);
