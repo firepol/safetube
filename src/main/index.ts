@@ -106,8 +106,8 @@ async function resolveUsernameToChannelId(username: string, apiKey: string): Pro
   }
 }
 
-// Force TypeScript to include this function by exporting it (even if not used elsewhere)
-export { resolveUsernameToChannelId };
+// Force TypeScript to include these functions by exporting them (even if not used elsewhere)
+export { resolveUsernameToChannelId, loadAllVideosFromSourcesMain };
 
 // Helper functions for parsing YouTube URLs
 function extractChannelId(url: string): string | null {
@@ -847,6 +847,101 @@ function parseISODuration(iso: string): number {
   if (!match) return 0;
   const [, h, m, s] = match;
   return (parseInt(h || '0') * 3600) + (parseInt(m || '0') * 60) + parseInt(s || '0');
+}
+
+// Main process version of loadAllVideosFromSources that uses local scanLocalFolder
+async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.json', apiKey?: string | null) {
+  const debug: string[] = [];
+  let sources: any[] = [];
+  
+  try {
+    log.info('[Main] Loading video sources from:', configPath);
+    sources = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    log.info('[Main] Loaded sources:', sources.length);
+  } catch (err) {
+    log.error('[Main] ERROR loading videoSources.json:', err);
+    return { videosBySource: [], debug };
+  }
+
+  const videosBySource: any[] = [];
+
+  for (const source of sources) {
+    if (!source || typeof source !== 'object' || !('type' in source) || !('id' in source)) {
+      log.warn('[Main] WARNING: Skipping invalid source entry:', source);
+      continue;
+    }
+    
+    log.info('[Main] Processing source:', source.id, '(', source.type, ')');
+    
+    if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
+      // For YouTube sources, we'll use the preload version since it has the YouTube API logic
+      try {
+        const { loadAllVideosFromSources } = await import('../preload/loadAllVideosFromSources');
+        const result = await loadAllVideosFromSources(configPath, apiKey);
+        const youtubeSource = result.videosBySource.find((s: any) => s.id === source.id);
+        if (youtubeSource) {
+          videosBySource.push(youtubeSource);
+        }
+      } catch (err) {
+        log.error('[Main] ERROR loading YouTube source:', source.id, err);
+        videosBySource.push({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          thumbnail: '',
+          videoCount: 0,
+          videos: [],
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
+        });
+      }
+    } else if (source.type === 'local') {
+      try {
+        const maxDepth = source.maxDepth || 2;
+        const localVideos = await scanLocalFolder(source.path, maxDepth);
+        log.info('[Main] Local source', source.id, ':', localVideos.length, 'videos found.');
+        
+        const videos = localVideos.map(v => ({
+          id: v.id,
+          type: 'local' as const,
+          title: v.title,
+          thumbnail: v.thumbnail || '',
+          duration: v.duration || 0,
+          url: v.url,
+          video: v.video,
+          audio: v.audio,
+          sourceId: source.id,
+          sourceTitle: source.title,
+          sourceThumbnail: '',
+        }));
+
+        videosBySource.push({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          thumbnail: '',
+          videoCount: videos.length,
+          videos: videos,
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: videos.length, pageSize: 50 }
+        });
+      } catch (err) {
+        log.error('[Main] ERROR scanning local source:', source.id, err);
+        videosBySource.push({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          thumbnail: '',
+          videoCount: 0,
+          videos: [],
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }
+        });
+      }
+    } else {
+      log.warn('[Main] WARNING: Unsupported source type:', source.type, '(id:', source.id, ') - skipping.');
+    }
+  }
+  
+  log.info('[Main] Total sources processed:', videosBySource.length);
+  return { videosBySource, debug };
 }
 
 // Helper functions for parsing YouTube URLs

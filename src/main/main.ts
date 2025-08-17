@@ -198,15 +198,20 @@ app.whenReady().then(async () => {
   // Initialize video sources on startup
   try {
     console.log('[Main] Initializing video sources...');
-    const { loadAllVideosFromSources } = await import('../preload/loadAllVideosFromSources');
+    const { loadAllVideosFromSourcesMain } = await import('../main/index');
     const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
-    const result = await loadAllVideosFromSources('config/videoSources.json', apiKey);
+    const result = await loadAllVideosFromSourcesMain('config/videoSources.json', apiKey);
     console.log('[Main] Videos loaded on startup:', { totalVideos: result.videosBySource?.length || 0, sources: result.videosBySource?.length || 0 });
     
     // Store videos globally for access by other handlers
     // Extract all videos from the videosBySource structure
     const allVideos = result.videosBySource?.flatMap(source => source.videos || []) || [];
     global.currentVideos = allVideos;
+    
+    if (allVideos.length > 0) {
+      const sampleVideos = allVideos.slice(0, 5);
+      console.log('[Main] Sample videos in global.currentVideos:', sampleVideos.map(v => ({ id: v.id, type: v.type, title: v.title, sourceId: v.sourceId })));
+    }
   } catch (error) {
     console.error('[Main] Error loading videos on startup:', error);
   }

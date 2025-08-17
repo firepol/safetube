@@ -22,13 +22,25 @@ async function scanLocalFolder(folderPath: string, maxDepth: number, currentDept
         videos = videos.concat(await scanLocalFolder(fullPath, maxDepth, currentDepth + 1));
       }
     } else if (entry.isFile() && isVideoFile(entry.name)) {
+      // Generate encoded ID for local video to avoid routing issues
+      let videoId: string;
+      try {
+        videoId = Buffer.from(fullPath).toString('base64');
+        console.log('[Preload] Generated encoded ID for local video:', { originalPath: fullPath, encodedId: videoId });
+      } catch (error) {
+        console.error('[Preload] Error encoding file path, using fallback ID:', error);
+        videoId = `local_${Buffer.from(fullPath).toString('hex').substring(0, 16)}`;
+      }
+      
       videos.push({
-        id: fullPath,
+        id: videoId,
         type: 'local',
         title: path.basename(entry.name, path.extname(entry.name)),
         thumbnail: '',
         duration: 0,
-        url: fullPath
+        url: fullPath, // Keep original path for internal use
+        video: fullPath,
+        audio: undefined
       });
     }
   }
