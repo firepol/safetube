@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld(
     // New IPC handler for getting paginated videos from a specific source
     getPaginatedVideos: (sourceId: string, pageNumber: number) => 
       ipcRenderer.invoke('get-paginated-videos', sourceId, pageNumber),
+    // New IPC handler for getting local folder contents for navigation
+    getLocalFolderContents: (folderPath: string, maxDepth: number, currentDepth: number = 1) => 
+      ipcRenderer.invoke('get-local-folder-contents', folderPath, maxDepth, currentDepth),
     // Expose environment variables directly
     env: {
       ELECTRON_LOG_VERBOSE: process.env.ELECTRON_LOG_VERBOSE

@@ -151,6 +151,137 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
   return videos;
 }
 
+// New function to get folder contents for navigation (not flattened)
+async function getLocalFolderContents(folderPath: string, maxDepth: number, currentDepth: number = 1): Promise<{folders: any[], videos: any[], depth: number}> {
+  const folders: any[] = [];
+  const videos: any[] = [];
+  const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
+  
+  try {
+    // Resolve relative paths from project root
+    const absolutePath = path.isAbsolute(folderPath) ? folderPath : path.join(process.cwd(), folderPath);
+
+    log.info('[Main] Getting folder contents:', absolutePath, 'at depth:', currentDepth, 'with maxDepth:', maxDepth);
+    
+    if (!fs.existsSync(absolutePath)) {
+      log.warn('[Main] Local folder does not exist:', absolutePath);
+      return { folders, videos, depth: currentDepth };
+    }
+
+    const items = fs.readdirSync(absolutePath);
+    
+    for (const item of items) {
+      const itemPath = path.join(absolutePath, item);
+      const stat = fs.statSync(itemPath);
+      
+      if (stat.isDirectory()) {
+        // Only show folders if we haven't reached maxDepth
+        if (currentDepth < maxDepth) {
+          folders.push({
+            name: item,
+            path: itemPath,
+            type: 'folder',
+            depth: currentDepth + 1
+          });
+        } else {
+          // At maxDepth, flatten deeper content
+          log.debug('[Main] At maxDepth', currentDepth, 'flattening content from:', itemPath);
+          const flattenedContent = await getFlattenedContent(itemPath, currentDepth + 1);
+          videos.push(...flattenedContent);
+        }
+      } else if (stat.isFile()) {
+        const ext = path.extname(item).toLowerCase();
+        if (supportedExtensions.includes(ext)) {
+          // Generate a unique ID using base64 encoding of the file path
+          let videoId: string;
+          try {
+            videoId = encodeFilePath(itemPath);
+            log.debug('[Main] Found video at depth', currentDepth, ':', itemPath);
+          } catch (error) {
+            log.error('[Main] Error encoding file path, using fallback ID:', error);
+            // Fallback: use a hash-based ID
+            videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
+          }
+          
+          videos.push({
+            id: videoId,
+            title: path.basename(item, ext),
+            thumbnail: '',
+            duration: 0,
+            url: itemPath,
+            video: itemPath,
+            audio: undefined,
+            preferredLanguages: ['en'],
+            type: 'local',
+            depth: currentDepth,
+            relativePath: path.relative(path.join(process.cwd(), 'test-videos'), itemPath)
+          });
+        }
+      }
+    }
+    
+    log.info('[Main] Folder contents:', { folders: folders.length, videos: videos.length, depth: currentDepth });
+    
+  } catch (error) {
+    log.error('[Main] Error getting folder contents:', error);
+  }
+  
+  return { folders, videos, depth: currentDepth };
+}
+
+// Helper function to get flattened content from deeper levels
+async function getFlattenedContent(folderPath: string, depth: number): Promise<any[]> {
+  const videos: any[] = [];
+  const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
+  
+  try {
+    const items = fs.readdirSync(folderPath);
+    
+    for (const item of items) {
+      const itemPath = path.join(folderPath, item);
+      const stat = fs.statSync(itemPath);
+      
+      if (stat.isDirectory()) {
+        // Continue scanning deeper recursively
+        const deeperVideos = await getFlattenedContent(itemPath, depth + 1);
+        videos.push(...deeperVideos);
+      } else if (stat.isFile()) {
+        const ext = path.extname(item).toLowerCase();
+        if (supportedExtensions.includes(ext)) {
+          // Generate a unique ID using base64 encoding of the file path
+          let videoId: string;
+          try {
+            videoId = encodeFilePath(itemPath);
+            log.debug('[Main] Found flattened video at depth', depth, ':', itemPath);
+          } catch (error) {
+            log.error('[Main] Error encoding file path, using fallback ID:', error);
+            videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
+          }
+          
+          videos.push({
+            id: videoId,
+            title: path.basename(item, ext),
+            thumbnail: '',
+            duration: 0,
+            url: itemPath,
+            video: itemPath,
+            audio: undefined,
+            preferredLanguages: ['en'],
+            type: 'local',
+            depth: depth - 1, // Mark as being at the previous depth (flattened)
+            relativePath: path.relative(path.join(process.cwd(), 'test-videos'), itemPath),
+            flattened: true
+          });
+        }
+      }
+    }
+  } catch (error) {
+    log.warn('[Main] Error getting flattened content:', error);
+  }
+  
+  return videos;
+}
+
 // Helper function to resolve username to channel ID
 async function resolveUsernameToChannelId(username: string, apiKey: string): Promise<string | null> {
   try {
@@ -164,7 +295,7 @@ async function resolveUsernameToChannelId(username: string, apiKey: string): Pro
 }
 
 // Force TypeScript to include these functions by exporting them (even if not used elsewhere)
-export { resolveUsernameToChannelId, loadAllVideosFromSourcesMain };
+export { resolveUsernameToChannelId, loadAllVideosFromSourcesMain, getLocalFolderContents };
 
 // Helper functions for parsing YouTube URLs
 function extractChannelId(url: string): string | null {
@@ -358,6 +489,25 @@ ipcMain.handle('time-tracking:get-time-limits', async () => {
     throw error
   }
 })
+
+// Handle getting local folder contents for navigation
+ipcMain.handle('get-local-folder-contents', async (event, folderPath: string, maxDepth: number, currentDepth: number = 1) => {
+  try {
+    log.info('[Main] IPC: get-local-folder-contents called with:', { folderPath, maxDepth, currentDepth });
+    
+    if (!folderPath) {
+      throw new Error('Folder path is required');
+    }
+    
+    const contents = await getLocalFolderContents(folderPath, maxDepth, currentDepth);
+    log.info('[Main] IPC: get-local-folder-contents result:', contents);
+    
+    return contents;
+  } catch (error) {
+    log.error('[Main] IPC: get-local-folder-contents error:', error);
+    throw error;
+  }
+});
 
 // Handle loading videos from sources
 ipcMain.handle('load-all-videos-from-sources', async () => {

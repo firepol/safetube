@@ -39,6 +39,7 @@ export interface ElectronAPI {
   loadVideosFromSources: () => Promise<{ videosBySource: any[]; debug: string[] }>;
   getYouTubeApiKey: () => Promise<string | null>;
   getPaginatedVideos: (sourceId: string, pageNumber: number) => Promise<{ videos: any[]; paginationState: any }>;
+  getLocalFolderContents: (folderPath: string, maxDepth: number, currentDepth?: number) => Promise<{ folders: any[]; videos: any[]; depth: number }>;
 }
 declare global {
   interface Window {

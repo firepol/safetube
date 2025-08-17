@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
+import { LocalFolderNavigator } from '../components/video/LocalFolderNavigator';
 
 export const SourcePage: React.FC = () => {
   const navigate = useNavigate();
@@ -171,6 +172,66 @@ export const SourcePage: React.FC = () => {
     );
   }
 
+  // Check if this is a local source that should use the navigator
+  const isLocalSource = source.type === 'local';
+  
+  // Get the source configuration to find path and maxDepth
+  const getSourceConfig = async () => {
+    try {
+      // Load the videoSources.json to get the full configuration
+      const response = await fetch('/config/videoSources.json');
+      const sources = await response.json();
+      const sourceConfig = sources.find((s: any) => s.id === sourceId);
+      return sourceConfig;
+    } catch (error) {
+      console.error('Error loading source config:', error);
+      return null;
+    }
+  };
+  
+  const [sourceConfig, setSourceConfig] = useState<any>(null);
+  
+  useEffect(() => {
+    if (isLocalSource) {
+      getSourceConfig().then(setSourceConfig);
+    }
+  }, [isLocalSource, sourceId]);
+  
+  const maxDepth = sourceConfig?.maxDepth || 2;
+  const sourcePath = sourceConfig?.path || source.path || source.url;
+
+  // For local sources, use the folder navigator
+  if (isLocalSource) {
+    if (!sourceConfig) {
+      return (
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <button
+              onClick={handleBackClick}
+              className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+            >
+              ← Back to Sources
+            </button>
+            <h1 className="text-2xl font-bold">Loading...</h1>
+          </div>
+          <div className="text-center py-12">
+            <div className="text-lg">Loading folder configuration...</div>
+          </div>
+        </div>
+      );
+    }
+    
+    return (
+      <LocalFolderNavigator
+        sourcePath={sourcePath}
+        maxDepth={maxDepth}
+        onBackClick={handleBackClick}
+        onVideoClick={handleVideoClick}
+      />
+    );
+  }
+
+  // For other sources (YouTube, DLNA), use the regular video grid
   return (
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
