@@ -215,3 +215,26 @@ export async function readTimeExtra(): Promise<TimeExtra> {
 export async function writeTimeExtra(timeExtra: TimeExtra): Promise<void> {
   await writeJsonFile('timeExtra.json', timeExtra);
 } 
+
+/**
+ * Merges watched video data with video objects to populate resumeAt property
+ */
+export async function mergeWatchedData<T extends { id: string; resumeAt?: number }>(videos: T[]): Promise<T[]> {
+  try {
+    const watchedVideos = await readWatchedVideos();
+    
+    return videos.map(video => {
+      const watchedEntry = watchedVideos.find(w => w.videoId === video.id);
+      if (watchedEntry) {
+        return {
+          ...video,
+          resumeAt: watchedEntry.position
+        };
+      }
+      return video;
+    });
+  } catch (error) {
+    console.warn('[FileUtils] Error merging watched data:', error);
+    return videos;
+  }
+} 

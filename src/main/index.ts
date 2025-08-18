@@ -1101,7 +1101,7 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
   const videosBySource: any[] = [];
 
   for (const source of sources) {
-    if (!source || typeof source !== 'object' || !('type' in source) || !('id' in source)) {
+    if (!source.id || !source.type || !source.title) {
       log.warn('[Main] WARNING: Skipping invalid source entry:', source);
       continue;
     }
@@ -1140,8 +1140,8 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
       try {
         const maxDepth = source.maxDepth || 2;
         const localVideos = await scanLocalFolder(source.path, maxDepth);
-        logVerbose('[Main] Local source', source.id, ':', localVideos.length, 'videos found.');
-        debug.push(`[Main] Local source ${source.id}: ${localVideos.length} videos found`);
+        debug.push(`[Main] Local source ${source.id}: ${localVideos.length} videos found.`);
+        logVerbose(`[Main] Local source ${source.id}: ${localVideos.length} videos found.`);
         
         const videos = localVideos.map(v => ({
           id: v.id,
@@ -1149,22 +1149,39 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
           title: v.title,
           thumbnail: v.thumbnail || '',
           duration: v.duration || 0,
-          url: v.url,
-          video: v.video,
-          audio: v.audio,
+          url: v.url || v.id,
+          // For local videos with separate streams
+          video: v.video || undefined,
+          audio: v.audio || undefined,
+          // For YouTube videos (not applicable for local)
+          streamUrl: undefined,
+          audioStreamUrl: undefined,
+          resumeAt: undefined,
+          server: undefined,
+          port: undefined,
+          path: undefined,
+          preferredLanguages: undefined,
+          useJsonStreamUrls: undefined,
+          // Additional properties for source management
           sourceId: source.id,
           sourceTitle: source.title,
           sourceThumbnail: '',
         }));
 
+        // Merge with watched data to populate resumeAt
+        const { mergeWatchedData } = await import('../shared/fileUtils');
+        const videosWithWatchedData = await mergeWatchedData(videos);
+
+        const paginationState = { currentPage: 1, totalPages: 1, totalVideos: videosWithWatchedData.length, pageSize: 50 }; // Will be updated with actual config
+        
         videosBySource.push({
           id: source.id,
           type: source.type,
           title: source.title,
           thumbnail: '',
-          videoCount: videos.length,
-          videos: videos,
-          paginationState: { currentPage: 1, totalPages: 1, totalVideos: videos.length, pageSize: 50 }, // Will be updated with actual config
+          videoCount: videosWithWatchedData.length,
+          videos: videosWithWatchedData,
+          paginationState: paginationState,
           maxDepth: source.maxDepth, // Pass through maxDepth for navigation
           path: source.path // Pass through path for navigation
         });
@@ -1184,13 +1201,10 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
         });
       }
     } else {
-      log.warn('[Main] WARNING: Unsupported source type:', source.type, '(id:', source.id, ') - skipping.');
-      debug.push(`[Main] WARNING: Unsupported source type: ${source.type} (id: ${source.id}) - skipping`);
+      debug.push(`[Main] WARNING: Unsupported source type: ${source.type}`);
     }
   }
-  
-  logVerbose('[Main] Total sources processed:', videosBySource.length);
-  debug.push(`[Main] Total sources processed: ${videosBySource.length}`);
+
   return { videosBySource, debug };
 }
 

@@ -146,6 +146,10 @@ export const PlayerPage: React.FC = () => {
 
               videoRef.current.addEventListener('canplay', () => {
                 // console.log('Video can play');
+                // Set resume time if available
+                if (video.resumeAt && video.resumeAt > 0 && videoRef.current) {
+                  videoRef.current.currentTime = video.resumeAt;
+                }
                 setIsLoading(false);
               });
 
@@ -180,6 +184,10 @@ export const PlayerPage: React.FC = () => {
               });
               videoRef.current.addEventListener('canplay', () => {
                 // console.log('Video can play');
+                // Set resume time if available
+                if (video.resumeAt && video.resumeAt > 0 && videoRef.current) {
+                  videoRef.current.currentTime = video.resumeAt;
+                }
                 setIsLoading(false);
               });
             }
@@ -207,6 +215,14 @@ export const PlayerPage: React.FC = () => {
           const dlnaUrl = await window.electron.getDlnaFile(server, port, path);
           if (videoRef.current) {
             videoRef.current.src = getSrc(dlnaUrl);
+            // Set resume time if available
+            if (video.resumeAt && video.resumeAt > 0) {
+              videoRef.current.addEventListener('loadedmetadata', () => {
+                if (videoRef.current && video.resumeAt) {
+                  videoRef.current.currentTime = video.resumeAt;
+                }
+              }, { once: true });
+            }
           }
           setIsLoading(false);
         } catch (error) {
@@ -304,14 +320,22 @@ export const PlayerPage: React.FC = () => {
             throw new Error('No video stream URL available');
           }
 
-          // For video-only entries, we can use direct playback
-          if (!audioTrack) {
-            if (videoRef.current) {
-              videoRef.current.src = videoStream.url;
-              setIsLoading(false);
+                      // For video-only entries, we can use direct playback
+            if (!audioTrack) {
+              if (videoRef.current) {
+                videoRef.current.src = videoStream.url;
+                // Set resume time if available
+                if (video.resumeAt && video.resumeAt > 0) {
+                  videoRef.current.addEventListener('loadedmetadata', () => {
+                    if (videoRef.current && video.resumeAt) {
+                      videoRef.current.currentTime = video.resumeAt;
+                    }
+                  }, { once: true });
+                }
+                setIsLoading(false);
+              }
+              return;
             }
-            return;
-          }
 
           // For videos with both video and audio, use MediaSource
           mediaSource = new MediaSource();
@@ -332,31 +356,35 @@ export const PlayerPage: React.FC = () => {
             });
           }
 
-          // Set up video element event handlers
-          if (videoElement) {
-            videoElement.addEventListener('error', (e) => {
-              console.error('Video element error:', e);
-              const error = videoElement.error;
-              if (error) {
-                console.error('Error code:', error.code);
-                console.error('Error message:', error.message);
-              }
-              setError('Video playback error: ' + (error?.message || 'Unknown error'));
-              setIsLoading(false);
-            });
+                      // Set up video element event handlers
+            if (videoElement) {
+              videoElement.addEventListener('error', (e) => {
+                console.error('Video element error:', e);
+                const error = videoElement.error;
+                if (error) {
+                  console.error('Error code:', error.code);
+                  console.error('Error message:', error.message);
+                }
+                setError('Video playback error: ' + (error?.message || 'Unknown error'));
+                setIsLoading(false);
+              });
 
-            videoElement.addEventListener('loadedmetadata', () => {
-              // console.log('Video metadata loaded');
-            });
+              videoElement.addEventListener('loadedmetadata', () => {
+                // console.log('Video metadata loaded');
+                // Set resume time if available
+                if (video.resumeAt && video.resumeAt > 0) {
+                  videoElement.currentTime = video.resumeAt;
+                }
+              });
 
-            videoElement.addEventListener('loadeddata', () => {
-              // console.log('Video data loaded');
-            });
+              videoElement.addEventListener('loadeddata', () => {
+                // console.log('Video data loaded');
+              });
 
-            videoElement.addEventListener('canplay', () => {
-              // console.log('Video can play');
-            });
-          }
+              videoElement.addEventListener('canplay', () => {
+                // console.log('Video can play');
+              });
+            }
 
           // Wait for MediaSource to be ready
           await new Promise<void>((resolve, reject) => {

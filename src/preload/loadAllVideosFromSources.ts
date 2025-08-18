@@ -202,15 +202,19 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
           sourceThumbnail: sourceThumbnail || '',
         }));
 
-        const paginationState = paginationService.getPaginationState(typedSource.id, cache.totalVideos || videos.length);
+        // Merge with watched data to populate resumeAt
+        const { mergeWatchedData } = await import('../shared/fileUtils');
+        const videosWithWatchedData = await mergeWatchedData(videos);
+
+        const paginationState = paginationService.getPaginationState(typedSource.id, cache.totalVideos || videosWithWatchedData.length);
         
         videosBySource.push({
           id: typedSource.id,
           type: (typedSource as any).type,
           title: sourceTitle || typedSource.title,
           thumbnail: sourceThumbnail || '',
-          videoCount: cache.totalVideos || videos.length, // Use total count from cache
-          videos: videos,
+          videoCount: cache.totalVideos || videosWithWatchedData.length, // Use total count from cache
+          videos: videosWithWatchedData,
           paginationState: paginationState,
           usingCachedData: cache.usingCachedData || false, // Pass through the cached data flag
           lastFetched: cache.lastFetched // Pass through when data was last fetched
@@ -262,15 +266,19 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
           sourceThumbnail: '',
         }));
 
-        const paginationState = paginationService.getPaginationState(typedSource.id, videos.length);
+        // Merge with watched data to populate resumeAt
+        const { mergeWatchedData } = await import('../shared/fileUtils');
+        const videosWithWatchedData = await mergeWatchedData(videos);
+
+        const paginationState = paginationService.getPaginationState(typedSource.id, videosWithWatchedData.length);
         
         videosBySource.push({
           id: (typedSource as any).id,
           type: (typedSource as any).type,
           title: (typedSource as any).title,
           thumbnail: '',
-          videoCount: videos.length,
-          videos: videos,
+          videoCount: videosWithWatchedData.length,
+          videos: videosWithWatchedData,
           paginationState: paginationState
         });
       } catch (err) {

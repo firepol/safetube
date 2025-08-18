@@ -214,7 +214,9 @@ export const YouTubePlayerPage: React.FC = () => {
     let cleanup = () => {};
     if (containerRef.current && id && !isLoading) {
       playerRef.current = new YouTubeIframePlayer(PLAYER_CONTAINER_ID);
-      playerRef.current.mount(id, {
+      
+      // Prepare player options with resume time if available
+      const playerOptions: any = {
         width: '100%',
         height: '100%',
         playerVars: {
@@ -229,6 +231,17 @@ export const YouTubePlayerPage: React.FC = () => {
           onReady: (event: any) => {
             ytPlayerInstance.current = event.target;
             setIsLoading(false);
+            
+            // If we have a resume time, seek to it after the player is ready
+            if (video?.resumeAt && video.resumeAt > 0) {
+              logVerbose('[YouTubePlayerPage] Seeking to resume time:', video.resumeAt);
+              // Small delay to ensure player is fully ready
+              setTimeout(() => {
+                if (ytPlayerInstance.current && typeof ytPlayerInstance.current.seekTo === 'function') {
+                  ytPlayerInstance.current.seekTo(video.resumeAt, true);
+                }
+              }, 1000);
+            }
           },
           onStateChange: (event: any) => {
             logVerbose('[YouTubePlayerPage] YouTube player state changed:', event.data);
@@ -268,7 +281,14 @@ export const YouTubePlayerPage: React.FC = () => {
             setIsLoading(false);
           },
         },
-      });
+      };
+      
+      // Add start time if resumeAt is available
+      if (video?.resumeAt && video.resumeAt > 0) {
+        playerOptions.startSeconds = video.resumeAt;
+      }
+      
+      playerRef.current.mount(id, playerOptions);
       cleanup = () => {
         if (playerRef.current) {
           playerRef.current.destroy();
@@ -277,7 +297,7 @@ export const YouTubePlayerPage: React.FC = () => {
       };
     }
     return cleanup;
-  }, [id, isLoading, startTimeTracking, stopTimeTracking]);
+  }, [id, isLoading, startTimeTracking, stopTimeTracking, video?.resumeAt]);
 
   // Polling-based time tracking for YouTube iframe player
   useEffect(() => {

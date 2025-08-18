@@ -75,7 +75,10 @@ export class YouTubeIframePlayer {
           events: {
             onReady: (event: any) => {
               if (userEvents.onReady) userEvents.onReady(event);
-              event.target.playVideo();
+              // Don't auto-play if we need to seek to a specific time
+              if (!options.startSeconds) {
+                event.target.playVideo();
+              }
             },
             onStateChange: (event: any) => {
               if (userEvents.onStateChange) userEvents.onStateChange(event);
@@ -95,10 +98,16 @@ export class YouTubeIframePlayer {
           throw new Error('Player element not found');
         }
         
+        // Build iframe URL with start time if provided
+        let iframeUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&controls=1&showinfo=1&fs=1`;
+        if (options.startSeconds) {
+          iframeUrl += `&start=${Math.floor(options.startSeconds)}`;
+        }
+        
         const iframe = document.createElement('iframe');
         iframe.width = '100%';
         iframe.height = '100%';
-        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&controls=1&showinfo=1&fs=1`;
+        iframe.src = iframeUrl;
         iframe.frameBorder = '0';
         iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
         iframe.allowFullscreen = true;
@@ -109,6 +118,21 @@ export class YouTubeIframePlayer {
     } catch (error) {
       console.error('[YouTube] Error mounting player:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Seeks to a specific time in the video
+   */
+  seekTo(seconds: number): void {
+    if (this.player && typeof this.player.seekTo === 'function') {
+      this.player.seekTo(seconds, true);
+    } else if (this.player && this.player.tagName === 'IFRAME') {
+      // For iframe fallback, we need to reload with the new start time
+      const iframe = this.player as HTMLIFrameElement;
+      const currentSrc = iframe.src;
+      const baseUrl = currentSrc.split('&start=')[0];
+      iframe.src = `${baseUrl}&start=${Math.floor(seconds)}`;
     }
   }
 
