@@ -35,6 +35,9 @@ export const PlayerPage: React.FC = () => {
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
+  
+  // Flag to prevent infinite loop when setting resume time
+  const resumeAttemptedRef = useRef<boolean>(false);
 
   // Load video data when component mounts or ID changes
   useEffect(() => {
@@ -44,9 +47,12 @@ export const PlayerPage: React.FC = () => {
       try {
         setIsLoading(true);
         const videoData = await window.electron.getVideoData(id);
+        logVerbose('[PlayerPage] Loaded video data:', videoData);
         if (videoData) {
           setVideo(videoData);
           setError(null);
+          // Reset resume flag for new video
+          resumeAttemptedRef.current = false;
         } else {
           setVideo(null);
           setError('Video not found');
@@ -72,7 +78,7 @@ export const PlayerPage: React.FC = () => {
     const loadLocalFile = async () => {
       logVerbose('[PlayerPage] loadLocalFile called, video:', video);
       if (video?.type === 'local') {
-        logVerbose('[PlayerPage] Processing local video:', { id: video.id, title: video.title, video: video.video, audio: video.audio, url: video.url });
+        logVerbose('[PlayerPage] Processing local video:', { id: video.id, title: video.title, video: video.video, audio: video.audio, url: video.url, resumeAt: video.resumeAt });
         try {
           // Handle separate video and audio files
           if (video.video && video.audio) {
@@ -145,25 +151,31 @@ export const PlayerPage: React.FC = () => {
               });
 
               videoRef.current.addEventListener('canplay', () => {
-                // console.log('Video can play');
+                logVerbose('[PlayerPage] Video can play event fired for separate streams');
                 // Set resume time if available - use a small delay to ensure video is ready
-                if (video.resumeAt && video.resumeAt > 0 && videoRef.current) {
+                if (video.resumeAt && video.resumeAt > 0 && videoRef.current && !resumeAttemptedRef.current) {
+                  logVerbose('[PlayerPage] Attempting to resume at:', video.resumeAt);
+                  resumeAttemptedRef.current = true; // Prevent infinite loop
                   setTimeout(() => {
                     try {
                       if (videoRef.current && video.resumeAt && videoRef.current.duration > 0) {
                         // Only resume if the position is within the video duration
                         if (video.resumeAt < videoRef.current.duration) {
                           videoRef.current.currentTime = video.resumeAt;
-                          logVerbose('[PlayerPage] Set resume time for local video with separate streams:', video.resumeAt);
+                          logVerbose('[PlayerPage] Successfully set resume time for local video with separate streams:', video.resumeAt);
                         } else {
                           logVerbose('[PlayerPage] Resume time exceeds video duration, starting from beginning');
                         }
+                      } else {
+                        logVerbose('[PlayerPage] Video not ready for resume - duration:', videoRef.current?.duration, 'resumeAt:', video.resumeAt);
                       }
                     } catch (error) {
                       console.warn('[PlayerPage] Failed to set resume time for separate streams:', error);
                       // Continue with normal playback even if resume fails
                     }
                   }, 100);
+                } else {
+                  logVerbose('[PlayerPage] No resume time or video not ready - resumeAt:', video.resumeAt, 'videoRef:', !!videoRef.current, 'already attempted:', resumeAttemptedRef.current);
                 }
                 setIsLoading(false);
               });
@@ -198,25 +210,31 @@ export const PlayerPage: React.FC = () => {
                 // console.log('Video data loaded');
               });
               videoRef.current.addEventListener('canplay', () => {
-                // console.log('Video can play');
+                logVerbose('[PlayerPage] Video can play event fired for single local file');
                 // Set resume time if available - use a small delay to ensure video is ready
-                if (video.resumeAt && video.resumeAt > 0 && videoRef.current) {
+                if (video.resumeAt && video.resumeAt > 0 && videoRef.current && !resumeAttemptedRef.current) {
+                  logVerbose('[PlayerPage] Attempting to resume single file at:', video.resumeAt);
+                  resumeAttemptedRef.current = true; // Prevent infinite loop
                   setTimeout(() => {
                     try {
                       if (videoRef.current && video.resumeAt && videoRef.current.duration > 0) {
                         // Only resume if the position is within the video duration
                         if (video.resumeAt < videoRef.current.duration) {
                           videoRef.current.currentTime = video.resumeAt;
-                          logVerbose('[PlayerPage] Set resume time for single local file:', video.resumeAt);
+                          logVerbose('[PlayerPage] Successfully set resume time for single local file:', video.resumeAt);
                         } else {
                           logVerbose('[PlayerPage] Resume time exceeds video duration, starting from beginning');
                         }
+                      } else {
+                        logVerbose('[PlayerPage] Single file video not ready for resume - duration:', videoRef.current?.duration, 'resumeAt:', video.resumeAt);
                       }
                     } catch (error) {
                       console.warn('[PlayerPage] Failed to set resume time for single file:', error);
                       // Continue with normal playback even if resume fails
                     }
                   }, 100);
+                } else {
+                  logVerbose('[PlayerPage] No resume time for single file - resumeAt:', video.resumeAt, 'videoRef:', !!videoRef.current, 'already attempted:', resumeAttemptedRef.current);
                 }
                 setIsLoading(false);
               });
