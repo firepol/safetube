@@ -1,7 +1,6 @@
 // Simple test script to verify username resolution works
-require('dotenv').config();
-
-const { YouTubeAPI } = require('./dist/main/main/youtube-api');
+import 'dotenv/config';
+import { YouTubeAPI } from '../main/youtube-api';
 
 async function testUsernameResolution() {
   try {
