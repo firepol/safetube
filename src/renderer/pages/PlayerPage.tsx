@@ -146,9 +146,24 @@ export const PlayerPage: React.FC = () => {
 
               videoRef.current.addEventListener('canplay', () => {
                 // console.log('Video can play');
-                // Set resume time if available
+                // Set resume time if available - use a small delay to ensure video is ready
                 if (video.resumeAt && video.resumeAt > 0 && videoRef.current) {
-                  videoRef.current.currentTime = video.resumeAt;
+                  setTimeout(() => {
+                    try {
+                      if (videoRef.current && video.resumeAt && videoRef.current.duration > 0) {
+                        // Only resume if the position is within the video duration
+                        if (video.resumeAt < videoRef.current.duration) {
+                          videoRef.current.currentTime = video.resumeAt;
+                          logVerbose('[PlayerPage] Set resume time for local video with separate streams:', video.resumeAt);
+                        } else {
+                          logVerbose('[PlayerPage] Resume time exceeds video duration, starting from beginning');
+                        }
+                      }
+                    } catch (error) {
+                      console.warn('[PlayerPage] Failed to set resume time for separate streams:', error);
+                      // Continue with normal playback even if resume fails
+                    }
+                  }, 100);
                 }
                 setIsLoading(false);
               });
@@ -184,9 +199,24 @@ export const PlayerPage: React.FC = () => {
               });
               videoRef.current.addEventListener('canplay', () => {
                 // console.log('Video can play');
-                // Set resume time if available
+                // Set resume time if available - use a small delay to ensure video is ready
                 if (video.resumeAt && video.resumeAt > 0 && videoRef.current) {
-                  videoRef.current.currentTime = video.resumeAt;
+                  setTimeout(() => {
+                    try {
+                      if (videoRef.current && video.resumeAt && videoRef.current.duration > 0) {
+                        // Only resume if the position is within the video duration
+                        if (video.resumeAt < videoRef.current.duration) {
+                          videoRef.current.currentTime = video.resumeAt;
+                          logVerbose('[PlayerPage] Set resume time for single local file:', video.resumeAt);
+                        } else {
+                          logVerbose('[PlayerPage] Resume time exceeds video duration, starting from beginning');
+                        }
+                      }
+                    } catch (error) {
+                      console.warn('[PlayerPage] Failed to set resume time for single file:', error);
+                      // Continue with normal playback even if resume fails
+                    }
+                  }, 100);
                 }
                 setIsLoading(false);
               });
@@ -218,9 +248,16 @@ export const PlayerPage: React.FC = () => {
             // Set resume time if available
             if (video.resumeAt && video.resumeAt > 0) {
               videoRef.current.addEventListener('loadedmetadata', () => {
-                if (videoRef.current && video.resumeAt) {
-                  videoRef.current.currentTime = video.resumeAt;
-                }
+                setTimeout(() => {
+                  try {
+                    if (videoRef.current && video.resumeAt) {
+                      videoRef.current.currentTime = video.resumeAt;
+                      logVerbose('[PlayerPage] Set resume time for DLNA video:', video.resumeAt);
+                    }
+                  } catch (error) {
+                    console.warn('[PlayerPage] Failed to set resume time for DLNA video:', error);
+                  }
+                }, 100);
               }, { once: true });
             }
           }
@@ -327,9 +364,16 @@ export const PlayerPage: React.FC = () => {
                 // Set resume time if available
                 if (video.resumeAt && video.resumeAt > 0) {
                   videoRef.current.addEventListener('loadedmetadata', () => {
-                    if (videoRef.current && video.resumeAt) {
-                      videoRef.current.currentTime = video.resumeAt;
-                    }
+                    setTimeout(() => {
+                      try {
+                        if (videoRef.current && video.resumeAt) {
+                          videoRef.current.currentTime = video.resumeAt;
+                          logVerbose('[PlayerPage] Set resume time for YouTube video-only:', video.resumeAt);
+                        }
+                      } catch (error) {
+                        console.warn('[PlayerPage] Failed to set resume time for YouTube video-only:', error);
+                      }
+                    }, 100);
                   }, { once: true });
                 }
                 setIsLoading(false);
@@ -371,9 +415,18 @@ export const PlayerPage: React.FC = () => {
 
               videoElement.addEventListener('loadedmetadata', () => {
                 // console.log('Video metadata loaded');
-                // Set resume time if available
+                // Set resume time if available - use a small delay to ensure video is ready
                 if (video.resumeAt && video.resumeAt > 0) {
-                  videoElement.currentTime = video.resumeAt;
+                  setTimeout(() => {
+                    try {
+                      if (video.resumeAt) {
+                        videoElement.currentTime = video.resumeAt;
+                        logVerbose('[PlayerPage] Set resume time for YouTube media source:', video.resumeAt);
+                      }
+                    } catch (error) {
+                      console.warn('[PlayerPage] Failed to set resume time for YouTube media source:', error);
+                    }
+                  }, 100);
                 }
               });
 
