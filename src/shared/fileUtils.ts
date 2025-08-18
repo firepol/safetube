@@ -1,6 +1,6 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
-import { TimeLimits, UsageLog, WatchedVideo, VideoSource } from './types';
+import { TimeLimits, UsageLog, WatchedVideo, VideoSource, TimeExtra } from './types';
 
 const CONFIG_DIR = path.join(process.cwd(), 'config');
 
@@ -200,4 +200,18 @@ export function decodeFilePath(encodedPath: string): string {
 export function isEncodedFilePath(id: string): boolean {
   // Encoded paths are typically longer and contain only safe characters
   return id.length > 10 && /^[a-zA-Z0-9_-]+$/.test(id);
+} 
+
+/**
+ * Reads time extra configuration (extra time added by parents)
+ */
+export async function readTimeExtra(): Promise<TimeExtra> {
+  return readJsonFile<TimeExtra>('timeExtra.json');
+}
+
+/**
+ * Writes time extra configuration
+ */
+export async function writeTimeExtra(timeExtra: TimeExtra): Promise<void> {
+  await writeJsonFile('timeExtra.json', timeExtra);
 } 

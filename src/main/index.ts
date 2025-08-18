@@ -463,33 +463,100 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
 })
 
 // Time tracking IPC handlers
-ipcMain.handle('time-tracking:record-video-watching', async (event, videoId: string, position: number, timeWatched: number) => {
+ipcMain.handle('time-tracking:record-video-watching', async (_, videoId: string, position: number, timeWatched: number) => {
   try {
-    await recordVideoWatching(videoId, position, timeWatched)
-    return { success: true }
+    await recordVideoWatching(videoId, position, timeWatched);
   } catch (error) {
-    log.error('Error recording video watching:', error)
-    throw error
+    log.error('Error recording video watching:', error);
+    throw error;
   }
-})
+});
 
 ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
   try {
-    return await getTimeTrackingState()
+    return await getTimeTrackingState();
   } catch (error) {
-    log.error('Error getting time tracking state:', error)
-    throw error
+    log.error('Error getting time tracking state:', error);
+    throw error;
   }
-})
+});
 
 ipcMain.handle('time-tracking:get-time-limits', async () => {
   try {
-    return await readTimeLimits()
+    return await readTimeLimits();
   } catch (error) {
-    log.error('Error getting time limits:', error)
-    throw error
+    log.error('Error reading time limits:', error);
+    throw error;
   }
-})
+});
+
+// New admin IPC handlers
+ipcMain.handle('admin:authenticate', async (_, password: string) => {
+  try {
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      throw new Error('Admin password not configured');
+    }
+    
+    const isAuthenticated = password === adminPassword;
+    logVerbose('[Admin] Authentication attempt:', { success: isAuthenticated });
+    
+    return { isAuthenticated };
+  } catch (error) {
+    log.error('Error during admin authentication:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('admin:add-extra-time', async (_, minutes: number) => {
+  try {
+    // Import the function here to avoid circular dependencies
+    const { addExtraTimeToday } = await import('../shared/timeTracking');
+    await addExtraTimeToday(minutes);
+    
+    logVerbose('[Admin] Extra time added:', { minutes });
+    return { success: true };
+  } catch (error) {
+    log.error('Error adding extra time:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('admin:get-time-extra', async () => {
+  try {
+    // Import the function here to avoid circular dependencies
+    const { readTimeExtra } = await import('../shared/fileUtils');
+    return await readTimeExtra();
+  } catch (error) {
+    log.error('Error reading time extra:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('admin:write-time-limits', async (_, timeLimits: any) => {
+  try {
+    // Import the function here to avoid circular dependencies
+    const { writeTimeLimits } = await import('../shared/fileUtils');
+    await writeTimeLimits(timeLimits);
+    
+    logVerbose('[Admin] Time limits updated:', timeLimits);
+    return { success: true };
+  } catch (error) {
+    log.error('Error writing time limits:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('admin:get-last-watched-video-with-source', async () => {
+  try {
+    // Import the function here to avoid circular dependencies
+    const { getLastWatchedVideoWithSource } = await import('../shared/timeTracking');
+    return await getLastWatchedVideoWithSource();
+  } catch (error) {
+    log.error('Error getting last watched video with source:', error);
+    throw error;
+  }
+});
 
 // Handle getting local folder contents for navigation
 ipcMain.handle('get-local-folder-contents', async (event, folderPath: string, maxDepth: number, currentDepth: number = 1) => {

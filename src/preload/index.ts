@@ -32,8 +32,14 @@ contextBridge.exposeInMainWorld(
     getPaginatedVideos: (sourceId: string, pageNumber: number) => 
       ipcRenderer.invoke('get-paginated-videos', sourceId, pageNumber),
     // New IPC handler for getting local folder contents for navigation
-    getLocalFolderContents: (folderPath: string, maxDepth: number, currentDepth: number = 1) => 
-      ipcRenderer.invoke('get-local-folder-contents', folderPath, maxDepth, currentDepth),
+    getLocalFolderContents: (folderPath: string) => 
+      ipcRenderer.invoke('get-local-folder-contents', folderPath),
+    // Admin IPC handlers
+    adminAuthenticate: (password: string) => ipcRenderer.invoke('admin:authenticate', password),
+    adminAddExtraTime: (minutes: number) => ipcRenderer.invoke('admin:add-extra-time', minutes),
+    adminGetTimeExtra: () => ipcRenderer.invoke('admin:get-time-extra'),
+    adminWriteTimeLimits: (timeLimits: any) => ipcRenderer.invoke('admin:write-time-limits', timeLimits),
+    adminGetLastWatchedVideoWithSource: () => ipcRenderer.invoke('admin:get-last-watched-video-with-source'),
     // Expose environment variables directly
     env: {
       ELECTRON_LOG_VERBOSE: process.env.ELECTRON_LOG_VERBOSE

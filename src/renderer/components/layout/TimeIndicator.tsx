@@ -6,6 +6,7 @@ export interface TimeTrackingState {
   timeLimit: number;
   timeUsed: number;
   isLimitReached: boolean;
+  extraTimeToday?: number; // minutes added today
 }
 
 interface TimeIndicatorProps {
@@ -66,7 +67,8 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
         timeRemaining: state.timeRemaining,
         timeLimit: state.timeLimitToday,
         timeUsed: state.timeUsedToday,
-        isLimitReached: state.isLimitReached
+        isLimitReached: state.isLimitReached,
+        extraTimeToday: state.extraTimeToday
       };
     } catch (error) {
       console.error('Error fetching time tracking state:', error);
@@ -116,7 +118,7 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
     );
   }
 
-  const { timeRemaining, timeLimit, timeUsed, isLimitReached } = timeTrackingState;
+  const { timeRemaining, timeLimit, timeUsed, isLimitReached, extraTimeToday } = timeTrackingState;
   const minutesRemaining = Math.floor(timeRemaining / 60);
   
   // Determine color based on time remaining
@@ -146,7 +148,12 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
     >
       <div className="flex items-center gap-2">
         <span className="text-gray-600">⏰</span>
-        <span className={colorClass}>{formatTime(timeUsed)} / {formatTime(timeLimit)}</span>
+        <span className={colorClass}>
+          {formatTime(timeUsed)} / {formatTime(timeLimit)}
+          {extraTimeToday && extraTimeToday > 0 && (
+            <span className="text-blue-600 ml-1">(+{extraTimeToday}m)</span>
+          )}
+        </span>
         <span className="text-gray-500">[{formatRemainingTime(timeRemaining)}]</span>
       </div>
       <div className="flex items-center gap-2 mt-1">
@@ -158,6 +165,12 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
         </div>
         <span className="text-xs text-gray-500 ml-2" style={{minWidth: 32}}>{percent}%</span>
       </div>
+      {extraTimeToday && extraTimeToday > 0 && (
+        <div className="text-xs text-blue-600 flex items-center gap-1">
+          <span>🎁</span>
+          <span>Extra time added today: {extraTimeToday} minutes</span>
+        </div>
+      )}
     </div>
   );
 }; 

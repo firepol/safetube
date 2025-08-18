@@ -99,6 +99,84 @@ ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
   }
 });
 
+ipcMain.handle('time-tracking:get-time-limits', async () => {
+  try {
+    const { readTimeLimits } = await import('../shared/fileUtils');
+    return await readTimeLimits();
+  } catch (error) {
+    console.error('Error reading time limits:', error);
+    throw error;
+  }
+});
+
+// Admin IPC handlers
+ipcMain.handle('admin:authenticate', async (_, password: string) => {
+  try {
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      throw new Error('Admin password not configured');
+    }
+    
+    const isAuthenticated = password === adminPassword;
+    logVerbose('[Admin] Authentication attempt:', { success: isAuthenticated });
+    
+    return { isAuthenticated };
+  } catch (error) {
+    console.error('Error during admin authentication:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('admin:add-extra-time', async (_, minutes: number) => {
+  try {
+    // Import the function here to avoid circular dependencies
+    const { addExtraTimeToday } = await import('../shared/timeTracking');
+    await addExtraTimeToday(minutes);
+    
+    logVerbose('[Admin] Extra time added:', { minutes });
+    return { success: true };
+  } catch (error) {
+    console.error('Error adding extra time:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('admin:get-time-extra', async () => {
+  try {
+    // Import the function here to avoid circular dependencies
+    const { readTimeExtra } = await import('../shared/fileUtils');
+    return await readTimeExtra();
+  } catch (error) {
+    console.error('Error reading time extra:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('admin:get-last-watched-video-with-source', async () => {
+  try {
+    // Import the function here to avoid circular dependencies
+    const { getLastWatchedVideoWithSource } = await import('../shared/timeTracking');
+    return await getLastWatchedVideoWithSource();
+  } catch (error) {
+    console.error('Error getting last watched video with source:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('admin:write-time-limits', async (_, timeLimits: any) => {
+  try {
+    // Import the function here to avoid circular dependencies
+    const { writeTimeLimits } = await import('../shared/fileUtils');
+    await writeTimeLimits(timeLimits);
+    
+    logVerbose('[Admin] Time limits updated:', timeLimits);
+    return { success: true };
+  } catch (error) {
+    console.error('Error writing time limits:', error);
+    throw error;
+  }
+});
+
 // Logging configuration IPC handlers
 ipcMain.handle('logging:set-verbose', async (_, enabled: boolean) => {
   try {

@@ -7,6 +7,7 @@ vi.mock('../shared/fileUtils', () => ({
   writeUsageLog: vi.fn(),
   readWatchedVideos: vi.fn(),
   writeWatchedVideos: vi.fn(),
+  readTimeExtra: vi.fn(),
 }));
 
 describe('Time Tracking', () => {
@@ -16,6 +17,7 @@ describe('Time Tracking', () => {
   let mockWriteUsageLog: any;
   let mockReadWatchedVideos: any;
   let mockWriteWatchedVideos: any;
+  let mockReadTimeExtra: any;
 
   beforeEach(async () => {
     vi.resetAllMocks();
@@ -27,6 +29,7 @@ describe('Time Tracking', () => {
     mockWriteUsageLog = vi.mocked(fileUtils.writeUsageLog);
     mockReadWatchedVideos = vi.mocked(fileUtils.readWatchedVideos);
     mockWriteWatchedVideos = vi.mocked(fileUtils.writeWatchedVideos);
+    mockReadTimeExtra = vi.mocked(fileUtils.readTimeExtra);
     
     // Setup default mocks
     mockReadTimeLimits.mockResolvedValue({
@@ -41,6 +44,7 @@ describe('Time Tracking', () => {
     
     mockReadUsageLog.mockResolvedValue({});
     mockReadWatchedVideos.mockResolvedValue([]);
+    mockReadTimeExtra.mockResolvedValue({});
     mockWriteUsageLog.mockResolvedValue();
     mockWriteWatchedVideos.mockResolvedValue();
     
@@ -191,7 +195,8 @@ describe('Time Tracking', () => {
         timeUsedToday: 1800,
         timeLimitToday: 7200, // 120 minutes * 60 seconds
         timeRemaining: 5400, // 7200 - 1800
-        isLimitReached: false
+        isLimitReached: false,
+        extraTimeToday: 0
       });
       vi.useRealTimers();
     });
@@ -211,7 +216,8 @@ describe('Time Tracking', () => {
         timeUsedToday: 7200,
         timeLimitToday: 7200, // 120 minutes * 60 seconds
         timeRemaining: 0, // 7200 - 7200
-        isLimitReached: true
+        isLimitReached: true,
+        extraTimeToday: 0
       });
       vi.useRealTimers();
     });

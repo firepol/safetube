@@ -157,6 +157,25 @@ export const KidScreen: React.FC = () => {
           </pre>
         </details>
       )}
+      
+      {/* Footer with Parent Access */}
+      <div className="mt-8 pt-4 border-t border-gray-200">
+        <div className="flex justify-between items-center text-xs text-gray-400">
+          <div className="flex items-center space-x-4">
+            <span>SafeTube</span>
+            <span>•</span>
+            <button
+              onClick={() => navigate('/admin')}
+              className="hover:text-gray-600 transition-colors duration-200 underline"
+            >
+              Parent Access
+            </button>
+          </div>
+          <div className="text-gray-300">
+            © 2025
+          </div>
+        </div>
+      </div>
     </div>
   );
 }; 

@@ -1,5 +1,5 @@
-import { TimeLimits, UsageLog, WatchedVideo, TimeTrackingState, DayOfWeek } from './types';
-import { readTimeLimits, readUsageLog, writeUsageLog, readWatchedVideos, writeWatchedVideos } from './fileUtils';
+import { TimeLimits, UsageLog, WatchedVideo, TimeTrackingState, DayOfWeek, TimeExtra } from './types';
+import { readTimeLimits, readUsageLog, writeUsageLog, readWatchedVideos, writeWatchedVideos, readTimeExtra, writeTimeExtra } from './fileUtils';
 import { logVerbose } from './logging';
 
 /**
@@ -19,13 +19,32 @@ export function getDayOfWeek(dateString: string): DayOfWeek {
 }
 
 /**
- * Gets the time limit for today
+ * Gets the time limit for today (including any extra time added by parents)
  */
 export async function getTimeLimitForToday(): Promise<number> {
   const timeLimits = await readTimeLimits();
+  const timeExtra = await readTimeExtra();
   const today = getCurrentDate();
   const dayOfWeek = getDayOfWeek(today);
-  return timeLimits[dayOfWeek] || 0;
+  
+  // Base limit from timeLimits.json
+  const baseLimitMinutes = timeLimits[dayOfWeek] || 0;
+  
+  // Extra time added today (if any)
+  const extraTimeMinutes = timeExtra[today] || 0;
+  
+  // Total limit is base + extra
+  const totalLimitMinutes = baseLimitMinutes + extraTimeMinutes;
+  
+  logVerbose('[TimeTracking] getTimeLimitForToday:', { 
+    today, 
+    dayOfWeek, 
+    baseLimitMinutes, 
+    extraTimeMinutes, 
+    totalLimitMinutes 
+  });
+  
+  return totalLimitMinutes;
 }
 
 /**
@@ -58,18 +77,23 @@ export async function getTimeTrackingState(): Promise<TimeTrackingState> {
   const currentDate = getCurrentDate();
   const timeUsedTodaySeconds = await getTimeUsedToday();
   const timeLimitTodayMinutes = await getTimeLimitForToday();
+  const timeExtra = await readTimeExtra();
   
   // Convert time limit from minutes to seconds for comparison
   const timeLimitTodaySeconds = timeLimitTodayMinutes * 60;
   const timeRemainingSeconds = Math.max(0, timeLimitTodaySeconds - timeUsedTodaySeconds);
   const isLimitReached = timeRemainingSeconds <= 0;
   
+  // Get extra time added today for display
+  const extraTimeToday = timeExtra[currentDate] || 0;
+  
   return {
     currentDate,
     timeUsedToday: timeUsedTodaySeconds,
     timeLimitToday: timeLimitTodaySeconds,
     timeRemaining: timeRemainingSeconds,
-    isLimitReached
+    isLimitReached,
+    extraTimeToday
   };
 }
 
@@ -181,6 +205,79 @@ export async function getLastWatchedVideo(): Promise<WatchedVideo | null> {
 }
 
 /**
+ * Gets the last watched video with source information for smart navigation
+ */
+export async function getLastWatchedVideoWithSource(): Promise<{
+  video: WatchedVideo;
+  sourceId: string;
+  sourceTitle: string;
+} | null> {
+  const lastVideo = await getLastWatchedVideo();
+  if (!lastVideo) return null;
+
+  try {
+    // Import here to avoid circular dependencies
+    const { readVideoSources } = await import('./fileUtils');
+    const videoSources = await readVideoSources();
+    
+    console.log('[TimeTracking] getLastWatchedVideoWithSource: Last video:', lastVideo);
+    console.log('[TimeTracking] getLastWatchedVideoWithSource: Available sources:', videoSources);
+    
+    // Try to find which source contains this video
+    // Check if it's a YouTube video (YouTube IDs are typically 11 characters)
+    if (lastVideo.videoId.length === 11 && !lastVideo.videoId.includes('/')) {
+      console.log('[TimeTracking] getLastWatchedVideoWithSource: Detected YouTube video ID');
+      // Look for YouTube sources
+      const youtubeSource = videoSources.find(source => 
+        source.type === 'youtube_channel' || source.type === 'youtube_playlist'
+      );
+      
+      if (youtubeSource) {
+        console.log('[TimeTracking] getLastWatchedVideoWithSource: Found YouTube source:', youtubeSource);
+        return {
+          video: lastVideo,
+          sourceId: youtubeSource.id,
+          sourceTitle: youtubeSource.title
+        };
+      }
+    }
+    
+    // Check if it's a local file path (contains file:// or /)
+    if (lastVideo.videoId.includes('file://') || lastVideo.videoId.includes('/')) {
+      console.log('[TimeTracking] getLastWatchedVideoWithSource: Detected local file path');
+      // Look for local folder sources
+      const localSource = videoSources.find(source => source.type === 'local');
+      
+      if (localSource) {
+        console.log('[TimeTracking] getLastWatchedVideoWithSource: Found local source:', localSource);
+        return {
+          video: lastVideo,
+          sourceId: localSource.id,
+          sourceTitle: localSource.title
+        };
+      }
+    }
+    
+    // If we can't determine the source type, try to return the first available source
+    // This is a fallback to ensure the user can at least get back to a video source
+    if (videoSources.length > 0) {
+      console.log('[TimeTracking] getLastWatchedVideoWithSource: Using fallback source:', videoSources[0]);
+      return {
+        video: lastVideo,
+        sourceId: videoSources[0].id,
+        sourceTitle: videoSources[0].title
+      };
+    }
+    
+    console.log('[TimeTracking] getLastWatchedVideoWithSource: No sources found');
+    return null;
+  } catch (error) {
+    console.error('Error getting video source information:', error);
+    return null;
+  }
+}
+
+/**
  * Resets daily usage (useful for testing or manual reset)
  */
 export async function resetDailyUsage(): Promise<void> {
@@ -234,4 +331,37 @@ export function validateTimeLimits(timeLimits: TimeLimits): { isValid: boolean; 
     isValid: errors.length === 0,
     errors
   };
+} 
+
+/**
+ * Adds extra time for today (admin function)
+ * Supports negative numbers to remove extra time or reduce daily limits
+ */
+export async function addExtraTimeToday(minutes: number): Promise<void> {
+  const timeExtra = await readTimeExtra();
+  const today = getCurrentDate();
+  
+  // Add to existing extra time for today (negative numbers will subtract)
+  timeExtra[today] = (timeExtra[today] || 0) + minutes;
+  
+  // Ensure we don't go below -1440 minutes (24 hours) to prevent extreme negative values
+  timeExtra[today] = Math.max(-1440, timeExtra[today]);
+  
+  await writeTimeExtra(timeExtra);
+  
+  logVerbose('[TimeTracking] addExtraTimeToday:', { 
+    today, 
+    minutes, 
+    totalExtra: timeExtra[today],
+    operation: minutes >= 0 ? 'added' : 'removed'
+  });
+}
+
+/**
+ * Gets extra time added today
+ */
+export async function getExtraTimeToday(): Promise<number> {
+  const timeExtra = await readTimeExtra();
+  const today = getCurrentDate();
+  return timeExtra[today] || 0;
 } 

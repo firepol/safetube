@@ -40,6 +40,16 @@ export interface ElectronAPI {
   getYouTubeApiKey: () => Promise<string | null>;
   getPaginatedVideos: (sourceId: string, pageNumber: number) => Promise<{ videos: any[]; paginationState: any }>;
   getLocalFolderContents: (folderPath: string, maxDepth: number, currentDepth?: number) => Promise<{ folders: any[]; videos: any[]; depth: number }>;
+  // Admin functions
+  adminAuthenticate: (password: string) => Promise<{ isAuthenticated: boolean }>;
+  adminAddExtraTime: (minutes: number) => Promise<{ success: boolean }>;
+  adminGetTimeExtra: () => Promise<any>;
+  adminWriteTimeLimits: (timeLimits: any) => Promise<{ success: boolean }>;
+  adminGetLastWatchedVideoWithSource: () => Promise<{
+    video: any;
+    sourceId: string;
+    sourceTitle: string;
+  } | null>;
 }
 declare global {
   interface Window {

@@ -21,6 +21,11 @@ export interface UsageLog {
   [date: string]: number; // ISO date string -> seconds used (for precision)
 }
 
+// New interface for extra time added by parents
+export interface TimeExtra {
+  [date: string]: number; // ISO date string -> minutes added
+}
+
 export interface WatchedVideo {
   videoId: string;
   position: number; // seconds
@@ -82,6 +87,7 @@ export interface TimeTrackingState {
   timeLimitToday: number; // seconds (converted from minutes)
   timeRemaining: number; // seconds
   isLimitReached: boolean;
+  extraTimeToday?: number; // minutes added today
 }
 
 export interface TimeTrackingConfig {
@@ -89,4 +95,17 @@ export interface TimeTrackingConfig {
   usageLog: UsageLog;
   watchedVideos: WatchedVideo[];
   videoSources: VideoSource[];
+}
+
+// New interface for admin authentication
+export interface AdminAuth {
+  isAuthenticated: boolean;
+  sessionExpiry?: number; // timestamp when session expires
+}
+
+// New interface for admin time extension
+export interface TimeExtension {
+  minutes: number;
+  reason?: string;
+  timestamp: string;
 } 

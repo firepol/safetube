@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { PlayerRouter } from './pages/PlayerRouter';
 import { TimeUpPage } from './pages/TimeUpPage';
 import { SourcePage } from './pages/SourcePage';
+import { AdminPage } from './pages/AdminPage';
 import { RateLimitWarning } from './components/layout/RateLimitWarning';
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
@@ -64,6 +65,7 @@ function App() {
               <Route path="/source/:sourceId/page/:page" element={<SourcePage />} />
               <Route path="/player/:id" element={<PlayerRouter />} />
               <Route path="/time-up" element={<TimeUpPage />} />
+              <Route path="/admin" element={<AdminPage />} />
             </Routes>
           </div>
         </BrowserRouter>
