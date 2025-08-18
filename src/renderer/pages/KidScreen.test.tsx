@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import { KidScreen } from './KidScreen';
 import { MemoryRouter } from 'react-router-dom';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
 // Mock console.error to suppress error messages during tests
 const originalConsoleError = console.error;
@@ -13,6 +14,42 @@ beforeAll(() => {
 afterAll(() => {
   console.error = originalConsoleError;
 });
+
+// Mock RateLimitContext for tests
+const MockRateLimitContext = createContext<any>(undefined);
+
+const MockRateLimitProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [lastFetched, setLastFetched] = useState<string>();
+
+  const showWarning = useCallback((lastFetched?: string) => {
+    setIsVisible(true);
+    if (lastFetched) {
+      setLastFetched(lastFetched);
+    }
+  }, []);
+
+  const hideWarning = useCallback(() => {
+    setIsVisible(false);
+  }, []);
+
+  return (
+    <MockRateLimitContext.Provider value={{ showWarning, hideWarning, isVisible, lastFetched }}>
+      {children}
+    </MockRateLimitContext.Provider>
+  );
+};
+
+// Mock the useRateLimit hook
+vi.mock('../App', () => ({
+  useRateLimit: () => {
+    const context = useContext(MockRateLimitContext);
+    if (!context) {
+      throw new Error('useRateLimit must be used within a RateLimitProvider');
+    }
+    return context;
+  }
+}));
 
 // Shared mockNavigate for all tests
 const mockNavigate = vi.fn();
@@ -38,6 +75,31 @@ beforeEach(() => {
     getTimeLimits: vi.fn().mockResolvedValue({
       warningThresholdMinutes: 3,
       countdownWarningSeconds: 60
+    }),
+    loadVideosFromSources: vi.fn().mockResolvedValue({
+      videosBySource: [
+        {
+          id: 'sample-source-1',
+          title: 'Sample Source 1',
+          type: 'youtube_channel',
+          videos: [
+            {
+              id: 'video-1',
+              title: 'The Top 10 Goals of May | Top Goals | Serie A 2024/25',
+              thumbnail: 'test-thumbnail-1.jpg',
+              duration: '00:05:30'
+            },
+            {
+              id: 'video-2',
+              title: 'Venturino scores',
+              thumbnail: 'test-thumbnail-2.jpg',
+              duration: '00:03:45'
+            }
+          ],
+          videoCount: 2
+        }
+      ],
+      debug: []
     })
   } as any;
   mockNavigate.mockReset();
@@ -45,11 +107,13 @@ beforeEach(() => {
 
 const renderWithProvider = (component: React.ReactNode) => {
   return render(
-    <MemoryRouter>
-      <Tooltip.Provider>
-        {component}
-      </Tooltip.Provider>
-    </MemoryRouter>
+    <MockRateLimitProvider>
+      <MemoryRouter>
+        <Tooltip.Provider>
+          {component}
+        </Tooltip.Provider>
+      </MemoryRouter>
+    </MockRateLimitProvider>
   );
 };
 
@@ -64,9 +128,10 @@ describe('KidScreen', () => {
   it('renders all sample videos', async () => {
     renderWithProvider(<KidScreen />);
     await waitFor(() => {
-      // Check for a few sample videos
-      expect(screen.getByText('The Top 10 Goals of May | Top Goals | Serie A 2024/25')).toBeInTheDocument();
-      expect(screen.getByText('Venturino scores')).toBeInTheDocument();
+      // Check for sources instead of individual videos
+      expect(screen.getByText('Sample Source 1')).toBeInTheDocument();
+      expect(screen.getByText('YouTube Channel')).toBeInTheDocument();
+      expect(screen.getByText(/2 videos/)).toBeInTheDocument();
     });
   });
 

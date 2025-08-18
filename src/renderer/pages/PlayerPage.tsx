@@ -43,8 +43,13 @@ export const PlayerPage: React.FC = () => {
       try {
         setIsLoading(true);
         const videoData = await window.electron.getVideoData(id);
-        setVideo(videoData);
-        setError(null);
+        if (videoData) {
+          setVideo(videoData);
+          setError(null);
+        } else {
+          setVideo(null);
+          setError('Video not found');
+        }
       } catch (err) {
         console.error('[PlayerPage] Error loading video data:', err);
         setError('Video not found');

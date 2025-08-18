@@ -212,7 +212,7 @@ class AudioWarningService {
     // Fallback to system beep
     // logVerboseRenderer('[AudioWarning] Using system beep (console.log)');
     // eslint-disable-next-line no-console
-    // console.log('\x07');
+    console.log('\x07');
   }
 
   /**

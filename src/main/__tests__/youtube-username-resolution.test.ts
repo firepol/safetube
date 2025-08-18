@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { YouTubeAPI } from '../youtube-api';
+import { logVerbose } from '../../shared/logging';
 
 // This test requires a real YouTube API key to work
 // Make sure VITE_YOUTUBE_API_KEY is set in your .env file
@@ -31,7 +32,7 @@ describe('YouTube Username Resolution', () => {
     expect(channelDetails.description).toBeDefined();
     expect(channelDetails.thumbnail).toBeDefined();
     
-    console.log('Resolved username to channel:', {
+    logVerbose('Resolved username to channel:', {
       username,
       channelId: channelDetails.channelId,
       title: channelDetails.title
@@ -60,7 +61,7 @@ describe('YouTube Username Resolution', () => {
     expect(firstVideo.thumbnail).toBeDefined();
     expect(firstVideo.type).toBe('youtube');
     
-    console.log('Fetched videos from channel:', {
+    logVerbose('Fetched videos from channel:', {
       channelId,
       channelTitle: channelDetails.title,
       videoCount: videos.length,
