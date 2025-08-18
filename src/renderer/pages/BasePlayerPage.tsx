@@ -4,6 +4,7 @@ import { Video } from '../types';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
 import { CountdownOverlay } from '../components/video/CountdownOverlay';
 import { audioWarningService } from '../services/audioWarning';
+import { logVerbose } from '../lib/logging';
 
 export interface BasePlayerPageProps {
   video: Video | null;
@@ -46,6 +47,13 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
         const audioWarningSeconds = timeLimits.audioWarningSeconds ?? 10;
         const useSystemBeep = timeLimits.useSystemBeep ?? true;
         const customBeepSound = timeLimits.customBeepSound;
+        
+        logVerbose('[BasePlayerPage] Initializing audio warning service with:', {
+          countdownSeconds,
+          audioWarningSeconds,
+          useSystemBeep,
+          customBeepSound
+        });
         
         // Initialize audio warning service
         await audioWarningService.initialize({

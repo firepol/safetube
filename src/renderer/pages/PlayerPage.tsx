@@ -5,6 +5,7 @@ import { PlayerConfigService } from '../services/playerConfig';
 import { Video } from '../types';
 import { BasePlayerPage } from './BasePlayerPage';
 import { logVerbose } from '../lib/logging';
+import { audioWarningService } from '../services/audioWarning';
 
 
 function getSrc(val: unknown): string {
@@ -553,6 +554,9 @@ export const PlayerPage: React.FC = () => {
         // Update time remaining for countdown overlay
         setTimeRemainingSeconds(state.timeRemaining);
         
+        // Check and trigger audio warnings
+        audioWarningService.checkAudioWarnings(state.timeRemaining, isVideoPlaying);
+        
         if (state.isLimitReached) {
           // Stop video playback
           if (videoRef.current) {
@@ -576,8 +580,10 @@ export const PlayerPage: React.FC = () => {
       }
     };
     
-    // Check time limits every 1 second during video playback for more precise audio warning timing
-    intervalId = window.setInterval(monitorTimeLimits, 1000);
+    // Only poll while playing to ensure fresh play-state in the closure
+    if (isVideoPlaying) {
+      intervalId = window.setInterval(monitorTimeLimits, 1000);
+    }
     
     return () => {
       isMounted = false;
@@ -585,7 +591,7 @@ export const PlayerPage: React.FC = () => {
         clearInterval(intervalId);
       }
     };
-  }, [video]);
+  }, [video, isVideoPlaying]);
 
   // Fetch countdown configuration
   useEffect(() => {
@@ -681,6 +687,21 @@ export const PlayerPage: React.FC = () => {
   // Event handlers for the base component
   const handleVideoPlay = useCallback(() => {
     setIsVideoPlaying(true);
+    // Re-initialize and reset warnings on play start to apply latest config
+    (async () => {
+      try {
+        const timeLimits = await window.electron.getTimeLimits();
+        await audioWarningService.initialize({
+          countdownWarningSeconds: timeLimits.countdownWarningSeconds ?? 60,
+          audioWarningSeconds: timeLimits.audioWarningSeconds ?? 10,
+          useSystemBeep: timeLimits.useSystemBeep ?? true,
+          customBeepSound: timeLimits.customBeepSound,
+        });
+      } catch (e) {
+        console.error('[PlayerPage] Failed to reinitialize audio warnings:', e);
+      }
+      audioWarningService.resetState();
+    })();
     startTimeTracking();
   }, [startTimeTracking]);
 

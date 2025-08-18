@@ -4,6 +4,7 @@ import { YouTubeIframePlayer } from '../services/youtubeIframe';
 import { BasePlayerPage } from './BasePlayerPage';
 import { Video } from '../types';
 import { logVerbose } from '../lib/logging';
+import { audioWarningService } from '../services/audioWarning';
 
 
 const PLAYER_CONTAINER_ID = 'youtube-player-container';
@@ -92,6 +93,9 @@ export const YouTubePlayerPage: React.FC = () => {
         // Update time remaining for countdown overlay
         setTimeRemainingSeconds(state.timeRemaining);
         
+        // Check and trigger audio warnings
+        audioWarningService.checkAudioWarnings(state.timeRemaining, isVideoPlaying);
+        
         if (state.isLimitReached) {
           // Stop video playback
           if (ytPlayerInstance.current && ytPlayerInstance.current.pauseVideo) {
@@ -115,8 +119,10 @@ export const YouTubePlayerPage: React.FC = () => {
       }
     };
     
-    // Check time limits every 1 second during video playback for more precise audio warning timing
-    intervalId = window.setInterval(monitorTimeLimits, 1000);
+    // Only poll while playing to ensure fresh play-state in the closure
+    if (isVideoPlaying) {
+      intervalId = window.setInterval(monitorTimeLimits, 1000);
+    }
     
     return () => {
       isMounted = false;
@@ -124,7 +130,7 @@ export const YouTubePlayerPage: React.FC = () => {
         clearInterval(intervalId);
       }
     };
-  }, [video]);
+  }, [video, isVideoPlaying]);
 
   // Fetch countdown configuration
   useEffect(() => {
@@ -231,6 +237,21 @@ export const YouTubePlayerPage: React.FC = () => {
               // Playing
               logVerbose('[YouTubePlayerPage] Video started playing');
               setIsVideoPlaying(true);
+              // Re-initialize and reset warnings on play start to apply latest config
+              (async () => {
+                try {
+                  const timeLimits = await window.electron.getTimeLimits();
+                  await audioWarningService.initialize({
+                    countdownWarningSeconds: timeLimits.countdownWarningSeconds ?? 60,
+                    audioWarningSeconds: timeLimits.audioWarningSeconds ?? 10,
+                    useSystemBeep: timeLimits.useSystemBeep ?? true,
+                    customBeepSound: timeLimits.customBeepSound,
+                  });
+                } catch (e) {
+                  console.error('[YouTubePlayerPage] Failed to reinitialize audio warnings:', e);
+                }
+                audioWarningService.resetState();
+              })();
               // Call the time tracking function directly
               startTimeTracking();
             } else if (event.data === 2 || event.data === 0) {

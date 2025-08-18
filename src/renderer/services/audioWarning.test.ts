@@ -84,6 +84,16 @@ describe('AudioWarningService', () => {
     expect(mockConsoleLog).not.toHaveBeenCalled();
   });
 
+  it('does not trigger countdown warning when starting below the configured window', () => {
+    // Reset state to simulate fresh start
+    audioWarningService.resetState();
+    
+    // Check at 35 seconds (below 50s window start) - should NOT trigger countdown
+    audioWarningService.checkAudioWarnings(35, true);
+    vi.advanceTimersByTime(0);
+    expect(mockConsoleLog).not.toHaveBeenCalled();
+  });
+
   it('triggers audio warning at 10 seconds', () => {
     audioWarningService.checkAudioWarnings(10, true);
     vi.advanceTimersByTime(0);

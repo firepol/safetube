@@ -1,4 +1,4 @@
-// import { logVerboseRenderer } from '@/shared/logging';
+import { logVerbose } from '../lib/logging';
 
 interface AudioWarningConfig {
   countdownWarningSeconds: number;
@@ -12,6 +12,7 @@ interface AudioWarningState {
   hasPlayedAudioWarning: boolean;
   beepCount: number;
   lastBeepTime: number;
+  countdownStartTime: number; // Store when countdown warning started
 }
 
 class AudioWarningService {
@@ -26,6 +27,7 @@ class AudioWarningService {
     hasPlayedAudioWarning: false,
     beepCount: 0,
     lastBeepTime: 0,
+    countdownStartTime: 0,
   };
 
   private audioContext: AudioContext | null = null;
@@ -35,7 +37,9 @@ class AudioWarningService {
    * Initialize the audio warning service with configuration
    */
   async initialize(config: Partial<AudioWarningConfig> = {}): Promise<void> {
+    logVerbose('[AudioWarning] Initializing with config:', config);
     this.config = { ...this.config, ...config };
+    logVerbose('[AudioWarning] Final config:', this.config);
     
     // Initialize audio context for system beep
     if (this.config.useSystemBeep && typeof window !== 'undefined') {
@@ -65,6 +69,7 @@ class AudioWarningService {
       hasPlayedAudioWarning: false,
       beepCount: 0,
       lastBeepTime: 0,
+      countdownStartTime: 0,
     };
     this.stopBeeping();
     // logVerboseRenderer('[AudioWarning] State reset');
@@ -74,31 +79,34 @@ class AudioWarningService {
    * Check if audio warnings should be triggered based on remaining time
    */
   checkAudioWarnings(timeRemainingSeconds: number, isVideoPlaying: boolean): void {
-    // logVerboseRenderer('[AudioWarning] Checking warnings - timeRemaining:', roundedTime, 'isVideoPlaying:', isVideoPlaying);
+    logVerbose('[AudioWarning] Checking warnings - timeRemaining:', timeRemainingSeconds, 'isVideoPlaying:', isVideoPlaying, 'config:', this.config);
     
     if (!isVideoPlaying) {
-      // logVerboseRenderer('[AudioWarning] Video not playing, skipping warnings');
+      logVerbose('[AudioWarning] Video not playing, skipping warnings');
       return; // Don't play warnings when video is paused
     }
 
-    // Check for countdown warning (60 seconds) - trigger between 60-50 seconds
+    // Check for countdown warning - trigger only within the configured window (e.g. 60-50 seconds)
+    logVerbose('[AudioWarning] Countdown check - timeRemaining:', timeRemainingSeconds, 'countdownThreshold:', this.config.countdownWarningSeconds, 'range:', this.config.countdownWarningSeconds - 10, 'to', this.config.countdownWarningSeconds);
     if (
+      !this.state.hasPlayedCountdownWarning &&
       timeRemainingSeconds <= this.config.countdownWarningSeconds &&
-      timeRemainingSeconds > this.config.countdownWarningSeconds - 10 &&
-      !this.state.hasPlayedCountdownWarning
+      timeRemainingSeconds > this.config.countdownWarningSeconds - 10
     ) {
-      // logVerboseRenderer('[AudioWarning] Triggering countdown warning at', roundedTime, 'seconds');
+      logVerbose('[AudioWarning] Triggering countdown warning at', timeRemainingSeconds, 'seconds');
       this.playCountdownWarning();
     }
 
     // Check for audio warning (10 seconds) - trigger when first reaching <= 10 seconds
     // This ensures it triggers even if the check happens at 7 seconds (missed 10)
+    logVerbose('[AudioWarning] Audio warning check - timeRemaining:', timeRemainingSeconds, 'audioThreshold:', this.config.audioWarningSeconds);
+    
     if (
       timeRemainingSeconds <= this.config.audioWarningSeconds &&
       timeRemainingSeconds >= 0 &&
       !this.state.hasPlayedAudioWarning
     ) {
-      // logVerboseRenderer('[AudioWarning] Triggering audio warning at', roundedTime, 'seconds (first time reaching <= 10)');
+      logVerbose('[AudioWarning] Triggering audio warning at', timeRemainingSeconds, 'seconds (first time reaching <= 10)');
       this.playAudioWarning();
     }
   }
@@ -109,6 +117,7 @@ class AudioWarningService {
   private playCountdownWarning(): void {
     this.state.hasPlayedCountdownWarning = true;
     this.state.beepCount = 0;
+    this.state.countdownStartTime = Date.now();
     this.startBeeping(1000); // 1 second interval
     // logVerboseRenderer('[AudioWarning] Playing countdown warning beeps');
   }
@@ -135,10 +144,10 @@ class AudioWarningService {
     this.state.lastBeepTime = Date.now();
 
     const beep = () => {
-      // Stop countdown warning after exactly 10 beeps
+      // Stop countdown warning after exactly 10 beeps (for normal 60-second scenario)
       if (this.state.hasPlayedCountdownWarning && this.state.beepCount >= 10) {
         this.stopBeeping();
-        // logVerboseRenderer('[AudioWarning] Countdown warning completed (10 beeps)');
+        // logVerboseRenderer('[AudioWarning] Countdown warning completed');
         return;
       }
       
@@ -168,34 +177,44 @@ class AudioWarningService {
   /**
    * Play a single beep sound
    */
-  private playBeep(): void {
+  private async playBeep(): Promise<void> {
     // logVerboseRenderer('[AudioWarning] Playing beep, useSystemBeep:', this.config.useSystemBeep);
     
     // Try Web Audio API first (works better in Electron than system beep)
     const AudioContextClass = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
-    if (AudioContextClass && !this.config.useSystemBeep) {
+    // Prefer Web Audio when available for reliable beep in Electron; fallback to console bell
+    if (AudioContextClass) {
       try {
         if (!this.audioContext) {
           this.audioContext = new AudioContextClass();
         }
         const ctx = this.audioContext;
         if (!ctx) throw new Error('AudioContext not available');
+        // Ensure context is running (Electron may start suspended until user gesture)
+        if (ctx.state === 'suspended') {
+          try {
+            await ctx.resume();
+          } catch (resumeError) {
+            // Fall back to system beep if resume fails
+            throw resumeError;
+          }
+        }
         
         const oscillator = ctx.createOscillator();
         const gainNode = ctx.createGain();
         
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+        oscillator.frequency.setValueAtTime(880, ctx.currentTime);
         oscillator.connect(gainNode);
         gainNode.connect(ctx.destination);
         
         // Fade in and out for better sound
         gainNode.gain.setValueAtTime(0, ctx.currentTime);
-        gainNode.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.01);
-        gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.2);
+        gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.01);
+        gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
         
         oscillator.start(ctx.currentTime);
-        oscillator.stop(ctx.currentTime + 0.2);
+        oscillator.stop(ctx.currentTime + 0.3);
         
         oscillator.onended = () => {
           oscillator.disconnect();
