@@ -413,13 +413,13 @@ Each feature PRD must include:
   - The dual player system is now the default, with robust configuration and fallback mechanisms.
 
 ### 9. Advanced Video Sources & Local Folder Navigation
-- **Status**: In Progress
+- **Status**: Completed
 - **PRD**: [Advanced Video Sources & Local Folder Navigation PRD](prds/09-advanced-video-sources.md)
 - **Current Sprint**: Sprint 3
 - **Blockers**: None
 - **Dependencies**: Project Setup, Kid Screen
-- **Progress**: 70%
-- **Last Updated**: 2025-08-17
+- **Progress**: 100%
+- **Last Updated**: 2025-08-18
 - **Completed Items**:
   - **Configuration system** - `videoSources.json` with support for `youtube_channel`, `youtube_playlist`, and `local` source types
   - **YouTube API integration** - Channel and playlist fetching with caching (one JSON file per source)
@@ -431,13 +431,31 @@ Each feature PRD must include:
   - **Video ID encoding** - Local video paths properly encoded for player compatibility
   - **Source thumbnails** - YouTube sources show first video thumbnail, local sources show folder icons
   - **Error handling** - Graceful handling of missing sources, API failures, and configuration issues
-- **Remaining Items**:
-  - **Hierarchical navigation for maxDepth: 3** - Currently only implements flattened view (maxDepth: 2 behavior)
-  - **Subfolder navigation UI** - Need to show subfolders as clickable items when maxDepth > 2
-  - **Folder vs file display logic** - Distinguish between showing subfolders vs flattening all videos
-  - **Navigation breadcrumbs** - Show current folder path when navigating subfolders
-  - **Tests for hierarchical navigation** - Unit and integration tests for maxDepth: 3 behavior
+  - **Hierarchical navigation for maxDepth: 3** - Full implementation of subfolder navigation with proper flattening behavior
+  - **Subfolder navigation UI** - Subfolders displayed as clickable items when maxDepth > 2
+  - **Folder vs file display logic** - Proper distinction between showing subfolders vs flattening all videos
+  - **Navigation breadcrumbs** - Current folder path displayed when navigating subfolders
+  - **Tests for hierarchical navigation** - Comprehensive unit and integration tests for maxDepth: 3 behavior
+  - **YouTube API caching system** - Comprehensive caching with rate limit warnings and fallback logic
+  - **Player integration** - Full integration with both MediaSource and iframe players
+  - **Base64 encoding** - Local video file paths properly encoded for player compatibility
+  - **Pagination fixes** - Resolved video ID transformation and state calculation issues
+  - **Error handling improvements** - Robust error handling for invalid video IDs and network issues
+- **Remaining Items**: None
 - **Recent Changes**:
+  - 2025-08-18: **Fixed all failing tests** - resolved test failures after PRD changes for advanced video sources
+  - 2025-08-18: **Added proper mocking** - resolved window.electron mocking issues in playerConfig tests
+  - 2025-08-18: **Refactored YouTube logging** - replaced console.log with logVerboseRenderer and removed outdated files
+  - 2025-08-18: **Fixed audio warning timing** - resolved audio warning timing and configuration issues
+  - 2025-08-18: **Resolved PlayerPage test failures** - fixed time limit test failures in refactored player pages
+  - 2025-08-17: **Implemented hierarchical folder navigation** - full maxDepth system with proper flattening behavior for local folder sources
+  - 2025-08-17: **Added comprehensive tests** - unit and integration tests for local folder navigation functionality
+  - 2025-08-17: **Fixed React hooks order violation** - resolved SourcePage component issues
+  - 2025-08-17: **Fixed config fetch errors** - resolved maxDepth/path passing to frontend
+  - 2025-08-17: **Fixed folder navigation** - resolved LocalFolderNavigator navigation issues
+  - 2025-08-17: **Cleaned up BasePlayerPage** - removed unused video event callbacks
+  - 2025-08-17: **Fixed time's up navigation** - added navigation to TimeUpPage when time limit is reached
+  - 2025-08-17: **Added renderer logging helper** - implemented logVerbose function for renderer process
   - 2025-08-17: **Fixed pagination handler** - resolved video ID transformation issue where encoded IDs were being converted to full paths
   - 2025-08-17: **Fixed local video routing** - ensured source system loads on startup for proper video playback
   - 2025-08-17: **Implemented base64 encoding** - local video file paths properly encoded for player compatibility
@@ -448,14 +466,15 @@ Each feature PRD must include:
   - 2025-08-13: **Added local folder scanning** - recursive scanning with configurable maxDepth support
   - 2025-07-17: **Initial implementation** - started video source loading system with configuration parsing
 - **Notes**:
-  - **Current implementation only supports flattened view (maxDepth: 2 behavior)** - all videos from subfolders are shown together in a flat list
-  - **Hierarchical navigation (maxDepth: 3) is NOT implemented** - this is a key missing feature per PRD requirements
-  - **Local folder scanning works correctly** - finds all video files up to specified maxDepth
-  - **YouTube sources work with proper caching** - one JSON cache file per source for efficiency
-  - **UI navigation is working** - sources display as folders, clicking shows videos, back button returns to sources
-  - **Pagination is functional** - handles large video collections without performance issues
-  - **Video playback integration working** - local videos are found and properly encoded for player compatibility
-  - **Next major milestone**: Implement hierarchical navigation for maxDepth: 3 to show subfolders as clickable items instead of flattening all videos
+  - **Feature is now 100% complete** - all PRD requirements have been implemented and tested
+  - **Hierarchical navigation fully implemented** - maxDepth: 3 behavior works correctly with subfolder navigation
+  - **Local folder scanning works perfectly** - finds all video files up to specified maxDepth with proper flattening
+  - **YouTube sources work with comprehensive caching** - one JSON cache file per source with rate limit handling
+  - **UI navigation is fully functional** - sources display as folders, clicking shows videos/subfolders, back button works
+  - **Pagination is robust** - handles large video collections without performance issues
+  - **Video playback integration complete** - local videos are found, properly encoded, and play correctly
+  - **All tests passing** - comprehensive test coverage for all navigation and source functionality
+  - **Player integration complete** - works with both MediaSource and iframe players for all video types
 
 ## Status Legend
 
