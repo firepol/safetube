@@ -1,4 +1,33 @@
 import { PlayerConfigService } from '../playerConfig';
+import { vi, describe, it, expect, beforeEach, beforeAll } from 'vitest';
+
+// Mock window.electron for tests
+beforeAll(() => {
+  // Mock the electron API that PlayerConfigService uses
+  Object.defineProperty(window, 'electron', {
+    value: {
+      getPlayerConfig: vi.fn().mockResolvedValue({
+        youtubePlayerType: 'mediasource',
+        youtubePlayerConfig: {
+          mediasource: {
+            maxQuality: '1080p',
+            preferredLanguages: ['en'],
+            fallbackToLowerQuality: true,
+            bufferSize: 30
+          },
+          iframe: {
+            showRelatedVideos: false,
+            customEndScreen: false,
+            qualityControls: true,
+            rel: 0
+          }
+        },
+        perVideoOverrides: {}
+      })
+    },
+    writable: true
+  });
+});
 
 describe('PlayerConfigService', () => {
   beforeEach(() => {
