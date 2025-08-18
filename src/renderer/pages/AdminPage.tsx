@@ -129,8 +129,15 @@ export const AdminPage: React.FC = () => {
       
       if (lastWatchedInfo) {
         console.log('[AdminPage] Smart Exit: Navigating to video player for video:', lastWatchedInfo.video.videoId);
-        // Navigate directly to the video player for the last watched video
+        
+        // First, replace the current admin page in history with the source page
+        // This ensures that when user clicks back from video player, they go to the source
+        navigate(`/source/${lastWatchedInfo.sourceId}`, { replace: true });
+        
+        // Then navigate to the video player, adding it to history
+        // Now the history will be: [previous page] -> [source page] -> [video player]
         navigate(`/player/${lastWatchedInfo.video.videoId}`);
+        
         setSaveMessage(`Returning to ${lastWatchedInfo.video.title || 'your video'} where you last left off.`);
       } else {
         console.log('[AdminPage] Smart Exit: No last watched video found, going to homepage');
