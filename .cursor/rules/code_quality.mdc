@@ -1,6 +1,5 @@
 ---
-description: oad when creating new files, refactoring code, organizing components, or when user asks about code organization and documentation standards.
-globs: 
+description: load when creating new files, refactoring code, organizing components, or when user asks about code organization and documentation standards.
 alwaysApply: false
 ---
 # Code Quality Rules
