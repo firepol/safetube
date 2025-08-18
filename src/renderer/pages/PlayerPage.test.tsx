@@ -23,6 +23,11 @@ afterAll(() => {
   console.error = originalConsoleError;
 });
 
+// Reset mocks before each test
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
 // Mock window.electron for time tracking IPC
 beforeAll(() => {
   window.electron = {
@@ -226,7 +231,7 @@ describe('PlayerPage', () => {
     document.exitFullscreen = vi.fn().mockResolvedValue(undefined);
 
     render(
-      <MemoryRouter initialEntries={['/player/f2_3sQu7lA4']}>
+      <MemoryRouter initialEntries={['/player/local-1']}>
         <Routes>
           <Route path="/player/:id" element={<PlayerPage />} />
           <Route path="/time-up" element={<div>Time's Up Page</div>} />
@@ -236,11 +241,17 @@ describe('PlayerPage', () => {
 
     // Wait for component to load
     await waitFor(() => {
-      expect(screen.getByText('The Top 10 Goals of May | Top Goals | Serie A 2024/25')).toBeInTheDocument();
+      expect(screen.getByText('Tai Otoshi')).toBeInTheDocument();
     });
 
-    // Simulate time limit being reached after 3.5 seconds (after the interval check)
-    await new Promise(resolve => setTimeout(resolve, 3500));
+    // Find the video element and simulate it playing
+    const videoElement = screen.getByTestId('video-player') as HTMLVideoElement;
+    
+    // Simulate video play event to start the time monitoring interval
+    videoElement.dispatchEvent(new Event('play', { bubbles: true }));
+
+    // Simulate time limit being reached after 1.5 seconds (after the interval check)
+    await new Promise(resolve => setTimeout(resolve, 1500));
 
     // Verify that getTimeTrackingState was called at least twice (initial + interval)
     const mockedGetTimeTrackingState = vi.mocked(window.electron.getTimeTrackingState);

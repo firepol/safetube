@@ -756,6 +756,7 @@ export const PlayerPage: React.FC = () => {
         controls
         autoPlay
         playsInline
+        data-testid="video-player"
         onPlay={handleVideoPlay}
         onPause={handleVideoPause}
         onEnded={handleVideoEnded}
