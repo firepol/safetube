@@ -203,7 +203,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         }));
 
         // Merge with watched data to populate resumeAt
-        const { mergeWatchedData } = await import('../shared/fileUtils');
+        const { mergeWatchedData } = await import('./watchedDataUtils');
         const videosWithWatchedData = await mergeWatchedData(videos);
 
         const paginationState = paginationService.getPaginationState(typedSource.id, cache.totalVideos || videosWithWatchedData.length);
@@ -267,7 +267,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         }));
 
         // Merge with watched data to populate resumeAt
-        const { mergeWatchedData } = await import('../shared/fileUtils');
+        const { mergeWatchedData } = await import('./watchedDataUtils');
         const videosWithWatchedData = await mergeWatchedData(videos);
 
         const paginationState = paginationService.getPaginationState(typedSource.id, videosWithWatchedData.length);
