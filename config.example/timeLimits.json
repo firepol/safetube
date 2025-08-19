@@ -10,6 +10,6 @@
   "countdownWarningSeconds": 60,
   "audioWarningSeconds": 10,
   "timeUpMessage": "Time's up for today! Here's your schedule:",
-  "useSystemBeep": true,
+  "useSystemBeep": false,
   "customBeepSound": ""
 } 
