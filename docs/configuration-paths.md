@@ -22,7 +22,7 @@ safetube/
 
 When running SafeTube as a built application, configuration files are stored in the user's data directory:
 
-### Linux (AppImage, DEB, RPM)
+### Linux (AppImage)
 - **Config files**: `~/.config/SafeTube/config/`
 - **Cache**: `~/.cache/SafeTube/`
 - **Logs**: `~/.local/share/SafeTube/logs/`
@@ -40,15 +40,41 @@ When running SafeTube as a built application, configuration files are stored in 
 - **Logs**: `~/Library/Logs/SafeTube/`
 - **Environment file**: `~/Library/Application Support/SafeTube/.env`
 
-## First Run Setup
+## 🚀 **Automatic First-Run Setup (NEW!)**
 
-When you first run a production build of SafeTube:
+SafeTube now automatically handles first-time setup! When you first run a production build:
 
-1. **Create the config directory** in your user data location
-2. **Copy your configuration files** from the development `config/` folder
-3. **Create a `.env` file** with your API keys and other environment variables
+1. **Automatic Directory Creation**: Creates all necessary directories automatically
+2. **Config File Copying**: Copies default configuration files from `config.example/` to your user data directory
+3. **Environment Setup**: Creates a `.env` file with placeholder values for you to customize
+4. **Zero Manual Setup**: No need to manually create directories or copy files!
 
-### Example Linux Setup
+### What Gets Set Up Automatically
+
+The following configuration files are automatically copied:
+- `timeLimits.json` - Time limit settings
+- `usageLog.json` - Usage tracking configuration
+- `videoSources.json` - Video source definitions
+- `youtubePlayer.json` - YouTube player settings
+- `watched.json` - Watch history tracking
+- `timeExtra.json` - Extra time allowances
+- `pagination.json` - Pagination settings
+
+### Environment File
+
+A `.env` file is automatically created with:
+- Placeholder for YouTube API key
+- Placeholder for admin password
+- Default logging settings
+- Production mode configuration
+
+## Manual Setup (Legacy - No Longer Required)
+
+> **Note**: Manual setup is no longer required thanks to automatic first-run setup!
+
+If you prefer to manually manage your configuration:
+
+### Linux Users
 ```bash
 # Create config directory
 mkdir -p ~/.config/SafeTube/config
@@ -56,11 +82,11 @@ mkdir -p ~/.config/SafeTube/config
 # Copy config files from development
 cp -r /path/to/safetube/config/* ~/.config/SafeTube/config/
 
-# Create .env file
+# Create environment file
 cp /path/to/safetube/.env ~/.config/SafeTube/
 ```
 
-### Example Windows Setup
+### Windows Users
 ```cmd
 # Create config directory
 mkdir "%APPDATA%\SafeTube\config"
@@ -68,7 +94,7 @@ mkdir "%APPDATA%\SafeTube\config"
 # Copy config files from development
 xcopy "C:\path\to\safetube\config\*" "%APPDATA%\SafeTube\config\" /E /I
 
-# Create .env file
+# Create environment file
 copy "C:\path\to\safetube\.env" "%APPDATA%\SafeTube\"
 ```
 
@@ -81,7 +107,7 @@ The `.env` file should contain:
 
 ## Automatic Directory Creation
 
-SafeTube will automatically create the necessary directories on first run, but you need to provide the configuration files.
+SafeTube automatically creates the necessary directories on first run, so you don't need to provide the configuration files manually.
 
 ## Troubleshooting
 
@@ -91,6 +117,7 @@ If configuration files are not found:
 2. **Verify the config directory exists** in the correct location
 3. **Ensure file permissions** allow SafeTube to read the files
 4. **Check file format** - JSON files must be valid JSON
+5. **Look for FirstRunSetup logs** in the console output
 
 ## Development vs Production Detection
 
@@ -99,3 +126,13 @@ SafeTube automatically detects the environment:
 - **Production**: Any other value (uses user data directory paths)
 
 You can override this by setting `NODE_ENV` in your environment.
+
+## Testing the Setup
+
+You can test the FirstRunSetup functionality using the provided test script:
+
+```bash
+node scripts/test-first-run-setup.js
+```
+
+This will show you exactly what directories and files would be created in production mode.
