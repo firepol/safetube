@@ -6,8 +6,31 @@ import * as url from 'url';
 import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking';
 import { logVerbose } from '../shared/logging';
 import { AppPaths } from '../shared/appPaths';
+import { FirstRunSetup } from '../shared/firstRunSetup';
 
 console.log('[Main] Main process starting...');
+
+// Run first-time setup if needed (before any config files are read)
+(async () => {
+  try {
+    console.log('[Main] Running first-time setup...');
+    const setupResult = await FirstRunSetup.setupIfNeeded();
+    
+    if (setupResult.success) {
+      console.log('[Main] First-time setup completed successfully');
+      if (setupResult.createdDirs.length > 0) {
+        console.log('[Main] Created directories:', setupResult.createdDirs);
+      }
+      if (setupResult.copiedFiles.length > 0) {
+        console.log('[Main] Copied files:', setupResult.copiedFiles);
+      }
+    } else {
+      console.error('[Main] First-time setup failed:', setupResult.errors);
+    }
+  } catch (error) {
+    console.error('[Main] Error during first-time setup:', error);
+  }
+})();
 
 // Register IPC handlers immediately
 console.log('[Main] Registering IPC handlers immediately...');
@@ -52,6 +75,16 @@ ipcMain.handle('get-player-config', async () => {
     return JSON.parse(configData);
   } catch (error) {
     console.error('Error loading player config:', error);
+    throw error;
+  }
+});
+
+// Handle setup status request
+ipcMain.handle('get-setup-status', async () => {
+  try {
+    return await FirstRunSetup.getSetupStatus();
+  } catch (error) {
+    console.error('Error getting setup status:', error);
     throw error;
   }
 });
