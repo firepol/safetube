@@ -5,6 +5,7 @@ import * as http from 'http';
 import * as url from 'url';
 import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking';
 import { logVerbose } from '../shared/logging';
+import { AppPaths } from '../shared/appPaths';
 
 console.log('[Main] Main process starting...');
 
@@ -40,7 +41,7 @@ ipcMain.handle('get-local-file', async (_, filePath: string) => {
 ipcMain.handle('get-player-config', async () => {
   console.log('[Main] get-player-config handler called');
   try {
-    const configPath = path.join(process.cwd(), 'config', 'youtubePlayer.json');
+    const configPath = AppPaths.getConfigPath('youtubePlayer.json');
     console.log('[Main] Config path:', configPath);
     if (!fs.existsSync(configPath)) {
       console.log('[Main] Config file not found');

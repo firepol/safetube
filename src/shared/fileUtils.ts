@@ -1,8 +1,9 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
+import { AppPaths } from './appPaths';
 import { TimeLimits, UsageLog, WatchedVideo, VideoSource, TimeExtra } from './types';
 
-const CONFIG_DIR = path.join(process.cwd(), 'config');
+const CONFIG_DIR = AppPaths.getConfigDir();
 
 /**
  * Ensures the config directory exists

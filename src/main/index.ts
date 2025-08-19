@@ -11,6 +11,7 @@ import { readTimeLimits, encodeFilePath } from '../shared/fileUtils'
 // Load environment variables from .env file
 import dotenv from 'dotenv'
 import { logVerbose } from '../shared/logging'
+import { AppPaths } from '../shared/appPaths'
 dotenv.config()
 
 // Debug: Log environment variables
@@ -412,7 +413,7 @@ ipcMain.handle('test-handler', async () => {
 // Handle player configuration loading
 ipcMain.handle('get-player-config', async () => {
   try {
-    const configPath = path.join(process.cwd(), 'config', 'youtubePlayer.json')
+    const configPath = AppPaths.getConfigPath('youtubePlayer.json')
     logVerbose('Loading player config from:', configPath)
     
     if (!fs.existsSync(configPath)) {
@@ -588,7 +589,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
     });
     
     // Step 1: Read and parse videoSources.json configuration
-    const configPath = path.join(process.cwd(), 'config', 'videoSources.json');
+    const configPath = AppPaths.getConfigPath('videoSources.json');
     logVerbose('[Main] Reading video sources config from:', configPath);
     
     if (!fs.existsSync(configPath)) {

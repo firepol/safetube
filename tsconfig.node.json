@@ -11,5 +11,5 @@
     "outDir": "./dist",
     "rootDir": "."
   },
-  "include": ["vite.config.ts", "src/main/**/*"]
+  "include": ["vite.config.ts", "src/main/**/*", "src/shared/**/*", "src/preload/**/*"]
 } 
