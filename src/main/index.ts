@@ -1071,6 +1071,41 @@ ipcMain.handle('get-youtube-api-key', async () => {
   }
 });
 
+// Handle getting verbose logging setting for preload script
+ipcMain.handle('logging:get-verbose', async () => {
+  try {
+    const isVerbose = process.env.ELECTRON_LOG_VERBOSE === 'true';
+    logVerbose('[Main] Providing verbose logging setting to preload script:', isVerbose);
+    return { verbose: isVerbose };
+  } catch (error) {
+    log.error('[Main] Error getting verbose logging setting:', error);
+    return { verbose: false };
+  }
+});
+
+// Handle logging from renderer process
+ipcMain.handle('logging:log', async (_, level: string, ...args: any[]) => {
+  try {
+    const isVerbose = process.env.ELECTRON_LOG_VERBOSE === 'true';
+    if (level === 'verbose' && !isVerbose) {
+      return; // Don't log verbose messages if verbose logging is disabled
+    }
+    
+    // Log to main process console
+    if (level === 'verbose') {
+      logVerbose('[Renderer]', ...args);
+    } else if (level === 'error') {
+      log.error('[Renderer]', ...args);
+    } else if (level === 'warn') {
+      log.warn('[Renderer]', ...args);
+    } else {
+      log.info('[Renderer]', ...args);
+    }
+  } catch (error) {
+    log.error('[Main] Error handling renderer log:', error);
+  }
+});
+
 // Helper function to parse ISO duration
 function parseISODuration(iso: string): number {
   const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);

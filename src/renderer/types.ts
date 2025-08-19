@@ -50,6 +50,11 @@ export interface ElectronAPI {
     sourceId: string;
     sourceTitle: string;
   } | null>;
+  // Logging configuration methods
+  setVerboseLogging: (enabled: boolean) => Promise<{ success: boolean; verbose: boolean }>;
+  getVerboseLogging: () => Promise<{ verbose: boolean }>;
+  // Logging methods
+  log: (level: string, ...args: any[]) => Promise<void>;
 }
 declare global {
   interface Window {

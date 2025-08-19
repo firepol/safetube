@@ -1,10 +1,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 // Debug: Log what environment variables are available (only when verbose logging is enabled)
-if (process.env.ELECTRON_LOG_VERBOSE === 'true') {
-  console.log('[Preload] Available env vars:', Object.keys(process.env).filter(key => key.includes('LOG')));
-  console.log('[Preload] ELECTRON_LOG_VERBOSE value:', process.env.ELECTRON_LOG_VERBOSE);
-}
+// Note: We'll get the verbose setting from the main process via IPC instead
+console.log('[Preload] Preload process starting...');
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
@@ -46,6 +44,8 @@ contextBridge.exposeInMainWorld(
     },
     // Logging configuration methods
     setVerboseLogging: (enabled: boolean) => ipcRenderer.invoke('logging:set-verbose', enabled),
-    getVerboseLogging: () => ipcRenderer.invoke('logging:get-verbose')
+    getVerboseLogging: () => ipcRenderer.invoke('logging:get-verbose'),
+    // Logging methods
+    log: (level: string, ...args: any[]) => ipcRenderer.invoke('logging:log', level, ...args)
   }
 );
