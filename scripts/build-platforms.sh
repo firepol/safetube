@@ -15,6 +15,9 @@ case $PLATFORM in
     ;;
   "win")
     echo "🪟 Building for Windows (NSIS)..."
+    echo "⚠️  Note: Windows builds from Linux may fail due to Wine compatibility"
+    echo "   Consider using a Windows machine or VM for reliable Windows builds"
+    echo ""
     yarn electron:build --win
     ;;
   "mac")
