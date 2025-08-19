@@ -9,7 +9,7 @@ export class PaginationService {
   private cacheFile: string;
 
   private constructor() {
-    this.cacheFile = 'config/pageCache.json';
+    this.cacheFile = '.cache/pageCache.json';
     this.config = this.loadConfig();
     this.loadPageCache();
   }
