@@ -146,9 +146,9 @@ export class FirstRunSetup {
     ];
 
     let envExamplePath: string | null = null;
-    for (const path of possibleEnvExamplePaths) {
-      if (await this.fileExists(path)) {
-        envExamplePath = path;
+    for (const envPath of possibleEnvExamplePaths) {
+      if (await this.fileExists(envPath)) {
+        envExamplePath = envPath;
         break;
       }
     }
@@ -158,33 +158,7 @@ export class FirstRunSetup {
     try {
       // Check if .env.example exists anywhere
       if (!envExamplePath) {
-        console.log('[FirstRunSetup] .env.example not found, creating minimal .env file');
-        
-        // Create a minimal .env file with placeholders
-        const minimalEnvContent = `# SafeTube Environment Configuration
-# Generated automatically - please update with your actual values
-
-# YouTube API Configuration
-# Get your API key from: https://console.cloud.google.com/apis/credentials
-VITE_YOUTUBE_API_KEY=your_youtube_api_key_here
-
-# Admin Access
-# Password for accessing admin features
-ADMIN_PASSWORD=your_admin_password_here
-
-# Logging Configuration
-# Set to 'true' for verbose logging, 'false' for normal logging
-ELECTRON_LOG_VERBOSE=false
-
-# Development Mode
-# Set to 'development' for dev mode, any other value for production
-NODE_ENV=production
-`;
-        
-        await fs.writeFile(envPath, minimalEnvContent, 'utf8');
-        result.copiedFiles.push('.env (generated)');
-        console.log('[FirstRunSetup] Created minimal .env file');
-        console.log('[FirstRunSetup] IMPORTANT: Please update the .env file with your actual API keys and settings');
+        console.log('[FirstRunSetup] .env.example not found, skipping environment setup');
         return;
       }
 
@@ -198,7 +172,7 @@ NODE_ENV=production
       await fs.copyFile(envExamplePath, envPath);
       result.copiedFiles.push('.env');
       console.log('[FirstRunSetup] Copied .env.example to production location');
-      console.log('[FirstRunSetup] Please update the .env file with your actual API keys and settings');
+      console.log('[FirstRunSetup] IMPORTANT: Please update the .env file with your actual API keys and settings');
 
     } catch (error) {
       const errorMsg = `Failed to setup environment file: ${error}`;

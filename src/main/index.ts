@@ -325,8 +325,15 @@ function extractPlaylistId(url: string): string | null {
 }
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
-if (require('electron-squirrel-startup')) {
-  app.quit()
+if (process.platform === 'win32') {
+  try {
+    if (require('electron-squirrel-startup')) {
+      app.quit();
+    }
+  } catch (error) {
+    // electron-squirrel-startup not available on non-Windows platforms
+    logVerbose('electron-squirrel-startup not available on this platform');
+  }
 }
 
 const isDev = process.env.NODE_ENV === 'development'
