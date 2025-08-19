@@ -347,6 +347,7 @@ export const PlayerPage: React.FC = () => {
             
             // Get MediaSource configuration for max quality
             const mediaSourceConfig = await PlayerConfigService.getMediaSourceConfig();
+            // logVerbose('[PlayerPage] Media source config:', mediaSourceConfig);
             
             // Use the proper stream selection functions with max quality limit
             const highestQuality = YouTubeAPI.getHighestQualityStream(
@@ -361,6 +362,7 @@ export const PlayerPage: React.FC = () => {
               quality: highestQuality.quality,
               mimeType: highestQuality.videoUrl.includes('webm') ? 'video/webm' : 'video/mp4'
             };
+            logVerbose('[PlayerPage] chosen stream quality:', videoStream.quality);
 
             if (highestQuality.audioUrl) {
               audioTrack = {

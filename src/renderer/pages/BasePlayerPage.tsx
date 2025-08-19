@@ -48,12 +48,12 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
         const useSystemBeep = timeLimits.useSystemBeep ?? true;
         const customBeepSound = timeLimits.customBeepSound;
         
-        logVerbose('[BasePlayerPage] Initializing audio warning service with:', {
-          countdownSeconds,
-          audioWarningSeconds,
-          useSystemBeep,
-          customBeepSound
-        });
+        // logVerbose('[BasePlayerPage] Initializing audio warning service with:', {
+        //   countdownSeconds,
+        //   audioWarningSeconds,
+        //   useSystemBeep,
+        //   customBeepSound
+        // });
         
         // Initialize audio warning service
         await audioWarningService.initialize({

@@ -36,13 +36,13 @@ export async function getTimeLimitForToday(): Promise<number> {
   // Total limit is base + extra
   const totalLimitMinutes = baseLimitMinutes + extraTimeMinutes;
   
-  logVerbose('[TimeTracking] getTimeLimitForToday:', { 
-    today, 
-    dayOfWeek, 
-    baseLimitMinutes, 
-    extraTimeMinutes, 
-    totalLimitMinutes 
-  });
+  // logVerbose('[TimeTracking] getTimeLimitForToday:', { 
+  //   today, 
+  //   dayOfWeek, 
+  //   baseLimitMinutes, 
+  //   extraTimeMinutes, 
+  //   totalLimitMinutes 
+  // });
   
   return totalLimitMinutes;
 }
@@ -154,7 +154,7 @@ export async function recordVideoWatching(
 ): Promise<void> {
   // Round timeWatched to whole seconds for consistency
   const roundedTimeWatched = Math.round(timeWatched);
-  logVerbose('[TimeTracking] recordVideoWatching:', { videoId, position, timeWatched: roundedTimeWatched });
+  // logVerbose('[TimeTracking] recordVideoWatching:', { videoId, position, timeWatched: roundedTimeWatched });
   
   // Add to daily usage in seconds (for precision)
   await addTimeUsedToday(roundedTimeWatched);

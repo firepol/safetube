@@ -37,9 +37,9 @@ class AudioWarningService {
    * Initialize the audio warning service with configuration
    */
   async initialize(config: Partial<AudioWarningConfig> = {}): Promise<void> {
-    logVerbose('[AudioWarning] Initializing with config:', config);
+    // logVerbose('[AudioWarning] Initializing with config:', config);
     this.config = { ...this.config, ...config };
-    logVerbose('[AudioWarning] Final config:', this.config);
+    // logVerbose('[AudioWarning] Final config:', this.config);
     
     // Initialize audio context for system beep
     if (this.config.useSystemBeep && typeof window !== 'undefined') {
@@ -79,34 +79,34 @@ class AudioWarningService {
    * Check if audio warnings should be triggered based on remaining time
    */
   checkAudioWarnings(timeRemainingSeconds: number, isVideoPlaying: boolean): void {
-    logVerbose('[AudioWarning] Checking warnings - timeRemaining:', timeRemainingSeconds, 'isVideoPlaying:', isVideoPlaying, 'config:', this.config);
+    // logVerbose('[AudioWarning] Checking warnings - timeRemaining:', timeRemainingSeconds, 'isVideoPlaying:', isVideoPlaying, 'config:', this.config);
     
     if (!isVideoPlaying) {
-      logVerbose('[AudioWarning] Video not playing, skipping warnings');
+      // logVerbose('[AudioWarning] Video not playing, skipping warnings');
       return; // Don't play warnings when video is paused
     }
 
     // Check for countdown warning - trigger only within the configured window (e.g. 60-50 seconds)
-    logVerbose('[AudioWarning] Countdown check - timeRemaining:', timeRemainingSeconds, 'countdownThreshold:', this.config.countdownWarningSeconds, 'range:', this.config.countdownWarningSeconds - 10, 'to', this.config.countdownWarningSeconds);
+    // logVerbose('[AudioWarning] Countdown check - timeRemaining:', timeRemainingSeconds, 'countdownThreshold:', this.config.countdownWarningSeconds, 'range:', this.config.countdownWarningSeconds - 10, 'to', this.config.countdownWarningSeconds);
     if (
       !this.state.hasPlayedCountdownWarning &&
       timeRemainingSeconds <= this.config.countdownWarningSeconds &&
       timeRemainingSeconds > this.config.countdownWarningSeconds - 10
     ) {
-      logVerbose('[AudioWarning] Triggering countdown warning at', timeRemainingSeconds, 'seconds');
+      // logVerbose('[AudioWarning] Triggering countdown warning at', timeRemainingSeconds, 'seconds');
       this.playCountdownWarning();
     }
 
     // Check for audio warning (10 seconds) - trigger when first reaching <= 10 seconds
     // This ensures it triggers even if the check happens at 7 seconds (missed 10)
-    logVerbose('[AudioWarning] Audio warning check - timeRemaining:', timeRemainingSeconds, 'audioThreshold:', this.config.audioWarningSeconds);
+    // logVerbose('[AudioWarning] Audio warning check - timeRemaining:', timeRemainingSeconds, 'audioThreshold:', this.config.audioWarningSeconds);
     
     if (
       timeRemainingSeconds <= this.config.audioWarningSeconds &&
       timeRemainingSeconds >= 0 &&
       !this.state.hasPlayedAudioWarning
     ) {
-      logVerbose('[AudioWarning] Triggering audio warning at', timeRemainingSeconds, 'seconds (first time reaching <= 10)');
+      // logVerbose('[AudioWarning] Triggering audio warning at', timeRemainingSeconds, 'seconds (first time reaching <= 10)');
       this.playAudioWarning();
     }
   }
