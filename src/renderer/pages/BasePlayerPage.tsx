@@ -4,7 +4,6 @@ import { Video } from '../types';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
 import { CountdownOverlay } from '../components/video/CountdownOverlay';
 import { audioWarningService } from '../services/audioWarning';
-import { logVerbose } from '../lib/logging';
 
 export interface BasePlayerPageProps {
   video: Video | null;

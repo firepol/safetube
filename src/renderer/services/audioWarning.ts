@@ -1,5 +1,3 @@
-import { logVerbose } from '../lib/logging';
-
 interface AudioWarningConfig {
   countdownWarningSeconds: number;
   audioWarningSeconds: number;

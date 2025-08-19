@@ -11,6 +11,5 @@
     "outDir": "./dist",
     "rootDir": "."
   },
-  "include": ["vite.config.ts", "src/main/**/*", "src/preload/**/*"],
-  "references": [{ "path": "./tsconfig.shared.json" }]
-} 
+  "include": ["src/shared/**/*"]
+}
