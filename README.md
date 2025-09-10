@@ -156,6 +156,12 @@ CI=true yarn test
 
 # Build web assets only (for development)
 yarn build
+
+# Start Electron development server (Linux/macOS)
+yarn electron:dev
+
+# Start Electron development server (Windows)
+yarn electron:dev:win
 ```
 
 ## Building Executables
