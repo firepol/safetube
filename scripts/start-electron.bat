@@ -13,6 +13,15 @@ if exist .env (
     echo No .env file found
 )
 
+REM Build preload script before starting Electron
+echo Building preload script...
+call yarn build:preload
+if errorlevel 1 (
+    echo Error building preload script
+    pause
+    exit /b 1
+)
+
 REM Start Electron with environment variables
 echo Starting Electron with environment variables...
 set NODE_ENV=development

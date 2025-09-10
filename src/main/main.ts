@@ -276,6 +276,28 @@ ipcMain.handle('get-env-var', async (_, varName: string) => {
   return value;
 });
 
+// Handle loading videos from new source system (for development)
+ipcMain.handle('load-videos-from-sources', async () => {
+  try {
+    console.log('[Main] load-videos-from-sources handler called (development)');
+    
+    // Import and use the main process version that has the encoded IDs
+    const { loadAllVideosFromSourcesMain } = await import('../main/index');
+    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
+    const result = await loadAllVideosFromSourcesMain('config/videoSources.json', apiKey);
+    
+    console.log('[Main] Videos loaded in development:', { 
+      totalVideos: result.videosBySource?.length || 0, 
+      sources: result.videosBySource?.length || 0 
+    });
+    
+    return result;
+  } catch (error) {
+    console.error('[Main] Error loading videos from sources in development:', error);
+    throw error;
+  }
+});
+
 
 
 console.log('[Main] IPC handlers registered successfully');
@@ -286,7 +308,7 @@ function registerIpcHandlers() {
 }
 
 function createWindow() {
-  const preloadPath = path.join(__dirname, '../preload/index.js');
+  const preloadPath = path.join(__dirname, '../../preload/index.js');
   console.log('[Main] Preload path:', preloadPath);
 
   const mainWindow = new BrowserWindow({
