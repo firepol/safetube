@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { ipcMain } from 'electron';
 import { logVerbose } from '../shared/logging';
+import { YtDlpManager } from '../shared/ytDlpManager';
 
 const execAsync = promisify(exec);
 
@@ -31,8 +32,12 @@ export function setupYouTubeHandlers() {
 
   ipcMain.handle('get-video-streams', async (_, videoId: string) => {
     try {
+      // Ensure yt-dlp is available (auto-download on Windows if needed)
+      await YtDlpManager.ensureYtDlpAvailable();
+      
       // Use yt-dlp to get video info in JSON format
-      const { stdout } = await execAsync(`yt-dlp -j https://www.youtube.com/watch?v=${videoId}`);
+      const ytDlpCommand = YtDlpManager.getYtDlpCommand();
+      const { stdout } = await execAsync(`${ytDlpCommand} -j https://www.youtube.com/watch?v=${videoId}`);
       const info = JSON.parse(stdout);
 
       const videoStreams: VideoStream[] = [];
@@ -66,7 +71,13 @@ export function setupYouTubeHandlers() {
       return { videoStreams, audioTracks };
     } catch (error) {
       console.error('Error getting video streams:', error);
-      throw new Error('Failed to get video streams');
+      
+      // Check if it's a yt-dlp availability error
+      if (error instanceof Error && error.message.includes('yt-dlp is required')) {
+        throw new Error(`YouTube functionality requires yt-dlp. ${error.message}`);
+      }
+      
+      throw new Error('Failed to get video streams. Please check your internet connection and try again.');
     }
   });
 } 

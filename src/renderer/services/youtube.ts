@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { logVerboseRenderer } from '@/shared/logging';
+import { YtDlpManager } from '@/shared/ytDlpManager';
 
 // YouTube API response schemas
 const VideoSchema = z.object({
@@ -188,7 +189,11 @@ class YouTubeAPI {
         const { promisify } = require('util');
         const execAsync = promisify(exec);
 
-        const { stdout } = await execAsync(`yt-dlp -j "${videoId}"`);
+        // Ensure yt-dlp is available (auto-download on Windows if needed)
+        await YtDlpManager.ensureYtDlpAvailable();
+        
+        const ytDlpCommand = YtDlpManager.getYtDlpCommand();
+        const { stdout } = await execAsync(`${ytDlpCommand} -j "${videoId}"`);
         const data = JSON.parse(stdout);
 
         const videoStreams: VideoStream[] = data.formats
@@ -219,7 +224,13 @@ class YouTubeAPI {
       return await window.electron.getVideoStreams(videoId);
     } catch (error) {
       logVerboseRenderer('Error getting video streams:', error);
-      throw new Error('Failed to get video streams');
+      
+      // Check if it's a yt-dlp availability error
+      if (error instanceof Error && error.message.includes('yt-dlp is required')) {
+        throw new Error(`YouTube functionality requires yt-dlp. ${error.message}`);
+      }
+      
+      throw new Error('Failed to get video streams. Please check your internet connection and try again.');
     }
   }
 
