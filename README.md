@@ -119,9 +119,47 @@ yarn test
 # Run tests in CI mode (skips YouTube integration)
 CI=true yarn test
 
-# Build for production
+# Build web assets only (for development)
 yarn build
 ```
+
+### Building Distributable Executables
+
+To create distributable executables for different platforms:
+
+```bash
+# Build for current platform only (recommended)
+yarn electron:build
+
+# Build for specific platforms (cross-compilation)
+yarn electron:build --win    # Windows only
+yarn electron:build --mac    # macOS only  
+yarn electron:build --linux  # Linux only
+```
+
+**Output Locations:**
+- **Windows**: `release/SafeTube-1.0.0.exe` (NSIS installer) + `release/win-unpacked/SafeTube.exe` (portable)
+- **macOS**: `release/SafeTube-1.0.0.dmg` (DMG package)
+- **Linux**: `release/SafeTube-1.0.0.AppImage` (AppImage) + `release/linux-unpacked/safetube` (portable)
+
+**Platform-Specific Notes:**
+- **Windows**: Creates both an NSIS installer and a portable executable
+- **macOS**: Creates a DMG file (requires macOS for building)
+- **Linux**: Creates both an AppImage and a portable binary
+
+**Cross-Platform Building:**
+- **Best Practice**: Build on the target platform for best results
+- **Windows**: Build on Windows for proper code signing and optimization
+- **macOS**: Build on macOS for DMG creation and code signing
+- **Linux**: Build on Linux for AppImage creation
+
+**Prerequisites for Building:**
+- All platforms: Node.js 20+ and Yarn
+- Windows: No additional requirements
+- macOS: Requires macOS system for DMG creation
+- Linux: No additional requirements
+
+**Note**: Cross-compilation (building Windows on Linux) may have limitations with code signing and some Windows-specific features.
 
 ## CI/CD Pipeline
 
