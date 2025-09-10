@@ -8,8 +8,8 @@ const getCurrentDate = (): string => {
 
 const getDayOfWeek = (dateString: string): keyof TimeLimits => {
   const date = new Date(dateString + 'T00:00:00Z');
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  return days[date.getUTCDay()] as keyof TimeLimits;
+  const days: (keyof TimeLimits)[] = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return days[date.getUTCDay()];
 };
 
 // Accept currentDate as a prop for testability

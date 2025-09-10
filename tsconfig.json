@@ -23,5 +23,5 @@
     }
   },
   "include": ["src/renderer/**/*"],
-  "references": [{ "path": "./tsconfig.node.json" }, { "path": "./tsconfig.shared.json" }]
+  "references": [{ "path": "./tsconfig.shared.json" }, { "path": "./tsconfig.node.json" }]
 } 
