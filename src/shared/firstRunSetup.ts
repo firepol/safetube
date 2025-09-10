@@ -86,7 +86,7 @@ export class FirstRunSetup {
   }
 
   /**
-   * Copy default config files from development config folder
+   * Copy default config files from development config folder or create minimal ones
    */
   private static async copyDefaultConfigs(result: SetupResult): Promise<void> {
     // Try config.example directory first (for packaged apps)
@@ -101,7 +101,8 @@ export class FirstRunSetup {
 
     // Check if either config directory exists
     if (!await this.directoryExists(devConfigDir)) {
-      console.log('[FirstRunSetup] No config directory found, skipping config copy');
+      console.log('[FirstRunSetup] No config directory found, creating minimal config files');
+      await this.createMinimalConfigs(result, prodConfigDir);
       return;
     }
 
@@ -120,7 +121,8 @@ export class FirstRunSetup {
         } else if (await this.fileExists(prodPath)) {
           console.log('[FirstRunSetup] Config file already exists:', filename);
         } else {
-          console.log('[FirstRunSetup] Source config file not found:', filename);
+          console.log('[FirstRunSetup] Source config file not found, creating minimal:', filename);
+          await this.createMinimalConfigFile(filename, prodPath, result);
         }
       } catch (error) {
         const errorMsg = `Failed to copy ${filename}: ${error}`;
@@ -200,6 +202,104 @@ export class FirstRunSetup {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Create minimal config files when source configs are not available
+   */
+  private static async createMinimalConfigs(result: SetupResult, configDir: string): Promise<void> {
+    for (const filename of this.REQUIRED_CONFIG_FILES) {
+      const filePath = path.join(configDir, filename);
+      await this.createMinimalConfigFile(filename, filePath, result);
+    }
+  }
+
+  /**
+   * Create a minimal config file
+   */
+  private static async createMinimalConfigFile(filename: string, filePath: string, result: SetupResult): Promise<void> {
+    try {
+      let content: string;
+
+      switch (filename) {
+        case 'videoSources.json':
+          content = JSON.stringify([
+            {
+              "id": "local1",
+              "type": "local",
+              "path": "C:\\Users\\Public\\Videos",
+              "title": "Local Videos",
+              "sortOrder": "alphabetical",
+              "maxDepth": 2
+            }
+          ], null, 2);
+          break;
+
+        case 'timeLimits.json':
+          content = JSON.stringify({
+            "Monday": 60,
+            "Tuesday": 60,
+            "Wednesday": 60,
+            "Thursday": 60,
+            "Friday": 60,
+            "Saturday": 120,
+            "Sunday": 120,
+            "timeUpMessage": "Time's up for today!"
+          }, null, 2);
+          break;
+
+        case 'usageLog.json':
+          content = JSON.stringify({}, null, 2);
+          break;
+
+        case 'youtubePlayer.json':
+          content = JSON.stringify({
+            "youtubePlayerType": "iframe",
+            "youtubePlayerConfig": {
+              "iframe": {
+                "showRelatedVideos": false,
+                "customEndScreen": true,
+                "qualityControls": true,
+                "autoplay": true,
+                "controls": true
+              },
+              "mediasource": {
+                "maxQuality": "1080p",
+                "preferredLanguages": ["en"],
+                "fallbackToLowerQuality": true
+              }
+            }
+          }, null, 2);
+          break;
+
+        case 'watched.json':
+          content = JSON.stringify({}, null, 2);
+          break;
+
+        case 'timeExtra.json':
+          content = JSON.stringify({}, null, 2);
+          break;
+
+        case 'pagination.json':
+          content = JSON.stringify({
+            "pageSize": 50,
+            "cacheDurationMinutes": 30
+          }, null, 2);
+          break;
+
+        default:
+          content = JSON.stringify({}, null, 2);
+      }
+
+      await fs.writeFile(filePath, content, 'utf8');
+      result.copiedFiles.push(filename);
+      console.log('[FirstRunSetup] Created minimal config file:', filename);
+    } catch (error) {
+      const errorMsg = `Failed to create minimal config file ${filename}: ${error}`;
+      console.error('[FirstRunSetup]', errorMsg);
+      result.errors.push(errorMsg);
+      result.success = false;
     }
   }
 
