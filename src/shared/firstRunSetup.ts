@@ -35,13 +35,10 @@ export class FirstRunSetup {
     };
 
     try {
-      // Only run setup in production mode
-      if (AppPaths.isDev()) {
-        console.log('[FirstRunSetup] Development mode - skipping setup');
-        return result;
-      }
-
-      console.log('[FirstRunSetup] Production mode - checking setup...');
+      // Run setup in both development and production modes
+      // In development, it will create config files in the project root
+      // In production, it will create config files in user data directory
+      console.log('[FirstRunSetup] Checking setup...');
 
       // Create necessary directories
       await this.createDirectories(result);

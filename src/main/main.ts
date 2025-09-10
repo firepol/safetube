@@ -286,7 +286,7 @@ function registerIpcHandlers() {
 }
 
 function createWindow() {
-  const preloadPath = path.join(__dirname, '../preload/index.js');
+  const preloadPath = path.join(__dirname, '../../preload/index.js');
   console.log('[Main] Preload path:', preloadPath);
 
   const mainWindow = new BrowserWindow({

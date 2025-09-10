@@ -1091,6 +1091,17 @@ ipcMain.handle('logging:get-verbose', async () => {
   }
 });
 
+// Handle setup status request
+ipcMain.handle('get-setup-status', async () => {
+  try {
+    const { FirstRunSetup } = await import('../shared/firstRunSetup');
+    return await FirstRunSetup.getSetupStatus();
+  } catch (error) {
+    log.error('Error getting setup status:', error);
+    throw error;
+  }
+});
+
 // Handle logging from renderer process
 ipcMain.handle('logging:log', async (_, level: string, ...args: any[]) => {
   try {
@@ -1312,8 +1323,30 @@ const createWindow = (): void => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', () => {
+app.on('ready', async () => {
   logVerbose('App is ready')
+  
+  // Run first-time setup if needed
+  try {
+    console.log('[Main] Running first-time setup...');
+    const { FirstRunSetup } = await import('../shared/firstRunSetup');
+    const setupResult = await FirstRunSetup.setupIfNeeded();
+    
+    if (setupResult.success) {
+      console.log('[Main] First-time setup completed successfully');
+      if (setupResult.createdDirs.length > 0) {
+        console.log('[Main] Created directories:', setupResult.createdDirs);
+      }
+      if (setupResult.copiedFiles.length > 0) {
+        console.log('[Main] Copied files:', setupResult.copiedFiles);
+      }
+    } else {
+      console.error('[Main] First-time setup failed:', setupResult.errors);
+    }
+  } catch (error) {
+    console.error('[Main] Error during first-time setup:', error);
+  }
+  
   createWindow()
 })
 
