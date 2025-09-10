@@ -11,7 +11,107 @@ A safe video player application for kids built with Electron, React, and TypeScr
 - Time tracking and parental controls
 - Cross-platform desktop application
 
-## Setup
+## Quick Start (Windows Users)
+
+### 1. Download SafeTube
+
+1. Download `SafeTube-1.0.0.exe` from the [latest release](https://github.com/firepol/safetube/releases/latest)
+2. Create a folder for SafeTube (e.g., `C:\SafeTube\`)
+3. Place `SafeTube-1.0.0.exe` in this folder
+
+### 2. Install yt-dlp (Required for YouTube features)
+
+1. Download `yt-dlp.exe` from [yt-dlp releases](https://github.com/yt-dlp/yt-dlp/releases/latest)
+2. Place `yt-dlp.exe` in the same folder as `SafeTube-1.0.0.exe`
+
+**Note**: SafeTube will automatically download yt-dlp if it's missing (Windows only).
+
+### 3. Get YouTube API Key (Optional but Recommended)
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing one
+3. Under "Enabled APIs & services" > "+ Enable APIs and services" > Enable the YouTube Data API v3
+4. Under "YouTube Data API v3" > Manage > Create credentials (API Key)
+5. Copy your API key
+
+### 4. Configure SafeTube
+
+1. Run `SafeTube-1.0.0.exe` for the first time
+2. Navigate to the admin area (Parent Access button)
+3. Edit the configuration files in your user data directory:
+
+#### Environment Configuration (`.env` file)
+**Location**: `%APPDATA%\SafeTube\.env` (e.g., `C:\Users\YourName\AppData\Roaming\SafeTube\.env`)
+```bash
+# Add your YouTube API key
+VITE_YOUTUBE_API_KEY=your_youtube_api_key_here
+```
+
+#### Video Sources (`config/videoSources.json`)
+**Location**: `%APPDATA%\SafeTube\config\videoSources.json` (e.g., `C:\Users\YourName\AppData\Roaming\SafeTube\config\videoSources.json`)
+```json
+{
+  "sources": [
+    {
+      "id": "local-videos",
+      "type": "local",
+      "path": "C:\\path\\to\\your\\videos",
+      "title": "Local Videos"
+    }
+  ]
+}
+```
+
+#### Time Limits (`config/timeLimits.json`)
+**Location**: `%APPDATA%\SafeTube\config\timeLimits.json` (e.g., `C:\Users\YourName\AppData\Roaming\SafeTube\config\timeLimits.json`)
+```json
+{
+  "Monday": 60,
+  "Tuesday": 60,
+  "Wednesday": 60,
+  "Thursday": 60,
+  "Friday": 60,
+  "Saturday": 120,
+  "Sunday": 120,
+  "timeUpMessage": "Time's up for today!"
+}
+```
+
+**Note**: SafeTube automatically creates these directories and files on first run. If they don't exist, run SafeTube once to generate the default configuration files.
+
+### 5. Run SafeTube
+
+Double-click `SafeTube-1.0.0.exe` to start the application!
+
+## Configuration Guide
+
+### YouTube Player Settings
+
+SafeTube supports configurable video quality settings in `config/youtubePlayer.json`:
+
+| Quality | Resolution | Use Case |
+|---------|------------|----------|
+| `360p` | 640×360 | Basic streaming |
+| `480p` | 854×480 | Standard definition |
+| `720p` | 1280×720 | High definition (recommended) |
+| `1080p` | 1920×1080 | Full HD (default) |
+
+### Time Tracking
+
+Configure daily time limits in `config/timeLimits.json`:
+- Set minutes for each day of the week
+- Add warning thresholds
+- Customize time-up messages
+
+### Video Sources
+
+Add multiple video sources in `config/videoSources.json`:
+- **Local folders**: Browse local video files
+- **YouTube channels**: Subscribe to specific channels
+- **YouTube playlists**: Follow curated playlists
+- **DLNA servers**: Stream from network devices
+
+## Development Setup
 
 ### Prerequisites
 
@@ -22,7 +122,7 @@ A safe video player application for kids built with Electron, React, and TypeScr
 
 1. Clone the repository:
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/firepol/safetube.git
 cd safetube
 ```
 
@@ -42,72 +142,7 @@ cp .env.example .env
 VITE_YOUTUBE_API_KEY=your_youtube_api_key_here
 ```
 
-### Configuration
-
-Before running the application, update the configuration files with your settings:
-
-1. **Video Sources** (`config/videoSources.json`):
-   - Replace `192.168.1.100:8200` with your DLNA server IP
-   - Update `/path/to/your/local/videos` with your local video directory path
-
-2. **DLNA Browser Script** (`scripts/dlna-browser.ts`):
-   - Replace `192.168.1.100` with your DLNA server IP
-
-### YouTube Player Configuration
-
-SafeTube supports two YouTube player types with configurable quality settings:
-
-#### Player Types
-
-- **MediaSource Player** (Default): Custom implementation with full control
-- **YouTube iframe Player** (Future): YouTube's native player with adaptive streaming
-
-#### Quality Settings
-
-The `maxQuality` setting in `youtubePlayer.json` controls the maximum video resolution:
-
-| Quality Value | Resolution | Height | Use Case |
-|---------------|------------|--------|----------|
-| `144p` | 256×144 | 144px | Very slow connections |
-| `240p` | 426×240 | 240px | Slow connections |
-| `360p` | 640×360 | 360px | Basic streaming |
-| `480p` | 854×480 | 480px | Standard definition |
-| `720p` | 1280×720 | 720px | High definition (recommended) |
-| `1080p` | 1920×1080 | 1080px | Full HD (default) |
-| `1440p` | 2560×1440 | 1440px | 2K resolution |
-| `2160p` | 3840×2160 | 2160px | 4K resolution |
-| `4k` | 3840×2160 | 2160px | 4K resolution (alias) |
-
-#### Configuration Example
-
-```json
-{
-  "youtubePlayerType": "mediasource",
-  "youtubePlayerConfig": {
-    "mediasource": {
-      "maxQuality": "1080p",
-      "preferredLanguages": ["en"],
-      "fallbackToLowerQuality": true
-    }
-  }
-}
-```
-
-#### Quality Selection Logic
-
-1. **Available Quality**: The system checks what qualities are available for the video
-2. **Quality Filtering**: Only selects streams at or below the configured `maxQuality`
-3. **Smart Fallback**: If the exact quality isn't available, selects the highest available quality within the limit
-4. **Performance Optimization**: Lower quality settings improve playback smoothness
-
-#### Recommended Settings
-
-- **Smooth Playback**: Use `720p` or `1080p` for most scenarios
-- **Slow Connections**: Use `480p` or `360p` for better buffering
-- **High-End Systems**: Use `1080p` or `1440p` for best quality
-- **Avoid 4K**: `2160p`/`4k` may cause stuttering on many systems
-
-### Development
+### Development Commands
 
 ```bash
 # Start development server
@@ -123,7 +158,9 @@ CI=true yarn test
 yarn build
 ```
 
-### Building Distributable Executables
+## Building Executables
+
+### Building for Distribution
 
 To create distributable executables for different platforms:
 
@@ -187,4 +224,4 @@ See [Git Workflow Documentation](docs/git-workflow.md) for detailed information.
 
 ## License
 
-[Add your license here] 
+[Add your license here]
