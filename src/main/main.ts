@@ -310,6 +310,8 @@ function registerIpcHandlers() {
 function createWindow() {
   const preloadPath = path.join(__dirname, '../../preload/index.js');
   console.log('[Main] Preload path:', preloadPath);
+  console.log('[Main] Preload path exists:', fs.existsSync(preloadPath));
+  console.log('[Main] __dirname:', __dirname);
 
   const mainWindow = new BrowserWindow({
     width: 1200,

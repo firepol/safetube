@@ -1266,6 +1266,8 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
 const createWindow = (): void => {
   const preloadPath = path.join(__dirname, '../../preload/index.js');
   logVerbose('[Main] Preload path:', preloadPath);
+  logVerbose('[Main] Preload path exists:', fs.existsSync(preloadPath));
+  logVerbose('[Main] __dirname:', __dirname);
 
   logVerbose('Creating main window')
   // Create the browser window.
