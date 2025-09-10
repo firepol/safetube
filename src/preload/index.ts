@@ -3,6 +3,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 // Debug: Log what environment variables are available (only when verbose logging is enabled)
 // Note: We'll get the verbose setting from the main process via IPC instead
 console.log('[Preload] Preload process starting...');
+console.log('[Preload] Context bridge available:', typeof contextBridge);
+console.log('[Preload] IPC renderer available:', typeof ipcRenderer);
 
 // Expose protected methods that allow the renderer process to use
 // the ipcRenderer without exposing the entire object
