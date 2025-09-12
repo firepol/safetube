@@ -26,7 +26,7 @@ interface VideoWithDetails {
 
 export const HistoryPage: React.FC = () => {
   const navigate = useNavigate();
-  const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
+  const [, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [watchedVideos, setWatchedVideos] = useState<VideoWithDetails[]>([]);
   const [paginationState, setPaginationState] = useState<any>(null);

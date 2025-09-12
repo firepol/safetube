@@ -27,7 +27,7 @@ interface VideoWithDetails {
 export const WatchedVideosPage: React.FC = () => {
   const navigate = useNavigate();
   const { sourceId, page } = useParams();
-  const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
+  const [, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
   const [source, setSource] = useState<any>(null);
   const [watchedVideos, setWatchedVideos] = useState<VideoWithDetails[]>([]);
