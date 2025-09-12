@@ -327,12 +327,12 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
 
 // Helper function to count total videos in a folder recursively (with filtering)
 async function countVideosInFolder(folderPath: string, maxDepth: number, currentDepth: number = 1): Promise<number> {
-  // Use the same scanning logic as getLocalFolderContents but only count
-  const videos: any[] = [];
+  let totalCount = 0;
   const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
   
   try {
     const items = fs.readdirSync(folderPath);
+    const videos: any[] = [];
     
     for (const item of items) {
       const itemPath = path.join(folderPath, item);
@@ -342,11 +342,11 @@ async function countVideosInFolder(folderPath: string, maxDepth: number, current
         if (currentDepth < maxDepth) {
           // Continue counting in subfolders
           const subCount = await countVideosInFolder(itemPath, maxDepth, currentDepth + 1);
-          return subCount;
+          totalCount += subCount;
         } else if (currentDepth === maxDepth) {
           // At maxDepth, get flattened content and count
           const flattenedVideos = await getFlattenedContent(itemPath, currentDepth + 1);
-          return flattenedVideos.length;
+          totalCount += flattenedVideos.length;
         }
       } else if (stat.isFile()) {
         const ext = path.extname(item).toLowerCase();
@@ -358,29 +358,33 @@ async function countVideosInFolder(folderPath: string, maxDepth: number, current
         }
       }
     }
+    
+    // Apply filtering to videos in current directory
+    const filteredVideos = filterDuplicateVideos(videos);
+    totalCount += filteredVideos.length;
+    
+    logVerbose('[Main] Video count filtering result:', { 
+      folder: folderPath,
+      currentDirVideos: videos.length, 
+      currentDirFiltered: filteredVideos.length,
+      totalCount: totalCount
+    });
+    
   } catch (error) {
     log.warn('[Main] Error counting videos in folder:', folderPath, error);
   }
   
-  // Apply the same filtering logic as other functions
-  const filteredVideos = filterDuplicateVideos(videos);
-  logVerbose('[Main] Video count filtering result:', { 
-    folder: folderPath,
-    original: videos.length, 
-    filtered: filteredVideos.length,
-    hidden: videos.length - filteredVideos.length 
-  });
-  
-  return filteredVideos.length;
+  return totalCount;
 }
 
 // Helper function to count videos recursively (for flattening at maxDepth) with filtering
 async function countVideosRecursively(folderPath: string): Promise<number> {
-  const videos: any[] = [];
+  let totalCount = 0;
   const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
   
   try {
     const items = fs.readdirSync(folderPath);
+    const videos: any[] = [];
     
     for (const item of items) {
       const itemPath = path.join(folderPath, item);
@@ -389,7 +393,7 @@ async function countVideosRecursively(folderPath: string): Promise<number> {
       if (stat.isDirectory()) {
         // Continue counting deeper
         const subCount = await countVideosRecursively(itemPath);
-        return subCount;
+        totalCount += subCount;
       } else if (stat.isFile()) {
         const ext = path.extname(item).toLowerCase();
         if (supportedExtensions.includes(ext)) {
@@ -400,20 +404,23 @@ async function countVideosRecursively(folderPath: string): Promise<number> {
         }
       }
     }
+    
+    // Apply filtering to videos in current directory
+    const filteredVideos = filterDuplicateVideos(videos);
+    totalCount += filteredVideos.length;
+    
+    logVerbose('[Main] Recursive video count filtering result:', { 
+      folder: folderPath,
+      currentDirVideos: videos.length, 
+      currentDirFiltered: filteredVideos.length,
+      totalCount: totalCount
+    });
+    
   } catch (error) {
     log.warn('[Main] Error counting videos recursively:', folderPath, error);
   }
   
-  // Apply the same filtering logic as other functions
-  const filteredVideos = filterDuplicateVideos(videos);
-  logVerbose('[Main] Recursive video count filtering result:', { 
-    folder: folderPath,
-    original: videos.length, 
-    filtered: filteredVideos.length,
-    hidden: videos.length - filteredVideos.length 
-  });
-  
-  return filteredVideos.length;
+  return totalCount;
 }
 
 // Helper function to get flattened content from deeper levels
