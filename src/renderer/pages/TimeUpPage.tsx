@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { TimeLimits } from '@/shared/types';
 
 // Utility functions moved here to avoid fs dependency
@@ -14,6 +15,7 @@ const getDayOfWeek = (dateString: string): keyof TimeLimits => {
 
 // Accept currentDate as a prop for testability
 export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) => {
+  const navigate = useNavigate();
   const [timeLimits, setTimeLimits] = useState<TimeLimits | null>(null);
   const [date, setDate] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
@@ -142,7 +144,7 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
           {/* Admin Area Link */}
           <div className="mt-6">
             <button
-              onClick={() => window.location.href = '/admin'}
+              onClick={() => navigate('/admin')}
               className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 text-sm font-medium"
             >
               <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
