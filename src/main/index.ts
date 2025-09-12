@@ -63,14 +63,23 @@ function filterDuplicateVideos(videos: any[]): any[] {
         originalPath = video.url.replace(/\.converted\\.*/, '');
       }
       
+      // Try to find the original video by checking if any original video starts with the base path
+      let hasOriginal = false;
+      for (const originalUrl of originalVideos) {
+        if (originalUrl.startsWith(originalPath) && originalUrl !== video.url) {
+          hasOriginal = true;
+          break;
+        }
+      }
+      
       logVerbose('[Main] Checking converted video:', {
         converted: video.url,
         originalPath,
-        hasOriginal: originalVideos.has(originalPath),
+        hasOriginal,
         allOriginals: Array.from(originalVideos)
       });
       
-      if (!originalVideos.has(originalPath)) {
+      if (!hasOriginal) {
         filteredVideos.push(video); // Include converted only if no original
         logVerbose('[Main] Including converted video (no original):', video.url);
       } else {
