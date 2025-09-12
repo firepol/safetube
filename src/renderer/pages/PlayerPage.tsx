@@ -192,8 +192,38 @@ export const PlayerPage: React.FC = () => {
             logVerbose('[PlayerPage] Local file path resolved:', path);
             
             if (videoRef.current) {
-              videoRef.current.src = getSrc(path);
-              logVerbose('[PlayerPage] Set video src to:', getSrc(path));
+              try {
+                // Check if video needs conversion for compatibility
+                const needsConversion = await window.electron.needsVideoConversion(video.url);
+                
+                if (needsConversion) {
+                  logVerbose('[PlayerPage] Video needs conversion for browser compatibility');
+                  
+                  // Show conversion message to user
+                  setError('Converting video for compatibility... This may take a moment.');
+                  
+                  // Get compatible video path (converts if needed)
+                  const compatiblePath = await window.electron.getCompatibleVideoPath(video.url);
+                  logVerbose('[PlayerPage] Using compatible video path:', compatiblePath);
+                  
+                  // Get the converted file URL
+                  const compatibleFileUrl = await window.electron.getLocalFile(compatiblePath);
+                  videoRef.current.src = getSrc(compatibleFileUrl);
+                  logVerbose('[PlayerPage] Set video src to converted file:', getSrc(compatibleFileUrl));
+                  
+                  // Clear the conversion message
+                  setError(null);
+                } else {
+                  // Use original file
+                  videoRef.current.src = getSrc(path);
+                  logVerbose('[PlayerPage] Set video src to original file:', getSrc(path));
+                }
+              } catch (conversionError) {
+                console.error('[PlayerPage] Error during codec conversion:', conversionError);
+                // Fallback to original file
+                videoRef.current.src = getSrc(path);
+                logVerbose('[PlayerPage] Fallback to original file after conversion error:', getSrc(path));
+              }
               // Add event listeners for debugging
               videoRef.current.addEventListener('error', (e) => {
                 console.error('Video element error:', e);

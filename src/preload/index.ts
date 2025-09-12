@@ -48,6 +48,11 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.invoke('video-sources:validate-youtube-url', url, type),
     videoSourcesValidateLocalPath: (path: string) => 
       ipcRenderer.invoke('video-sources:validate-local-path', path),
+    // Video codec detection and conversion
+    getVideoCodecInfo: (filePath: string) => ipcRenderer.invoke('get-video-codec-info', filePath),
+    getCompatibleVideoPath: (originalPath: string, cacheDir?: string) => 
+      ipcRenderer.invoke('get-compatible-video-path', originalPath, cacheDir),
+    needsVideoConversion: (filePath: string) => ipcRenderer.invoke('needs-video-conversion', filePath),
     // Setup status
     getSetupStatus: () => ipcRenderer.invoke('get-setup-status'),
     // Expose environment variables directly

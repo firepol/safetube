@@ -72,6 +72,19 @@ export interface ElectronAPI {
   log: (level: string, ...args: any[]) => Promise<void>;
   // Clear source cache
   clearSourceCache: (sourceId: string) => Promise<{ success: boolean }>;
+  // Video codec detection and conversion
+  getVideoCodecInfo: (filePath: string) => Promise<{
+    videoCodec: string;
+    audioCodec: string;
+    isSupported: boolean;
+    needsConversion: boolean;
+    duration: number;
+    width: number;
+    height: number;
+    bitrate: number;
+  }>;
+  getCompatibleVideoPath: (originalPath: string, cacheDir?: string) => Promise<string>;
+  needsVideoConversion: (filePath: string) => Promise<boolean>;
 }
 declare global {
   interface Window {

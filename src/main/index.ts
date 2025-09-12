@@ -823,6 +823,46 @@ ipcMain.handle('get-local-folder-contents', async (event, folderPath: string, ma
   }
 });
 
+// Handle video codec detection and conversion
+ipcMain.handle('get-video-codec-info', async (_, filePath: string) => {
+  try {
+    logVerbose('[Main] get-video-codec-info called with:', filePath);
+    const { getVideoCodecInfo } = await import('../shared/videoCodecUtils');
+    const codecInfo = await getVideoCodecInfo(filePath);
+    logVerbose('[Main] Codec info result:', codecInfo);
+    return codecInfo;
+  } catch (error) {
+    log.error('[Main] Error getting video codec info:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-compatible-video-path', async (_, originalPath: string, cacheDir?: string) => {
+  try {
+    logVerbose('[Main] get-compatible-video-path called with:', { originalPath, cacheDir });
+    const { getCompatibleVideoPath } = await import('../shared/videoCodecUtils');
+    const compatiblePath = await getCompatibleVideoPath(originalPath, cacheDir);
+    logVerbose('[Main] Compatible video path result:', compatiblePath);
+    return compatiblePath;
+  } catch (error) {
+    log.error('[Main] Error getting compatible video path:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('needs-video-conversion', async (_, filePath: string) => {
+  try {
+    logVerbose('[Main] needs-video-conversion called with:', filePath);
+    const { needsVideoConversion } = await import('../shared/videoCodecUtils');
+    const needsConversion = await needsVideoConversion(filePath);
+    logVerbose('[Main] Needs conversion result:', needsConversion);
+    return needsConversion;
+  } catch (error) {
+    log.error('[Main] Error checking if video needs conversion:', error);
+    throw error;
+  }
+});
+
 // Handle loading videos from sources
 ipcMain.handle('load-all-videos-from-sources', async () => {
   try {
