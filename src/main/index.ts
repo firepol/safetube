@@ -87,11 +87,15 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
                 videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
               }
               
+              // Extract video duration
+              const { extractVideoDuration } = await import('../shared/videoDurationUtils');
+              const duration = await extractVideoDuration(itemPath);
+              
               videos.push({
                 id: videoId,
                 title: path.basename(item, ext),
                 thumbnail: '',
-                duration: 0, // Duration would need to be extracted from video metadata
+                duration,
                 url: itemPath,
                 video: itemPath,
                 audio: undefined,
@@ -134,11 +138,15 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
                 videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
               }
               
+              // Extract video duration
+              const { extractVideoDuration } = await import('../shared/videoDurationUtils');
+              const duration = await extractVideoDuration(itemPath);
+              
               videos.push({
                 id: videoId,
                 title: path.basename(item, ext),
                 thumbnail: '',
-                duration: 0, // Duration would need to be extracted from video metadata
+                duration,
                 url: itemPath,
                 video: itemPath,
                 audio: undefined,
@@ -224,11 +232,15 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
             videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
           }
           
+          // Extract video duration
+          const { extractVideoDuration } = await import('../shared/videoDurationUtils');
+          const duration = await extractVideoDuration(itemPath);
+          
           videos.push({
             id: videoId,
             title: path.basename(item, ext),
             thumbnail: '',
-            duration: 0,
+            duration,
             url: itemPath,
             video: itemPath,
             audio: undefined,
@@ -342,11 +354,15 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
             videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
           }
           
+          // Extract video duration
+          const { extractVideoDuration } = await import('../shared/videoDurationUtils');
+          const duration = await extractVideoDuration(itemPath);
+          
           videos.push({
             id: videoId,
             title: path.basename(item, ext),
             thumbnail: '',
-            duration: 0,
+            duration,
             url: itemPath,
             video: itemPath,
             audio: undefined,
@@ -544,13 +560,17 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
           throw new Error(`Local video file not found: ${filePath}`);
         }
         
+        // Extract video duration using ffprobe
+        const { extractVideoDuration } = await import('../shared/videoDurationUtils');
+        const duration = await extractVideoDuration(filePath);
+        
         // Create video object for local video
         const video = {
           id: videoId,
           type: 'local',
           title: path.basename(filePath, path.extname(filePath)),
           thumbnail: '',
-          duration: 0,
+          duration,
           url: filePath,
           video: filePath,
           audio: undefined,
@@ -596,9 +616,9 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
 })
 
 // Time tracking IPC handlers
-ipcMain.handle('time-tracking:record-video-watching', async (_, videoId: string, position: number, timeWatched: number) => {
+ipcMain.handle('time-tracking:record-video-watching', async (_, videoId: string, position: number, timeWatched: number, duration?: number) => {
   try {
-    await recordVideoWatching(videoId, position, timeWatched);
+    await recordVideoWatching(videoId, position, timeWatched, duration);
   } catch (error) {
     log.error('Error recording video watching:', error);
     throw error;
@@ -610,6 +630,16 @@ ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
     return await getTimeTrackingState();
   } catch (error) {
     log.error('Error getting time tracking state:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-watched-videos', async () => {
+  try {
+    const { readWatchedVideos } = await import('../shared/fileUtils');
+    return await readWatchedVideos();
+  } catch (error) {
+    log.error('Error getting watched videos:', error);
     throw error;
   }
 });

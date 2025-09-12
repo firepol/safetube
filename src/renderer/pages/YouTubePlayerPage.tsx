@@ -194,7 +194,8 @@ export const YouTubePlayerPage: React.FC = () => {
         await window.electron.recordVideoWatching(
           video.id,
           videoCurrentTime,
-          timeWatched
+          timeWatched,
+          video.duration
         );
         
         timeTrackingRef.current.lastVideoTime = videoCurrentTime;

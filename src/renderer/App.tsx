@@ -5,6 +5,8 @@ import { PlayerRouter } from './pages/PlayerRouter';
 import { TimeUpPage } from './pages/TimeUpPage';
 import { SourcePage } from './pages/SourcePage';
 import { AdminPage } from './pages/AdminPage';
+import { WatchedVideosPage } from './components/video/WatchedVideosPage';
+import { HistoryPage } from './pages/HistoryPage';
 import { RateLimitWarning } from './components/layout/RateLimitWarning';
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
@@ -63,6 +65,9 @@ function App() {
               <Route path="/" element={<KidScreen />} />
               <Route path="/source/:sourceId" element={<SourcePage />} />
               <Route path="/source/:sourceId/page/:page" element={<SourcePage />} />
+              <Route path="/source/:sourceId/watched" element={<WatchedVideosPage />} />
+              <Route path="/source/:sourceId/watched/:page" element={<WatchedVideosPage />} />
+              <Route path="/history" element={<HistoryPage />} />
               <Route path="/player/:id" element={<PlayerRouter />} />
               <Route path="/time-up" element={<TimeUpPage />} />
               <Route path="/admin" element={<AdminPage />} />

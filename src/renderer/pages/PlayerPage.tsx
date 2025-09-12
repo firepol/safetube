@@ -771,7 +771,8 @@ export const PlayerPage: React.FC = () => {
           await window.electron.recordVideoWatching(
             video.id,
             videoRef.current.currentTime,
-            timeWatched
+            timeWatched,
+            video.duration
           );
         }
       }

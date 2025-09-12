@@ -31,6 +31,8 @@ export interface WatchedVideo {
   position: number; // seconds
   lastWatched: string; // ISO date string
   timeWatched: number; // seconds
+  duration?: number; // video duration in seconds (optional for backward compatibility)
+  watched?: boolean; // whether video was fully watched (optional for backward compatibility)
 }
 
 // Video source types for configuration-driven system

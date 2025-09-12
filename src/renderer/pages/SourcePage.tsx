@@ -235,14 +235,36 @@ export const SourcePage: React.FC = () => {
         <TimeIndicator initialState={timeTrackingState} />
       </div>
       
+      {/* Watched Videos Folder */}
+      <div className="mb-6">
+        <div
+          onClick={() => navigate(`/source/${sourceId}/watched`)}
+          className="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 border-2 border-blue-100 hover:border-blue-300 inline-block"
+        >
+          <div className="flex items-center space-x-3">
+            <div className="text-4xl">📺</div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Watched Videos</h3>
+              <p className="text-sm text-gray-500">View videos you've watched from this source</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       {/* Video Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-        {currentPageVideos.map((video: any) => (
-          <div
-            key={video.id}
-            className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-            onClick={() => handleVideoClick(video)}
-          >
+        {currentPageVideos.map((video: any) => {
+          // Check if video is partially watched (has resumeAt but not fully watched)
+          const isPartiallyWatched = video.resumeAt && video.resumeAt > 0 && video.duration && video.resumeAt < video.duration * 0.95;
+          
+          return (
+            <div
+              key={video.id}
+              className={`bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 ${
+                isPartiallyWatched ? 'border-2 border-blue-400' : ''
+              }`}
+              onClick={() => handleVideoClick(video)}
+            >
             <div className="aspect-video bg-gray-200 overflow-hidden">
               {video.thumbnail ? (
                 <img 
@@ -262,10 +284,12 @@ export const SourcePage: React.FC = () => {
               </h3>
               <p className="text-xs text-gray-500">
                 {video.type === 'youtube' ? 'YouTube' : 'Local Video'}
+                {isPartiallyWatched && ' • ⏸️ Partial'}
               </p>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
       
       {/* Pagination */}

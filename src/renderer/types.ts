@@ -26,9 +26,10 @@ export interface ElectronAPI {
   getLocalFile: (filePath: string) => Promise<string>;
   getDlnaFile: (server: string, port: number, path: string) => Promise<string>;
   getVideoStreams: (videoId: string) => Promise<any>;
-  recordVideoWatching: (videoId: string, position: number, timeWatched: number) => Promise<void>;
+  recordVideoWatching: (videoId: string, position: number, timeWatched: number, duration?: number) => Promise<void>;
   getTimeTrackingState: () => Promise<any>;
   getTimeLimits: () => Promise<any>;
+  getWatchedVideos: () => Promise<any[]>;
   getPlayerConfig: () => Promise<any>;
   getVideoData: (videoId: string) => Promise<any>;
   testHandler: () => Promise<any>;

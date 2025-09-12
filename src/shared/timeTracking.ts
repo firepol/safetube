@@ -1,6 +1,7 @@
 import { TimeLimits, UsageLog, WatchedVideo, TimeTrackingState, DayOfWeek, TimeExtra } from './types';
 import { readTimeLimits, readUsageLog, writeUsageLog, readWatchedVideos, writeWatchedVideos, readTimeExtra, writeTimeExtra } from './fileUtils';
 import { logVerbose } from './logging';
+import { updateWatchedVideoWithDuration } from './videoDurationUtils';
 
 /**
  * Gets the current date in ISO format (YYYY-MM-DD)
@@ -146,11 +147,13 @@ export function formatTimeUsed(seconds: number): string {
  * @param videoId - The video identifier
  * @param position - Current position in seconds
  * @param timeWatched - Time watched in seconds (since last call)
+ * @param duration - Video duration in seconds (optional)
  */
 export async function recordVideoWatching(
   videoId: string, 
   position: number, 
-  timeWatched: number
+  timeWatched: number,
+  duration?: number
 ): Promise<void> {
   // Round timeWatched to whole seconds for consistency
   const roundedTimeWatched = Math.round(timeWatched);
@@ -165,22 +168,26 @@ export async function recordVideoWatching(
   
   const existingIndex = watchedVideos.findIndex(v => v.videoId === videoId);
   
+  const baseData = {
+    videoId,
+    position,
+    lastWatched: now,
+    timeWatched: existingIndex >= 0 
+      ? watchedVideos[existingIndex].timeWatched + roundedTimeWatched
+      : roundedTimeWatched
+  };
+  
+  // Update with duration and watched status if duration is provided
+  const updatedData = duration 
+    ? updateWatchedVideoWithDuration(baseData, duration)
+    : baseData;
+  
   if (existingIndex >= 0) {
     // Update existing entry
-    watchedVideos[existingIndex] = {
-      ...watchedVideos[existingIndex],
-      position,
-      lastWatched: now,
-      timeWatched: watchedVideos[existingIndex].timeWatched + roundedTimeWatched
-    };
+    watchedVideos[existingIndex] = updatedData;
   } else {
     // Add new entry
-    watchedVideos.push({
-      videoId,
-      position,
-      lastWatched: now,
-      timeWatched: roundedTimeWatched
-    });
+    watchedVideos.push(updatedData);
   }
   
   await writeWatchedVideos(watchedVideos);

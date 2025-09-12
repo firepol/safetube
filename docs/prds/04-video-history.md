@@ -19,13 +19,15 @@ The Video History feature tracks and manages the viewing history of videos acros
 - History data is properly backed up
 
 ## Technical Requirements
-- JSON-based history storage
+- JSON-based history storage with duration and watched status
 - Position tracking per video
 - Source-specific video identification
 - History data validation
 - Backup and recovery mechanism
 - History cleanup/management
 - Cross-source history tracking
+- Video duration extraction for local files using ffprobe
+- Watched status calculation based on position vs duration thresholds
 
 ## UI/UX Requirements
 - Clear visual distinction for watched videos
@@ -35,6 +37,19 @@ The Video History feature tracks and manages the viewing history of videos acros
 - Clear date and time information
 - Intuitive history navigation
 - Smooth transitions between states
+
+### Watched Videos Folder
+- "Watched" folder appears in each source (similar to subfolders in local sources)
+- When clicked, shows watched videos from that source in same sort order as the source
+- Partially watched videos highlighted with blue border
+- Fully watched videos appear normal
+
+### History Folder
+- "History" folder appears as last "source" on KidScreen
+- When clicked, shows all watched videos from newest to oldest
+- Includes pagination for large history
+- Partially watched videos highlighted with blue border
+- Shows source information for each video
 
 ## Testing Requirements
 - Unit tests for history tracking
