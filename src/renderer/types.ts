@@ -85,6 +85,19 @@ export interface ElectronAPI {
   }>;
   getCompatibleVideoPath: (originalPath: string, cacheDir?: string) => Promise<string>;
   needsVideoConversion: (filePath: string) => Promise<boolean>;
+  hasConvertedVideo: (filePath: string, cacheDir?: string) => Promise<boolean>;
+  getExistingConvertedVideoPath: (filePath: string, cacheDir?: string) => Promise<string | null>;
+  getConversionStatus: (filePath: string) => Promise<{
+    status: 'idle' | 'converting' | 'completed' | 'failed';
+    progress?: number;
+    error?: string;
+    startTime?: number;
+  }>;
+  startVideoConversion: (filePath: string, options?: {
+    quality?: 'low' | 'medium' | 'high';
+    preserveAudio?: boolean;
+    cacheDir?: string;
+  }) => Promise<{ success: boolean }>;
 }
 declare global {
   interface Window {

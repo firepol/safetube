@@ -53,6 +53,13 @@ contextBridge.exposeInMainWorld(
     getCompatibleVideoPath: (originalPath: string, cacheDir?: string) => 
       ipcRenderer.invoke('get-compatible-video-path', originalPath, cacheDir),
     needsVideoConversion: (filePath: string) => ipcRenderer.invoke('needs-video-conversion', filePath),
+    hasConvertedVideo: (filePath: string, cacheDir?: string) => 
+      ipcRenderer.invoke('has-converted-video', filePath, cacheDir),
+    getExistingConvertedVideoPath: (filePath: string, cacheDir?: string) => 
+      ipcRenderer.invoke('get-existing-converted-video-path', filePath, cacheDir),
+    getConversionStatus: (filePath: string) => ipcRenderer.invoke('get-conversion-status', filePath),
+    startVideoConversion: (filePath: string, options?: any) => 
+      ipcRenderer.invoke('start-video-conversion', filePath, options),
     // Setup status
     getSetupStatus: () => ipcRenderer.invoke('get-setup-status'),
     // Expose environment variables directly

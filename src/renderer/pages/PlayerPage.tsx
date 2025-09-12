@@ -31,6 +31,15 @@ export const PlayerPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const loadingTimeoutRef = useRef<number | undefined>(undefined);
   
+  // Conversion state
+  const [conversionStatus, setConversionStatus] = useState<{
+    status: 'idle' | 'converting' | 'completed' | 'failed';
+    progress?: number;
+    error?: string;
+  }>({ status: 'idle' });
+  const [hasConvertedVideo, setHasConvertedVideo] = useState<boolean>(false);
+  const [needsConversion, setNeedsConversion] = useState<boolean>(false);
+  
   // Time tracking state
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
@@ -38,6 +47,94 @@ export const PlayerPage: React.FC = () => {
   
   // Flag to prevent infinite loop when setting resume time
   const resumeAttemptedRef = useRef<boolean>(false);
+
+  // Conversion functions
+  const checkConversionStatus = async (filePath: string) => {
+    try {
+      const [needsConversionResult, hasConvertedResult, statusResult] = await Promise.all([
+        window.electron.needsVideoConversion(filePath),
+        window.electron.hasConvertedVideo(filePath),
+        window.electron.getConversionStatus(filePath)
+      ]);
+      
+      setNeedsConversion(needsConversionResult);
+      setHasConvertedVideo(hasConvertedResult);
+      setConversionStatus(statusResult);
+    } catch (error) {
+      console.error('[PlayerPage] Error checking conversion status:', error);
+    }
+  };
+
+  const handleStartConversion = async () => {
+    if (!video?.url) return;
+    
+    try {
+      setConversionStatus({ status: 'converting', progress: 0 });
+      await window.electron.startVideoConversion(video.url, { quality: 'medium' });
+      
+      // Start polling for status updates
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await window.electron.getConversionStatus(video.url);
+          setConversionStatus(status);
+          
+          if (status.status === 'completed') {
+            clearInterval(pollInterval);
+            setHasConvertedVideo(true);
+            // Reload the video with converted version
+            await loadVideoWithConversion();
+          } else if (status.status === 'failed') {
+            clearInterval(pollInterval);
+          }
+        } catch (error) {
+          console.error('[PlayerPage] Error polling conversion status:', error);
+        }
+      }, 1000);
+      
+    } catch (error) {
+      console.error('[PlayerPage] Error starting conversion:', error);
+      setConversionStatus({ 
+        status: 'failed', 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  };
+
+  const handleUseConvertedVideo = async () => {
+    if (!video?.url) return;
+    
+    try {
+      const convertedPath = await window.electron.getExistingConvertedVideoPath(video.url);
+      if (convertedPath && videoRef.current) {
+        const convertedFileUrl = await window.electron.getLocalFile(convertedPath);
+        videoRef.current.src = getSrc(convertedFileUrl);
+        setError(null);
+        logVerbose('[PlayerPage] Switched to converted video:', getSrc(convertedFileUrl));
+      }
+    } catch (error) {
+      console.error('[PlayerPage] Error using converted video:', error);
+      setError('Failed to load converted video');
+    }
+  };
+
+  const loadVideoWithConversion = async () => {
+    if (!video?.url) return;
+    
+    try {
+      const hasConverted = await window.electron.hasConvertedVideo(video.url);
+      if (hasConverted && videoRef.current) {
+        const convertedPath = await window.electron.getExistingConvertedVideoPath(video.url);
+        if (convertedPath) {
+          const convertedFileUrl = await window.electron.getLocalFile(convertedPath);
+          videoRef.current.src = getSrc(convertedFileUrl);
+          setError(null);
+          logVerbose('[PlayerPage] Loaded converted video:', getSrc(convertedFileUrl));
+        }
+      }
+    } catch (error) {
+      console.error('[PlayerPage] Error loading converted video:', error);
+    }
+  };
 
   // Load video data when component mounts or ID changes
   useEffect(() => {
@@ -67,6 +164,13 @@ export const PlayerPage: React.FC = () => {
 
     loadVideoData();
   }, [id]);
+
+  // Check conversion status when video is loaded
+  useEffect(() => {
+    if (video?.url && video.type === 'local') {
+      checkConversionStatus(video.url);
+    }
+  }, [video?.url]);
 
   useEffect(() => {
     if (video && video.resumeAt && videoRef.current) {
@@ -199,30 +303,36 @@ export const PlayerPage: React.FC = () => {
                 if (needsConversion) {
                   logVerbose('[PlayerPage] Video needs conversion for browser compatibility');
                   
-                  // Show conversion message to user
-                  setError('Converting video for compatibility... This may take a moment.');
+                  // Check if converted video already exists
+                  const hasConverted = await window.electron.hasConvertedVideo(video.url);
                   
-                  // Get compatible video path (converts if needed)
-                  const compatiblePath = await window.electron.getCompatibleVideoPath(video.url);
-                  logVerbose('[PlayerPage] Using compatible video path:', compatiblePath);
-                  
-                  // Get the converted file URL
-                  const compatibleFileUrl = await window.electron.getLocalFile(compatiblePath);
-                  videoRef.current.src = getSrc(compatibleFileUrl);
-                  logVerbose('[PlayerPage] Set video src to converted file:', getSrc(compatibleFileUrl));
-                  
-                  // Clear the conversion message
-                  setError(null);
+                  if (hasConverted) {
+                    // Use existing converted video
+                    const convertedPath = await window.electron.getExistingConvertedVideoPath(video.url);
+                    if (convertedPath) {
+                      const convertedFileUrl = await window.electron.getLocalFile(convertedPath);
+                      videoRef.current.src = getSrc(convertedFileUrl);
+                      logVerbose('[PlayerPage] Using existing converted video:', getSrc(convertedFileUrl));
+                    } else {
+                      // Fallback to original (shouldn't happen)
+                      videoRef.current.src = getSrc(path);
+                      logVerbose('[PlayerPage] Fallback to original file:', getSrc(path));
+                    }
+                  } else {
+                    // Try to load original file - it will likely fail and show error UI
+                    videoRef.current.src = getSrc(path);
+                    logVerbose('[PlayerPage] Attempting to load original file (will likely fail):', getSrc(path));
+                  }
                 } else {
                   // Use original file
                   videoRef.current.src = getSrc(path);
                   logVerbose('[PlayerPage] Set video src to original file:', getSrc(path));
                 }
               } catch (conversionError) {
-                console.error('[PlayerPage] Error during codec conversion:', conversionError);
+                console.error('[PlayerPage] Error during codec detection:', conversionError);
                 // Fallback to original file
                 videoRef.current.src = getSrc(path);
-                logVerbose('[PlayerPage] Fallback to original file after conversion error:', getSrc(path));
+                logVerbose('[PlayerPage] Fallback to original file after codec detection error:', getSrc(path));
               }
               // Add event listeners for debugging
               videoRef.current.addEventListener('error', (e) => {
@@ -872,6 +982,106 @@ export const PlayerPage: React.FC = () => {
     setIsLoading(false);
   }, []);
 
+  // Custom error display for conversion options
+  const renderConversionError = () => {
+    if (!error || !needsConversion) return null;
+    
+    return (
+      <div className="text-center text-red-500 mb-4">
+        <div className="text-lg mb-2">Video Playback Error</div>
+        <div className="text-sm mb-4">{error}</div>
+        
+        <div className="space-y-3">
+          {conversionStatus.status === 'converting' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="text-blue-800 font-medium mb-2">Converting Video...</div>
+              <div className="text-sm text-blue-600 mb-2">
+                Converting video for compatibility. This may take several minutes.
+              </div>
+              {conversionStatus.progress !== undefined && (
+                <div className="w-full bg-blue-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${conversionStatus.progress}%` }}
+                  ></div>
+                </div>
+              )}
+              <div className="text-xs text-blue-500 mt-2">
+                You can close this and come back later. The conversion will continue in the background.
+              </div>
+            </div>
+          )}
+          
+          {conversionStatus.status === 'failed' && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="text-red-800 font-medium mb-2">Conversion Failed</div>
+              <div className="text-sm text-red-600 mb-3">
+                {conversionStatus.error || 'An error occurred during conversion'}
+              </div>
+              <button
+                onClick={handleStartConversion}
+                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+              >
+                Try Converting Again
+              </button>
+            </div>
+          )}
+          
+          {conversionStatus.status === 'completed' && hasConvertedVideo && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="text-green-800 font-medium mb-2">Video Converted Successfully!</div>
+              <div className="text-sm text-green-600 mb-3">
+                The video has been converted to a compatible format.
+              </div>
+              <button
+                onClick={handleUseConvertedVideo}
+                className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors"
+              >
+                Play Converted Video
+              </button>
+            </div>
+          )}
+          
+          {conversionStatus.status === 'idle' && !hasConvertedVideo && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <div className="text-yellow-800 font-medium mb-2">Video Format Not Supported</div>
+              <div className="text-sm text-yellow-600 mb-3">
+                This video uses an older format that isn't supported by modern browsers. 
+                You can convert it to a compatible format.
+              </div>
+              <button
+                onClick={handleStartConversion}
+                className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700 transition-colors"
+              >
+                Convert Video
+              </button>
+              <div className="text-xs text-yellow-500 mt-2">
+                Note: Conversion may take several minutes for long videos.
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // If there's an error and we need conversion, show custom UI instead of BasePlayerPage error
+  if (error && needsConversion) {
+    return (
+      <div className="flex flex-col min-h-screen bg-gray-100">
+        <div className="p-4">
+          <button
+            onClick={() => navigate(-1)}
+            className="mb-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+          >
+            ← Back
+          </button>
+          {renderConversionError()}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <BasePlayerPage
       video={video}
@@ -880,7 +1090,6 @@ export const PlayerPage: React.FC = () => {
       isVideoPlaying={isVideoPlaying}
       timeRemainingSeconds={timeRemainingSeconds}
       countdownWarningSeconds={countdownWarningSeconds}
-
     >
       <video
         ref={videoRef}

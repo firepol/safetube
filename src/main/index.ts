@@ -863,6 +863,58 @@ ipcMain.handle('needs-video-conversion', async (_, filePath: string) => {
   }
 });
 
+ipcMain.handle('has-converted-video', async (_, filePath: string, cacheDir?: string) => {
+  try {
+    logVerbose('[Main] has-converted-video called with:', { filePath, cacheDir });
+    const { hasConvertedVideo } = await import('../shared/videoCodecUtils');
+    const hasConverted = await hasConvertedVideo(filePath, cacheDir);
+    logVerbose('[Main] Has converted video result:', hasConverted);
+    return hasConverted;
+  } catch (error) {
+    log.error('[Main] Error checking if converted video exists:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-existing-converted-video-path', async (_, filePath: string, cacheDir?: string) => {
+  try {
+    logVerbose('[Main] get-existing-converted-video-path called with:', { filePath, cacheDir });
+    const { getExistingConvertedVideoPath } = await import('../shared/videoCodecUtils');
+    const convertedPath = await getExistingConvertedVideoPath(filePath, cacheDir);
+    logVerbose('[Main] Existing converted video path result:', convertedPath);
+    return convertedPath;
+  } catch (error) {
+    log.error('[Main] Error getting existing converted video path:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('get-conversion-status', async (_, filePath: string) => {
+  try {
+    logVerbose('[Main] get-conversion-status called with:', filePath);
+    const { getConversionStatus } = await import('../shared/videoCodecUtils');
+    const status = getConversionStatus(filePath);
+    logVerbose('[Main] Conversion status result:', status);
+    return status;
+  } catch (error) {
+    log.error('[Main] Error getting conversion status:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('start-video-conversion', async (_, filePath: string, options?: any) => {
+  try {
+    logVerbose('[Main] start-video-conversion called with:', { filePath, options });
+    const { startVideoConversion } = await import('../shared/videoCodecUtils');
+    await startVideoConversion(filePath, options);
+    logVerbose('[Main] Video conversion started successfully');
+    return { success: true };
+  } catch (error) {
+    log.error('[Main] Error starting video conversion:', error);
+    throw error;
+  }
+});
+
 // Handle loading videos from sources
 ipcMain.handle('load-all-videos-from-sources', async () => {
   try {
