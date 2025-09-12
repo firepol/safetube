@@ -12,11 +12,25 @@ import { readTimeLimits, encodeFilePath } from '../shared/fileUtils'
 import dotenv from 'dotenv'
 import { logVerbose } from '../shared/logging'
 import { AppPaths } from '../shared/appPaths'
-dotenv.config()
+
+// Load .env file from multiple possible locations
+const possibleEnvPaths = [
+  '.env', // Project root (for development)
+  path.join(AppPaths.getUserDataDir(), '.env') // Production location
+];
+
+for (const envPath of possibleEnvPaths) {
+  const result = dotenv.config({ path: envPath });
+  if (result.parsed && Object.keys(result.parsed).length > 0) {
+    log.info(`[Main] Loaded environment variables from: ${envPath}`);
+    break;
+  }
+}
 
 // Debug: Log environment variables
 logVerbose('[Main] Environment variables loaded');
 logVerbose('[Main] YOUTUBE_API_KEY:', process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY ? '***configured***' : 'NOT configured');
+logVerbose('[Main] ADMIN_PASSWORD:', process.env.ADMIN_PASSWORD ? '***configured***' : 'NOT configured');
 logVerbose('[Main] NODE_ENV:', process.env.NODE_ENV);
 
 // Global type declaration for current videos
@@ -606,7 +620,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
         sources: [],
         debug: [
           '[Main] videoSources.json not found at: ' + configPath,
-          '[Main] Please create config/videoSources.json with your video sources'
+          '[Main] Please create videoSources.json in your config directory'
         ]
       };
     }
@@ -1036,7 +1050,7 @@ ipcMain.handle('load-videos-from-sources', async () => {
     }
     
     // Import and use the main process version that has the encoded IDs
-    const result = await loadAllVideosFromSourcesMain('config/videoSources.json', apiKey);
+    const result = await loadAllVideosFromSourcesMain(AppPaths.getConfigPath('videoSources.json'), apiKey);
     
     // Extract all videos from the grouped structure and store them globally
     const allVideos: any[] = [];
@@ -1134,7 +1148,7 @@ function parseISODuration(iso: string): number {
 }
 
 // Main process version of loadAllVideosFromSources that uses local scanLocalFolder
-async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.json', apiKey?: string | null) {
+async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath('videoSources.json'), apiKey?: string | null) {
   const debug: string[] = [
     '[Main] IPC handler working correctly',
     '[Main] Successfully loaded videoSources.json',
@@ -1264,12 +1278,14 @@ async function loadAllVideosFromSourcesMain(configPath = 'config/videoSources.js
 
 // Helper functions for parsing YouTube URLs
 const createWindow = (): void => {
-  const preloadPath = path.join(__dirname, '../../preload/index.js');
-  logVerbose('[Main] Preload path:', preloadPath);
-  logVerbose('[Main] Preload path exists:', fs.existsSync(preloadPath));
-  logVerbose('[Main] __dirname:', __dirname);
+  log.info('[Main] Creating main window...');
+  
+  const preloadPath = path.join(__dirname, '../../preload/preload/index.js');
+  log.info('[Main] Preload path:', preloadPath);
+  log.info('[Main] Preload path exists:', fs.existsSync(preloadPath));
+  log.info('[Main] __dirname:', __dirname);
 
-  logVerbose('Creating main window')
+  log.info('[Main] Creating main window...')
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     height: 600,
@@ -1283,29 +1299,87 @@ const createWindow = (): void => {
   })
 
   const devUrl = 'http://localhost:5173'
-  const prodIndexPath = path.join(__dirname, '../../renderer/index.html');
+  const prodIndexPath = path.join(__dirname, '../../../dist/renderer/index.html');
   log.debug('Loading production URL:', prodIndexPath);
 
-  const waitForDevServer = async (retries = 30, delayMs = 200): Promise<boolean> => {
+  const waitForDevServer = async (retries = 5, delayMs = 200): Promise<boolean> => {
+    log.info('[Main] Checking for development server...');
     for (let i = 0; i < retries; i++) {
       try {
         const res = await fetch(devUrl)
-        if (res.ok) return true
-      } catch {}
+        if (res.ok) {
+          log.info('[Main] Development server found');
+          return true
+        }
+      } catch (error) {
+        log.debug(`[Main] Dev server check ${i + 1}/${retries} failed:`, error instanceof Error ? error.message : String(error));
+      }
       await new Promise(r => setTimeout(r, delayMs))
     }
+    log.info('[Main] Development server not found, using production mode');
     return false
   }
 
   ;(async () => {
+    log.info('[Main] Starting HTML loading process...');
+    
     const useDev = await waitForDevServer()
     if (useDev) {
-      log.debug('Loading development URL:', devUrl)
+      log.info('[Main] Loading development URL:', devUrl)
       await mainWindow.loadURL(devUrl)
       mainWindow.webContents.openDevTools()
     } else {
-      log.debug('Loading production URL:', prodIndexPath)
-      await mainWindow.loadFile(prodIndexPath)
+      log.info('[Main] Loading production URL:', prodIndexPath)
+      log.info('[Main] Production file exists:', fs.existsSync(prodIndexPath))
+      
+      // Try multiple possible paths for the HTML file
+      const possiblePaths = [
+        path.join(__dirname, '../../../dist/renderer/index.html'),
+        path.join(process.cwd(), 'dist/renderer/index.html'),
+        path.join(process.resourcesPath, 'dist/renderer/index.html')
+      ];
+      
+      let indexPath = null;
+      for (const testPath of possiblePaths) {
+        log.info('[Main] Checking path:', testPath);
+        if (fs.existsSync(testPath)) {
+          indexPath = testPath;
+          log.info('[Main] Found HTML file at:', testPath);
+          break;
+        }
+      }
+      
+      if (indexPath) {
+        log.info('[Main] Loading HTML from:', indexPath);
+        
+        // Add debugging for renderer process BEFORE loading
+        mainWindow.webContents.on('did-finish-load', () => {
+          log.info('[Main] HTML finished loading');
+        });
+        
+        mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+          log.error('[Main] Failed to load HTML:', errorCode, errorDescription);
+        });
+        
+        mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+          // Handle objects and arrays properly
+          const messageStr = typeof message === 'object' ? JSON.stringify(message) : String(message);
+          log.info(`[Main] Renderer console [${level}]: ${messageStr}`);
+        });
+        
+        // Try loading as file:// URL instead of loadFile
+        const fileUrl = `file://${indexPath.replace(/\\/g, '/')}`;
+        log.info('[Main] Loading as file URL:', fileUrl);
+        await mainWindow.loadURL(fileUrl);
+        
+        // Note: 'crashed' event is not available in this Electron version
+        
+      } else {
+        log.error('[Main] Could not find index.html in any expected location');
+        // Fallback: load a simple HTML page
+        log.info('[Main] Loading fallback HTML page');
+        await mainWindow.loadURL('data:text/html,<h1>SafeTube</h1><p>Loading...</p>');
+      }
     }
   })()
 
@@ -1326,30 +1400,32 @@ const createWindow = (): void => {
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
-  logVerbose('App is ready')
+  log.info('[Main] App is ready')
   
   // Run first-time setup if needed
   try {
-    console.log('[Main] Running first-time setup...');
+    log.info('[Main] Running first-time setup...');
     const { FirstRunSetup } = await import('../shared/firstRunSetup');
     const setupResult = await FirstRunSetup.setupIfNeeded();
     
     if (setupResult.success) {
-      console.log('[Main] First-time setup completed successfully');
+      log.info('[Main] First-time setup completed successfully');
       if (setupResult.createdDirs.length > 0) {
-        console.log('[Main] Created directories:', setupResult.createdDirs);
+        log.info('[Main] Created directories:', setupResult.createdDirs);
       }
       if (setupResult.copiedFiles.length > 0) {
-        console.log('[Main] Copied files:', setupResult.copiedFiles);
+        log.info('[Main] Copied files:', setupResult.copiedFiles);
       }
     } else {
-      console.error('[Main] First-time setup failed:', setupResult.errors);
+      log.error('[Main] First-time setup failed:', setupResult.errors);
     }
   } catch (error) {
-    console.error('[Main] Error during first-time setup:', error);
+    log.error('[Main] Error during first-time setup:', error);
   }
   
+  log.info('[Main] About to call createWindow...');
   createWindow()
+  log.info('[Main] createWindow called');
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

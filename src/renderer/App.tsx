@@ -1,6 +1,6 @@
 import { KidScreen } from './pages/KidScreen';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { HashRouter, Routes, Route } from 'react-router-dom';
 import { PlayerRouter } from './pages/PlayerRouter';
 import { TimeUpPage } from './pages/TimeUpPage';
 import { SourcePage } from './pages/SourcePage';
@@ -57,7 +57,7 @@ function App() {
   return (
     <Tooltip.Provider>
       <RateLimitProvider>
-        <BrowserRouter>
+        <HashRouter>
           <div className="min-h-screen bg-background">
             <Routes>
               <Route path="/" element={<KidScreen />} />
@@ -68,7 +68,7 @@ function App() {
               <Route path="/admin" element={<AdminPage />} />
             </Routes>
           </div>
-        </BrowserRouter>
+        </HashRouter>
       </RateLimitProvider>
     </Tooltip.Provider>
   );

@@ -7,28 +7,29 @@ import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTrackin
 import { logVerbose } from '../shared/logging';
 import { AppPaths } from '../shared/appPaths';
 import { FirstRunSetup } from '../shared/firstRunSetup';
+import log from './logger';
 
-console.log('[Main] Main process starting...');
+log.info('[Main] Main process starting...');
 
 // Run first-time setup if needed (before any config files are read)
 (async () => {
   try {
-    console.log('[Main] Running first-time setup...');
+    log.info('[Main] Running first-time setup...');
     const setupResult = await FirstRunSetup.setupIfNeeded();
     
     if (setupResult.success) {
-      console.log('[Main] First-time setup completed successfully');
+      log.info('[Main] First-time setup completed successfully');
       if (setupResult.createdDirs.length > 0) {
-        console.log('[Main] Created directories:', setupResult.createdDirs);
+        log.info('[Main] Created directories:', setupResult.createdDirs);
       }
       if (setupResult.copiedFiles.length > 0) {
-        console.log('[Main] Copied files:', setupResult.copiedFiles);
+        log.info('[Main] Copied files:', setupResult.copiedFiles);
       }
     } else {
-      console.error('[Main] First-time setup failed:', setupResult.errors);
+      log.error('[Main] First-time setup failed:', setupResult.errors);
     }
   } catch (error) {
-    console.error('[Main] Error during first-time setup:', error);
+    log.error('[Main] Error during first-time setup:', error);
   }
 })();
 
@@ -284,7 +285,7 @@ ipcMain.handle('load-videos-from-sources', async () => {
     // Import and use the main process version that has the encoded IDs
     const { loadAllVideosFromSourcesMain } = await import('../main/index');
     const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
-    const result = await loadAllVideosFromSourcesMain('config/videoSources.json', apiKey);
+    const result = await loadAllVideosFromSourcesMain(AppPaths.getConfigPath('videoSources.json'), apiKey);
     
     console.log('[Main] Videos loaded in development:', { 
       totalVideos: result.videosBySource?.length || 0, 
@@ -309,9 +310,9 @@ function registerIpcHandlers() {
 
 function createWindow() {
   const preloadPath = path.join(__dirname, '../../preload/index.js');
-  console.log('[Main] Preload path:', preloadPath);
-  console.log('[Main] Preload path exists:', fs.existsSync(preloadPath));
-  console.log('[Main] __dirname:', __dirname);
+  log.info('[Main] Preload path:', preloadPath);
+  log.info('[Main] Preload path exists:', fs.existsSync(preloadPath));
+  log.info('[Main] __dirname:', __dirname);
 
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -324,10 +325,40 @@ function createWindow() {
     }
   });
 
-  // In production, load the built index.html
-  const indexPath = path.join(__dirname, '../../renderer/index.html');
-  console.log('[Main] Loading renderer HTML:', indexPath);
-  mainWindow.loadFile(indexPath);
+  // Check if we're in development or production
+  const isDev = process.env.NODE_ENV === 'development';
+  log.info('[Main] NODE_ENV:', process.env.NODE_ENV);
+  log.info('[Main] Is development:', isDev);
+
+  if (isDev) {
+    // In development, load from Vite dev server
+    const devUrl = 'http://localhost:5173';
+    log.info('[Main] Loading development URL:', devUrl);
+    mainWindow.loadURL(devUrl);
+    mainWindow.webContents.openDevTools();
+  } else {
+    // In production, load the built index.html
+    // Try to load from local dist folder first (for development builds)
+    const localPath = path.join(process.cwd(), 'dist', 'renderer', 'index.html');
+    const asarPath = path.join(process.resourcesPath, 'app.asar', 'dist', 'renderer', 'index.html');
+    
+    log.info('[Main] Checking local path:', localPath);
+    log.info('[Main] Checking asar path:', asarPath);
+    log.info('[Main] Process cwd:', process.cwd());
+    log.info('[Main] Resources path:', process.resourcesPath);
+    
+    if (fs.existsSync(localPath)) {
+      log.info('[Main] Loading from local dist folder:', localPath);
+      mainWindow.loadFile(localPath);
+    } else if (fs.existsSync(asarPath)) {
+      log.info('[Main] Loading from asar:', asarPath);
+      mainWindow.loadFile(asarPath);
+    } else {
+      log.error('[Main] Could not find index.html in any expected location');
+      // Fallback: load a simple HTML page
+      mainWindow.loadURL('data:text/html,<h1>SafeTube</h1><p>Loading...</p>');
+    }
+  }
 
   // Add headers to all requests
   mainWindow.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
@@ -366,7 +397,7 @@ app.whenReady().then(async () => {
     console.log('[Main] Initializing video sources...');
     const { loadAllVideosFromSourcesMain } = await import('../main/index');
     const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
-    const result = await loadAllVideosFromSourcesMain('config/videoSources.json', apiKey);
+    const result = await loadAllVideosFromSourcesMain(AppPaths.getConfigPath('videoSources.json'), apiKey);
     console.log('[Main] Videos loaded on startup:', { totalVideos: result.videosBySource?.length || 0, sources: result.videosBySource?.length || 0 });
     
     // Store videos globally for access by other handlers
