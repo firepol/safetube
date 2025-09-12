@@ -355,6 +355,7 @@ async function countVideosInFolder(folderPath: string, maxDepth: number, current
         } else if (currentDepth === maxDepth) {
           // At maxDepth, get flattened content and count
           const flattenedVideos = await getFlattenedContent(itemPath, currentDepth + 1);
+          // getFlattenedContent already applies filtering, so we can use the length directly
           totalCount += flattenedVideos.length;
         }
       } else if (stat.isFile()) {
@@ -668,7 +669,8 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
         
         // Check if file exists
         if (!fs.existsSync(filePath)) {
-          throw new Error(`Local video file not found: ${filePath}`);
+          logVerbose('[Main] Local video file not found, returning null:', filePath);
+          return null; // Return null instead of throwing error for missing files
         }
         
         // Extract video duration using ffprobe
@@ -706,7 +708,7 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
         return videoWithResume;
       } catch (error) {
         log.error('[Main] Error handling local video:', error);
-        throw new Error(`Failed to load local video: ${error instanceof Error ? error.message : String(error)}`);
+        return null; // Return null instead of throwing error for missing files
       }
     }
     

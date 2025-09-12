@@ -262,7 +262,8 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
         
         // Check if file exists
         if (!fs.existsSync(filePath)) {
-          throw new Error(`Local video file not found: ${filePath}`);
+          console.log('[Main] Local video file not found, returning null:', filePath);
+          return null; // Return null instead of throwing error for missing files
         }
         
         // Create video object for local video
@@ -296,7 +297,7 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
         return videoWithResume;
       } catch (error) {
         console.error('[Main] Error handling local video:', error);
-        throw new Error(`Failed to load local video: ${error instanceof Error ? error.message : String(error)}`);
+        return null; // Return null instead of throwing error for missing files
       }
     }
     
