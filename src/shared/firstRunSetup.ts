@@ -295,7 +295,7 @@ ADMIN_PASSWORD=paren234`;
           break;
 
         case 'watched.json':
-          content = JSON.stringify({}, null, 2);
+          content = JSON.stringify([], null, 2);
           break;
 
         case 'timeExtra.json':
