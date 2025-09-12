@@ -246,13 +246,8 @@ export const HistoryPage: React.FC = () => {
                     <h3 className="font-medium text-gray-900 text-sm line-clamp-2 mb-1">
                       {video.title}
                     </h3>
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                      <span>{video.sourceTitle}</span>
-                      <span>
-                        {video.watchedData.watched === true ? '✅ Watched' : 
-                         video.watchedData.watched === false ? '⏸️ Partial' : 
-                         '📺 Clicked'}
-                      </span>
+                    <div className="text-xs text-gray-500 mb-1">
+                      {video.sourceTitle}
                     </div>
                     <div className="text-xs text-gray-400">
                       Last watched: {new Date(video.watchedData.lastWatched).toLocaleDateString()}

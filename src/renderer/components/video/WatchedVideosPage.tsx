@@ -80,9 +80,9 @@ export const WatchedVideosPage: React.FC = () => {
         // Load watched videos data
         const watchedData = await (window as any).electron.getWatchedVideos();
         
-        // Filter watched videos for this source
+        // Filter watched videos for this source - only show actually watched videos
         const sourceWatchedVideos = watchedData.filter((w: WatchedVideo) => {
-          return w.videoId; // Only filter out entries without videoId
+          return w.videoId && w.watched === true; // Only show videos that are actually watched
         });
 
         // Get video details for watched videos
@@ -208,10 +208,10 @@ export const WatchedVideosPage: React.FC = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                📺 Watched Videos
+                ✅ Watched Videos
               </h1>
               <p className="text-gray-600">
-                {source?.title || 'Source'} • {paginationState?.totalVideos || 0} videos watched
+                {source?.title || 'Source'} • {paginationState?.totalVideos || 0} videos fully watched
               </p>
             </div>
           </div>
@@ -221,10 +221,10 @@ export const WatchedVideosPage: React.FC = () => {
         {/* Watched Videos Grid */}
         {watchedVideos.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">📺</div>
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">No Watched Videos</h2>
+            <div className="text-6xl mb-4">✅</div>
+            <h2 className="text-xl font-semibold text-gray-700 mb-2">No Fully Watched Videos</h2>
             <p className="text-gray-500 mb-4">
-              You haven't watched any videos from this source yet.
+              You haven't fully watched any videos from this source yet.
             </p>
             <button
               onClick={handleBackClick}

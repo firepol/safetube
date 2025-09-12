@@ -242,10 +242,10 @@ export const SourcePage: React.FC = () => {
           className="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 border-2 border-blue-100 hover:border-blue-300 inline-block"
         >
           <div className="flex items-center space-x-3">
-            <div className="text-4xl">📺</div>
+            <div className="text-4xl">✅</div>
             <div>
               <h3 className="font-semibold text-gray-900">Watched Videos</h3>
-              <p className="text-sm text-gray-500">View videos you've watched from this source</p>
+              <p className="text-sm text-gray-500">View videos you've fully watched from this source</p>
             </div>
           </div>
         </div>
