@@ -277,19 +277,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
         <div>
           <h2 className="text-lg font-semibold mb-4 text-gray-700">🎬 Videos</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {contents.videos
-              .filter((video) => {
-                // Hide converted videos if original exists
-                const isConverted = video.url.includes('.converted/') || video.url.includes('\\.converted\\');
-                if (isConverted) {
-                  // Check if original video exists
-                  const originalPath = video.url.replace(/\.converted[\\/].*/, '');
-                  const originalVideo = contents.videos.find(v => v.url === originalPath);
-                  return !originalVideo; // Hide converted if original exists
-                }
-                return true; // Show all non-converted videos
-              })
-              .map((video) => {
+            {contents.videos.map((video) => {
               const { isWatched, isClicked } = getVideoStatus(video.id);
               
               // Determine CSS classes - watched takes priority over clicked

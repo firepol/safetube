@@ -48,6 +48,7 @@ function filterDuplicateVideos(videos: any[]): any[] {
     const isConverted = video.url.includes('.converted/') || video.url.includes('\\.converted\\') || video.url.includes('.converted\\');
     if (!isConverted) {
       originalVideos.add(video.url);
+      logVerbose('[Main] Found original video:', video.url);
     }
   }
   
@@ -63,28 +64,30 @@ function filterDuplicateVideos(videos: any[]): any[] {
       }
       
       logVerbose('[Main] Checking converted video:', {
-        original: video.url,
-        converted: isConverted,
+        converted: video.url,
         originalPath,
-        hasOriginal: originalVideos.has(originalPath)
+        hasOriginal: originalVideos.has(originalPath),
+        allOriginals: Array.from(originalVideos)
       });
       
       if (!originalVideos.has(originalPath)) {
         filteredVideos.push(video); // Include converted only if no original
         logVerbose('[Main] Including converted video (no original):', video.url);
       } else {
-        logVerbose('[Main] Hiding converted video (original exists):', video.url);
+        logVerbose('[Main] Hiding converted video (original exists):', video.url, '->', originalPath);
       }
       // Skip converted videos that have originals
     } else {
       filteredVideos.push(video); // Always include original videos
+      logVerbose('[Main] Including original video:', video.url);
     }
   }
   
   logVerbose('[Main] Video filtering result:', { 
     total: videos.length, 
     filtered: filteredVideos.length,
-    hidden: videos.length - filteredVideos.length 
+    hidden: videos.length - filteredVideos.length,
+    originalCount: originalVideos.size
   });
   
   return filteredVideos;
@@ -322,9 +325,10 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
   return { folders, videos: filteredVideos, depth: currentDepth };
 }
 
-// Helper function to count total videos in a folder recursively
+// Helper function to count total videos in a folder recursively (with filtering)
 async function countVideosInFolder(folderPath: string, maxDepth: number, currentDepth: number = 1): Promise<number> {
-  let count = 0;
+  // Use the same scanning logic as getLocalFolderContents but only count
+  const videos: any[] = [];
   const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
   
   try {
@@ -337,15 +341,20 @@ async function countVideosInFolder(folderPath: string, maxDepth: number, current
       if (stat.isDirectory()) {
         if (currentDepth < maxDepth) {
           // Continue counting in subfolders
-          count += await countVideosInFolder(itemPath, maxDepth, currentDepth + 1);
+          const subCount = await countVideosInFolder(itemPath, maxDepth, currentDepth + 1);
+          return subCount;
         } else if (currentDepth === maxDepth) {
-          // At maxDepth, count all videos in this directory and deeper
-          count += await countVideosRecursively(itemPath);
+          // At maxDepth, get flattened content and count
+          const flattenedVideos = await getFlattenedContent(itemPath, currentDepth + 1);
+          return flattenedVideos.length;
         }
       } else if (stat.isFile()) {
         const ext = path.extname(item).toLowerCase();
         if (supportedExtensions.includes(ext)) {
-          count++;
+          videos.push({
+            url: itemPath,
+            // Other properties not needed for counting
+          });
         }
       }
     }
@@ -353,12 +362,21 @@ async function countVideosInFolder(folderPath: string, maxDepth: number, current
     log.warn('[Main] Error counting videos in folder:', folderPath, error);
   }
   
-  return count;
+  // Apply the same filtering logic as other functions
+  const filteredVideos = filterDuplicateVideos(videos);
+  logVerbose('[Main] Video count filtering result:', { 
+    folder: folderPath,
+    original: videos.length, 
+    filtered: filteredVideos.length,
+    hidden: videos.length - filteredVideos.length 
+  });
+  
+  return filteredVideos.length;
 }
 
-// Helper function to count videos recursively (for flattening at maxDepth)
+// Helper function to count videos recursively (for flattening at maxDepth) with filtering
 async function countVideosRecursively(folderPath: string): Promise<number> {
-  let count = 0;
+  const videos: any[] = [];
   const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
   
   try {
@@ -370,11 +388,15 @@ async function countVideosRecursively(folderPath: string): Promise<number> {
       
       if (stat.isDirectory()) {
         // Continue counting deeper
-        count += await countVideosRecursively(itemPath);
+        const subCount = await countVideosRecursively(itemPath);
+        return subCount;
       } else if (stat.isFile()) {
         const ext = path.extname(item).toLowerCase();
         if (supportedExtensions.includes(ext)) {
-          count++;
+          videos.push({
+            url: itemPath,
+            // Other properties not needed for counting
+          });
         }
       }
     }
@@ -382,7 +404,16 @@ async function countVideosRecursively(folderPath: string): Promise<number> {
     log.warn('[Main] Error counting videos recursively:', folderPath, error);
   }
   
-  return count;
+  // Apply the same filtering logic as other functions
+  const filteredVideos = filterDuplicateVideos(videos);
+  logVerbose('[Main] Recursive video count filtering result:', { 
+    folder: folderPath,
+    original: videos.length, 
+    filtered: filteredVideos.length,
+    hidden: videos.length - filteredVideos.length 
+  });
+  
+  return filteredVideos.length;
 }
 
 // Helper function to get flattened content from deeper levels
