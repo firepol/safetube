@@ -28,7 +28,8 @@ interface LocalFolderNavigatorProps {
   maxDepth: number;
   sourceTitle: string;
   onBackClick: () => void;
-  onVideoClick: (video: VideoItem) => void;
+  onVideoClick: (video: VideoItem, currentFolderPath: string) => void;
+  initialFolderPath?: string;
 }
 
 export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
@@ -36,13 +37,30 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   maxDepth,
   sourceTitle,
   onBackClick,
-  onVideoClick
+  onVideoClick,
+  initialFolderPath
 }) => {
   const [contents, setContents] = useState<FolderContents | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [navigationStack, setNavigationStack] = useState<string[]>([sourcePath]);
-  const [currentFolderPath, setCurrentFolderPath] = useState(sourcePath);
+  const [navigationStack, setNavigationStack] = useState<string[]>(() => {
+    if (initialFolderPath) {
+      // Build navigation stack from source path to initial folder path
+      const pathParts = initialFolderPath.replace(sourcePath, '').split('/').filter(Boolean);
+      const stack = [sourcePath];
+      let currentPath = sourcePath;
+      
+      for (const part of pathParts) {
+        currentPath = `${currentPath}/${part}`;
+        stack.push(currentPath);
+      }
+      
+      return stack;
+    }
+    return [sourcePath];
+  });
+  
+  const [currentFolderPath, setCurrentFolderPath] = useState(initialFolderPath || sourcePath);
   const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
 
   const currentDepth = navigationStack.length;
@@ -216,7 +234,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
               return (
                 <div
                   key={video.id}
-                  onClick={() => onVideoClick(video)}
+                  onClick={() => onVideoClick(video, currentFolderPath)}
                   className={cssClasses}
                 >
                 <div className="aspect-video bg-gray-200 flex items-center justify-center">

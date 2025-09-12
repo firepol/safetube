@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 import { LocalFolderNavigator } from '../components/video/LocalFolderNavigator';
@@ -7,6 +7,7 @@ import { logVerbose } from '../lib/logging';
 
 export const SourcePage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { sourceId, page } = useParams();
   const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
@@ -17,6 +18,11 @@ export const SourcePage: React.FC = () => {
   const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
 
   const currentPage = page ? parseInt(page) : 1;
+  
+  // Extract folder parameter from URL query string
+  const urlParams = new URLSearchParams(location.search);
+  const folderParam = urlParams.get('folder');
+  const initialFolderPath = folderParam ? `${source?.path}/${decodeURIComponent(folderParam)}` : undefined;
 
   // Load watched videos data
   useEffect(() => {
@@ -142,7 +148,7 @@ export const SourcePage: React.FC = () => {
     }
   };
 
-  const handleVideoClick = (video: any) => {
+  const handleVideoClick = (video: any, currentFolderPath?: string) => {
     if (video.type === 'youtube') {
       navigate(`/player/${video.id}`, { 
         state: { 
@@ -151,9 +157,21 @@ export const SourcePage: React.FC = () => {
         } 
       });
     } else if (video.type === 'local') {
+      // For local videos, include folder context in return navigation
+      let returnTo = `/source/${sourceId}${currentPage > 1 ? `/page/${currentPage}` : ''}`;
+      
+      // If we have a current folder path and it's different from the source path,
+      // we need to include folder context in the return URL
+      if (currentFolderPath && source?.path && currentFolderPath !== source.path) {
+        // Encode the folder path as a query parameter
+        const relativePath = currentFolderPath.replace(source.path, '').replace(/^\//, '');
+        returnTo += `?folder=${encodeURIComponent(relativePath)}`;
+      }
+      
       navigate(`/player/${video.id}`, {
         state: { 
-          returnTo: `/source/${sourceId}${currentPage > 1 ? `/page/${currentPage}` : ''}`
+          returnTo: returnTo,
+          currentFolderPath: currentFolderPath
         }
       });
     }
@@ -234,6 +252,7 @@ export const SourcePage: React.FC = () => {
         sourceTitle={source?.title || 'Local Source'}
         onBackClick={handleBackClick}
         onVideoClick={handleVideoClick}
+        initialFolderPath={initialFolderPath}
       />
     );
   }
