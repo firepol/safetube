@@ -14,8 +14,34 @@ export const SourcePage: React.FC = () => {
   const [currentPageVideos, setCurrentPageVideos] = useState<any[]>([]);
   const [paginationState, setPaginationState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
 
   const currentPage = page ? parseInt(page) : 1;
+
+  // Load watched videos data
+  useEffect(() => {
+    const loadWatchedVideos = async () => {
+      try {
+        const watchedData = await (window as any).electron.getWatchedVideos();
+        setWatchedVideos(watchedData);
+      } catch (error) {
+        console.error('Error loading watched videos:', error);
+        setWatchedVideos([]);
+      }
+    };
+    loadWatchedVideos();
+  }, []);
+
+  // Function to check video status
+  const getVideoStatus = (videoId: string) => {
+    const watchedData = watchedVideos.find(w => w.videoId === videoId);
+    if (!watchedData) return { isWatched: false, isClicked: false };
+    
+    return {
+      isWatched: watchedData.watched === true,
+      isClicked: true // If it's in watched.json, it was clicked
+    };
+  };
 
   useEffect(() => {
     const checkTimeLimits = async () => {
@@ -254,15 +280,18 @@ export const SourcePage: React.FC = () => {
       {/* Video Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
         {currentPageVideos.map((video: any) => {
-          // Check if video is partially watched (has resumeAt but not fully watched)
-          const isPartiallyWatched = video.resumeAt && video.resumeAt > 0 && video.duration && video.resumeAt < video.duration * 0.95;
+          const { isWatched, isClicked } = getVideoStatus(video.id);
+          
+          // Determine CSS classes - watched takes priority over clicked
+          const cssClasses = [
+            'bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105',
+            isWatched ? 'watched' : isClicked ? 'clicked' : ''
+          ].filter(Boolean).join(' ');
           
           return (
             <div
               key={video.id}
-              className={`bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 ${
-                isPartiallyWatched ? 'border-2 border-blue-400' : ''
-              }`}
+              className={cssClasses}
               onClick={() => handleVideoClick(video)}
             >
             <div className="aspect-video bg-gray-200 overflow-hidden">
@@ -284,7 +313,6 @@ export const SourcePage: React.FC = () => {
               </h3>
               <p className="text-xs text-gray-500">
                 {video.type === 'youtube' ? 'YouTube' : 'Local Video'}
-                {isPartiallyWatched && ' • ⏸️ Partial'}
               </p>
             </div>
           </div>

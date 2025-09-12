@@ -43,8 +43,34 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [navigationStack, setNavigationStack] = useState<string[]>([sourcePath]);
   const [currentFolderPath, setCurrentFolderPath] = useState(sourcePath);
+  const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
 
   const currentDepth = navigationStack.length;
+
+  // Load watched videos data
+  useEffect(() => {
+    const loadWatchedVideos = async () => {
+      try {
+        const watchedData = await (window as any).electron.getWatchedVideos();
+        setWatchedVideos(watchedData);
+      } catch (error) {
+        console.error('Error loading watched videos:', error);
+        setWatchedVideos([]);
+      }
+    };
+    loadWatchedVideos();
+  }, []);
+
+  // Function to check video status
+  const getVideoStatus = (videoId: string) => {
+    const watchedData = watchedVideos.find(w => w.videoId === videoId);
+    if (!watchedData) return { isWatched: false, isClicked: false };
+    
+    return {
+      isWatched: watchedData.watched === true,
+      isClicked: true // If it's in watched.json, it was clicked
+    };
+  };
 
   useEffect(() => {
     loadFolderContents();
@@ -178,12 +204,21 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
         <div>
           <h2 className="text-lg font-semibold mb-4 text-gray-700">🎬 Videos</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {contents.videos.map((video) => (
-              <div
-                key={video.id}
-                onClick={() => onVideoClick(video)}
-                className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105"
-              >
+            {contents.videos.map((video) => {
+              const { isWatched, isClicked } = getVideoStatus(video.id);
+              
+              // Determine CSS classes - watched takes priority over clicked
+              const cssClasses = [
+                'bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105',
+                isWatched ? 'watched' : isClicked ? 'clicked' : ''
+              ].filter(Boolean).join(' ');
+              
+              return (
+                <div
+                  key={video.id}
+                  onClick={() => onVideoClick(video)}
+                  className={cssClasses}
+                >
                 <div className="aspect-video bg-gray-200 flex items-center justify-center">
                   <div className="text-4xl">🎬</div>
                 </div>
@@ -197,7 +232,8 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
                   )}
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

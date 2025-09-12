@@ -1,3 +1,28 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities; 
+@tailwind utilities;
+
+/* Video status styles */
+.watched .aspect-video img {
+  opacity: 0.3;
+  transition: opacity 0.3s ease;
+}
+
+.watched .aspect-video {
+  position: relative;
+}
+
+.watched .aspect-video::after {
+  content: '✅';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+  z-index: 10;
+}
+
+.clicked .p-3 {
+  background-color: rgba(147, 51, 234, 0.4);
+  transition: background-color 0.3s ease;
+} 
