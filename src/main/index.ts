@@ -580,6 +580,89 @@ ipcMain.handle('admin:get-last-watched-video-with-source', async () => {
   }
 });
 
+// Video source management handlers
+ipcMain.handle('video-sources:get-all', async () => {
+  try {
+    const { readVideoSources } = await import('../shared/fileUtils');
+    return await readVideoSources();
+  } catch (error) {
+    log.error('Error reading video sources:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('video-sources:save-all', async (_, sources: any[]) => {
+  try {
+    const { writeVideoSources } = await import('../shared/fileUtils');
+    await writeVideoSources(sources);
+    logVerbose('[Main] Video sources saved successfully');
+    return { success: true };
+  } catch (error) {
+    log.error('Error saving video sources:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('video-sources:validate-youtube-url', async (_, url: string, type: 'youtube_channel' | 'youtube_playlist') => {
+  try {
+    const { validateVideoSource, cleanYouTubePlaylistUrl } = await import('../shared/videoSourceUtils');
+    
+    // Clean the URL if it's a playlist watch URL
+    const cleanedUrl = type === 'youtube_playlist' ? cleanYouTubePlaylistUrl(url) : url;
+    
+    // Basic validation
+    const validation = validateVideoSource(type, cleanedUrl, undefined, 'Test Title');
+    
+    if (!validation.isValid) {
+      return {
+        isValid: false,
+        errors: validation.errors,
+        cleanedUrl
+      };
+    }
+    
+    // For now, return basic validation success
+    // TODO: Add actual YouTube API validation when API key is available
+    return {
+      isValid: true,
+      cleanedUrl,
+      message: 'URL format is valid (API validation not implemented yet)'
+    };
+    } catch (error) {
+      log.error('Error validating YouTube URL:', error);
+      return {
+        isValid: false,
+        errors: ['Validation failed: ' + (error instanceof Error ? error.message : String(error))]
+      };
+    }
+});
+
+ipcMain.handle('video-sources:validate-local-path', async (_, path: string) => {
+  try {
+    const fs = await import('fs');
+    const pathModule = await import('path');
+    
+    // Check if path exists and is a directory
+    const stats = fs.statSync(path);
+    if (!stats.isDirectory()) {
+      return {
+        isValid: false,
+        errors: ['Path exists but is not a directory']
+      };
+    }
+    
+    return {
+      isValid: true,
+      message: 'Path is valid and accessible'
+    };
+  } catch (error) {
+    return {
+      isValid: false,
+      errors: ['Path does not exist or is not accessible: ' + (error instanceof Error ? error.message : String(error))]
+    };
+  }
+});
+
 // Handle getting local folder contents for navigation
 ipcMain.handle('get-local-folder-contents', async (event, folderPath: string, maxDepth: number, currentDepth: number = 1) => {
   try {

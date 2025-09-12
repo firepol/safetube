@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TimeLimits } from '@/shared/types';
+import { VideoSourcesManager } from '@/renderer/components/admin/VideoSourcesManager';
 
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
@@ -14,6 +15,7 @@ export const AdminPage: React.FC = () => {
   const [timeLimits, setTimeLimits] = useState<TimeLimits | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'time' | 'sources'>('time');
 
   useEffect(() => {
     // Check if already authenticated
@@ -255,7 +257,37 @@ export const AdminPage: React.FC = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Tab Navigation */}
+        <div className="bg-white rounded-lg shadow-lg mb-6">
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 px-6">
+              <button
+                onClick={() => setActiveTab('time')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'time'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Time Management
+              </button>
+              <button
+                onClick={() => setActiveTab('sources')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'sources'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Video Sources
+              </button>
+            </nav>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        {activeTab === 'time' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Quick Time Extension */}
           <div className="bg-white rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Time Extension</h2>
@@ -361,19 +393,11 @@ export const AdminPage: React.FC = () => {
             )}
           </div>
         </div>
+        )}
 
-        {/* Future Features Placeholder */}
-        <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Video Sources Management</h2>
-          <p className="text-gray-600 mb-4">
-            Manage YouTube channels, local folders, and DLNA sources.
-          </p>
-          <div className="bg-gray-50 rounded-md p-4 text-center">
-            <p className="text-gray-500 text-sm">
-              This feature will be implemented in a future update.
-            </p>
-          </div>
-        </div>
+        {activeTab === 'sources' && (
+          <VideoSourcesManager />
+        )}
       </div>
     </div>
   );

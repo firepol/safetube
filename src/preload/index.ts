@@ -40,6 +40,13 @@ contextBridge.exposeInMainWorld(
     adminGetTimeExtra: () => ipcRenderer.invoke('admin:get-time-extra'),
     adminWriteTimeLimits: (timeLimits: any) => ipcRenderer.invoke('admin:write-time-limits', timeLimits),
     adminGetLastWatchedVideoWithSource: () => ipcRenderer.invoke('admin:get-last-watched-video-with-source'),
+    // Video source management
+    videoSourcesGetAll: () => ipcRenderer.invoke('video-sources:get-all'),
+    videoSourcesSaveAll: (sources: any[]) => ipcRenderer.invoke('video-sources:save-all', sources),
+    videoSourcesValidateYouTubeUrl: (url: string, type: 'youtube_channel' | 'youtube_playlist') => 
+      ipcRenderer.invoke('video-sources:validate-youtube-url', url, type),
+    videoSourcesValidateLocalPath: (path: string) => 
+      ipcRenderer.invoke('video-sources:validate-local-path', path),
     // Setup status
     getSetupStatus: () => ipcRenderer.invoke('get-setup-status'),
     // Expose environment variables directly

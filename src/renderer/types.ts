@@ -50,6 +50,20 @@ export interface ElectronAPI {
     sourceId: string;
     sourceTitle: string;
   } | null>;
+  // Video source management
+  videoSourcesGetAll: () => Promise<any[]>;
+  videoSourcesSaveAll: (sources: any[]) => Promise<{ success: boolean }>;
+  videoSourcesValidateYouTubeUrl: (url: string, type: 'youtube_channel' | 'youtube_playlist') => Promise<{
+    isValid: boolean;
+    errors?: string[];
+    cleanedUrl?: string;
+    message?: string;
+  }>;
+  videoSourcesValidateLocalPath: (path: string) => Promise<{
+    isValid: boolean;
+    errors?: string[];
+    message?: string;
+  }>;
   // Logging configuration methods
   setVerboseLogging: (enabled: boolean) => Promise<{ success: boolean; verbose: boolean }>;
   getVerboseLogging: () => Promise<{ verbose: boolean }>;

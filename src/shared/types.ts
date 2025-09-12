@@ -64,6 +64,32 @@ export interface LocalFolderSource {
 
 export type VideoSource = YouTubeChannelSource | YouTubePlaylistSource | LocalFolderSource;
 
+// Video source management interfaces
+export interface VideoSourceFormData {
+  id?: string; // undefined for new sources
+  type: VideoSourceType;
+  url?: string;
+  path?: string;
+  title: string;
+  sortOrder?: string;
+  maxDepth?: number;
+}
+
+export interface VideoSourceValidation {
+  isValid: boolean;
+  errors: string[];
+  warnings?: string[];
+  cleanedUrl?: string; // for YouTube URLs that were cleaned
+}
+
+export interface VideoSourceManagementState {
+  sources: VideoSource[];
+  isLoading: boolean;
+  error: string | null;
+  editingSource: VideoSourceFormData | null;
+  isAdding: boolean;
+}
+
 // YouTube cache metadata for efficient updates
 export interface YouTubeSourceCache {
   sourceId: string;
