@@ -92,6 +92,8 @@ export const TimeIndicator: React.FC<TimeIndicatorProps> = ({
   useEffect(() => {
     if (!initialState) {
       fetchTimeState().then(setTimeTrackingState);
+    } else {
+      setTimeTrackingState(initialState);
     }
     fetchWarningThreshold();
   }, [initialState]);

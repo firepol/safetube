@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TimeLimits } from '@/shared/types';
+import { TimeLimits, TimeTrackingState } from '@/shared/types';
 import { VideoSourcesManager } from '@/renderer/components/admin/VideoSourcesManager';
+import { TimeIndicator } from '@/renderer/components/layout/TimeIndicator';
 
 export const AdminPage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +17,9 @@ export const AdminPage: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'time' | 'sources'>('time');
+  const [currentTimeState, setCurrentTimeState] = useState<TimeTrackingState | null>(null);
+  const [projectedTimeState, setProjectedTimeState] = useState<TimeTrackingState | null>(null);
+  const [dailyLimitModified, setDailyLimitModified] = useState(false);
 
   useEffect(() => {
     // Check if already authenticated
@@ -34,17 +38,67 @@ export const AdminPage: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated) {
       loadTimeLimits();
+      loadCurrentTimeState();
     }
   }, [isAuthenticated]);
+
+  // Update projected time state when extra time or time limits change
+  useEffect(() => {
+    if (currentTimeState && timeLimits) {
+      // Use the current timeLimits value from the closure
+      calculateProjectedTimeStateWithLimits(currentTimeState, extraTimeMinutes, timeLimits);
+    }
+  }, [extraTimeMinutes, currentTimeState, timeLimits]);
 
   const loadTimeLimits = async () => {
     try {
       const limits = await window.electron.getTimeLimits();
       setTimeLimits(limits);
+      setDailyLimitModified(false); // Reset the flag when loading fresh data
     } catch (error) {
       console.error('Error loading time limits:', error);
       setError('Failed to load time limits');
     }
+  };
+
+  const loadCurrentTimeState = async () => {
+    try {
+      const state = await window.electron.getTimeTrackingState();
+      setCurrentTimeState(state);
+      // Don't calculate projected state here - let the useEffect handle it
+    } catch (error) {
+      console.error('Error loading time state:', error);
+    }
+  };
+
+  const calculateProjectedTimeStateWithLimits = (currentState: TimeTrackingState, extraMinutes: number, limits: TimeLimits) => {
+    if (!currentState || !limits) {
+      return;
+    }
+
+    // Get current day of week
+    const today = new Date();
+    const dayOfWeek = today.toLocaleDateString('en-US', { weekday: 'long' }) as keyof TimeLimits;
+    
+    // Calculate projected time limit
+    const baseLimitMinutes = Number(limits[dayOfWeek]) || 0;
+    const currentExtraTime = currentState.extraTimeToday || 0;
+    const projectedExtraTime = currentExtraTime + extraMinutes;
+    const projectedLimitMinutes = baseLimitMinutes + projectedExtraTime;
+    const projectedLimitSeconds = projectedLimitMinutes * 60;
+    
+    // Calculate projected time remaining
+    const projectedTimeRemaining = Math.max(0, projectedLimitSeconds - currentState.timeUsedToday);
+    const projectedIsLimitReached = projectedTimeRemaining <= 0;
+
+
+    setProjectedTimeState({
+      ...currentState,
+      timeLimitToday: projectedLimitSeconds,
+      timeRemaining: projectedTimeRemaining,
+      isLimitReached: projectedIsLimitReached,
+      extraTimeToday: projectedExtraTime
+    });
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -81,6 +135,9 @@ export const AdminPage: React.FC = () => {
       setSaveMessage(`Successfully processed ${extraTimeMinutes} minutes!`);
       setExtraTimeMinutes(10); // Reset to default
       
+      // Refresh the current time state after applying changes
+      await loadCurrentTimeState();
+      
       // Clear message after 3 seconds
       setTimeout(() => setSaveMessage(null), 3000);
     } catch (error) {
@@ -101,6 +158,7 @@ export const AdminPage: React.FC = () => {
       await window.electron.adminWriteTimeLimits(timeLimits);
       console.log('[AdminPage] Time limits saved successfully');
       setSaveMessage('Time limits updated successfully!');
+      setDailyLimitModified(false); // Reset the flag after saving
       
       // Clear message after 3 seconds
       setTimeout(() => setSaveMessage(null), 3000);
@@ -115,10 +173,19 @@ export const AdminPage: React.FC = () => {
   const updateTimeLimit = (day: keyof TimeLimits, value: number) => {
     if (!timeLimits) return;
     
-    setTimeLimits({
+    const newTimeLimits = {
       ...timeLimits,
       [day]: Math.max(0, Math.min(1440, value)) // Clamp between 0 and 1440 minutes
-    });
+    };
+    setTimeLimits(newTimeLimits);
+    setDailyLimitModified(true);
+    
+    // The useEffect will handle the projected time calculation
+  };
+
+  const handleExtraTimeChange = (newExtraTime: number) => {
+    setExtraTimeMinutes(newExtraTime);
+    // The useEffect will handle the projected time calculation
   };
 
   const handleSmartExit = async () => {
@@ -302,7 +369,7 @@ export const AdminPage: React.FC = () => {
                 </label>
                 <div className="flex items-center space-x-2">
                   <button
-                    onClick={() => setExtraTimeMinutes(extraTimeMinutes - 10)}
+                    onClick={() => handleExtraTimeChange(extraTimeMinutes - 10)}
                     className="w-8 h-8 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors duration-200 flex items-center justify-center"
                   >
                     -
@@ -311,13 +378,13 @@ export const AdminPage: React.FC = () => {
                     type="number"
                     id="extraTime"
                     value={extraTimeMinutes}
-                    onChange={(e) => setExtraTimeMinutes(parseInt(e.target.value) || 0)}
+                    onChange={(e) => handleExtraTimeChange(parseInt(e.target.value) || 0)}
                     className="w-20 text-center border border-gray-300 rounded-md px-2 py-1"
                     min="-120"
                     max="120"
                   />
                   <button
-                    onClick={() => setExtraTimeMinutes(extraTimeMinutes + 10)}
+                    onClick={() => handleExtraTimeChange(extraTimeMinutes + 10)}
                     className="w-8 h-8 bg-gray-200 text-gray-700 rounded-full hover:bg-gray-300 transition-colors duration-200 flex items-center justify-center"
                   >
                     +
@@ -334,6 +401,45 @@ export const AdminPage: React.FC = () => {
                   <span className="text-gray-500">No change to today's limit</span>
                 )}
               </div>
+
+              {/* Current Time State */}
+              {currentTimeState && (
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Current Time Status</h4>
+                  <TimeIndicator 
+                    initialState={{
+                      timeRemaining: currentTimeState.timeRemaining,
+                      timeLimit: currentTimeState.timeLimitToday,
+                      timeUsed: currentTimeState.timeUsedToday,
+                      isLimitReached: currentTimeState.isLimitReached,
+                      extraTimeToday: currentTimeState.extraTimeToday
+                    }}
+                    className="text-sm"
+                  />
+                </div>
+              )}
+
+              {/* Projected Time State */}
+              {projectedTimeState && (extraTimeMinutes !== 0 || dailyLimitModified) && (
+                <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <h4 className="text-sm font-medium text-blue-700 mb-2">
+                    {extraTimeMinutes !== 0 
+                      ? `After ${extraTimeMinutes > 0 ? 'adding' : 'removing'} ${Math.abs(extraTimeMinutes)} minutes:`
+                      : 'After changing daily limit:'
+                    }
+                  </h4>
+                  <TimeIndicator 
+                    initialState={{
+                      timeRemaining: projectedTimeState.timeRemaining,
+                      timeLimit: projectedTimeState.timeLimitToday,
+                      timeUsed: projectedTimeState.timeUsedToday,
+                      isLimitReached: projectedTimeState.isLimitReached,
+                      extraTimeToday: projectedTimeState.extraTimeToday
+                    }}
+                    className="text-sm"
+                  />
+                </div>
+              )}
 
               <button
                 onClick={handleAddExtraTime}
@@ -361,6 +467,20 @@ export const AdminPage: React.FC = () => {
             <p className="text-gray-600 mb-4">
               Configure viewing time limits for each day of the week.
             </p>
+
+            {/* Today's Current Limit Display */}
+            {currentTimeState && timeLimits && (
+              <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="text-sm text-blue-700">
+                  <strong>Today's limit:</strong> {Math.round(Number(currentTimeState.timeLimitToday || 0) / 60)} minutes
+                  {currentTimeState.extraTimeToday && currentTimeState.extraTimeToday !== 0 && (
+                    <span className="ml-2">
+                      ({Math.floor(currentTimeState.timeLimitToday / 60) - Math.floor((currentTimeState.timeLimitToday / 60) - (currentTimeState.extraTimeToday || 0))} base + {currentTimeState.extraTimeToday} extra)
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
 
             {timeLimits && (
               <div className="space-y-3">
