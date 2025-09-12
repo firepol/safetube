@@ -26,6 +26,7 @@ interface FolderContents {
 interface LocalFolderNavigatorProps {
   sourcePath: string;
   maxDepth: number;
+  sourceTitle: string;
   onBackClick: () => void;
   onVideoClick: (video: VideoItem) => void;
 }
@@ -33,6 +34,7 @@ interface LocalFolderNavigatorProps {
 export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   sourcePath,
   maxDepth,
+  sourceTitle,
   onBackClick,
   onVideoClick
 }) => {
@@ -85,14 +87,14 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
 
   const getCurrentFolderName = () => {
     if (currentFolderPath === sourcePath) {
-      return 'Root';
+      return sourceTitle;
     }
     return currentFolderPath.split('/').pop() || 'Unknown';
   };
 
   const getBreadcrumbPath = () => {
     return navigationStack.map((path, index) => {
-      if (index === 0) return 'Root';
+      if (index === 0) return sourceTitle;
       return path.split('/').pop() || 'Unknown';
     }).join(' > ');
   };

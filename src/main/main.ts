@@ -46,14 +46,20 @@ ipcMain.handle('test-handler', async () => {
 ipcMain.handle('get-local-file', async (_, filePath: string) => {
   try {
     // Convert file:// URL to local path
-    const localPath = filePath.replace('file://', '');
+    let localPath = filePath.replace('file://', '');
     
-    // Check if file exists
-    if (!fs.existsSync(localPath)) {
+    // Normalize Windows paths - convert backslashes to forward slashes for file:// URLs
+    if (process.platform === 'win32') {
+      localPath = localPath.replace(/\\/g, '/');
+    }
+    
+    // Check if file exists (use original path for filesystem operations)
+    const originalPath = filePath.replace('file://', '');
+    if (!fs.existsSync(originalPath)) {
       throw new Error('File not found');
     }
 
-    // Return the file:// URL
+    // Return the file:// URL with normalized path
     return `file://${localPath}`;
   } catch (error) {
     console.error('Error getting local file:', error);
@@ -247,7 +253,43 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
   try {
     console.log('[Main] Loading video data for:', videoId);
     
-    // Only use the new source system - no fallback to old videos.json
+    // Check if this is a local video (encoded file path)
+    const { isEncodedFilePath, decodeFilePath } = await import('../shared/fileUtils');
+    if (isEncodedFilePath(videoId)) {
+      try {
+        const filePath = decodeFilePath(videoId);
+        console.log('[Main] Decoded local video path:', filePath);
+        
+        // Check if file exists
+        if (!fs.existsSync(filePath)) {
+          throw new Error(`Local video file not found: ${filePath}`);
+        }
+        
+        // Create video object for local video
+        const video = {
+          id: videoId,
+          type: 'local',
+          title: path.basename(filePath, path.extname(filePath)),
+          thumbnail: '',
+          duration: 0,
+          url: filePath,
+          video: filePath,
+          audio: undefined,
+          preferredLanguages: ['en'],
+          sourceId: 'local', // We'll need to determine the actual source ID
+          sourceTitle: 'Local Video',
+          sourceThumbnail: '',
+        };
+        
+        console.log('[Main] Created local video object:', { id: video.id, type: video.type, title: video.title });
+        return video;
+      } catch (error) {
+        console.error('[Main] Error handling local video:', error);
+        throw new Error(`Failed to load local video: ${error.message}`);
+      }
+    }
+    
+    // For non-local videos, use the existing logic
     if (!global.currentVideos || global.currentVideos.length === 0) {
       console.error('[Main] No videos loaded from source system. Video sources may not be initialized.');
       throw new Error('Video sources not initialized. Please restart the app.');

@@ -236,50 +236,23 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
     } else if ((source as any).type === 'local') {
       const typedSource = source as VideoSource;
       try {
-        const maxDepth = (typedSource as any).maxDepth || 2;
-        const localVideos = await scanLocalFolder((typedSource as any).path, maxDepth);
-        debug.push(`[Loader] Local source ${(typedSource as any).id}: ${localVideos.length} videos found.`);
-        logVerbose(`[Loader] Local source ${(typedSource as any).id}: ${localVideos.length} videos found.`);
+        // For local sources, don't scan videos upfront - let the LocalFolderNavigator handle it dynamically
+        // This allows proper folder structure navigation instead of flattening
+        debug.push(`[Loader] Local source ${(typedSource as any).id}: Using folder navigation (not scanning videos upfront).`);
+        logVerbose(`[Loader] Local source ${(typedSource as any).id}: Using folder navigation (not scanning videos upfront).`);
         
-        const videos = localVideos.map(v => ({
-          id: v.id,
-          type: 'local' as const,
-          title: v.title,
-          thumbnail: v.thumbnail || '',
-          duration: v.duration || 0,
-          url: v.url || v.id,
-          // For local videos with separate streams
-          video: v.video || undefined,
-          audio: v.audio || undefined,
-          // For YouTube videos (not applicable for local)
-          streamUrl: undefined,
-          audioStreamUrl: undefined,
-          resumeAt: undefined,
-          server: undefined,
-          port: undefined,
-          path: undefined,
-          preferredLanguages: undefined,
-          useJsonStreamUrls: undefined,
-          // Additional properties for source management
-          sourceId: (typedSource as any).id,
-          sourceTitle: (typedSource as any).title,
-          sourceThumbnail: '',
-        }));
-
-        // Merge with watched data to populate resumeAt
-        const { mergeWatchedData } = await import('./watchedDataUtils');
-        const videosWithWatchedData = await mergeWatchedData(videos);
-
-        const paginationState = paginationService.getPaginationState(typedSource.id, videosWithWatchedData.length);
+        const paginationState = paginationService.getPaginationState(typedSource.id, 0);
         
         videosBySource.push({
           id: (typedSource as any).id,
           type: (typedSource as any).type,
           title: (typedSource as any).title,
           thumbnail: '',
-          videoCount: videosWithWatchedData.length,
-          videos: videosWithWatchedData,
-          paginationState: paginationState
+          videoCount: 0, // Will be calculated dynamically by LocalFolderNavigator
+          videos: [], // Empty - LocalFolderNavigator will load videos dynamically
+          paginationState: paginationState,
+          maxDepth: (typedSource as any).maxDepth, // Pass through maxDepth for navigation
+          path: (typedSource as any).path // Pass through path for navigation
         });
       } catch (err) {
         debug.push(`[Loader] ERROR scanning local source ${(typedSource as any).id}: ${err}`);

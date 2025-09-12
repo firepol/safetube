@@ -32,8 +32,8 @@ contextBridge.exposeInMainWorld(
     getPaginatedVideos: (sourceId: string, pageNumber: number) => 
       ipcRenderer.invoke('get-paginated-videos', sourceId, pageNumber),
     // New IPC handler for getting local folder contents for navigation
-    getLocalFolderContents: (folderPath: string) => 
-      ipcRenderer.invoke('get-local-folder-contents', folderPath),
+    getLocalFolderContents: (folderPath: string, maxDepth: number, currentDepth: number = 1) => 
+      ipcRenderer.invoke('get-local-folder-contents', folderPath, maxDepth, currentDepth),
     // Admin IPC handlers
     adminAuthenticate: (password: string) => ipcRenderer.invoke('admin:authenticate', password),
     adminAddExtraTime: (minutes: number) => ipcRenderer.invoke('admin:add-extra-time', minutes),

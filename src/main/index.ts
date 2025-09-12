@@ -178,6 +178,7 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
     const absolutePath = path.isAbsolute(folderPath) ? folderPath : path.join(process.cwd(), folderPath);
 
     logVerbose('[Main] Getting folder contents:', absolutePath, 'at depth:', currentDepth, 'with maxDepth:', maxDepth);
+    logVerbose('[Main] Folder navigation logic: currentDepth < maxDepth?', currentDepth < maxDepth, 'currentDepth === maxDepth?', currentDepth === maxDepth);
     
     if (!fs.existsSync(absolutePath)) {
       log.warn('[Main] Local folder does not exist:', absolutePath);
@@ -185,26 +186,30 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
     }
 
     const items = fs.readdirSync(absolutePath);
-    
+    logVerbose('[Main] Items in folder:', items);
+
     for (const item of items) {
       const itemPath = path.join(absolutePath, item);
       const stat = fs.statSync(itemPath);
       
       if (stat.isDirectory()) {
-        // Only show folders if we haven't reached maxDepth
+        logVerbose('[Main] Found directory:', item, 'currentDepth:', currentDepth, 'maxDepth:', maxDepth);
+        // Show folders if we haven't reached maxDepth
         if (currentDepth < maxDepth) {
+          logVerbose('[Main] Adding folder to list:', item);
           folders.push({
             name: item,
             path: itemPath,
             type: 'folder',
             depth: currentDepth + 1
           });
-        } else {
-          // At maxDepth, flatten deeper content
-          log.debug('[Main] At maxDepth', currentDepth, 'flattening content from:', itemPath);
+        } else if (currentDepth === maxDepth) {
+          // At maxDepth, flatten deeper content from this directory
+          logVerbose('[Main] At maxDepth', currentDepth, 'flattening content from:', itemPath);
           const flattenedContent = await getFlattenedContent(itemPath, currentDepth + 1);
           videos.push(...flattenedContent);
         }
+        // If currentDepth > maxDepth, skip (shouldn't happen in normal flow)
       } else if (stat.isFile()) {
         const ext = path.extname(item).toLowerCase();
         if (supportedExtensions.includes(ext)) {
@@ -230,19 +235,82 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
             preferredLanguages: ['en'],
             type: 'local',
             depth: currentDepth,
-            relativePath: path.relative(path.join(process.cwd(), 'test-videos'), itemPath)
+            relativePath: path.relative(absolutePath, itemPath)
           });
         }
       }
     }
     
-    logVerbose('[Main] Folder contents:', { folders: folders.length, videos: videos.length, depth: currentDepth });
+    logVerbose('[Main] Folder contents result:', { folders: folders.length, videos: videos.length, depth: currentDepth });
     
   } catch (error) {
     log.error('[Main] Error getting folder contents:', error);
   }
   
   return { folders, videos, depth: currentDepth };
+}
+
+// Helper function to count total videos in a folder recursively
+async function countVideosInFolder(folderPath: string, maxDepth: number, currentDepth: number = 1): Promise<number> {
+  let count = 0;
+  const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
+  
+  try {
+    const items = fs.readdirSync(folderPath);
+    
+    for (const item of items) {
+      const itemPath = path.join(folderPath, item);
+      const stat = fs.statSync(itemPath);
+      
+      if (stat.isDirectory()) {
+        if (currentDepth < maxDepth) {
+          // Continue counting in subfolders
+          count += await countVideosInFolder(itemPath, maxDepth, currentDepth + 1);
+        } else if (currentDepth === maxDepth) {
+          // At maxDepth, count all videos in this directory and deeper
+          count += await countVideosRecursively(itemPath);
+        }
+      } else if (stat.isFile()) {
+        const ext = path.extname(item).toLowerCase();
+        if (supportedExtensions.includes(ext)) {
+          count++;
+        }
+      }
+    }
+  } catch (error) {
+    log.warn('[Main] Error counting videos in folder:', folderPath, error);
+  }
+  
+  return count;
+}
+
+// Helper function to count videos recursively (for flattening at maxDepth)
+async function countVideosRecursively(folderPath: string): Promise<number> {
+  let count = 0;
+  const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
+  
+  try {
+    const items = fs.readdirSync(folderPath);
+    
+    for (const item of items) {
+      const itemPath = path.join(folderPath, item);
+      const stat = fs.statSync(itemPath);
+      
+      if (stat.isDirectory()) {
+        // Continue counting deeper
+        count += await countVideosRecursively(itemPath);
+      } else if (stat.isFile()) {
+        const ext = path.extname(item).toLowerCase();
+        if (supportedExtensions.includes(ext)) {
+          count++;
+        }
+      }
+    }
+  } catch (error) {
+    log.warn('[Main] Error counting videos recursively:', folderPath, error);
+  }
+  
+  return count;
 }
 
 // Helper function to get flattened content from deeper levels
@@ -285,7 +353,7 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
             preferredLanguages: ['en'],
             type: 'local',
             depth: depth - 1, // Mark as being at the previous depth (flattened)
-            relativePath: path.relative(path.join(process.cwd(), 'test-videos'), itemPath),
+            relativePath: path.relative(folderPath, itemPath),
             flattened: true
           });
         }
@@ -359,16 +427,23 @@ const ssdpClient = new Client()
 ipcMain.handle('get-local-file', async (event, filePath: string) => {
   try {
     // Convert file:// URL to actual file path
-    const decodedPath = decodeURIComponent(filePath.replace('file://', ''))
+    let decodedPath = decodeURIComponent(filePath.replace('file://', ''))
+    
+    // Normalize Windows paths - convert backslashes to forward slashes for file:// URLs
+    if (process.platform === 'win32') {
+      decodedPath = decodedPath.replace(/\\/g, '/')
+    }
+    
     logVerbose('Accessing local file:', decodedPath)
     
-    // Check if file exists
-    if (!fs.existsSync(decodedPath)) {
-      log.error('File not found:', decodedPath)
+    // Check if file exists (use original path for filesystem operations)
+    const originalPath = filePath.replace('file://', '')
+    if (!fs.existsSync(originalPath)) {
+      log.error('File not found:', originalPath)
       throw new Error('File not found')
     }
 
-    // Return the file:// URL for the video element
+    // Return the file:// URL for the video element with normalized path
     const fileUrl = `file://${decodedPath}`
     logVerbose('Returning file URL:', fileUrl)
     return fileUrl
@@ -457,7 +532,43 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
   try {
     logVerbose('[Main] Loading video data for:', videoId);
     
-    // Only use the new source system - no fallback to old videos.json
+    // Check if this is a local video (encoded file path)
+    const { isEncodedFilePath, decodeFilePath } = await import('../shared/fileUtils');
+    if (isEncodedFilePath(videoId)) {
+      try {
+        const filePath = decodeFilePath(videoId);
+        logVerbose('[Main] Decoded local video path:', filePath);
+        
+        // Check if file exists
+        if (!fs.existsSync(filePath)) {
+          throw new Error(`Local video file not found: ${filePath}`);
+        }
+        
+        // Create video object for local video
+        const video = {
+          id: videoId,
+          type: 'local',
+          title: path.basename(filePath, path.extname(filePath)),
+          thumbnail: '',
+          duration: 0,
+          url: filePath,
+          video: filePath,
+          audio: undefined,
+          preferredLanguages: ['en'],
+          sourceId: 'local', // We'll need to determine the actual source ID
+          sourceTitle: 'Local Video',
+          sourceThumbnail: '',
+        };
+        
+        logVerbose('[Main] Created local video object:', { id: video.id, type: video.type, title: video.title });
+        return video;
+      } catch (error) {
+        log.error('[Main] Error handling local video:', error);
+        throw new Error(`Failed to load local video: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+    
+    // For non-local videos, use the existing logic
     if (!global.currentVideos || global.currentVideos.length === 0) {
       log.error('[Main] No videos loaded from source system. Video sources may not be initialized.');
       throw new Error('Video sources not initialized. Please restart the app.');
@@ -948,13 +1059,35 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
   try {
     logVerbose('[Main] get-paginated-videos handler called:', { sourceId, pageNumber });
     
-    // Use the existing working video loading logic from global state
+    // Load fresh source data to check if this is a local source
+    const { videosBySource } = await loadAllVideosFromSourcesMain();
+    const source = videosBySource.find(s => s.id === sourceId);
+    
+    if (!source) {
+      throw new Error('Source not found in source data');
+    }
+    
+    // For local sources, return empty result since they use folder navigation instead of pagination
+    if (source.type === 'local') {
+      logVerbose('[Main] Local source detected, returning empty pagination result (uses folder navigation)');
+      return {
+        videos: [],
+        paginationState: {
+          currentPage: 1,
+          totalPages: 1,
+          totalVideos: 0,
+          pageSize: 50
+        }
+      };
+    }
+    
+    // For non-local sources, use the existing pagination logic
     if (!global.currentVideos) {
       throw new Error('No videos loaded. Please load videos from sources first.');
     }
     
     // Get videos by source from global state
-    const videosBySource = [];
+    const videosBySourceFromGlobal = [];
     const sourceIds: string[] = [];
     
     // Collect unique source IDs
@@ -968,7 +1101,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       const sourceVideos = global.currentVideos.filter(v => v.sourceId === sourceId);
       if (sourceVideos.length > 0) {
         const firstVideo = sourceVideos[0];
-        videosBySource.push({
+        videosBySourceFromGlobal.push({
           id: sourceId,
           type: firstVideo.sourceType || 'unknown',
           title: firstVideo.sourceTitle || sourceId,
@@ -979,7 +1112,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     }
     
     // Find the specific source
-    const foundSource = videosBySource.find((s: any) => s.id === sourceId);
+    const foundSource = videosBySourceFromGlobal.find((s: any) => s.id === sourceId);
     if (!foundSource) {
       throw new Error('Source not found in source data');
     }
@@ -1339,50 +1472,23 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
       }
     } else if (source.type === 'local') {
       try {
-        const maxDepth = source.maxDepth || 2;
-        const localVideos = await scanLocalFolder(source.path, maxDepth);
-        debug.push(`[Main] Local source ${source.id}: ${localVideos.length} videos found.`);
-        logVerbose(`[Main] Local source ${source.id}: ${localVideos.length} videos found.`);
+        // For local sources, don't scan videos upfront - let the LocalFolderNavigator handle it dynamically
+        // This allows proper folder structure navigation instead of flattening
+        debug.push(`[Main] Local source ${source.id}: Using folder navigation (not scanning videos upfront).`);
+        logVerbose(`[Main] Local source ${source.id}: Using folder navigation (not scanning videos upfront).`);
         
-        const videos = localVideos.map(v => ({
-          id: v.id,
-          type: 'local' as const,
-          title: v.title,
-          thumbnail: v.thumbnail || '',
-          duration: v.duration || 0,
-          url: v.url || v.id,
-          // For local videos with separate streams
-          video: v.video || undefined,
-          audio: v.audio || undefined,
-          // For YouTube videos (not applicable for local)
-          streamUrl: undefined,
-          audioStreamUrl: undefined,
-          resumeAt: undefined,
-          server: undefined,
-          port: undefined,
-          path: undefined,
-          preferredLanguages: undefined,
-          useJsonStreamUrls: undefined,
-          // Additional properties for source management
-          sourceId: source.id,
-          sourceTitle: source.title,
-          sourceThumbnail: '',
-        }));
-
-        // Merge with watched data to populate resumeAt
-        const { mergeWatchedData } = await import('../shared/fileUtils');
-        const videosWithWatchedData = await mergeWatchedData(videos);
-
-        const paginationState = { currentPage: 1, totalPages: 1, totalVideos: videosWithWatchedData.length, pageSize: 50 }; // Will be updated with actual config
+        // Calculate total video count for display
+        const maxDepth = source.maxDepth || 2;
+        const totalVideoCount = await countVideosInFolder(source.path, maxDepth);
         
         videosBySource.push({
           id: source.id,
           type: source.type,
           title: source.title,
           thumbnail: '',
-          videoCount: videosWithWatchedData.length,
-          videos: videosWithWatchedData,
-          paginationState: paginationState,
+          videoCount: totalVideoCount, // Show total video count
+          videos: [], // Empty - LocalFolderNavigator will load videos dynamically
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
           maxDepth: source.maxDepth, // Pass through maxDepth for navigation
           path: source.path // Pass through path for navigation
         });

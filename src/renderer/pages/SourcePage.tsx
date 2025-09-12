@@ -205,6 +205,7 @@ export const SourcePage: React.FC = () => {
       <LocalFolderNavigator
         sourcePath={sourcePath}
         maxDepth={maxDepth}
+        sourceTitle={source?.title || 'Local Source'}
         onBackClick={handleBackClick}
         onVideoClick={handleVideoClick}
       />

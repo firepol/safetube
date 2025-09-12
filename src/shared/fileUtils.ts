@@ -151,8 +151,11 @@ export async function backupConfig(): Promise<void> {
  */
 export function encodeFilePath(filePath: string): string {
   try {
-    // Convert to base64 and replace problematic characters
-    const base64 = btoa(filePath);
+    // First encode to UTF-8 bytes, then to base64 to handle Unicode characters
+    const utf8Bytes = new TextEncoder().encode(filePath);
+    const base64 = Buffer.from(utf8Bytes).toString('base64');
+    
+    // Replace problematic characters for URL safety
     return base64.replace(/[+/=]/g, (match) => {
       switch (match) {
         case '+': return '-';
@@ -186,7 +189,9 @@ export function decodeFilePath(encodedPath: string): string {
     // Add padding if needed
     const padded = base64 + '='.repeat((4 - base64.length % 4) % 4);
     
-    return atob(padded);
+    // Decode base64 to bytes, then to UTF-8 string to handle Unicode
+    const bytes = Buffer.from(padded, 'base64');
+    return new TextDecoder().decode(bytes);
   } catch (error) {
     console.error('Error decoding file path:', error);
     // Fallback: return the encoded path as-is
@@ -199,8 +204,10 @@ export function decodeFilePath(encodedPath: string): string {
  * Useful for determining if a video ID is a local file
  */
 export function isEncodedFilePath(id: string): boolean {
-  // Encoded paths are typically longer and contain only safe characters
-  return id.length > 10 && /^[a-zA-Z0-9_-]+$/.test(id);
+  // YouTube video IDs are exactly 11 characters, so encoded file paths should be different
+  // Encoded base64 paths are typically much longer and contain only safe characters
+  // Also exclude common YouTube video ID patterns
+  return id.length > 15 && /^[a-zA-Z0-9_-]+$/.test(id) && !/^[a-zA-Z0-9_-]{11}$/.test(id);
 } 
 
 /**
