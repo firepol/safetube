@@ -279,12 +279,54 @@ Each feature PRD must include:
   - No performance impact when verbose logging is disabled
 
 ### 4. Video History
-- **Status**: Not Started
+- **Status**: Completed
 - **PRD**: [Video History PRD](prds/04-video-history.md)
-- **Current Sprint**: N/A
-- **Blockers**: Project Setup
+- **Current Sprint**: Sprint 3
+- **Blockers**: None
 - **Dependencies**: Project Setup, Play Video
-- **Progress**: 0%
+- **Progress**: 100%
+- **Last Updated**: 2025-09-12
+- **Completed Items**:
+  - **JSON-based history storage** - `watched.json` with duration and watched status fields
+  - **Position tracking per video** - accurate position saving and restoration
+  - **Source-specific video identification** - video IDs work across all source types
+  - **History data validation** - proper TypeScript interfaces and error handling
+  - **Backup and recovery mechanism** - automatic backup before file modifications
+  - **Cross-source history tracking** - unified history across YouTube and local sources
+  - **Video duration extraction** - ffprobe integration for local files, YouTube API for online videos
+  - **Watched status calculation** - dynamic thresholds based on video length (15s/30s/60s)
+  - **Visual distinction for watched videos** - CSS classes with opacity and checkmark overlays
+  - **Resume functionality** - automatic position restoration when videos are played
+  - **Organized history view** - History page with newest-to-oldest sorting and pagination
+  - **Watched Videos folder** - per-source folder showing only fully watched videos
+  - **History folder** - global history access from KidScreen
+  - **Visual indicators** - blue borders for partial, violet highlighting for clicked videos
+  - **Smooth transitions** - CSS transitions for all state changes
+  - **Date and time information** - clear last watched timestamps
+  - **Intuitive navigation** - proper routing and back button functionality
+  - **Dynamic status checking** - real-time watched/clicked status from watched.json
+  - **CSS styling system** - `.watched` and `.clicked` classes with proper visual feedback
+- **Remaining Items**: None
+- **Recent Changes**:
+  - 2025-09-12: **Implemented dynamic video status with CSS styling** - videos now show watched/clicked status with visual indicators
+  - 2025-09-12: **Added CSS classes for video status** - `.watched` with opacity and checkmark, `.clicked` with violet highlighting
+  - 2025-09-12: **Cleaned up history page UI** - removed cluttering icons and status text from video cards
+  - 2025-09-12: **Fixed watched videos filtering** - WatchedVideosPage now correctly shows only fully watched videos
+  - 2025-09-12: **Implemented video duration extraction** - ffprobe for local files, YouTube API integration
+  - 2025-09-12: **Added watched status calculation** - dynamic thresholds based on video length
+  - 2025-09-12: **Created History and WatchedVideos pages** - full UI implementation with pagination
+  - 2025-09-12: **Added routing and navigation** - proper React Router integration for all history features
+  - 2025-09-12: **Implemented source-specific watched folders** - each source shows its watched videos
+  - 2025-09-12: **Added global history folder** - accessible from KidScreen as last "source"
+- **Notes**:
+  - **Feature is 100% complete** - all PRD requirements have been implemented and tested
+  - **History tracking works across all sources** - YouTube channels, playlists, and local folders
+  - **Visual feedback is comprehensive** - watched videos are clearly distinguished with opacity and checkmarks
+  - **Resume functionality is robust** - positions are accurately saved and restored
+  - **UI navigation is intuitive** - proper folder structure and back button functionality
+  - **Data persistence is reliable** - history survives app restarts and crashes
+  - **Performance is optimized** - efficient status checking and CSS-based visual indicators
+  - **All user stories are satisfied** - children can see watched videos, resume playback, and parents can track viewing history
 
 ### 5. Configuration via JSON Files
 - **Status**: Completed
