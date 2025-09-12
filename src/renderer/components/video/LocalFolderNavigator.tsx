@@ -73,7 +73,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     const loadWatchedVideos = async () => {
       try {
         const watchedData = await (window as any).electron.getWatchedVideos();
-        console.log('[LocalFolderNavigator] Loaded watched videos:', watchedData);
+        // console.log('[LocalFolderNavigator] Loaded watched videos:', watchedData);
         setWatchedVideos(watchedData);
       } catch (error) {
         console.error('Error loading watched videos:', error);
