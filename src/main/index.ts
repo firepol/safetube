@@ -45,7 +45,7 @@ function filterDuplicateVideos(videos: any[]): any[] {
   
   // First pass: collect all original video paths
   for (const video of videos) {
-    const isConverted = video.url.includes('.converted/') || video.url.includes('\\.converted\\');
+    const isConverted = video.url.includes('.converted/') || video.url.includes('\\.converted\\') || video.url.includes('.converted\\');
     if (!isConverted) {
       originalVideos.add(video.url);
     }
@@ -53,18 +53,39 @@ function filterDuplicateVideos(videos: any[]): any[] {
   
   // Second pass: only include videos that are either original or have no original
   for (const video of videos) {
-    const isConverted = video.url.includes('.converted/') || video.url.includes('\\.converted\\');
+    const isConverted = video.url.includes('.converted/') || video.url.includes('\\.converted\\') || video.url.includes('.converted\\');
     if (isConverted) {
-      // Check if original exists
-      const originalPath = video.url.replace(/\.converted[\\/].*/, '');
+      // Check if original exists - try multiple path patterns
+      let originalPath = video.url.replace(/\.converted[\\/].*/, '');
+      // Also try replacing .converted\ pattern
+      if (originalPath === video.url) {
+        originalPath = video.url.replace(/\.converted\\.*/, '');
+      }
+      
+      logVerbose('[Main] Checking converted video:', {
+        original: video.url,
+        converted: isConverted,
+        originalPath,
+        hasOriginal: originalVideos.has(originalPath)
+      });
+      
       if (!originalVideos.has(originalPath)) {
         filteredVideos.push(video); // Include converted only if no original
+        logVerbose('[Main] Including converted video (no original):', video.url);
+      } else {
+        logVerbose('[Main] Hiding converted video (original exists):', video.url);
       }
       // Skip converted videos that have originals
     } else {
       filteredVideos.push(video); // Always include original videos
     }
   }
+  
+  logVerbose('[Main] Video filtering result:', { 
+    total: videos.length, 
+    filtered: filteredVideos.length,
+    hidden: videos.length - filteredVideos.length 
+  });
   
   return filteredVideos;
 }

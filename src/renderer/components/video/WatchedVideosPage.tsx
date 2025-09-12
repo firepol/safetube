@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Pagination } from '../layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../layout/TimeIndicator';
 import { logVerbose } from '../../lib/logging';
+import path from 'path';
 
 interface WatchedVideo {
   videoId: string;
@@ -90,40 +91,51 @@ export const WatchedVideosPage: React.FC = () => {
         for (const watchedVideo of sourceWatchedVideos) {
           try {
             const videoData = await (window as any).electron.getVideoData(watchedVideo.videoId);
-            if (videoData && videoData.sourceId === sourceId) {
-              videosWithDetails.push({
-                ...videoData,
-                watchedData: watchedVideo
-              });
-            } else if (videoData) {
-              // Video exists but doesn't belong to this source, skip it
-              continue;
+            if (videoData) {
+              // For local videos, check if the video path matches the source path
+              // For other videos, check sourceId
+              const belongsToSource = videoData.sourceId === sourceId || 
+                (videoData.type === 'local' && videoData.url && sourceData.path && 
+                 videoData.url.startsWith(sourceData.path));
+              
+              if (belongsToSource) {
+                videosWithDetails.push({
+                  ...videoData,
+                  watchedData: watchedVideo
+                });
+              } else {
+                // Video exists but doesn't belong to this source, skip it
+                continue;
+              }
             } else {
-              // Video data not available, create fallback entry
-              videosWithDetails.push({
-                id: watchedVideo.videoId,
-                title: `Video (${watchedVideo.videoId})`,
-                thumbnail: '',
-                type: 'local', // Default type
-                duration: watchedVideo.duration || 0,
-                sourceId: sourceId,
-                sourceTitle: sourceData.title,
-                watchedData: watchedVideo
-              });
+              // Video data not available, check if it's a local video by trying to decode the ID
+              const { isEncodedFilePath, decodeFilePath } = await import('../../../shared/fileUtils');
+              if (isEncodedFilePath(watchedVideo.videoId)) {
+                try {
+                  const filePath = decodeFilePath(watchedVideo.videoId);
+                  // Check if this file belongs to the current source
+                  if (sourceData.path && filePath.startsWith(sourceData.path)) {
+                    const fileName = path.basename(filePath, path.extname(filePath));
+                    videosWithDetails.push({
+                      id: watchedVideo.videoId,
+                      title: fileName,
+                      thumbnail: '',
+                      type: 'local',
+                      duration: watchedVideo.duration || 0,
+                      sourceId: sourceId,
+                      sourceTitle: sourceData.title,
+                      watchedData: watchedVideo
+                    });
+                  }
+                } catch (decodeError) {
+                  logVerbose('[WatchedVideosPage] Error decoding file path:', watchedVideo.videoId, decodeError);
+                }
+              }
             }
           } catch (error) {
             logVerbose('[WatchedVideosPage] Error loading video data for:', watchedVideo.videoId, error);
-            // Create fallback entry for videos that can't be loaded
-            videosWithDetails.push({
-              id: watchedVideo.videoId,
-              title: `Video (${watchedVideo.videoId})`,
-              thumbnail: '',
-              type: 'local', // Default type
-              duration: watchedVideo.duration || 0,
-              sourceId: sourceId,
-              sourceTitle: sourceData.title,
-              watchedData: watchedVideo
-            });
+            // Skip videos that can't be loaded instead of creating fallback entries
+            continue;
           }
         }
 
