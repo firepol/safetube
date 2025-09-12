@@ -73,6 +73,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     const loadWatchedVideos = async () => {
       try {
         const watchedData = await (window as any).electron.getWatchedVideos();
+        console.log('[LocalFolderNavigator] Loaded watched videos:', watchedData);
         setWatchedVideos(watchedData);
       } catch (error) {
         console.error('Error loading watched videos:', error);
@@ -87,18 +88,45 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     const watchedData = watchedVideos.find(w => w.videoId === videoId);
     if (!watchedData) return { isWatched: false, isClicked: false };
     
-    return {
+    const status = {
       isWatched: watchedData.watched === true,
       isClicked: true // If it's in watched.json, it was clicked
     };
+    
+    // Debug logging
+    if (watchedData) {
+      console.log(`[LocalFolderNavigator] Video ${videoId}:`, {
+        watched: watchedData.watched,
+        position: watchedData.position,
+        isWatched: status.isWatched,
+        isClicked: status.isClicked
+      });
+    }
+    
+    return status;
   };
 
   // Function to handle watched folder click
-  const handleWatchedFolderClick = () => {
-    // Navigate to watched videos page for this source
-    // We need to determine the source ID from the sourcePath
-    const sourceId = sourcePath.replace(/[^a-zA-Z0-9]/g, '_'); // Simple source ID generation
-    navigate(`/source/${sourceId}/watched`);
+  const handleWatchedFolderClick = async () => {
+    try {
+      // Get the actual source ID by loading sources and finding the one that matches this path
+      const sources = await (window as any).electron.loadVideosFromSources();
+      const sourceData = sources.videosBySource?.find((s: any) => s.path === sourcePath);
+      
+      if (sourceData) {
+        navigate(`/source/${sourceData.id}/watched`);
+      } else {
+        console.error('Could not find source for path:', sourcePath);
+        // Fallback to a generated ID
+        const fallbackId = sourcePath.replace(/[^a-zA-Z0-9]/g, '_');
+        navigate(`/source/${fallbackId}/watched`);
+      }
+    } catch (error) {
+      console.error('Error finding source ID:', error);
+      // Fallback to a generated ID
+      const fallbackId = sourcePath.replace(/[^a-zA-Z0-9]/g, '_');
+      navigate(`/source/${fallbackId}/watched`);
+    }
   };
 
   useEffect(() => {
@@ -279,7 +307,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
                 <div className="aspect-video bg-gray-200 flex items-center justify-center">
                   <div className="text-4xl">🎬</div>
                 </div>
-                <div className="p-4">
+                <div className="p-3">
                   <h3 className="font-semibold text-gray-900 mb-1">{video.title}</h3>
                   <p className="text-sm text-gray-500">
                     {video.flattened ? '📁 Flattened from deeper folder' : `Depth: ${video.depth}`}
