@@ -82,9 +82,7 @@ export const WatchedVideosPage: React.FC = () => {
         
         // Filter watched videos for this source
         const sourceWatchedVideos = watchedData.filter((w: WatchedVideo) => {
-          // For local videos, we need to check if the video belongs to this source
-          // For YouTube videos, we can check by sourceId
-          return w.videoId && w.duration && w.duration > 0;
+          return w.videoId; // Only filter out entries without videoId
         });
 
         // Get video details for watched videos
@@ -97,9 +95,35 @@ export const WatchedVideosPage: React.FC = () => {
                 ...videoData,
                 watchedData: watchedVideo
               });
+            } else if (videoData) {
+              // Video exists but doesn't belong to this source, skip it
+              continue;
+            } else {
+              // Video data not available, create fallback entry
+              videosWithDetails.push({
+                id: watchedVideo.videoId,
+                title: `Video (${watchedVideo.videoId})`,
+                thumbnail: '',
+                type: 'local', // Default type
+                duration: watchedVideo.duration || 0,
+                sourceId: sourceId,
+                sourceTitle: sourceData.title,
+                watchedData: watchedVideo
+              });
             }
           } catch (error) {
             logVerbose('[WatchedVideosPage] Error loading video data for:', watchedVideo.videoId, error);
+            // Create fallback entry for videos that can't be loaded
+            videosWithDetails.push({
+              id: watchedVideo.videoId,
+              title: `Video (${watchedVideo.videoId})`,
+              thumbnail: '',
+              type: 'local', // Default type
+              duration: watchedVideo.duration || 0,
+              sourceId: sourceId,
+              sourceTitle: sourceData.title,
+              watchedData: watchedVideo
+            });
           }
         }
 
@@ -216,7 +240,8 @@ export const WatchedVideosPage: React.FC = () => {
                 <div
                   key={video.id}
                   className={`bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 ${
-                    video.watchedData.watched === false ? 'border-2 border-blue-400' : ''
+                    video.watchedData.watched === false ? 'border-2 border-blue-400' : 
+                    video.watchedData.watched === undefined ? 'border-2 border-gray-300' : ''
                   }`}
                   onClick={() => handleVideoClick(video)}
                 >
@@ -240,7 +265,9 @@ export const WatchedVideosPage: React.FC = () => {
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                       <span>{video.type === 'youtube' ? 'YouTube' : 'Local Video'}</span>
                       <span>
-                        {video.watchedData.watched ? '✅ Watched' : '⏸️ Partial'}
+                        {video.watchedData.watched === true ? '✅ Watched' : 
+                         video.watchedData.watched === false ? '⏸️ Partial' : 
+                         '📺 Clicked'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-400">

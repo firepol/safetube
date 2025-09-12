@@ -67,9 +67,9 @@ export const HistoryPage: React.FC = () => {
         // Load watched videos data
         const watchedData = await (window as any).electron.getWatchedVideos();
         
-        // Filter watched videos that have duration and are not fully watched
+        // Show ALL videos from watched.json (no filtering)
         const validWatchedVideos = watchedData.filter((w: WatchedVideo) => {
-          return w.videoId && w.duration && w.duration > 0;
+          return w.videoId; // Only filter out entries without videoId
         });
 
         // Get video details for watched videos
@@ -82,9 +82,32 @@ export const HistoryPage: React.FC = () => {
                 ...videoData,
                 watchedData: watchedVideo
               });
+            } else {
+              // If video data is not available, create a fallback entry
+              videosWithDetails.push({
+                id: watchedVideo.videoId,
+                title: `Video (${watchedVideo.videoId})`,
+                thumbnail: '',
+                type: 'local', // Default type
+                duration: watchedVideo.duration || 0,
+                sourceId: 'unknown',
+                sourceTitle: 'Unknown Source',
+                watchedData: watchedVideo
+              });
             }
           } catch (error) {
             logVerbose('[HistoryPage] Error loading video data for:', watchedVideo.videoId, error);
+            // Create a fallback entry for videos that can't be loaded
+            videosWithDetails.push({
+              id: watchedVideo.videoId,
+              title: `Video (${watchedVideo.videoId})`,
+              thumbnail: '',
+              type: 'local', // Default type
+              duration: watchedVideo.duration || 0,
+              sourceId: 'unknown',
+              sourceTitle: 'Unknown Source',
+              watchedData: watchedVideo
+            });
           }
         }
 
@@ -201,7 +224,8 @@ export const HistoryPage: React.FC = () => {
                 <div
                   key={video.id}
                   className={`bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 ${
-                    video.watchedData.watched === false ? 'border-2 border-blue-400' : ''
+                    video.watchedData.watched === false ? 'border-2 border-blue-400' : 
+                    video.watchedData.watched === undefined ? 'border-2 border-gray-300' : ''
                   }`}
                   onClick={() => handleVideoClick(video)}
                 >
@@ -225,7 +249,9 @@ export const HistoryPage: React.FC = () => {
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                       <span>{video.sourceTitle}</span>
                       <span>
-                        {video.watchedData.watched ? '✅ Watched' : '⏸️ Partial'}
+                        {video.watchedData.watched === true ? '✅ Watched' : 
+                         video.watchedData.watched === false ? '⏸️ Partial' : 
+                         '📺 Clicked'}
                       </span>
                     </div>
                     <div className="text-xs text-gray-400">
