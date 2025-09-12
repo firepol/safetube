@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 interface FolderItem {
   name: string;
@@ -15,6 +16,7 @@ interface VideoItem {
   depth: number;
   relativePath?: string;
   flattened?: boolean;
+  url: string;
 }
 
 interface FolderContents {
@@ -40,6 +42,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   onVideoClick,
   initialFolderPath
 }) => {
+  const navigate = useNavigate();
   const [contents, setContents] = useState<FolderContents | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +91,14 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
       isWatched: watchedData.watched === true,
       isClicked: true // If it's in watched.json, it was clicked
     };
+  };
+
+  // Function to handle watched folder click
+  const handleWatchedFolderClick = () => {
+    // Navigate to watched videos page for this source
+    // We need to determine the source ID from the sourcePath
+    const sourceId = sourcePath.replace(/[^a-zA-Z0-9]/g, '_'); // Simple source ID generation
+    navigate(`/source/${sourceId}/watched`);
   };
 
   useEffect(() => {
@@ -197,6 +208,22 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
         </div>
       </div>
 
+      {/* Watched Videos Folder */}
+      <div className="mb-6">
+        <div
+          onClick={handleWatchedFolderClick}
+          className="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 border-2 border-blue-100 hover:border-blue-300 inline-block"
+        >
+          <div className="flex items-center space-x-3">
+            <div className="text-4xl">✅</div>
+            <div>
+              <h3 className="font-semibold text-gray-900">Watched Videos</h3>
+              <p className="text-sm text-gray-500">View videos you've fully watched from this source</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Folders Section */}
       {contents.folders.length > 0 && (
         <div className="mb-8">
@@ -222,7 +249,19 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
         <div>
           <h2 className="text-lg font-semibold mb-4 text-gray-700">🎬 Videos</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {contents.videos.map((video) => {
+            {contents.videos
+              .filter((video) => {
+                // Hide converted videos if original exists
+                const isConverted = video.url.includes('.converted/') || video.url.includes('\\.converted\\');
+                if (isConverted) {
+                  // Check if original video exists
+                  const originalPath = video.url.replace(/\.converted[\\/].*/, '');
+                  const originalVideo = contents.videos.find(v => v.url === originalPath);
+                  return !originalVideo; // Hide converted if original exists
+                }
+                return true; // Show all non-converted videos
+              })
+              .map((video) => {
               const { isWatched, isClicked } = getVideoStatus(video.id);
               
               // Determine CSS classes - watched takes priority over clicked

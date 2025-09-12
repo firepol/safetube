@@ -38,6 +38,37 @@ declare global {
   var currentVideos: any[];
 }
 
+// Helper function to filter out converted videos when original exists
+function filterDuplicateVideos(videos: any[]): any[] {
+  const filteredVideos: any[] = [];
+  const originalVideos = new Set<string>();
+  
+  // First pass: collect all original video paths
+  for (const video of videos) {
+    const isConverted = video.url.includes('.converted/') || video.url.includes('\\.converted\\');
+    if (!isConverted) {
+      originalVideos.add(video.url);
+    }
+  }
+  
+  // Second pass: only include videos that are either original or have no original
+  for (const video of videos) {
+    const isConverted = video.url.includes('.converted/') || video.url.includes('\\.converted\\');
+    if (isConverted) {
+      // Check if original exists
+      const originalPath = video.url.replace(/\.converted[\\/].*/, '');
+      if (!originalVideos.has(originalPath)) {
+        filteredVideos.push(video); // Include converted only if no original
+      }
+      // Skip converted videos that have originals
+    } else {
+      filteredVideos.push(video); // Always include original videos
+    }
+  }
+  
+  return filteredVideos;
+}
+
 // Helper function for scanning local folders
 async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<any[]> {
   const videos: any[] = [];
@@ -172,7 +203,11 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
     log.error('[Main] Error scanning local folder:', error);
   }
   
-  return videos;
+  // Filter out converted videos when original exists
+  const filteredVideos = filterDuplicateVideos(videos);
+  logVerbose('[Main] Filtered videos:', { original: videos.length, filtered: filteredVideos.length });
+  
+  return filteredVideos;
 }
 
 // New function to get folder contents for navigation (not flattened)
@@ -259,7 +294,11 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
     log.error('[Main] Error getting folder contents:', error);
   }
   
-  return { folders, videos, depth: currentDepth };
+  // Filter out converted videos when original exists
+  const filteredVideos = filterDuplicateVideos(videos);
+  logVerbose('[Main] Filtered folder videos:', { original: videos.length, filtered: filteredVideos.length });
+  
+  return { folders, videos: filteredVideos, depth: currentDepth };
 }
 
 // Helper function to count total videos in a folder recursively
@@ -379,7 +418,11 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
     log.warn('[Main] Error getting flattened content:', error);
   }
   
-  return videos;
+  // Filter out converted videos when original exists
+  const filteredVideos = filterDuplicateVideos(videos);
+  logVerbose('[Main] Filtered flattened videos:', { original: videos.length, filtered: filteredVideos.length });
+  
+  return filteredVideos;
 }
 
 // Helper function to resolve username to channel ID
