@@ -279,13 +279,24 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
           sourceId: 'local', // We'll need to determine the actual source ID
           sourceTitle: 'Local Video',
           sourceThumbnail: '',
+          resumeAt: undefined as number | undefined, // Add resumeAt property
         };
         
-        console.log('[Main] Created local video object:', { id: video.id, type: video.type, title: video.title });
-        return video;
+        // Merge with watched data to populate resumeAt
+        const { mergeWatchedData } = await import('../shared/fileUtils');
+        const videosWithWatchedData = await mergeWatchedData([video]);
+        const videoWithResume = videosWithWatchedData[0];
+        
+        console.log('[Main] Created local video object with resume data:', { 
+          id: videoWithResume.id, 
+          type: videoWithResume.type, 
+          title: videoWithResume.title,
+          resumeAt: videoWithResume.resumeAt 
+        });
+        return videoWithResume;
       } catch (error) {
         console.error('[Main] Error handling local video:', error);
-        throw new Error(`Failed to load local video: ${error.message}`);
+        throw new Error(`Failed to load local video: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
     
