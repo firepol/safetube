@@ -3,13 +3,7 @@ import { VideoSource, YouTubeSourceCache } from './types';
 import { PaginationService } from './paginationService';
 import fs from 'fs';
 import path from 'path';
-
-// Local logging function that follows the same pattern as logVerbose
-function logVerbose(...args: any[]) {
-  if (process.env.ELECTRON_LOG_VERBOSE === 'true') {
-    console.log('[Preload][Verbose]', ...args);
-  }
-}
+import { logVerbose } from './utils';
 
 // Helper to scan local folders recursively up to maxDepth
 async function scanLocalFolder(folderPath: string, maxDepth: number, currentDepth = 1): Promise<any[]> {

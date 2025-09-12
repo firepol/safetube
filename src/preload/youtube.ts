@@ -191,7 +191,7 @@ async function getCachedResult(cacheKey: string): Promise<any | null> {
     if (fs.existsSync(cacheFile)) {
       const cacheData = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
       if (isCacheValid(cacheData)) {
-        console.log(`[YouTubeAPI] Using cached result for ${cacheKey}`);
+        logVerbose(`[YouTubeAPI] Using cached result for ${cacheKey}`);
         return cacheData.data;
       }
     }
@@ -209,7 +209,7 @@ async function setCachedResult(cacheKey: string, data: any): Promise<void> {
       data: data
     };
     fs.writeFileSync(cacheFile, JSON.stringify(cacheData, null, 2), 'utf-8');
-    console.log(`[YouTubeAPI] Cached result for ${cacheKey}`);
+    logVerbose(`[YouTubeAPI] Cached result for ${cacheKey}`);
   } catch (e) {
     console.warn(`[YouTubeAPI] Error writing cache for ${cacheKey}:`, e);
   }
@@ -251,7 +251,7 @@ export class YouTubeAPI {
       }
       
       if (clearedCount > 0) {
-        console.log(`[YouTubeAPI] Cleared ${clearedCount} expired cache files`);
+        logVerbose(`[YouTubeAPI] Cleared ${clearedCount} expired cache files`);
       }
     } catch (e) {
       console.warn('[YouTubeAPI] Error clearing expired cache:', e);
@@ -265,7 +265,7 @@ export class YouTubeAPI {
         const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
         const cacheDurationMinutes = config.cacheDurationMinutes || 30;
         const CACHE_DURATION_MS = cacheDurationMinutes * 60 * 1000;
-        console.log(`[YouTubeAPI] Cache duration set to ${cacheDurationMinutes} minutes`);
+        logVerbose(`[YouTubeAPI] Cache duration set to ${cacheDurationMinutes} minutes`);
       }
     } catch (e) {
       console.warn('[YouTubeAPI] Could not load cache config, using default 30 minutes:', e);

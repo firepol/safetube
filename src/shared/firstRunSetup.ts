@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { AppPaths } from './appPaths';
+import { logVerbose } from './logging';
 
 interface SetupResult {
   success: boolean;
@@ -38,20 +39,20 @@ export class FirstRunSetup {
       // Run setup in both development and production modes
       // In development, it will create config files in the project root
       // In production, it will create config files in user data directory
-      console.log('[FirstRunSetup] Checking setup...');
+      logVerbose('[FirstRunSetup] Checking setup...');
 
       // Create necessary directories
       await this.createDirectories(result);
 
     // Copy default config files if they don't exist
-    console.log('[FirstRunSetup] About to call copyDefaultConfigs...');
+    logVerbose('[FirstRunSetup] About to call copyDefaultConfigs...');
     await this.copyDefaultConfigs(result);
-    console.log('[FirstRunSetup] copyDefaultConfigs completed');
+    logVerbose('[FirstRunSetup] copyDefaultConfigs completed');
 
       // Copy .env.example to .env if .env doesn't exist
       await this.setupEnvironmentFile(result);
 
-      console.log('[FirstRunSetup] Setup completed successfully');
+      logVerbose('[FirstRunSetup] Setup completed successfully');
       return result;
 
     } catch (error) {
@@ -82,7 +83,7 @@ export class FirstRunSetup {
         
         await fs.mkdir(dir, { recursive: true });
         result.createdDirs.push(dir);
-        console.log('[FirstRunSetup] Created directory:', dir);
+        logVerbose('[FirstRunSetup] Created directory:', dir);
       } catch (error) {
         const errorMsg = `Failed to create directory ${dir}: ${error}`;
         console.error('[FirstRunSetup]', errorMsg);
@@ -118,12 +119,12 @@ export class FirstRunSetup {
 
     // If no config directory found, create minimal configs (they will check if files exist)
     if (!devConfigDir) {
-      console.log('[FirstRunSetup] No config directory found, creating minimal config files');
+      logVerbose('[FirstRunSetup] No config directory found, creating minimal config files');
       await this.createMinimalConfigs(result, prodConfigDir);
       return;
     }
 
-    console.log('[FirstRunSetup] Using config directory:', devConfigDir);
+    logVerbose('[FirstRunSetup] Using config directory:', devConfigDir);
 
     for (const filename of this.REQUIRED_CONFIG_FILES) {
       const devPath = path.join(devConfigDir, filename);
@@ -133,23 +134,23 @@ export class FirstRunSetup {
         const devExists = await this.fileExists(devPath);
         const prodExists = await this.fileExists(prodPath);
         
-        console.log(`[FirstRunSetup] ${filename}: dev=${devExists}, prod=${prodExists}`);
-        console.log(`[FirstRunSetup] ${filename}: devPath=${devPath}, prodPath=${prodPath}`);
+        logVerbose(`[FirstRunSetup] ${filename}: dev=${devExists}, prod=${prodExists}`);
+        logVerbose(`[FirstRunSetup] ${filename}: devPath=${devPath}, prodPath=${prodPath}`);
         
         // Only copy if source exists and destination doesn't exist
         if (devExists && !prodExists) {
           await fs.copyFile(devPath, prodPath);
           result.copiedFiles.push(filename);
-          console.log('[FirstRunSetup] Copied config file:', filename);
+          logVerbose('[FirstRunSetup] Copied config file:', filename);
         } else if (prodExists) {
-          console.log('[FirstRunSetup] Config file already exists, skipping:', filename);
+          logVerbose('[FirstRunSetup] Config file already exists, skipping:', filename);
         } else if (devExists) {
           // Source exists but destination doesn't - this shouldn't happen in normal operation
-          console.log('[FirstRunSetup] Source exists but destination missing, copying:', filename);
+          logVerbose('[FirstRunSetup] Source exists but destination missing, copying:', filename);
           await fs.copyFile(devPath, prodPath);
           result.copiedFiles.push(filename);
         } else {
-          console.log('[FirstRunSetup] Source config file not found, creating minimal:', filename);
+          logVerbose('[FirstRunSetup] Source config file not found, creating minimal:', filename);
           await this.createMinimalConfigFile(filename, prodPath, result);
         }
       } catch (error) {
@@ -169,7 +170,7 @@ export class FirstRunSetup {
 
     // Check if .env already exists
     if (await this.fileExists(envPath)) {
-      console.log('[FirstRunSetup] .env file already exists, skipping');
+      logVerbose('[FirstRunSetup] .env file already exists, skipping');
       return;
     }
 
@@ -180,9 +181,9 @@ ADMIN_PASSWORD=paren234`;
     try {
       await fs.writeFile(envPath, defaultEnvContent, 'utf8');
       result.copiedFiles.push('.env');
-      console.log('[FirstRunSetup] Created .env file with default values');
+      logVerbose('[FirstRunSetup] Created .env file with default values');
       
-      console.log('[FirstRunSetup] IMPORTANT: Please update the .env file with your actual API keys and settings');
+      logVerbose('[FirstRunSetup] IMPORTANT: Please update the .env file with your actual API keys and settings');
 
     } catch (error) {
       const errorMsg = `Failed to setup environment file: ${error}`;
@@ -210,10 +211,10 @@ ADMIN_PASSWORD=paren234`;
   private static async fileExists(filePath: string): Promise<boolean> {
     try {
       await fs.access(filePath);
-      console.log(`[FirstRunSetup] fileExists: ${filePath} -> true`);
+      logVerbose(`[FirstRunSetup] fileExists: ${filePath} -> true`);
       return true;
     } catch (error) {
-      console.log(`[FirstRunSetup] fileExists: ${filePath} -> false (${error})`);
+      logVerbose(`[FirstRunSetup] fileExists: ${filePath} -> false (${error})`);
       return false;
     }
   }
@@ -232,11 +233,11 @@ ADMIN_PASSWORD=paren234`;
    * Create a minimal config file
    */
   private static async createMinimalConfigFile(filename: string, filePath: string, result: SetupResult): Promise<void> {
-    console.log(`[FirstRunSetup] createMinimalConfigFile called for: ${filename} at ${filePath}`);
+    logVerbose(`[FirstRunSetup] createMinimalConfigFile called for: ${filename} at ${filePath}`);
     
     // Check if file already exists
     if (await this.fileExists(filePath)) {
-      console.log(`[FirstRunSetup] File already exists, skipping: ${filename}`);
+      logVerbose(`[FirstRunSetup] File already exists, skipping: ${filename}`);
       return;
     }
     
@@ -315,7 +316,7 @@ ADMIN_PASSWORD=paren234`;
 
       await fs.writeFile(filePath, content, 'utf8');
       result.copiedFiles.push(filename);
-      console.log(`[FirstRunSetup] Created minimal config file: ${filename}`);
+      logVerbose(`[FirstRunSetup] Created minimal config file: ${filename}`);
     } catch (error) {
       const errorMsg = `Failed to create minimal config file ${filename}: ${error}`;
       console.error('[FirstRunSetup]', errorMsg);

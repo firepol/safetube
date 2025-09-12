@@ -2,6 +2,7 @@ import { YouTubeAPI } from './youtube';
 import { YouTubeSourceCache, VideoSource } from './types';
 import fs from 'fs';
 import path from 'path';
+import { logVerbose } from './utils';
 
 const CACHE_DIR = path.join('.', '.cache');
 
@@ -61,14 +62,14 @@ export class CachedYouTubeSources {
       
       // Always use cached data as fallback when API fails
       if (cache && cache.videos.length > 0) {
-        console.log(`[CachedYouTubeSources] Using cached data as fallback for source ${source.id} (API failed)`);
+        logVerbose(`[CachedYouTubeSources] Using cached data as fallback for source ${source.id} (API failed)`);
         totalVideos = cache.totalVideos || cache.videos.length;
         newVideos = [];
         sourceThumbnail = cache.thumbnail || '';
         usingCachedData = true;
       } else {
         // No cache available, create minimal fallback
-        console.log(`[CachedYouTubeSources] Creating minimal fallback for source ${source.id} (no cache available)`);
+        logVerbose(`[CachedYouTubeSources] Creating minimal fallback for source ${source.id} (no cache available)`);
         totalVideos = 0;
         newVideos = [];
         sourceThumbnail = '';
