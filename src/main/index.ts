@@ -837,15 +837,15 @@ ipcMain.handle('get-video-codec-info', async (_, filePath: string) => {
   }
 });
 
-ipcMain.handle('get-compatible-video-path', async (_, originalPath: string, cacheDir?: string) => {
+ipcMain.handle('get-existing-converted-video-path', async (_, originalPath: string, cacheDir?: string) => {
   try {
-    logVerbose('[Main] get-compatible-video-path called with:', { originalPath, cacheDir });
-    const { getCompatibleVideoPath } = await import('../shared/videoCodecUtils');
-    const compatiblePath = await getCompatibleVideoPath(originalPath, cacheDir);
-    logVerbose('[Main] Compatible video path result:', compatiblePath);
-    return compatiblePath;
+    logVerbose('[Main] get-existing-converted-video-path called with:', { originalPath, cacheDir });
+    const { getExistingConvertedVideoPath } = await import('../shared/videoCodecUtils');
+    const convertedPath = await getExistingConvertedVideoPath(originalPath, cacheDir);
+    logVerbose('[Main] Existing converted video path result:', convertedPath);
+    return convertedPath;
   } catch (error) {
-    log.error('[Main] Error getting compatible video path:', error);
+    log.error('[Main] Error getting existing converted video path:', error);
     throw error;
   }
 });
@@ -872,19 +872,6 @@ ipcMain.handle('has-converted-video', async (_, filePath: string, cacheDir?: str
     return hasConverted;
   } catch (error) {
     log.error('[Main] Error checking if converted video exists:', error);
-    throw error;
-  }
-});
-
-ipcMain.handle('get-existing-converted-video-path', async (_, filePath: string, cacheDir?: string) => {
-  try {
-    logVerbose('[Main] get-existing-converted-video-path called with:', { filePath, cacheDir });
-    const { getExistingConvertedVideoPath } = await import('../shared/videoCodecUtils');
-    const convertedPath = await getExistingConvertedVideoPath(filePath, cacheDir);
-    logVerbose('[Main] Existing converted video path result:', convertedPath);
-    return convertedPath;
-  } catch (error) {
-    log.error('[Main] Error getting existing converted video path:', error);
     throw error;
   }
 });
