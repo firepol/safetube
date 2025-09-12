@@ -57,6 +57,8 @@ contextBridge.exposeInMainWorld(
     setVerboseLogging: (enabled: boolean) => ipcRenderer.invoke('logging:set-verbose', enabled),
     getVerboseLogging: () => ipcRenderer.invoke('logging:get-verbose'),
     // Logging methods
-    log: (level: string, ...args: any[]) => ipcRenderer.invoke('logging:log', level, ...args)
+    log: (level: string, ...args: any[]) => ipcRenderer.invoke('logging:log', level, ...args),
+    // Clear source cache
+    clearSourceCache: (sourceId: string) => ipcRenderer.invoke('clear-source-cache', sourceId)
   }
 );

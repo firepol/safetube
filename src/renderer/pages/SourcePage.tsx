@@ -133,6 +133,21 @@ export const SourcePage: React.FC = () => {
     }
   };
 
+  const handleResetClick = async () => {
+    if (!sourceId || !window.electron?.clearSourceCache) {
+      console.error('Reset functionality not available');
+      return;
+    }
+
+    try {
+      await window.electron.clearSourceCache(sourceId);
+      // Reload the page to refresh the data
+      window.location.reload();
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="p-4">
@@ -209,6 +224,12 @@ export const SourcePage: React.FC = () => {
           </button>
           <h1 className="text-2xl font-bold">{source.title}</h1>
           <span className="text-sm text-gray-500">({source.videoCount} videos)</span>
+          <button
+            onClick={handleResetClick}
+            className="text-sm text-gray-500 hover:text-gray-700 underline cursor-pointer"
+          >
+            Reset
+          </button>
         </div>
         <TimeIndicator initialState={timeTrackingState} />
       </div>

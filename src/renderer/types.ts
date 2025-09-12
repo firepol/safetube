@@ -69,6 +69,8 @@ export interface ElectronAPI {
   getVerboseLogging: () => Promise<{ verbose: boolean }>;
   // Logging methods
   log: (level: string, ...args: any[]) => Promise<void>;
+  // Clear source cache
+  clearSourceCache: (sourceId: string) => Promise<{ success: boolean }>;
 }
 declare global {
   interface Window {

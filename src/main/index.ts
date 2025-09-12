@@ -1222,6 +1222,56 @@ ipcMain.handle('logging:log', async (_, level: string, ...args: any[]) => {
   }
 });
 
+// Handle clearing cache for a specific source
+ipcMain.handle('clear-source-cache', async (_, sourceId: string) => {
+  try {
+    logVerbose('[Main] Clearing cache for source:', sourceId);
+    
+    const fs = require('fs');
+    const path = require('path');
+    const cacheDir = path.join('.', '.cache');
+    
+    // Clear YouTube source cache
+    const sourceCacheFile = path.join(cacheDir, `youtube-${sourceId}.json`);
+    if (fs.existsSync(sourceCacheFile)) {
+      fs.unlinkSync(sourceCacheFile);
+      logVerbose('[Main] Deleted YouTube source cache file:', sourceCacheFile);
+    }
+    
+    // Clear ALL YouTube API cache files (since we can't easily map sourceId to specific API calls)
+    // This ensures fresh API calls for the next load
+    try {
+      const files = fs.readdirSync(cacheDir);
+      let clearedApiCacheCount = 0;
+      
+      for (const file of files) {
+        if (file.startsWith('youtube_api_') && file.endsWith('.json')) {
+          const filePath = path.join(cacheDir, file);
+          fs.unlinkSync(filePath);
+          clearedApiCacheCount++;
+        }
+      }
+      
+      if (clearedApiCacheCount > 0) {
+        logVerbose(`[Main] Cleared ${clearedApiCacheCount} YouTube API cache files`);
+      }
+    } catch (error) {
+      log.warn('[Main] Error clearing YouTube API cache:', error);
+    }
+    
+    // Clear pagination cache for this source
+    const { PaginationService } = await import('../preload/paginationService');
+    const paginationService = PaginationService.getInstance();
+    paginationService.clearCache(sourceId);
+    logVerbose('[Main] Cleared pagination cache for source:', sourceId);
+    
+    return { success: true };
+  } catch (error) {
+    log.error('[Main] Error clearing source cache:', error);
+    throw error;
+  }
+});
+
 // Helper function to parse ISO duration
 function parseISODuration(iso: string): number {
   const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
