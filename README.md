@@ -6,9 +6,10 @@ A safe video player application for kids built with Electron, React, and TypeScr
 
 - Kid-friendly video interface
 - YouTube integration with content filtering
-- Local video file support
+- Local video file support (requires FFmpeg)
 - DLNA/UPnP streaming support
 - Time tracking and parental controls
+- Video history and resume functionality
 - Cross-platform desktop application
 
 ## Quick Start (Windows Users)
@@ -26,7 +27,33 @@ A safe video player application for kids built with Electron, React, and TypeScr
 
 **Note**: SafeTube will automatically download yt-dlp if it's missing (Windows only).
 
-### 3. Get YouTube API Key (Optional but Recommended)
+### 3. Install FFmpeg (Required for local video features)
+
+SafeTube uses FFmpeg and FFprobe for local video processing, duration extraction, and video conversion.
+
+#### Option A: Download Pre-built Binaries (Recommended)
+
+1. Go to [FFmpeg Windows builds](https://www.gyan.dev/ffmpeg/builds/)
+2. Download the "release" version (e.g., `ffmpeg-release-essentials.zip`)
+3. Extract the zip file
+4. Copy `ffmpeg.exe` and `ffprobe.exe` from the `bin` folder
+5. Place both files in the same folder as `SafeTube-1.0.0.exe`
+
+#### Option B: Using Chocolatey (if you have it installed)
+
+```cmd
+choco install ffmpeg
+```
+
+#### Option C: Using Scoop (if you have it installed)
+
+```cmd
+scoop install ffmpeg
+```
+
+**Note**: SafeTube will automatically detect FFmpeg if it's in the same folder or in your system PATH.
+
+### 4. Get YouTube API Key (Optional but Recommended)
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing one
@@ -34,7 +61,7 @@ A safe video player application for kids built with Electron, React, and TypeScr
 4. Under "YouTube Data API v3" > Manage > Create credentials (API Key)
 5. Copy your API key
 
-### 4. Configure SafeTube
+### 5. Configure SafeTube
 
 1. Run `SafeTube-1.0.0.exe` for the first time
 2. Navigate to the admin area (Parent Access button)
@@ -79,7 +106,7 @@ VITE_YOUTUBE_API_KEY=your_youtube_api_key_here
 
 **Note**: SafeTube automatically creates these directories and files on first run. If they don't exist, run SafeTube once to generate the default configuration files.
 
-### 5. Run SafeTube
+### 6. Run SafeTube
 
 Double-click `SafeTube-1.0.0.exe` to start the application!
 
