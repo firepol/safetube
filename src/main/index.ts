@@ -1452,10 +1452,25 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     logVerbose('[Main] get-paginated-videos handler called:', { sourceId, pageNumber });
     
     // Load fresh source data to check if this is a local source
-    const { videosBySource } = await loadAllVideosFromSourcesMain();
+    // Read API key from mainSettings.json
+    let apiKey = '';
+    try {
+      const { readMainSettings } = await import('./fileUtils');
+      const mainSettings = await readMainSettings();
+      apiKey = mainSettings.youtubeApiKey || '';
+    } catch (error) {
+      log.warn('[Main] Could not read mainSettings for pagination, trying environment variables:', error);
+      apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || '';
+    }
+    
+    const { videosBySource } = await loadAllVideosFromSourcesMain(AppPaths.getConfigPath('videoSources.json'), apiKey);
+    logVerbose('[Main] Available sources in loadAllVideosFromSourcesMain result:', videosBySource.map(s => ({ id: s.id, type: s.type, title: s.title })));
+    logVerbose('[Main] Looking for sourceId:', sourceId);
+    
     const source = videosBySource.find(s => s.id === sourceId);
     
     if (!source) {
+      log.error('[Main] Source not found. Available source IDs:', videosBySource.map(s => s.id));
       throw new Error('Source not found in source data');
     }
     
