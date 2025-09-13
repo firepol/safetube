@@ -725,8 +725,42 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
       logVerbose('[Main] Video found in source system:', { id: video.id, type: video.type, title: video.title });
       return video;
     } else {
-      log.error('[Main] Video not found in source system:', videoId);
+      // Check if this might be a raw filename that needs to be matched by file path
+      // This handles cases where old watched data contains raw filenames instead of encoded IDs
+      if (videoId.includes('/') || videoId.startsWith('_') || videoId.endsWith('.mp4') || videoId.endsWith('.mkv') || videoId.endsWith('.webm') || videoId.endsWith('.avi') || videoId.endsWith('.mov') || videoId.endsWith('.m4v')) {
+        logVerbose('[Main] Attempting to find video by file path for raw filename:', videoId);
+        
+        // Try to find the video by matching the file path
+        const videoByPath = global.currentVideos.find((v: any) => {
+          if (v.type === 'local' && v.url) {
+            // Check if the video's URL matches the videoId (possibly with path reconstruction)
+            return v.url === videoId || 
+                   v.url.endsWith(videoId) || 
+                   v.url.includes(videoId) ||
+                   (videoId.startsWith('_') && v.url.endsWith(videoId.substring(1))) ||
+                   (videoId.includes('_') && v.url.includes(videoId.replace(/_/g, '/')));
+          }
+          return false;
+        });
+        
+        if (videoByPath) {
+          logVerbose('[Main] Found video by path matching:', { id: videoByPath.id, url: videoByPath.url, title: videoByPath.title });
+          return videoByPath;
+        }
+      }
+      
+      // Don't log as error for YouTube videos or other expected non-local videos
+      // Only log as verbose for debugging
+      logVerbose('[Main] Video not found in global source system:', videoId);
       logVerbose('[Main] Available video IDs:', global.currentVideos.map((v: any) => v.id));
+      
+      // For YouTube videos and other non-local videos, return null instead of throwing error
+      // This prevents error spam in the console
+      if (videoId.length === 11 || videoId.startsWith('example-') || videoId.startsWith('local-')) {
+        logVerbose('[Main] Returning null for non-local video:', videoId);
+        return null;
+      }
+      
       throw new Error(`Video with ID '${videoId}' not found in any source`);
     }
   } catch (error) {

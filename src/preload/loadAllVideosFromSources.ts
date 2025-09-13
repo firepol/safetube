@@ -31,7 +31,9 @@ async function scanLocalFolder(folderPath: string, maxDepth: number, currentDept
         // Generate encoded ID for local video to avoid routing issues
         let videoId: string;
         try {
-          videoId = Buffer.from(fullPath).toString('base64');
+          // Use the same encoding method as the main process
+          const { encodeFilePath } = await import('../shared/fileUtils');
+          videoId = encodeFilePath(fullPath);
           logVerbose('[Preload] Found video at depth', currentDepth, ':', fullPath);
         } catch (error) {
           console.error('[Preload] Error encoding file path, using fallback ID:', error);
@@ -77,7 +79,9 @@ async function scanFolderDeeper(folderPath: string, currentDepth: number): Promi
         // Generate encoded ID for local video to avoid routing issues
         let videoId: string;
         try {
-          videoId = Buffer.from(fullPath).toString('base64');
+          // Use the same encoding method as the main process
+          const { encodeFilePath } = await import('../shared/fileUtils');
+          videoId = encodeFilePath(fullPath);
           logVerbose('[Preload] Found video at depth', currentDepth, 'flattened to maxDepth');
         } catch (error) {
           console.error('[Preload] Error encoding file path, using fallback ID:', error);
