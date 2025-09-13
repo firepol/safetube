@@ -1476,10 +1476,24 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     logVerbose('[Main] Available sources in loadAllVideosFromSourcesMain result:', videosBySource?.map(s => ({ id: s.id, type: s.type, title: s.title })) || []);
     logVerbose('[Main] Looking for sourceId:', sourceId);
     
-    const source = videosBySource.find(s => s.id === sourceId);
+    logVerbose('[Main] Searching for source with ID:', sourceId, 'type:', typeof sourceId);
+    logVerbose('[Main] Available sources details:', videosBySource.map(s => ({ id: s.id, idType: typeof s.id, title: s.title })));
+    
+    // Try direct lookup instead of find
+    let source = null;
+    if (videosBySource && Array.isArray(videosBySource)) {
+      for (let i = 0; i < videosBySource.length; i++) {
+        const s = videosBySource[i];
+        if (s && s.id === sourceId) {
+          source = s;
+          break;
+        }
+      }
+    }
     
     if (!source) {
-      log.error('[Main] Source not found. Available source IDs:', videosBySource.map(s => s.id));
+      log.error('[Main] Source not found. Looking for:', sourceId);
+      log.error('[Main] Available source IDs:', videosBySource?.map(s => s?.id) || []);
       throw new Error('Source not found in source data');
     }
     
