@@ -1285,7 +1285,16 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
         } else if (source.sourceType === 'youtube_channel' || source.sourceType === 'youtube_playlist') {
           try {
             // Initialize YouTube API (you'll need to add your API key to config)
-                              const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || 'your-api-key-here';
+                              // Read API key from mainSettings.json
+                              let apiKey = 'your-api-key-here';
+                              try {
+                                const { readMainSettings } = await import('./fileUtils');
+                                const mainSettings = await readMainSettings();
+                                apiKey = mainSettings.youtubeApiKey || 'your-api-key-here';
+                              } catch (error) {
+                                log.warn('[Main] Could not read mainSettings, trying environment variables:', error);
+                                apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || 'your-api-key-here';
+                              }
             if (apiKey === 'your-api-key-here') {
               debugInfo.push(`[Main] YouTube source ${source.title} - API key not configured`);
               continue;
@@ -1551,8 +1560,16 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
 // Helper function to fetch videos for a specific page
 async function fetchVideosForPage(source: any, pageNumber: number, pageSize: number, pageToken: string | undefined): Promise<any[]> {
   try {
-    // Get API key from environment
-    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
+    // Read API key from mainSettings.json
+    let apiKey = '';
+    try {
+      const { readMainSettings } = await import('./fileUtils');
+      const mainSettings = await readMainSettings();
+      apiKey = mainSettings.youtubeApiKey || '';
+    } catch (error) {
+      log.warn('[Main] Could not read mainSettings, trying environment variables:', error);
+      apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || '';
+    }
     if (!apiKey) {
       log.warn('[Main] YouTube API key not available for fetching videos');
       return [];
@@ -1640,8 +1657,16 @@ ipcMain.handle('load-videos-from-sources', async () => {
   try {
     logVerbose('[Main] load-videos-from-sources handler called');
     
-    // Get YouTube API key first
-    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
+    // Read API key from mainSettings.json
+    let apiKey = '';
+    try {
+      const { readMainSettings } = await import('./fileUtils');
+      const mainSettings = await readMainSettings();
+      apiKey = mainSettings.youtubeApiKey || '';
+    } catch (error) {
+      log.warn('[Main] Could not read mainSettings, trying environment variables:', error);
+      apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || '';
+    }
     if (!apiKey) {
       log.warn('[Main] YouTube API key not configured');
     } else {
@@ -1679,7 +1704,16 @@ ipcMain.handle('load-videos-from-sources', async () => {
 // Handle getting YouTube API key for preload script
 ipcMain.handle('get-youtube-api-key', async () => {
   try {
-    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
+    // Read API key from mainSettings.json
+    let apiKey = '';
+    try {
+      const { readMainSettings } = await import('./fileUtils');
+      const mainSettings = await readMainSettings();
+      apiKey = mainSettings.youtubeApiKey || '';
+    } catch (error) {
+      log.warn('[Main] Could not read mainSettings, trying environment variables:', error);
+      apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || '';
+    }
     if (!apiKey) {
       log.warn('[Main] YouTube API key not configured');
       return null;

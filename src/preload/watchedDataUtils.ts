@@ -27,7 +27,8 @@ export async function mergeWatchedData<T extends { id: string; resumeAt?: number
         return video;
       });
     } else {
-      console.warn('[WatchedDataUtils] window.electron.getWatchedVideos not available');
+      // Silently return videos without watched data if electron API is not available
+      // This can happen during startup before the context bridge is fully initialized
       return videos;
     }
   } catch (error) {
