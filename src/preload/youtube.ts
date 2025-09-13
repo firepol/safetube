@@ -172,8 +172,8 @@ function isCacheValid(cacheData: any): boolean {
 async function getCachedResult(cacheKey: string): Promise<any | null> {
   try {
     // Use IPC to get cache from main process
-    if (typeof window !== 'undefined' && window.electron?.getYouTubeCache) {
-      return await window.electron.getYouTubeCache(cacheKey);
+    if (typeof window !== 'undefined' && (window as any).electron?.getYouTubeCache) {
+      return await (window as any).electron.getYouTubeCache(cacheKey);
     }
   } catch (e) {
     console.warn(`[YouTubeAPI] Error getting cache for ${cacheKey}:`, e);
@@ -184,8 +184,8 @@ async function getCachedResult(cacheKey: string): Promise<any | null> {
 async function setCachedResult(cacheKey: string, data: any): Promise<void> {
   try {
     // Use IPC to set cache in main process
-    if (typeof window !== 'undefined' && window.electron?.setYouTubeCache) {
-      await window.electron.setYouTubeCache(cacheKey, data);
+    if (typeof window !== 'undefined' && (window as any).electron?.setYouTubeCache) {
+      await (window as any).electron.setYouTubeCache(cacheKey, data);
     }
   } catch (e) {
     console.warn(`[YouTubeAPI] Error setting cache for ${cacheKey}:`, e);
@@ -199,8 +199,8 @@ export class YouTubeAPI {
   
   static async clearExpiredCache(): Promise<void> {
     try {
-      if (typeof window !== 'undefined' && window.electron?.clearExpiredYouTubeCache) {
-        await window.electron.clearExpiredYouTubeCache();
+      if (typeof window !== 'undefined' && (window as any).electron?.clearExpiredYouTubeCache) {
+        await (window as any).electron.clearExpiredYouTubeCache();
       }
     } catch (error) {
       console.warn('[YouTubeAPI] Error clearing expired cache:', error);
@@ -209,8 +209,8 @@ export class YouTubeAPI {
 
   static async loadCacheConfig(): Promise<void> {
     try {
-      if (typeof window !== 'undefined' && window.electron?.loadYouTubeCacheConfig) {
-        await window.electron.loadYouTubeCacheConfig();
+      if (typeof window !== 'undefined' && (window as any).electron?.loadYouTubeCacheConfig) {
+        await (window as any).electron.loadYouTubeCacheConfig();
         logVerbose(`[YouTubeAPI] Cache config loaded via IPC`);
       }
     } catch (error) {
