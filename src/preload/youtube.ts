@@ -154,8 +154,8 @@ export interface AudioTrack {
 let API_KEY: string | null = null;
 const BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
-// Cache configuration - disabled in preload context
-const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes from config
+// Cache configuration - will be loaded from config
+let CACHE_DURATION_MS = 30 * 60 * 1000; // Default 30 minutes
 
 // Cache management functions
 function getCacheKey(endpoint: string, params: Record<string, string>): string {
@@ -222,7 +222,16 @@ export class YouTubeAPI {
   }
   
   static async loadCacheConfig(): Promise<void> {
-    // Cache config loading disabled in preload context
+    try {
+      const configPath = 'config/pagination.json';
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        CACHE_DURATION_MS = (config.cacheDurationMinutes || 30) * 60 * 1000;
+        logVerbose(`[YouTubeAPI] Cache duration loaded from config: ${config.cacheDurationMinutes} minutes`);
+      }
+    } catch (error) {
+      console.warn('[YouTubeAPI] Failed to load cache config, using default:', error);
+    }
   }
   
   private static async fetch<T>(endpoint: string, params: Record<string, string>): Promise<T> {
