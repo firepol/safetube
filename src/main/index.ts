@@ -334,55 +334,59 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
 
 // Helper function to count total videos in a folder recursively (with filtering)
 async function countVideosInFolder(folderPath: string, maxDepth: number, currentDepth: number = 1): Promise<number> {
-  let totalCount = 0;
   const supportedExtensions = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
   
   try {
-    const items = fs.readdirSync(folderPath);
-    const videos: any[] = [];
+    // Collect all videos recursively first, then apply filtering
+    const allVideos: any[] = [];
     
-    for (const item of items) {
-      const itemPath = path.join(folderPath, item);
-      const stat = fs.statSync(itemPath);
+    const collectVideos = async (currentPath: string, depth: number): Promise<void> => {
+      const items = fs.readdirSync(currentPath);
       
-      if (stat.isDirectory()) {
-        if (currentDepth < maxDepth) {
-          // Continue counting in subfolders
-          const subCount = await countVideosInFolder(itemPath, maxDepth, currentDepth + 1);
-          totalCount += subCount;
-        } else if (currentDepth === maxDepth) {
-          // At maxDepth, get flattened content and count
-          const flattenedVideos = await getFlattenedContent(itemPath, currentDepth + 1);
-          // getFlattenedContent already applies filtering, so we can use the length directly
-          totalCount += flattenedVideos.length;
-        }
-      } else if (stat.isFile()) {
-        const ext = path.extname(item).toLowerCase();
-        if (supportedExtensions.includes(ext)) {
-          videos.push({
-            url: itemPath,
-            // Other properties not needed for counting
-          });
+      for (const item of items) {
+        const itemPath = path.join(currentPath, item);
+        const stat = fs.statSync(itemPath);
+        
+        if (stat.isDirectory()) {
+          if (depth < maxDepth) {
+            // Continue collecting in subfolders
+            await collectVideos(itemPath, depth + 1);
+          } else if (depth === maxDepth) {
+            // At maxDepth, get flattened content
+            const flattenedVideos = await getFlattenedContent(itemPath, depth + 1);
+            allVideos.push(...flattenedVideos);
+          }
+        } else if (stat.isFile()) {
+          const ext = path.extname(item).toLowerCase();
+          if (supportedExtensions.includes(ext)) {
+            allVideos.push({
+              url: itemPath,
+              // Other properties not needed for counting
+            });
+          }
         }
       }
-    }
+    };
     
-    // Apply filtering to videos in current directory
-    const filteredVideos = filterDuplicateVideos(videos);
-    totalCount += filteredVideos.length;
+    // Collect all videos
+    await collectVideos(folderPath, currentDepth);
+    
+    // Apply filtering to all collected videos
+    const filteredVideos = filterDuplicateVideos(allVideos);
     
     logVerbose('[Main] Video count filtering result:', { 
       folder: folderPath,
-      currentDirVideos: videos.length, 
-      currentDirFiltered: filteredVideos.length,
-      totalCount: totalCount
+      totalVideos: allVideos.length, 
+      filteredVideos: filteredVideos.length,
+      hidden: allVideos.length - filteredVideos.length
     });
+    
+    return filteredVideos.length;
     
   } catch (error) {
     log.warn('[Main] Error counting videos in folder:', folderPath, error);
+    return 0;
   }
-  
-  return totalCount;
 }
 
 // Helper function to count videos recursively (for flattening at maxDepth) with filtering
@@ -1015,6 +1019,40 @@ ipcMain.handle('get-local-source-video-count', async (event, sourcePath: string,
     return videoCount;
   } catch (error) {
     log.error('[Main] IPC: get-local-source-video-count error:', error);
+    throw error;
+  }
+});
+
+// Handle getting video count for a specific folder (for subfolder counts)
+ipcMain.handle('get-folder-video-count', async (event, folderPath: string, maxDepth: number) => {
+  try {
+    logVerbose('[Main] IPC: get-folder-video-count called with:', { folderPath, maxDepth });
+    
+    if (!folderPath) {
+      throw new Error('Folder path is required');
+    }
+    
+    // Check cache first
+    const cacheKey = `folder:${folderPath}:${maxDepth}`;
+    const cached = videoCountCache.get(cacheKey);
+    const now = Date.now();
+    
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      logVerbose('[Main] IPC: get-folder-video-count cache hit:', cached.count);
+      return cached.count;
+    }
+    
+    // Calculate video count for this specific folder
+    const videoCount = await countVideosInFolder(folderPath, maxDepth);
+    
+    // Cache the result
+    videoCountCache.set(cacheKey, { count: videoCount, timestamp: now });
+    
+    logVerbose('[Main] IPC: get-folder-video-count result:', videoCount);
+    
+    return videoCount;
+  } catch (error) {
+    log.error('[Main] IPC: get-folder-video-count error:', error);
     throw error;
   }
 });

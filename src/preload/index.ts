@@ -38,6 +38,9 @@ contextBridge.exposeInMainWorld(
     // New IPC handler for getting video count for local sources (lazy counting)
     getLocalSourceVideoCount: (sourcePath: string, maxDepth: number) => 
       ipcRenderer.invoke('get-local-source-video-count', sourcePath, maxDepth),
+    // New IPC handler for getting video count for a specific folder (for subfolder counts)
+    getFolderVideoCount: (folderPath: string, maxDepth: number) => 
+      ipcRenderer.invoke('get-folder-video-count', folderPath, maxDepth),
     // New IPC handler for getting video duration for local videos (lazy duration extraction)
     getLocalVideoDuration: (videoPath: string) => 
       ipcRenderer.invoke('get-local-video-duration', videoPath),

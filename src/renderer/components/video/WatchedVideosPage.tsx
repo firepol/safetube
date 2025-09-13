@@ -276,11 +276,6 @@ export const WatchedVideosPage: React.FC = () => {
                     </h3>
                     <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
                       <span>{video.type === 'youtube' ? 'YouTube' : 'Local Video'}</span>
-                      <span>
-                        {video.watchedData.watched === true ? '✅ Watched' : 
-                         video.watchedData.watched === false ? '⏸️ Partial' : 
-                         '📺 Clicked'}
-                      </span>
                     </div>
                     <div className="text-xs text-gray-400">
                       Last watched: {new Date(video.watchedData.lastWatched).toLocaleDateString()}

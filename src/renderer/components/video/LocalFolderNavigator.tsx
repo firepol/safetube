@@ -7,6 +7,7 @@ interface FolderItem {
   path: string;
   type: 'folder';
   depth: number;
+  videoCount?: number;
 }
 
 interface VideoItem {
@@ -51,6 +52,8 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   const [loadingDurations, setLoadingDurations] = useState<Record<string, boolean>>({});
   const [durationLoadingController, setDurationLoadingController] = useState<AbortController | null>(null);
   const processedVideosRef = useRef<Set<string>>(new Set());
+  const [folderVideoCounts, setFolderVideoCounts] = useState<Record<string, number>>({});
+  const [loadingFolderCounts, setLoadingFolderCounts] = useState<Record<string, boolean>>({});
   const [navigationStack, setNavigationStack] = useState<string[]>(() => {
     if (initialFolderPath) {
       // Build navigation stack from source path to initial folder path
@@ -217,6 +220,36 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     };
   }, [contents?.videos]); // Only depend on contents.videos
 
+  // Load folder video counts when contents change
+  useEffect(() => {
+    if (contents?.folders) {
+      const loadFolderCounts = async () => {
+        for (const folder of contents.folders) {
+          // Skip if already loading or loaded
+          if (loadingFolderCounts[folder.path] || folderVideoCounts[folder.path] !== undefined) {
+            continue;
+          }
+
+          setLoadingFolderCounts(prev => ({ ...prev, [folder.path]: true }));
+
+          try {
+            if (window.electron && window.electron.getFolderVideoCount) {
+              const count = await window.electron.getFolderVideoCount(folder.path, maxDepth);
+              setFolderVideoCounts(prev => ({ ...prev, [folder.path]: count }));
+            }
+          } catch (error) {
+            console.error('Error loading folder video count for:', folder.path, error);
+            setFolderVideoCounts(prev => ({ ...prev, [folder.path]: 0 }));
+          } finally {
+            setLoadingFolderCounts(prev => ({ ...prev, [folder.path]: false }));
+          }
+        }
+      };
+
+      loadFolderCounts();
+    }
+  }, [contents?.folders, maxDepth]);
+
   // Cleanup on component unmount
   useEffect(() => {
     return () => {
@@ -334,9 +367,6 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
             <p className="text-sm text-gray-500">{getBreadcrumbPath()}</p>
           </div>
         </div>
-        <div className="text-sm text-gray-500">
-          Depth: {currentDepth} / {maxDepth}
-        </div>
       </div>
 
       {/* Watched Videos Folder */}
@@ -360,17 +390,29 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
         <div className="mb-8">
           <h2 className="text-lg font-semibold mb-4 text-gray-700">📁 Folders</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {contents.folders.map((folder) => (
-              <div
-                key={folder.path}
-                onClick={() => handleFolderClick(folder)}
-                className="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 border-2 border-blue-100 hover:border-blue-300"
-              >
-                <div className="text-4xl mb-2">📁</div>
-                <h3 className="font-semibold text-gray-900">{folder.name}</h3>
-                <p className="text-sm text-gray-500">Click to open</p>
-              </div>
-            ))}
+            {contents.folders.map((folder) => {
+              const isLoading = loadingFolderCounts[folder.path];
+              const videoCount = folderVideoCounts[folder.path];
+              
+              return (
+                <div
+                  key={folder.path}
+                  onClick={() => handleFolderClick(folder)}
+                  className="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 border-2 border-blue-100 hover:border-blue-300"
+                >
+                  <div className="text-4xl mb-2">📁</div>
+                  <h3 className="font-semibold text-gray-900">{folder.name}</h3>
+                  <p className="text-sm text-gray-500">
+                    {isLoading 
+                      ? 'Loading...' 
+                      : videoCount !== undefined 
+                        ? `${videoCount} video${videoCount !== 1 ? 's' : ''}`
+                        : 'Click to open'
+                    }
+                  </p>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
@@ -406,9 +448,6 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
                 </div>
                 <div className="p-3">
                   <h3 className="font-semibold text-gray-900 mb-1">{video.title}</h3>
-                  <p className="text-sm text-gray-500">
-                    {video.flattened ? '📁 Flattened from deeper folder' : `Depth: ${video.depth}`}
-                  </p>
                   <p className="text-xs text-gray-400">
                     {loadingDurations[video.id] 
                       ? 'Loading duration...' 

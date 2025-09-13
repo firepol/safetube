@@ -42,6 +42,7 @@ export interface ElectronAPI {
   getPaginatedVideos: (sourceId: string, pageNumber: number) => Promise<{ videos: any[]; paginationState: any }>;
   getLocalFolderContents: (folderPath: string, maxDepth: number, currentDepth?: number) => Promise<{ folders: any[]; videos: any[]; depth: number }>;
   getLocalSourceVideoCount: (sourcePath: string, maxDepth: number) => Promise<number>;
+  getFolderVideoCount: (folderPath: string, maxDepth: number) => Promise<number>;
   getLocalVideoDuration: (videoPath: string) => Promise<number>;
   // Admin functions
   adminAuthenticate: (password: string) => Promise<{ isAuthenticated: boolean }>;
