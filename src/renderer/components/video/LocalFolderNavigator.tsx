@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { logVerbose } from '../../lib/logging';
 
 interface FolderItem {
   name: string;
@@ -46,6 +47,10 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   const [contents, setContents] = useState<FolderContents | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [videoDurations, setVideoDurations] = useState<Record<string, number>>({});
+  const [loadingDurations, setLoadingDurations] = useState<Record<string, boolean>>({});
+  const [durationLoadingController, setDurationLoadingController] = useState<AbortController | null>(null);
+  const processedVideosRef = useRef<Set<string>>(new Set());
   const [navigationStack, setNavigationStack] = useState<string[]>(() => {
     if (initialFolderPath) {
       // Build navigation stack from source path to initial folder path
@@ -73,7 +78,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     const loadWatchedVideos = async () => {
       try {
         const watchedData = await (window as any).electron.getWatchedVideos();
-        console.log('[LocalFolderNavigator] Loaded watched videos:', watchedData);
+        // console.log('[LocalFolderNavigator] Loaded watched videos:', watchedData);
         setWatchedVideos(watchedData);
       } catch (error) {
         console.error('Error loading watched videos:', error);
@@ -95,7 +100,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     
     // Debug logging
     if (watchedData) {
-      console.log(`[LocalFolderNavigator] Video ${videoId}:`, {
+      logVerbose(`[LocalFolderNavigator] Video ${videoId}:`, {
         watched: watchedData.watched,
         position: watchedData.position,
         isWatched: status.isWatched,
@@ -133,6 +138,94 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     loadFolderContents();
   }, [currentFolderPath]);
 
+  // Load video durations lazily after contents are loaded (cancellable)
+  useEffect(() => {
+    if (contents?.videos) {
+      // Cancel any existing duration loading
+      if (durationLoadingController) {
+        durationLoadingController.abort();
+      }
+
+      // Clear processed videos ref for new contents
+      processedVideosRef.current.clear();
+
+      // Create new abort controller for this loading session
+      const controller = new AbortController();
+      setDurationLoadingController(controller);
+
+      const loadDurations = async () => {
+        // Process videos in batches to avoid blocking the UI
+        const videosToProcess = contents.videos.filter(video => 
+          video.url && !processedVideosRef.current.has(video.id)
+        );
+
+        // Process videos in small batches with delays to keep UI responsive
+        const batchSize = 3;
+        for (let i = 0; i < videosToProcess.length; i += batchSize) {
+          // Check if loading was cancelled
+          if (controller.signal.aborted) {
+            logVerbose('[LocalFolderNavigator] Duration loading cancelled');
+            break;
+          }
+
+          const batch = videosToProcess.slice(i, i + batchSize);
+          
+          // Process batch in parallel
+          const batchPromises = batch.map(async (video) => {
+            if (controller.signal.aborted) return;
+            
+            // Mark as being processed
+            processedVideosRef.current.add(video.id);
+            setLoadingDurations(prev => ({ ...prev, [video.id]: true }));
+            
+            try {
+              if (window.electron && window.electron.getLocalVideoDuration) {
+                const duration = await window.electron.getLocalVideoDuration(video.url);
+                if (!controller.signal.aborted) {
+                  setVideoDurations(prev => ({ ...prev, [video.id]: duration }));
+                }
+              }
+            } catch (error) {
+              if (!controller.signal.aborted) {
+                console.error('Error loading video duration for:', video.id, error);
+                setVideoDurations(prev => ({ ...prev, [video.id]: 0 }));
+              }
+            } finally {
+              if (!controller.signal.aborted) {
+                setLoadingDurations(prev => ({ ...prev, [video.id]: false }));
+              }
+            }
+          });
+
+          await Promise.all(batchPromises);
+          
+          // Small delay between batches to keep UI responsive
+          if (i + batchSize < videosToProcess.length && !controller.signal.aborted) {
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+        }
+      };
+
+      loadDurations();
+    }
+
+    // Cleanup function to cancel loading when component unmounts or dependencies change
+    return () => {
+      if (durationLoadingController) {
+        durationLoadingController.abort();
+      }
+    };
+  }, [contents?.videos]); // Only depend on contents.videos
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      if (durationLoadingController) {
+        durationLoadingController.abort();
+      }
+    };
+  }, [durationLoadingController]);
+
   const loadFolderContents = async () => {
     try {
       setIsLoading(true);
@@ -152,12 +245,22 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   };
 
   const handleFolderClick = (folder: FolderItem) => {
+    // Cancel any ongoing duration loading
+    if (durationLoadingController) {
+      durationLoadingController.abort();
+    }
+    
     setNavigationStack(prev => [...prev, folder.path]);
     setCurrentFolderPath(folder.path);
     setContents(null); // Clear contents to show loading state
   };
 
   const handleBackClick = () => {
+    // Cancel any ongoing duration loading
+    if (durationLoadingController) {
+      durationLoadingController.abort();
+    }
+    
     if (navigationStack.length > 1) {
       const newStack = navigationStack.slice(0, -1);
       setNavigationStack(newStack);
@@ -289,7 +392,13 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
               return (
                 <div
                   key={video.id}
-                  onClick={() => onVideoClick(video, currentFolderPath)}
+                  onClick={() => {
+                    // Cancel any ongoing duration loading when video is clicked
+                    if (durationLoadingController) {
+                      durationLoadingController.abort();
+                    }
+                    onVideoClick(video, currentFolderPath);
+                  }}
                   className={cssClasses}
                 >
                 <div className="aspect-video bg-gray-200 flex items-center justify-center">
@@ -299,6 +408,14 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
                   <h3 className="font-semibold text-gray-900 mb-1">{video.title}</h3>
                   <p className="text-sm text-gray-500">
                     {video.flattened ? '📁 Flattened from deeper folder' : `Depth: ${video.depth}`}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {loadingDurations[video.id] 
+                      ? 'Loading duration...' 
+                      : videoDurations[video.id] 
+                        ? `${Math.floor(videoDurations[video.id] / 60)}:${(videoDurations[video.id] % 60).toString().padStart(2, '0')}`
+                        : 'Duration unknown'
+                    }
                   </p>
                   {video.relativePath && (
                     <p className="text-xs text-gray-400 mt-1 truncate">{video.relativePath}</p>

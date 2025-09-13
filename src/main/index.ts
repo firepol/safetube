@@ -300,15 +300,13 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
             videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
           }
           
-          // Extract video duration
-          const { extractVideoDuration } = await import('../shared/videoDurationUtils');
-          const duration = await extractVideoDuration(itemPath);
-          
+          // Don't extract duration upfront to avoid performance issues
+          // Duration will be extracted lazily when needed
           videos.push({
             id: videoId,
             title: path.basename(item, ext),
             thumbnail: '',
-            duration,
+            duration: 0, // Will be extracted lazily
             url: itemPath,
             video: itemPath,
             audio: undefined,
@@ -462,15 +460,13 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
             videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
           }
           
-          // Extract video duration
-          const { extractVideoDuration } = await import('../shared/videoDurationUtils');
-          const duration = await extractVideoDuration(itemPath);
-          
+          // Don't extract duration upfront to avoid performance issues
+          // Duration will be extracted lazily when needed
           videos.push({
             id: videoId,
             title: path.basename(item, ext),
             thumbnail: '',
-            duration,
+            duration: 0, // Will be extracted lazily
             url: itemPath,
             video: itemPath,
             audio: undefined,
@@ -943,6 +939,87 @@ ipcMain.handle('get-local-folder-contents', async (event, folderPath: string, ma
     return contents;
   } catch (error) {
     log.error('[Main] IPC: get-local-folder-contents error:', error);
+    throw error;
+  }
+});
+
+// Cache for video counts to avoid repeated calculations
+const videoCountCache = new Map<string, { count: number; timestamp: number }>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Cache for video durations to avoid repeated ffprobe calls
+const videoDurationCache = new Map<string, { duration: number; timestamp: number }>();
+const DURATION_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (durations don't change often)
+
+// Handle getting video count for a local source (lazy counting with caching)
+ipcMain.handle('get-local-source-video-count', async (event, sourcePath: string, maxDepth: number) => {
+  try {
+    logVerbose('[Main] IPC: get-local-source-video-count called with:', { sourcePath, maxDepth });
+    
+    if (!sourcePath) {
+      throw new Error('Source path is required');
+    }
+    
+    // Check cache first
+    const cacheKey = `${sourcePath}:${maxDepth}`;
+    const cached = videoCountCache.get(cacheKey);
+    const now = Date.now();
+    
+    if (cached && (now - cached.timestamp) < CACHE_DURATION) {
+      logVerbose('[Main] IPC: get-local-source-video-count cache hit:', cached.count);
+      return cached.count;
+    }
+    
+    // Calculate video count
+    const videoCount = await countVideosInFolder(sourcePath, maxDepth);
+    
+    // Cache the result
+    videoCountCache.set(cacheKey, { count: videoCount, timestamp: now });
+    
+    logVerbose('[Main] IPC: get-local-source-video-count result:', videoCount);
+    
+    return videoCount;
+  } catch (error) {
+    log.error('[Main] IPC: get-local-source-video-count error:', error);
+    throw error;
+  }
+});
+
+// Handle getting video duration for a local video (lazy duration extraction with caching)
+ipcMain.handle('get-local-video-duration', async (event, videoPath: string) => {
+  try {
+    logVerbose('[Main] IPC: get-local-video-duration called with:', videoPath);
+    
+    if (!videoPath) {
+      throw new Error('Video path is required');
+    }
+    
+    // Check cache first
+    const cached = videoDurationCache.get(videoPath);
+    const now = Date.now();
+    
+    if (cached && (now - cached.timestamp) < DURATION_CACHE_DURATION) {
+      logVerbose('[Main] IPC: get-local-video-duration cache hit:', cached.duration);
+      return cached.duration;
+    }
+    
+    // Extract video duration
+    const { extractVideoDuration } = await import('../shared/videoDurationUtils');
+    const duration = await extractVideoDuration(videoPath);
+    
+    // Cache the result
+    videoDurationCache.set(videoPath, { duration, timestamp: now });
+    
+    logVerbose('[Main] IPC: get-local-video-duration result:', duration);
+    
+    return duration;
+  } catch (error) {
+    // Don't log errors if they're due to cancellation
+    if (error instanceof Error && error.name === 'AbortError') {
+      logVerbose('[Main] IPC: get-local-video-duration cancelled');
+      throw error;
+    }
+    log.error('[Main] IPC: get-local-video-duration error:', error);
     throw error;
   }
 });
@@ -1710,16 +1787,14 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
         debug.push(`[Main] Local source ${source.id}: Using folder navigation (not scanning videos upfront).`);
         logVerbose(`[Main] Local source ${source.id}: Using folder navigation (not scanning videos upfront).`);
         
-        // Calculate total video count for display
-        const maxDepth = source.maxDepth || 2;
-        const totalVideoCount = await countVideosInFolder(source.path, maxDepth);
-        
+        // For local sources, don't count videos upfront to avoid performance issues
+        // Video count will be calculated lazily when needed
         videosBySource.push({
           id: source.id,
           type: source.type,
           title: source.title,
           thumbnail: '',
-          videoCount: totalVideoCount, // Show total video count
+          videoCount: 0, // Will be calculated lazily
           videos: [], // Empty - LocalFolderNavigator will load videos dynamically
           paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
           maxDepth: source.maxDepth, // Pass through maxDepth for navigation

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface VideoSource {
   id: string;
@@ -7,6 +7,8 @@ interface VideoSource {
   videos: any[];
   videoCount: number;
   thumbnail?: string;
+  path?: string; // For local sources
+  maxDepth?: number; // For local sources
 }
 
 interface SourceGridProps {
@@ -15,6 +17,33 @@ interface SourceGridProps {
 }
 
 export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }) => {
+  const [videoCounts, setVideoCounts] = useState<Record<string, number>>({});
+  const [loadingCounts, setLoadingCounts] = useState<Record<string, boolean>>({});
+
+  // Load video counts for local sources lazily
+  useEffect(() => {
+    const loadVideoCounts = async () => {
+      for (const source of sources) {
+        if (source.type === 'local' && source.path && source.maxDepth && !videoCounts[source.id] && !loadingCounts[source.id]) {
+          setLoadingCounts(prev => ({ ...prev, [source.id]: true }));
+          
+          try {
+            if (window.electron && window.electron.getLocalSourceVideoCount) {
+              const count = await window.electron.getLocalSourceVideoCount(source.path, source.maxDepth);
+              setVideoCounts(prev => ({ ...prev, [source.id]: count }));
+            }
+          } catch (error) {
+            console.error('Error loading video count for source:', source.id, error);
+            setVideoCounts(prev => ({ ...prev, [source.id]: 0 }));
+          } finally {
+            setLoadingCounts(prev => ({ ...prev, [source.id]: false }));
+          }
+        }
+      }
+    };
+
+    loadVideoCounts();
+  }, [sources, videoCounts, loadingCounts]);
 
   const handleSourceClick = (source: VideoSource) => {
     if (onSourceClick) {
@@ -103,7 +132,12 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
               <div className="text-sm text-gray-500">{getSourceTypeLabel(source.type)}</div>
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">{source.title}</h3>
-            <p className="text-sm text-gray-400">{source.videoCount} videos</p>
+            <p className="text-sm text-gray-400">
+              {source.type === 'local' && loadingCounts[source.id] 
+                ? 'Counting videos...' 
+                : `${videoCounts[source.id] ?? source.videoCount} videos`
+              }
+            </p>
           </div>
         </div>
       ))}

@@ -35,6 +35,12 @@ contextBridge.exposeInMainWorld(
     // New IPC handler for getting local folder contents for navigation
     getLocalFolderContents: (folderPath: string, maxDepth: number, currentDepth: number = 1) => 
       ipcRenderer.invoke('get-local-folder-contents', folderPath, maxDepth, currentDepth),
+    // New IPC handler for getting video count for local sources (lazy counting)
+    getLocalSourceVideoCount: (sourcePath: string, maxDepth: number) => 
+      ipcRenderer.invoke('get-local-source-video-count', sourcePath, maxDepth),
+    // New IPC handler for getting video duration for local videos (lazy duration extraction)
+    getLocalVideoDuration: (videoPath: string) => 
+      ipcRenderer.invoke('get-local-video-duration', videoPath),
     // Admin IPC handlers
     adminAuthenticate: (password: string) => ipcRenderer.invoke('admin:authenticate', password),
     adminAddExtraTime: (minutes: number) => ipcRenderer.invoke('admin:add-extra-time', minutes),
