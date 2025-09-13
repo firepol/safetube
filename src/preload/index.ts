@@ -94,6 +94,11 @@ contextBridge.exposeInMainWorld(
     getDefaultDownloadPath: () => ipcRenderer.invoke('main-settings:get-default-download-path'),
     // Downloaded videos
     getDownloadedVideos: () => ipcRenderer.invoke('downloaded-videos:get-all'),
-    getDownloadedVideosBySource: (sourceId: string) => ipcRenderer.invoke('downloaded-videos:get-by-source', sourceId)
+    getDownloadedVideosBySource: (sourceId: string) => ipcRenderer.invoke('downloaded-videos:get-by-source', sourceId),
+    // YouTube Cache
+    getYouTubeCache: (cacheKey: string) => ipcRenderer.invoke('youtube-cache:get', cacheKey),
+    setYouTubeCache: (cacheKey: string, data: any) => ipcRenderer.invoke('youtube-cache:set', cacheKey, data),
+    clearExpiredYouTubeCache: () => ipcRenderer.invoke('youtube-cache:clear-expired'),
+    loadYouTubeCacheConfig: () => ipcRenderer.invoke('youtube-cache:load-config')
   }
 );

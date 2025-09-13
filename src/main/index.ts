@@ -2320,6 +2320,54 @@ ipcMain.handle('downloaded-videos:get-by-source', async (_, sourceId: string) =>
   }
 });
 
+// YouTube Cache IPC Handlers
+ipcMain.handle('youtube-cache:get', async (_, cacheKey: string) => {
+  try {
+    logVerbose('[Main] youtube-cache:get called with:', cacheKey);
+    const { YouTubeCache } = await import('./youtubeCache');
+    return await YouTubeCache.getCachedResult(cacheKey);
+  } catch (error) {
+    logVerbose('[Main] youtube-cache:get error:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('youtube-cache:set', async (_, cacheKey: string, data: any) => {
+  try {
+    logVerbose('[Main] youtube-cache:set called with:', cacheKey);
+    const { YouTubeCache } = await import('./youtubeCache');
+    await YouTubeCache.setCachedResult(cacheKey, data);
+    return true;
+  } catch (error) {
+    logVerbose('[Main] youtube-cache:set error:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('youtube-cache:clear-expired', async () => {
+  try {
+    logVerbose('[Main] youtube-cache:clear-expired called');
+    const { YouTubeCache } = await import('./youtubeCache');
+    await YouTubeCache.clearExpiredCache();
+    return true;
+  } catch (error) {
+    logVerbose('[Main] youtube-cache:clear-expired error:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('youtube-cache:load-config', async () => {
+  try {
+    logVerbose('[Main] youtube-cache:load-config called');
+    const { YouTubeCache } = await import('./youtubeCache');
+    await YouTubeCache.loadCacheConfig();
+    return true;
+  } catch (error) {
+    logVerbose('[Main] youtube-cache:load-config error:', error);
+    return false;
+  }
+});
+
 // Log uncaught exceptions
 process.on('uncaughtException', (error) => {
   log.error('Uncaught exception:', error)

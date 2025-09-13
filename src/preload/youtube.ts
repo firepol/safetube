@@ -1,8 +1,6 @@
 import { z } from 'zod';
 import { logVerbose } from './logging';
 import { VideoSource } from './types';
-import * as fs from 'fs';
-import * as path from 'path';
 
 // YouTube API response schemas
 const VideoSchema = z.object({
@@ -173,42 +171,24 @@ function isCacheValid(cacheData: any): boolean {
 
 async function getCachedResult(cacheKey: string): Promise<any | null> {
   try {
-    const cacheDir = '.cache';
-    const cacheFile = path.join(cacheDir, `${cacheKey}.json`);
-    
-    if (!fs.existsSync(cacheFile)) {
-      return null;
+    // Use IPC to get cache from main process
+    if (typeof window !== 'undefined' && window.electron?.getYouTubeCache) {
+      return await window.electron.getYouTubeCache(cacheKey);
     }
-    
-    const cacheData = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
-    
-    if (!isCacheValid(cacheData)) {
-      return null;
-    }
-    
-    return cacheData.data;
-  } catch (error) {
-    console.warn('[YouTubeAPI] Error reading cache:', error);
-    return null;
+  } catch (e) {
+    console.warn(`[YouTubeAPI] Error getting cache for ${cacheKey}:`, e);
   }
+  return null;
 }
 
 async function setCachedResult(cacheKey: string, data: any): Promise<void> {
   try {
-    const cacheDir = '.cache';
-    if (!fs.existsSync(cacheDir)) {
-      fs.mkdirSync(cacheDir, { recursive: true });
+    // Use IPC to set cache in main process
+    if (typeof window !== 'undefined' && window.electron?.setYouTubeCache) {
+      await window.electron.setYouTubeCache(cacheKey, data);
     }
-    
-    const cacheFile = path.join(cacheDir, `${cacheKey}.json`);
-    const cacheData = {
-      data,
-      timestamp: Date.now()
-    };
-    
-    fs.writeFileSync(cacheFile, JSON.stringify(cacheData, null, 2));
-  } catch (error) {
-    console.warn('[YouTubeAPI] Error writing cache:', error);
+  } catch (e) {
+    console.warn(`[YouTubeAPI] Error setting cache for ${cacheKey}:`, e);
   }
 }
 
@@ -218,19 +198,23 @@ export class YouTubeAPI {
   }
   
   static async clearExpiredCache(): Promise<void> {
-    // Cache operations disabled in preload context
-  }
-  
-  static async loadCacheConfig(): Promise<void> {
     try {
-      const configPath = 'config/pagination.json';
-      if (fs.existsSync(configPath)) {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-        CACHE_DURATION_MS = (config.cacheDurationMinutes || 30) * 60 * 1000;
-        logVerbose(`[YouTubeAPI] Cache duration loaded from config: ${config.cacheDurationMinutes} minutes`);
+      if (typeof window !== 'undefined' && window.electron?.clearExpiredYouTubeCache) {
+        await window.electron.clearExpiredYouTubeCache();
       }
     } catch (error) {
-      console.warn('[YouTubeAPI] Failed to load cache config, using default:', error);
+      console.warn('[YouTubeAPI] Error clearing expired cache:', error);
+    }
+  }
+
+  static async loadCacheConfig(): Promise<void> {
+    try {
+      if (typeof window !== 'undefined' && window.electron?.loadYouTubeCacheConfig) {
+        await window.electron.loadYouTubeCacheConfig();
+        logVerbose(`[YouTubeAPI] Cache config loaded via IPC`);
+      }
+    } catch (error) {
+      console.warn('[YouTubeAPI] Failed to load cache config via IPC:', error);
     }
   }
   

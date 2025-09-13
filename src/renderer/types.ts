@@ -157,6 +157,11 @@ export interface ElectronAPI {
     sourceType: 'youtube_channel' | 'youtube_playlist';
     sourceId: string;
   }>>;
+  // YouTube Cache
+  getYouTubeCache: (cacheKey: string) => Promise<any | null>;
+  setYouTubeCache: (cacheKey: string, data: any) => Promise<boolean>;
+  clearExpiredYouTubeCache: () => Promise<boolean>;
+  loadYouTubeCacheConfig: () => Promise<boolean>;
 }
 declare global {
   interface Window {
