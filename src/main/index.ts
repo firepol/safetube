@@ -1101,7 +1101,7 @@ ipcMain.handle('get-local-video-duration', async (event, videoPath: string) => {
 ipcMain.handle('get-video-codec-info', async (_, filePath: string) => {
   try {
     logVerbose('[Main] get-video-codec-info called with:', filePath);
-    const { getVideoCodecInfo } = await import('../shared/videoCodecUtils');
+    const { getVideoCodecInfo } = await import('./videoCodecUtils');
     const codecInfo = await getVideoCodecInfo(filePath);
     logVerbose('[Main] Codec info result:', codecInfo);
     return codecInfo;
@@ -1114,7 +1114,7 @@ ipcMain.handle('get-video-codec-info', async (_, filePath: string) => {
 ipcMain.handle('get-existing-converted-video-path', async (_, originalPath: string, cacheDir?: string) => {
   try {
     logVerbose('[Main] get-existing-converted-video-path called with:', { originalPath, cacheDir });
-    const { getExistingConvertedVideoPath } = await import('../shared/videoCodecUtils');
+    const { getExistingConvertedVideoPath } = await import('./videoCodecUtils');
     const convertedPath = await getExistingConvertedVideoPath(originalPath, cacheDir);
     logVerbose('[Main] Existing converted video path result:', convertedPath);
     return convertedPath;
@@ -1127,7 +1127,7 @@ ipcMain.handle('get-existing-converted-video-path', async (_, originalPath: stri
 ipcMain.handle('needs-video-conversion', async (_, filePath: string) => {
   try {
     logVerbose('[Main] needs-video-conversion called with:', filePath);
-    const { needsVideoConversion } = await import('../shared/videoCodecUtils');
+    const { needsVideoConversion } = await import('./videoCodecUtils');
     const needsConversion = await needsVideoConversion(filePath);
     logVerbose('[Main] Needs conversion result:', needsConversion);
     return needsConversion;
@@ -1140,7 +1140,7 @@ ipcMain.handle('needs-video-conversion', async (_, filePath: string) => {
 ipcMain.handle('has-converted-video', async (_, filePath: string, cacheDir?: string) => {
   try {
     logVerbose('[Main] has-converted-video called with:', { filePath, cacheDir });
-    const { hasConvertedVideo } = await import('../shared/videoCodecUtils');
+    const { hasConvertedVideo } = await import('./videoCodecUtils');
     const hasConverted = await hasConvertedVideo(filePath, cacheDir);
     logVerbose('[Main] Has converted video result:', hasConverted);
     return hasConverted;
@@ -1153,7 +1153,7 @@ ipcMain.handle('has-converted-video', async (_, filePath: string, cacheDir?: str
 ipcMain.handle('get-conversion-status', async (_, filePath: string) => {
   try {
     logVerbose('[Main] get-conversion-status called with:', filePath);
-    const { getConversionStatus } = await import('../shared/videoCodecUtils');
+    const { getConversionStatus } = await import('./videoCodecUtils');
     const status = getConversionStatus(filePath);
     logVerbose('[Main] Conversion status result:', status);
     return status;
@@ -1166,7 +1166,7 @@ ipcMain.handle('get-conversion-status', async (_, filePath: string) => {
 ipcMain.handle('start-video-conversion', async (_, filePath: string, options?: any) => {
   try {
     logVerbose('[Main] start-video-conversion called with:', { filePath, options });
-    const { startVideoConversion } = await import('../shared/videoCodecUtils');
+    const { startVideoConversion } = await import('./videoCodecUtils');
     await startVideoConversion(filePath, options);
     logVerbose('[Main] Video conversion started successfully');
     return { success: true };

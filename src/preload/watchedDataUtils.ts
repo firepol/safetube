@@ -1,4 +1,4 @@
-import { ipcRenderer } from 'electron';
+// Note: This file runs in the preload context where ipcRenderer is available
 
 export interface WatchedVideo {
   videoId: string;
@@ -12,18 +12,24 @@ export interface WatchedVideo {
  */
 export async function mergeWatchedData<T extends { id: string; resumeAt?: number }>(videos: T[]): Promise<T[]> {
   try {
-    const watchedVideos = await ipcRenderer.invoke('get-watched-videos');
-    
-    return videos.map(video => {
-      const watchedEntry = watchedVideos.find((w: WatchedVideo) => w.videoId === video.id);
-      if (watchedEntry) {
-        return {
-          ...video,
-          resumeAt: watchedEntry.position
-        };
-      }
-      return video;
-    });
+    // Use the window.electron API that's available in the preload context
+    if (typeof window !== 'undefined' && (window as any).electron?.getWatchedVideos) {
+      const watchedVideos = await (window as any).electron.getWatchedVideos();
+      
+      return videos.map(video => {
+        const watchedEntry = watchedVideos.find((w: WatchedVideo) => w.videoId === video.id);
+        if (watchedEntry) {
+          return {
+            ...video,
+            resumeAt: watchedEntry.position
+          };
+        }
+        return video;
+      });
+    } else {
+      console.warn('[WatchedDataUtils] window.electron.getWatchedVideos not available');
+      return videos;
+    }
   } catch (error) {
     console.warn('[WatchedDataUtils] Error merging watched data:', error);
     return videos;
