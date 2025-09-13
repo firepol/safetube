@@ -2,7 +2,7 @@ import { YouTubeAPI } from './youtube';
 import { YouTubeSourceCache, VideoSource } from './types';
 import fs from 'fs';
 import path from 'path';
-import { logVerbose } from './utils';
+import { logVerbose } from './logging';
 
 const CACHE_DIR = path.join('.', '.cache');
 
@@ -30,6 +30,39 @@ export class CachedYouTubeSources {
     let totalVideos = 0;
     let sourceThumbnail = '';
     let usingCachedData = false;
+    
+    // Check if cache is still valid
+    if (cache && cache.lastFetched) {
+      const cacheAge = Date.now() - new Date(cache.lastFetched).getTime();
+      
+      // Load cache duration from pagination config
+      let cacheDurationMs = 90 * 60 * 1000; // 90 minutes default
+      try {
+        const configPath = 'config/pagination.json';
+        if (fs.existsSync(configPath)) {
+          const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+          cacheDurationMs = (config.cacheDurationMinutes || 90) * 60 * 1000;
+        }
+      } catch (error) {
+        console.warn('[CachedYouTubeSources] Failed to load cache duration config:', error);
+      }
+      
+      if (cacheAge < cacheDurationMs) {
+        logVerbose(`[CachedYouTubeSources] Using valid cache for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes)`);
+        return {
+          sourceId: source.id,
+          type: source.type,
+          lastFetched: cache.lastFetched,
+          lastVideoDate: cache.lastVideoDate,
+          videos: cache.videos,
+          totalVideos: cache.totalVideos,
+          thumbnail: cache.thumbnail,
+          usingCachedData: true
+        };
+      } else {
+        logVerbose(`[CachedYouTubeSources] Cache expired for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes), fetching fresh data`);
+      }
+    }
     
     try {
       if (source.type === 'youtube_channel') {

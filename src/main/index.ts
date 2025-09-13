@@ -1458,13 +1458,22 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       const { readMainSettings } = await import('./fileUtils');
       const mainSettings = await readMainSettings();
       apiKey = mainSettings.youtubeApiKey || '';
+      logVerbose('[Main] API key loaded for pagination:', apiKey ? '***configured***' : 'NOT configured');
     } catch (error) {
-      log.warn('[Main] Could not read mainSettings for pagination, trying environment variables:', error);
+      log.warn('[Main] Could not read mainSettings for pagination:', error);
       apiKey = '';
     }
     
-    const { videosBySource } = await loadAllVideosFromSourcesMain(AppPaths.getConfigPath('videoSources.json'), apiKey);
-    logVerbose('[Main] Available sources in loadAllVideosFromSourcesMain result:', videosBySource.map(s => ({ id: s.id, type: s.type, title: s.title })));
+    logVerbose('[Main] Calling loadAllVideosFromSourcesMain with:', { configPath: AppPaths.getConfigPath('videoSources.json'), apiKey: apiKey ? '***configured***' : 'NOT configured' });
+    
+    const result = await loadAllVideosFromSourcesMain(AppPaths.getConfigPath('videoSources.json'), apiKey);
+    const { videosBySource } = result;
+    
+    logVerbose('[Main] loadAllVideosFromSourcesMain returned:', { 
+      videosBySourceCount: videosBySource?.length || 0,
+      debug: result.debug?.slice(0, 5) // Show first 5 debug messages
+    });
+    logVerbose('[Main] Available sources in loadAllVideosFromSourcesMain result:', videosBySource?.map(s => ({ id: s.id, type: s.type, title: s.title })) || []);
     logVerbose('[Main] Looking for sourceId:', sourceId);
     
     const source = videosBySource.find(s => s.id === sourceId);
@@ -1857,8 +1866,10 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
   
   try {
     logVerbose('[Main] Loading video sources from:', configPath);
+    logVerbose('[Main] API key provided:', apiKey ? '***configured***' : 'NOT configured');
     sources = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     logVerbose('[Main] Loaded sources:', sources.length);
+    logVerbose('[Main] Source IDs:', sources.map(s => s.id));
     debug[2] = '[Main] Found ' + sources.length + ' video sources'; // Update with actual count
   } catch (err) {
     log.error('[Main] ERROR loading videoSources.json:', err);
@@ -1882,14 +1893,18 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
         const { CachedYouTubeSources } = await import('../preload/cached-youtube-sources');
         
         // Set up YouTube API key in the preload context
+        logVerbose('[Main] Loading YouTube source:', source.id, source.title);
         if (apiKey) {
-        const { YouTubeAPI } = await import('../preload/youtube');
-        YouTubeAPI.setApiKey(apiKey);
-        await YouTubeAPI.loadCacheConfig();
+          const { YouTubeAPI } = await import('../preload/youtube');
+          YouTubeAPI.setApiKey(apiKey);
           await YouTubeAPI.loadCacheConfig();
+          logVerbose('[Main] YouTube API configured for source:', source.id);
+        } else {
+          log.warn('[Main] No API key provided for YouTube source:', source.id);
         }
         
         const cache = await CachedYouTubeSources.loadSourceVideos(source);
+        logVerbose('[Main] Cache loaded for source:', source.id, 'videos:', cache.videos?.length || 0, 'cached:', cache.usingCachedData);
         
         videosBySource.push({
           id: source.id,
