@@ -1,6 +1,6 @@
 export interface Video {
   id: string;
-  type: 'local' | 'dlna' | 'youtube';
+  type: 'local' | 'dlna' | 'youtube' | 'downloaded';
   title: string;
   thumbnail: string;
   duration: number;
@@ -17,6 +17,14 @@ export interface Video {
   path?: string;
   preferredLanguages?: string[];
   useJsonStreamUrls?: boolean;
+  // Source information
+  sourceId?: string;
+  sourceTitle?: string;
+  sourceType?: 'youtube_channel' | 'youtube_playlist';
+  sourceThumbnail?: string;
+  // For downloaded videos
+  downloadedAt?: string;
+  filePath?: string;
 }
 
 export interface ElectronAPI {
@@ -101,6 +109,54 @@ export interface ElectronAPI {
     preserveAudio?: boolean;
     cacheDir?: string;
   }) => Promise<{ success: boolean }>;
+  // Download management
+  startDownload: (videoId: string, videoTitle: string, sourceInfo: any) => Promise<{ success: boolean; error?: string }>;
+  getDownloadStatus: (videoId: string) => Promise<{
+    videoId: string;
+    status: 'pending' | 'downloading' | 'completed' | 'failed';
+    progress: number;
+    startTime?: number;
+    endTime?: number;
+    error?: string;
+    filePath?: string;
+    sourceInfo?: any;
+  } | null>;
+  cancelDownload: (videoId: string) => Promise<{ success: boolean; error?: string }>;
+  isDownloading: (videoId: string) => Promise<boolean>;
+  // Main settings
+  readMainSettings: () => Promise<{
+    downloadPath?: string;
+    youtubeApiKey?: string;
+    adminPassword?: string;
+    enableVerboseLogging?: boolean;
+  }>;
+  writeMainSettings: (settings: any) => Promise<{ success: boolean; error?: string }>;
+  getDefaultDownloadPath: () => Promise<string>;
+  // Downloaded videos
+  getDownloadedVideos: () => Promise<Array<{
+    videoId: string;
+    title: string;
+    channelTitle?: string;
+    playlistTitle?: string;
+    filePath: string;
+    downloadedAt: string;
+    duration: number;
+    thumbnail: string;
+    sourceType: 'youtube_channel' | 'youtube_playlist';
+    sourceId: string;
+  }>>;
+  getDownloadedVideosBySource: (sourceId: string) => Promise<Array<{
+    videoId: string;
+    title: string;
+    channelTitle?: string;
+    playlistTitle?: string;
+    filePath: string;
+    downloadedAt: string;
+    duration: number;
+    thumbnail: string;
+    sourceType: 'youtube_channel' | 'youtube_playlist';
+    sourceId: string;
+  }>>;
 }
 declare global {
   interface Window {

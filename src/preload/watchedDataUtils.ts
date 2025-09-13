@@ -1,4 +1,4 @@
-import { readWatchedVideos } from '../shared/fileUtils';
+import { ipcRenderer } from 'electron';
 
 export interface WatchedVideo {
   videoId: string;
@@ -12,10 +12,10 @@ export interface WatchedVideo {
  */
 export async function mergeWatchedData<T extends { id: string; resumeAt?: number }>(videos: T[]): Promise<T[]> {
   try {
-    const watchedVideos = await readWatchedVideos();
+    const watchedVideos = await ipcRenderer.invoke('get-watched-videos');
     
     return videos.map(video => {
-      const watchedEntry = watchedVideos.find(w => w.videoId === video.id);
+      const watchedEntry = watchedVideos.find((w: WatchedVideo) => w.videoId === video.id);
       if (watchedEntry) {
         return {
           ...video,

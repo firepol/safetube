@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import { logVerboseRenderer } from '@/shared/logging';
-import { YtDlpManager } from '@/shared/ytDlpManager';
 
 // YouTube API response schemas
 const VideoSchema = z.object({
@@ -185,39 +184,11 @@ class YouTubeAPI {
     try {
       // In test environment, use yt-dlp directly
       if (typeof window === 'undefined' || !window.electron?.getVideoStreams) {
-        const { exec } = require('child_process');
-        const { promisify } = require('util');
-        const execAsync = promisify(exec);
+        // Node.js imports removed - not available in renderer context
 
-        // Ensure yt-dlp is available (auto-download on Windows if needed)
-        await YtDlpManager.ensureYtDlpAvailable();
-        
-        const ytDlpCommand = YtDlpManager.getYtDlpCommand();
-        const { stdout } = await execAsync(`${ytDlpCommand} -j "${videoId}"`);
-        const data = JSON.parse(stdout);
-
-        const videoStreams: VideoStream[] = data.formats
-          .filter((f: any) => f.vcodec !== 'none' && f.acodec === 'none')
-          .map((f: any) => ({
-            url: f.url,
-            quality: f.format_note || f.quality,
-            mimeType: f.ext,
-            width: f.width,
-            height: f.height,
-            fps: f.fps,
-            bitrate: f.tbr
-          }));
-
-        const audioTracks: AudioTrack[] = data.formats
-          .filter((f: any) => f.vcodec === 'none' && f.acodec !== 'none')
-          .map((f: any) => ({
-            url: f.url,
-            language: f.language || 'en',
-            mimeType: f.ext,
-            bitrate: f.tbr
-          }));
-
-        return { videoStreams, audioTracks };
+        // yt-dlp functionality not available in renderer context
+        throw new Error('yt-dlp functionality not available in renderer context');
+        // Code removed - not available in renderer context
       }
 
       // In renderer process, use electron IPC

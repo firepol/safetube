@@ -16,10 +16,20 @@ export const AdminPage: React.FC = () => {
   const [timeLimits, setTimeLimits] = useState<TimeLimits | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'time' | 'sources'>('time');
+  const [activeTab, setActiveTab] = useState<'time' | 'sources' | 'main'>('time');
   const [currentTimeState, setCurrentTimeState] = useState<TimeTrackingState | null>(null);
   const [projectedTimeState, setProjectedTimeState] = useState<TimeTrackingState | null>(null);
   const [dailyLimitModified, setDailyLimitModified] = useState(false);
+  
+  // Main settings state
+  const [mainSettings, setMainSettings] = useState<{
+    downloadPath?: string;
+    youtubeApiKey?: string;
+    adminPassword?: string;
+    enableVerboseLogging?: boolean;
+  }>({});
+  const [isLoadingMainSettings, setIsLoadingMainSettings] = useState(false);
+  const [mainSettingsSaveMessage, setMainSettingsSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // Check if already authenticated
@@ -225,6 +235,60 @@ export const AdminPage: React.FC = () => {
     }
   };
 
+  // Main settings functions
+  const loadMainSettings = async () => {
+    try {
+      setIsLoadingMainSettings(true);
+      const settings = await window.electron.readMainSettings();
+      setMainSettings(settings);
+    } catch (error) {
+      console.error('Error loading main settings:', error);
+      setError('Failed to load main settings');
+    } finally {
+      setIsLoadingMainSettings(false);
+    }
+  };
+
+  const handleSaveMainSettings = async () => {
+    try {
+      setIsSaving(true);
+      setMainSettingsSaveMessage(null);
+      setError(null);
+
+      const result = await window.electron.writeMainSettings(mainSettings);
+      
+      if (result.success) {
+        setMainSettingsSaveMessage('Settings saved successfully!');
+        // Clear message after 3 seconds
+        setTimeout(() => setMainSettingsSaveMessage(null), 3000);
+      } else {
+        setError(result.error || 'Failed to save settings');
+      }
+    } catch (error) {
+      console.error('Error saving main settings:', error);
+      setError('Failed to save settings');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleResetDownloadPath = async () => {
+    try {
+      const defaultPath = await window.electron.getDefaultDownloadPath();
+      setMainSettings(prev => ({ ...prev, downloadPath: defaultPath }));
+    } catch (error) {
+      console.error('Error getting default download path:', error);
+      setError('Failed to get default download path');
+    }
+  };
+
+  // Load main settings when authenticated
+  useEffect(() => {
+    if (isAuthenticated && activeTab === 'main') {
+      loadMainSettings();
+    }
+  }, [isAuthenticated, activeTab]);
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center p-6">
@@ -347,6 +411,16 @@ export const AdminPage: React.FC = () => {
                 }`}
               >
                 Video Sources
+              </button>
+              <button
+                onClick={() => setActiveTab('main')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'main'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Main Settings
               </button>
             </nav>
           </div>
@@ -517,6 +591,121 @@ export const AdminPage: React.FC = () => {
 
         {activeTab === 'sources' && (
           <VideoSourcesManager />
+        )}
+
+        {activeTab === 'main' && (
+          <div className="space-y-6">
+            {/* Main Settings */}
+            <div className="bg-white rounded-lg shadow-lg p-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">Main Settings</h2>
+              
+              {isLoadingMainSettings ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                  <span className="ml-2 text-gray-600">Loading settings...</span>
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Download Path Setting */}
+                  <div>
+                    <label htmlFor="downloadPath" className="block text-sm font-medium text-gray-700 mb-2">
+                      Download Path
+                    </label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        id="downloadPath"
+                        value={mainSettings.downloadPath || ''}
+                        onChange={(e) => setMainSettings(prev => ({ ...prev, downloadPath: e.target.value }))}
+                        className="flex-1 border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Enter download path..."
+                      />
+                      <button
+                        type="button"
+                        onClick={handleResetDownloadPath}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-colors"
+                      >
+                        Reset to Default
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Path where downloaded YouTube videos will be stored. Leave empty to use default location.
+                    </p>
+                  </div>
+
+                  {/* YouTube API Key Setting */}
+                  <div>
+                    <label htmlFor="youtubeApiKey" className="block text-sm font-medium text-gray-700 mb-2">
+                      YouTube API Key
+                    </label>
+                    <input
+                      type="password"
+                      id="youtubeApiKey"
+                      value={mainSettings.youtubeApiKey || ''}
+                      onChange={(e) => setMainSettings(prev => ({ ...prev, youtubeApiKey: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter YouTube API key (optional)..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Optional. Used for enhanced YouTube functionality. Get your key from Google Cloud Console.
+                    </p>
+                  </div>
+
+                  {/* Admin Password Setting */}
+                  <div>
+                    <label htmlFor="adminPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                      Admin Password
+                    </label>
+                    <input
+                      type="password"
+                      id="adminPassword"
+                      value={mainSettings.adminPassword || ''}
+                      onChange={(e) => setMainSettings(prev => ({ ...prev, adminPassword: e.target.value }))}
+                      className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Enter admin password..."
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Password required to access admin controls.
+                    </p>
+                  </div>
+
+                  {/* Verbose Logging Setting */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="enableVerboseLogging"
+                      checked={mainSettings.enableVerboseLogging || false}
+                      onChange={(e) => setMainSettings(prev => ({ ...prev, enableVerboseLogging: e.target.checked }))}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <label htmlFor="enableVerboseLogging" className="ml-2 block text-sm text-gray-700">
+                      Enable Verbose Logging
+                    </label>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Enable detailed logging for debugging purposes.
+                  </p>
+
+                  {/* Save Button */}
+                  <div className="pt-4 border-t border-gray-200">
+                    <button
+                      onClick={handleSaveMainSettings}
+                      disabled={isSaving}
+                      className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+                    >
+                      {isSaving ? 'Saving...' : 'Save Main Settings'}
+                    </button>
+                    
+                    {mainSettingsSaveMessage && (
+                      <div className="mt-4 bg-green-50 border border-green-200 rounded-md p-3">
+                        <p className="text-sm text-green-600">{mainSettingsSaveMessage}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

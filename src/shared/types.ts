@@ -136,4 +136,43 @@ export interface TimeExtension {
   minutes: number;
   reason?: string;
   timestamp: string;
+}
+
+// Main settings interface for global application configuration
+export interface MainSettings {
+  downloadPath?: string; // Path where downloaded videos are stored
+  youtubeApiKey?: string; // YouTube API key for enhanced functionality
+  adminPassword?: string; // Admin access password
+  enableVerboseLogging?: boolean; // Enable detailed logging
+}
+
+// Download status tracking
+export interface DownloadStatus {
+  videoId: string;
+  status: 'pending' | 'downloading' | 'completed' | 'failed';
+  progress: number; // 0-100
+  startTime?: number; // timestamp when download started
+  endTime?: number; // timestamp when download completed
+  error?: string; // error message if failed
+  filePath?: string; // path to downloaded file when completed
+  sourceInfo?: {
+    type: 'youtube_channel' | 'youtube_playlist';
+    sourceId: string;
+    channelTitle?: string;
+    playlistTitle?: string;
+  };
+}
+
+// Downloaded video metadata
+export interface DownloadedVideo {
+  videoId: string;
+  title: string;
+  channelTitle?: string;
+  playlistTitle?: string;
+  filePath: string;
+  downloadedAt: string; // ISO date string
+  duration: number; // seconds
+  thumbnail: string;
+  sourceType: 'youtube_channel' | 'youtube_playlist';
+  sourceId: string;
 } 

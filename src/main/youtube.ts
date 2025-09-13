@@ -2,7 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { ipcMain } from 'electron';
 import { logVerbose } from '../shared/logging';
-import { YtDlpManager } from '../shared/ytDlpManager';
+import { YtDlpManager } from './ytDlpManager';
 
 const execAsync = promisify(exec);
 

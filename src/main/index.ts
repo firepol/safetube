@@ -5,13 +5,13 @@ import { Client } from 'node-ssdp'
 import { setupYouTubeHandlers } from './youtube'
 import { YouTubeAPI } from './youtube-api'
 import fs from 'fs'
-import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking'
-import { readTimeLimits, encodeFilePath } from '../shared/fileUtils'
+import { recordVideoWatching, getTimeTrackingState } from './timeTracking'
+import { readTimeLimits, encodeFilePath } from './fileUtils'
 
 // Load environment variables from .env file
 import dotenv from 'dotenv'
 import { logVerbose } from '../shared/logging'
-import { AppPaths } from '../shared/appPaths'
+import { AppPaths } from './appPaths'
 
 // Load .env file from multiple possible locations
 const possibleEnvPaths = [
@@ -695,7 +695,7 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
         };
         
         // Merge with watched data to populate resumeAt
-        const { mergeWatchedData } = await import('../shared/fileUtils');
+        const { mergeWatchedData } = await import('./fileUtils');
         const videosWithWatchedData = await mergeWatchedData([video]);
         const videoWithResume = videosWithWatchedData[0];
         
@@ -794,7 +794,7 @@ ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
 
 ipcMain.handle('get-watched-videos', async () => {
   try {
-    const { readWatchedVideos } = await import('../shared/fileUtils');
+    const { readWatchedVideos } = await import('./fileUtils');
     return await readWatchedVideos();
   } catch (error) {
     log.error('Error getting watched videos:', error);
@@ -832,8 +832,8 @@ ipcMain.handle('admin:authenticate', async (_, password: string) => {
 ipcMain.handle('admin:add-extra-time', async (_, minutes: number) => {
   try {
     // Import the function here to avoid circular dependencies
-    const { addExtraTimeToday } = await import('../shared/timeTracking');
-    await addExtraTimeToday(minutes);
+    const { addExtraTime } = await import('./timeTracking');
+    await addExtraTime(minutes);
     
     logVerbose('[Admin] Extra time added:', { minutes });
     return { success: true };
@@ -846,7 +846,7 @@ ipcMain.handle('admin:add-extra-time', async (_, minutes: number) => {
 ipcMain.handle('admin:get-time-extra', async () => {
   try {
     // Import the function here to avoid circular dependencies
-    const { readTimeExtra } = await import('../shared/fileUtils');
+    const { readTimeExtra } = await import('./fileUtils');
     return await readTimeExtra();
   } catch (error) {
     log.error('Error reading time extra:', error);
@@ -857,7 +857,7 @@ ipcMain.handle('admin:get-time-extra', async () => {
 ipcMain.handle('admin:write-time-limits', async (_, timeLimits: any) => {
   try {
     // Import the function here to avoid circular dependencies
-    const { writeTimeLimits } = await import('../shared/fileUtils');
+    const { writeTimeLimits } = await import('./fileUtils');
     await writeTimeLimits(timeLimits);
     
     logVerbose('[Admin] Time limits updated:', timeLimits);
@@ -871,8 +871,9 @@ ipcMain.handle('admin:write-time-limits', async (_, timeLimits: any) => {
 ipcMain.handle('admin:get-last-watched-video-with-source', async () => {
   try {
     // Import the function here to avoid circular dependencies
-    const { getLastWatchedVideoWithSource } = await import('../shared/timeTracking');
-    return await getLastWatchedVideoWithSource();
+    const { getWatchedVideosWithSource } = await import('./timeTracking');
+    const watchedVideos = await getWatchedVideosWithSource();
+    return watchedVideos[0] || null; // Return the first (most recent) watched video
   } catch (error) {
     log.error('Error getting last watched video with source:', error);
     throw error;
@@ -882,7 +883,7 @@ ipcMain.handle('admin:get-last-watched-video-with-source', async () => {
 // Video source management handlers
 ipcMain.handle('video-sources:get-all', async () => {
   try {
-    const { readVideoSources } = await import('../shared/fileUtils');
+    const { readVideoSources } = await import('./fileUtils');
     return await readVideoSources();
   } catch (error) {
     log.error('Error reading video sources:', error);
@@ -892,7 +893,7 @@ ipcMain.handle('video-sources:get-all', async () => {
 
 ipcMain.handle('video-sources:save-all', async (_, sources: any[]) => {
   try {
-    const { writeVideoSources } = await import('../shared/fileUtils');
+    const { writeVideoSources } = await import('./fileUtils');
     await writeVideoSources(sources);
     logVerbose('[Main] Video sources saved successfully');
     return { success: true };
@@ -1296,7 +1297,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
             // Read page size from pagination config once for both channel and playlist
             let pageSize = 50; // Default fallback
             try {
-              const { readPaginationConfig } = await import('../shared/fileUtils');
+              const { readPaginationConfig } = await import('./fileUtils');
               const paginationConfig = await readPaginationConfig();
               pageSize = paginationConfig.pageSize;
               logVerbose('[Main] Using page size from config for YouTube API:', pageSize);
@@ -1506,7 +1507,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     // Read page size from pagination config
     let pageSize = 50; // Default fallback
     try {
-      const { readPaginationConfig } = await import('../shared/fileUtils');
+      const { readPaginationConfig } = await import('./fileUtils');
       const paginationConfig = await readPaginationConfig();
       pageSize = paginationConfig.pageSize;
       logVerbose('[Main] Using page size from config:', pageSize);
@@ -1706,7 +1707,7 @@ ipcMain.handle('logging:get-verbose', async () => {
 // Handle setup status request
 ipcMain.handle('get-setup-status', async () => {
   try {
-    const { FirstRunSetup } = await import('../shared/firstRunSetup');
+    const { FirstRunSetup } = await import('./firstRunSetup');
     return await FirstRunSetup.getSetupStatus();
   } catch (error) {
     log.error('Error getting setup status:', error);
@@ -1892,6 +1893,55 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
     }
   }
 
+  // Add downloaded videos as a special source
+  try {
+    const { readDownloadedVideos } = await import('./fileUtils');
+    const downloadedVideos = await readDownloadedVideos();
+    
+    if (downloadedVideos.length > 0) {
+      // Group downloaded videos by source
+      const downloadedVideosBySource = new Map<string, any[]>();
+      
+      for (const downloadedVideo of downloadedVideos) {
+        const key = downloadedVideo.sourceId;
+        if (!downloadedVideosBySource.has(key)) {
+          downloadedVideosBySource.set(key, []);
+        }
+        downloadedVideosBySource.get(key)!.push(downloadedVideo);
+      }
+      
+      // Create a source entry for downloaded videos
+      videosBySource.push({
+        id: 'downloaded',
+        type: 'downloaded',
+        title: 'Downloaded Videos',
+        thumbnail: '', // Could add a download icon
+        videoCount: downloadedVideos.length,
+        videos: downloadedVideos.map(dv => ({
+          id: dv.videoId,
+          type: 'downloaded' as const,
+          title: dv.title,
+          thumbnail: dv.thumbnail,
+          duration: dv.duration,
+          url: `file://${dv.filePath}`,
+          sourceId: dv.sourceId,
+          sourceTitle: dv.channelTitle || dv.playlistTitle || 'Unknown Source',
+          sourceType: dv.sourceType,
+          sourceThumbnail: '',
+          downloadedAt: dv.downloadedAt,
+          filePath: dv.filePath
+        })),
+        paginationState: { currentPage: 1, totalPages: 1, totalVideos: downloadedVideos.length, pageSize: 50 },
+        downloadedVideosBySource: Object.fromEntries(downloadedVideosBySource)
+      });
+      
+      debug.push(`[Main] Added downloaded videos source with ${downloadedVideos.length} videos`);
+    }
+  } catch (err) {
+    log.error('[Main] ERROR loading downloaded videos:', err);
+    debug.push(`[Main] ERROR loading downloaded videos: ${err}`);
+  }
+
   return { videosBySource, debug };
 }
 
@@ -2024,7 +2074,7 @@ app.on('ready', async () => {
   // Run first-time setup if needed
   try {
     logVerbose('[Main] Running first-time setup...');
-    const { FirstRunSetup } = await import('../shared/firstRunSetup');
+    const { FirstRunSetup } = await import('./firstRunSetup');
     const setupResult = await FirstRunSetup.setupIfNeeded();
     
     if (setupResult.success) {
@@ -2065,6 +2115,111 @@ app.on('activate', () => {
     createWindow()
   }
 })
+
+// Download Management IPC Handlers
+ipcMain.handle('download:start', async (_, videoId: string, videoTitle: string, sourceInfo: any) => {
+  try {
+    logVerbose('[Main] download:start called with:', { videoId, videoTitle, sourceInfo });
+    const { DownloadManager } = await import('./downloadManager');
+    await DownloadManager.startDownload(videoId, videoTitle, sourceInfo);
+    return { success: true };
+  } catch (error) {
+    logVerbose('[Main] download:start error:', error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('download:get-status', async (_, videoId: string) => {
+  try {
+    logVerbose('[Main] download:get-status called with:', videoId);
+    const { DownloadManager } = await import('./downloadManager');
+    return await DownloadManager.getDownloadProgress(videoId);
+  } catch (error) {
+    logVerbose('[Main] download:get-status error:', error);
+    return null;
+  }
+});
+
+ipcMain.handle('download:cancel', async (_, videoId: string) => {
+  try {
+    logVerbose('[Main] download:cancel called with:', videoId);
+    const { DownloadManager } = await import('./downloadManager');
+    await DownloadManager.cancelDownload(videoId);
+    return { success: true };
+  } catch (error) {
+    logVerbose('[Main] download:cancel error:', error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('download:is-downloading', async (_, videoId: string) => {
+  try {
+    const { DownloadManager } = await import('./downloadManager');
+    return DownloadManager.isDownloading(videoId);
+  } catch (error) {
+    logVerbose('[Main] download:is-downloading error:', error);
+    return false;
+  }
+});
+
+// Main Settings IPC Handlers
+ipcMain.handle('main-settings:read', async () => {
+  try {
+    logVerbose('[Main] main-settings:read called');
+    const { readMainSettings } = await import('./fileUtils');
+    return await readMainSettings();
+  } catch (error) {
+    logVerbose('[Main] main-settings:read error:', error);
+    return {};
+  }
+});
+
+ipcMain.handle('main-settings:write', async (_, settings: any) => {
+  try {
+    logVerbose('[Main] main-settings:write called with:', settings);
+    const { writeMainSettings } = await import('./fileUtils');
+    await writeMainSettings(settings);
+    return { success: true };
+  } catch (error) {
+    logVerbose('[Main] main-settings:write error:', error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('main-settings:get-default-download-path', async () => {
+  try {
+    logVerbose('[Main] main-settings:get-default-download-path called');
+    const { getDefaultDownloadPath } = await import('./fileUtils');
+    return await getDefaultDownloadPath();
+  } catch (error) {
+    logVerbose('[Main] main-settings:get-default-download-path error:', error);
+    return '';
+  }
+});
+
+// Downloaded Videos IPC Handlers
+ipcMain.handle('downloaded-videos:get-all', async () => {
+  try {
+    logVerbose('[Main] downloaded-videos:get-all called');
+    const { readDownloadedVideos } = await import('./fileUtils');
+    return await readDownloadedVideos();
+  } catch (error) {
+    logVerbose('[Main] downloaded-videos:get-all error:', error);
+    return [];
+  }
+});
+
+ipcMain.handle('downloaded-videos:get-by-source', async (_, sourceId: string) => {
+  try {
+    logVerbose('[Main] downloaded-videos:get-by-source called with:', sourceId);
+    const { readDownloadedVideos } = await import('./fileUtils');
+    const allDownloaded = await readDownloadedVideos();
+    return allDownloaded.filter(video => video.sourceId === sourceId);
+  } catch (error) {
+    logVerbose('[Main] downloaded-videos:get-by-source error:', error);
+    return [];
+  }
+});
 
 // Log uncaught exceptions
 process.on('uncaughtException', (error) => {

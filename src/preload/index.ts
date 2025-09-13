@@ -81,6 +81,19 @@ contextBridge.exposeInMainWorld(
     // Logging methods
     log: (level: string, ...args: any[]) => ipcRenderer.invoke('logging:log', level, ...args),
     // Clear source cache
-    clearSourceCache: (sourceId: string) => ipcRenderer.invoke('clear-source-cache', sourceId)
+    clearSourceCache: (sourceId: string) => ipcRenderer.invoke('clear-source-cache', sourceId),
+    // Download management
+    startDownload: (videoId: string, videoTitle: string, sourceInfo: any) => 
+      ipcRenderer.invoke('download:start', videoId, videoTitle, sourceInfo),
+    getDownloadStatus: (videoId: string) => ipcRenderer.invoke('download:get-status', videoId),
+    cancelDownload: (videoId: string) => ipcRenderer.invoke('download:cancel', videoId),
+    isDownloading: (videoId: string) => ipcRenderer.invoke('download:is-downloading', videoId),
+    // Main settings
+    readMainSettings: () => ipcRenderer.invoke('main-settings:read'),
+    writeMainSettings: (settings: any) => ipcRenderer.invoke('main-settings:write', settings),
+    getDefaultDownloadPath: () => ipcRenderer.invoke('main-settings:get-default-download-path'),
+    // Downloaded videos
+    getDownloadedVideos: () => ipcRenderer.invoke('downloaded-videos:get-all'),
+    getDownloadedVideosBySource: (sourceId: string) => ipcRenderer.invoke('downloaded-videos:get-by-source', sourceId)
   }
 );

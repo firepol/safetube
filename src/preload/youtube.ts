@@ -1,9 +1,6 @@
 import { z } from 'zod';
 import { logVerbose } from './logging';
 import { VideoSource } from './types';
-import { YtDlpManager } from '../shared/ytDlpManager';
-import fs from 'fs';
-import path from 'path';
 
 // YouTube API response schemas
 const VideoSchema = z.object({
@@ -155,18 +152,8 @@ export interface AudioTrack {
 let API_KEY: string | null = null;
 const BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
-// Cache configuration
-const CACHE_DIR = path.join('.', '.cache');
+// Cache configuration - disabled in preload context
 const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes from config
-
-// Ensure cache directory exists
-if (!fs.existsSync(CACHE_DIR)) {
-  try {
-    fs.mkdirSync(CACHE_DIR, { recursive: true });
-  } catch (e) {
-    console.warn('[YouTubeAPI] Could not create cache directory:', e);
-  }
-}
 
 // Cache management functions
 function getCacheKey(endpoint: string, params: Record<string, string>): string {
@@ -174,10 +161,7 @@ function getCacheKey(endpoint: string, params: Record<string, string>): string {
   return `${endpoint}_${sortedParams}`;
 }
 
-function getCacheFilePath(cacheKey: string): string {
-  const safeKey = cacheKey.replace(/[^a-zA-Z0-9]/g, '_');
-  return path.join(CACHE_DIR, `youtube_api_${safeKey}.json`);
-}
+// Cache file operations disabled in preload context
 
 function isCacheValid(cacheData: any): boolean {
   if (!cacheData || !cacheData.timestamp) return false;
@@ -186,33 +170,12 @@ function isCacheValid(cacheData: any): boolean {
 }
 
 async function getCachedResult(cacheKey: string): Promise<any | null> {
-  try {
-    const cacheFile = getCacheFilePath(cacheKey);
-    if (fs.existsSync(cacheFile)) {
-      const cacheData = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
-      if (isCacheValid(cacheData)) {
-        logVerbose(`[YouTubeAPI] Using cached result for ${cacheKey}`);
-        return cacheData.data;
-      }
-    }
-  } catch (e) {
-    console.warn(`[YouTubeAPI] Error reading cache for ${cacheKey}:`, e);
-  }
+  // Cache disabled in preload context
   return null;
 }
 
 async function setCachedResult(cacheKey: string, data: any): Promise<void> {
-  try {
-    const cacheFile = getCacheFilePath(cacheKey);
-    const cacheData = {
-      timestamp: Date.now(),
-      data: data
-    };
-    fs.writeFileSync(cacheFile, JSON.stringify(cacheData, null, 2), 'utf-8');
-    logVerbose(`[YouTubeAPI] Cached result for ${cacheKey}`);
-  } catch (e) {
-    console.warn(`[YouTubeAPI] Error writing cache for ${cacheKey}:`, e);
-  }
+  // Cache disabled in preload context
 }
 
 export class YouTubeAPI {
@@ -221,55 +184,11 @@ export class YouTubeAPI {
   }
   
   static async clearExpiredCache(): Promise<void> {
-    try {
-      if (!fs.existsSync(CACHE_DIR)) return;
-      
-      const files = fs.readdirSync(CACHE_DIR);
-      const now = Date.now();
-      let clearedCount = 0;
-      
-      for (const file of files) {
-        if (file.startsWith('youtube_api_') && file.endsWith('.json')) {
-          try {
-            const filePath = path.join(CACHE_DIR, file);
-            const cacheData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-            
-            if (!isCacheValid(cacheData)) {
-              fs.unlinkSync(filePath);
-              clearedCount++;
-            }
-          } catch (e) {
-            // Remove corrupted cache files
-            try {
-              fs.unlinkSync(path.join(CACHE_DIR, file));
-              clearedCount++;
-            } catch (unlinkError) {
-              console.warn(`[YouTubeAPI] Could not remove corrupted cache file ${file}:`, unlinkError);
-            }
-          }
-        }
-      }
-      
-      if (clearedCount > 0) {
-        logVerbose(`[YouTubeAPI] Cleared ${clearedCount} expired cache files`);
-      }
-    } catch (e) {
-      console.warn('[YouTubeAPI] Error clearing expired cache:', e);
-    }
+    // Cache operations disabled in preload context
   }
   
   static async loadCacheConfig(): Promise<void> {
-    try {
-      const configPath = path.join('.', 'config', 'pagination.json');
-      if (fs.existsSync(configPath)) {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-        const cacheDurationMinutes = config.cacheDurationMinutes || 30;
-        const CACHE_DURATION_MS = cacheDurationMinutes * 60 * 1000;
-        logVerbose(`[YouTubeAPI] Cache duration set to ${cacheDurationMinutes} minutes`);
-      }
-    } catch (e) {
-      console.warn('[YouTubeAPI] Could not load cache config, using default 30 minutes:', e);
-    }
+    // Cache config loading disabled in preload context
   }
   
   private static async fetch<T>(endpoint: string, params: Record<string, string>): Promise<T> {
@@ -400,55 +319,7 @@ export class YouTubeAPI {
   }
 
   static async getVideoStreams(videoId: string): Promise<{ videoStreams: VideoStream[]; audioTracks: AudioTrack[] }> {
-    try {
-      // In test environment, use yt-dlp directly
-      if (typeof window === 'undefined') {
-        const { exec } = require('child_process');
-        const { promisify } = require('util');
-        const execAsync = promisify(exec);
-
-        // Ensure yt-dlp is available (auto-download on Windows if needed)
-        await YtDlpManager.ensureYtDlpAvailable();
-        
-        const ytDlpCommand = YtDlpManager.getYtDlpCommand();
-        const { stdout } = await execAsync(`${ytDlpCommand} -j "${videoId}"`);
-        const data = JSON.parse(stdout);
-
-        const videoStreams: VideoStream[] = data.formats
-          .filter((f: any) => f.vcodec !== 'none' && f.acodec === 'none')
-          .map((f: any) => ({
-            url: f.url,
-            quality: f.format_note || f.quality,
-            mimeType: f.ext,
-            width: f.width,
-            height: f.height,
-            fps: f.fps,
-            bitrate: f.tbr
-          }));
-
-        const audioTracks: AudioTrack[] = data.formats
-          .filter((f: any) => f.vcodec === 'none' && f.acodec !== 'none')
-          .map((f: any) => ({
-            url: f.url,
-            language: f.language || 'en',
-            mimeType: f.ext,
-            bitrate: f.tbr
-          }));
-
-        return { videoStreams, audioTracks };
-      }
-
-      throw new Error('getVideoStreams is not available in preload/browser context');
-    } catch (error) {
-      console.error('Error getting video streams:', error);
-      
-      // Check if it's a yt-dlp availability error
-      if (error instanceof Error && error.message.includes('yt-dlp is required')) {
-        throw new Error(`YouTube functionality requires yt-dlp. ${error.message}`);
-      }
-      
-      throw new Error('Failed to get video streams. Please check your internet connection and try again.');
-    }
+    throw new Error('getVideoStreams is not available in preload/browser context');
   }
 
   static async getPlaylistVideos(playlistId: string, maxResults?: number, pageToken?: string): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {

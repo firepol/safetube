@@ -518,6 +518,38 @@ Each feature PRD must include:
   - **All tests passing** - comprehensive test coverage for all navigation and source functionality
   - **Player integration complete** - works with both MediaSource and iframe players for all video types
 
+### 10. YouTube Video Download
+- **Status**: Not Started
+- **PRD**: [YouTube Video Download PRD](prds/10-youtube-video-download.md)
+- **Current Sprint**: N/A
+- **Blockers**: None
+- **Dependencies**: Project Setup, Play Video, Advanced Video Sources
+- **Progress**: 0%
+- **Last Updated**: 2025-09-13
+- **Completed Items**: None
+- **Remaining Items**:
+  - Create mainSettings.json configuration system
+  - Implement yt-dlp download functionality with background processing
+  - Add download button and progress UI to player page
+  - Create "Main Settings" tab in admin interface
+  - Implement file organization logic (channel/playlist folders)
+  - Add "Downloaded" source integration to video grid
+  - Implement duplicate download prevention
+  - Add comprehensive error handling and retry mechanisms
+  - Create download status tracking and persistence
+  - Add storage management and path validation
+  - Implement integration with existing playback system
+  - Add comprehensive testing suite
+- **Recent Changes**:
+  - 2025-09-13: **Created comprehensive PRD** - detailed specification for YouTube video download feature with yt-dlp integration, background processing, and organized file storage
+- **Notes**:
+  - Feature will use existing yt-dlp dependency for video downloading
+  - Downloaded videos will be organized by source (channel/playlist) in dedicated "Downloaded" folder
+  - Downloads will run in background with real-time progress tracking
+  - New "Main Settings" tab will be added to admin interface for download path configuration
+  - Downloaded videos will appear as separate source to keep YouTube sources clean
+  - File organization prioritizes channel folders over playlist folders when video belongs to both
+
 ## Status Legend
 
 - **Not Started**: Feature hasn't been implemented yet

@@ -40,6 +40,14 @@ export const PlayerPage: React.FC = () => {
   const [hasConvertedVideo, setHasConvertedVideo] = useState<boolean>(false);
   const [needsConversion, setNeedsConversion] = useState<boolean>(false);
   
+  // Download state
+  const [downloadStatus, setDownloadStatus] = useState<{
+    status: 'idle' | 'pending' | 'downloading' | 'completed' | 'failed';
+    progress?: number;
+    error?: string;
+  }>({ status: 'idle' });
+  const [isDownloading, setIsDownloading] = useState<boolean>(false);
+  
   // Time tracking state
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
@@ -136,6 +144,99 @@ export const PlayerPage: React.FC = () => {
     }
   };
 
+  // Download functions
+  const checkDownloadStatus = async (videoId: string) => {
+    try {
+      const status = await window.electron.getDownloadStatus(videoId);
+      if (status) {
+        setDownloadStatus({
+          status: status.status,
+          progress: status.progress,
+          error: status.error
+        });
+        setIsDownloading(status.status === 'downloading');
+      } else {
+        setDownloadStatus({ status: 'idle' });
+        setIsDownloading(false);
+      }
+    } catch (error) {
+      console.error('[PlayerPage] Error checking download status:', error);
+      setDownloadStatus({ status: 'idle' });
+      setIsDownloading(false);
+    }
+  };
+
+  const handleStartDownload = async () => {
+    if (!video?.id || !video?.title) return;
+    
+    try {
+      setDownloadStatus({ status: 'downloading', progress: 0 });
+      setIsDownloading(true);
+
+      // Get source info for folder organization
+      const sourceInfo = {
+        type: (video.sourceType || 'youtube_channel') as 'youtube_channel' | 'youtube_playlist',
+        sourceId: video.sourceId || 'unknown',
+        channelTitle: video.sourceTitle || 'Unknown Channel',
+        playlistTitle: video.sourceType === 'youtube_playlist' ? video.sourceTitle : undefined
+      };
+
+      const result = await window.electron.startDownload(video.id, video.title, sourceInfo);
+      
+      if (!result.success) {
+        setDownloadStatus({ 
+          status: 'failed', 
+          error: result.error || 'Download failed'
+        });
+        setIsDownloading(false);
+        return;
+      }
+      
+      // Start polling for status updates
+      const pollInterval = setInterval(async () => {
+        try {
+          const status = await window.electron.getDownloadStatus(video.id);
+          if (status) {
+            setDownloadStatus({
+              status: status.status,
+              progress: status.progress,
+              error: status.error
+            });
+            
+            if (status.status === 'completed' || status.status === 'failed') {
+              clearInterval(pollInterval);
+              setIsDownloading(false);
+            }
+          }
+        } catch (error) {
+          console.error('[PlayerPage] Error polling download status:', error);
+          clearInterval(pollInterval);
+          setIsDownloading(false);
+        }
+      }, 1000);
+      
+    } catch (error) {
+      console.error('[PlayerPage] Error starting download:', error);
+      setDownloadStatus({ 
+        status: 'failed', 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      setIsDownloading(false);
+    }
+  };
+
+  const handleCancelDownload = async () => {
+    if (!video?.id) return;
+    
+    try {
+      await window.electron.cancelDownload(video.id);
+      setDownloadStatus({ status: 'idle' });
+      setIsDownloading(false);
+    } catch (error) {
+      console.error('[PlayerPage] Error cancelling download:', error);
+    }
+  };
+
   // Load video data when component mounts or ID changes
   useEffect(() => {
     const loadVideoData = async () => {
@@ -170,7 +271,12 @@ export const PlayerPage: React.FC = () => {
     if (video?.url && video.type === 'local') {
       checkConversionStatus(video.url);
     }
-  }, [video?.url]);
+    
+    // Check download status for YouTube videos
+    if (video?.id && video.type === 'youtube') {
+      checkDownloadStatus(video.id);
+    }
+  }, [video?.url, video?.id]);
 
   useEffect(() => {
     if (video && video.resumeAt && videoRef.current) {
@@ -1110,6 +1216,107 @@ export const PlayerPage: React.FC = () => {
         }}
         onLoadedData={handleVideoLoaded}
       />
+      
+      {/* Downloaded video indicator */}
+      {video?.type === 'downloaded' && (
+        <div className="mt-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <div className="text-green-600 mr-2">📱</div>
+              <div>
+                <div className="text-green-800 font-medium">Offline Video</div>
+                <div className="text-sm text-green-600">
+                  This video is downloaded and available offline
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Download UI for YouTube videos */}
+      {video?.type === 'youtube' && (
+        <div className="mt-4">
+          {downloadStatus.status === 'downloading' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="text-blue-800 font-medium mb-2">Downloading Video...</div>
+              <div className="text-sm text-blue-600 mb-2">
+                Downloading video for offline viewing. This may take several minutes.
+              </div>
+              {downloadStatus.progress !== undefined && (
+                <div className="w-full bg-blue-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${downloadStatus.progress}%` }}
+                  ></div>
+                </div>
+              )}
+              <div className="text-xs text-blue-500 mt-2">
+                You can close this and come back later. The download will continue in the background.
+              </div>
+              <button
+                onClick={handleCancelDownload}
+                className="mt-3 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700 transition-colors"
+              >
+                Cancel Download
+              </button>
+            </div>
+          )}
+          
+          {downloadStatus.status === 'failed' && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <div className="text-red-800 font-medium mb-2">Download Failed</div>
+              <div className="text-sm text-red-600 mb-3">
+                {downloadStatus.error || 'An error occurred during download'}
+              </div>
+              <button
+                onClick={handleStartDownload}
+                className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors"
+              >
+                Try Download Again
+              </button>
+            </div>
+          )}
+          
+          {downloadStatus.status === 'completed' && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="text-green-800 font-medium mb-2">Video Downloaded Successfully!</div>
+              <div className="text-sm text-green-600 mb-3">
+                The video has been downloaded and is available offline.
+              </div>
+            </div>
+          )}
+          
+          {downloadStatus.status === 'idle' && (
+            <div className="text-center">
+              <button
+                onClick={handleStartDownload}
+                disabled={isDownloading}
+                className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              >
+                {isDownloading ? 'Downloading...' : 'Download for Offline'}
+              </button>
+              <div className="text-xs text-gray-500 mt-2">
+                Download this video to watch without internet connection
+              </div>
+            </div>
+          )}
+          
+          {downloadStatus.status === 'completed' && (
+            <div className="text-center">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center justify-center">
+                  <div className="text-green-600 mr-2">✓</div>
+                  <div className="text-green-800 font-medium">Video Downloaded</div>
+                </div>
+                <div className="text-sm text-green-600 mt-1">
+                  This video is available offline in your Downloaded folder
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </BasePlayerPage>
   );
 }; 
