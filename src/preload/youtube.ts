@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import { logVerbose } from './logging';
 import { VideoSource } from './types';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // YouTube API response schemas
 const VideoSchema = z.object({
@@ -170,12 +172,44 @@ function isCacheValid(cacheData: any): boolean {
 }
 
 async function getCachedResult(cacheKey: string): Promise<any | null> {
-  // Cache disabled in preload context
-  return null;
+  try {
+    const cacheDir = '.cache';
+    const cacheFile = path.join(cacheDir, `${cacheKey}.json`);
+    
+    if (!fs.existsSync(cacheFile)) {
+      return null;
+    }
+    
+    const cacheData = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
+    
+    if (!isCacheValid(cacheData)) {
+      return null;
+    }
+    
+    return cacheData.data;
+  } catch (error) {
+    console.warn('[YouTubeAPI] Error reading cache:', error);
+    return null;
+  }
 }
 
 async function setCachedResult(cacheKey: string, data: any): Promise<void> {
-  // Cache disabled in preload context
+  try {
+    const cacheDir = '.cache';
+    if (!fs.existsSync(cacheDir)) {
+      fs.mkdirSync(cacheDir, { recursive: true });
+    }
+    
+    const cacheFile = path.join(cacheDir, `${cacheKey}.json`);
+    const cacheData = {
+      data,
+      timestamp: Date.now()
+    };
+    
+    fs.writeFileSync(cacheFile, JSON.stringify(cacheData, null, 2));
+  } catch (error) {
+    console.warn('[YouTubeAPI] Error writing cache:', error);
+  }
 }
 
 export class YouTubeAPI {

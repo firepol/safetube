@@ -1861,17 +1861,35 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
     debug.push(`[Main] Processing source: ${source.id} (${source.type})`);
     
     if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
-      // For YouTube sources, we'll use the preload version since it has the YouTube API logic
+      // For YouTube sources, use the cached version directly in main process
       try {
-        const { loadAllVideosFromSources } = await import('../preload/loadAllVideosFromSources');
-        const result = await loadAllVideosFromSources(configPath, apiKey);
-        const youtubeSource = result.videosBySource.find((s: any) => s.id === source.id);
-        if (youtubeSource) {
-          videosBySource.push(youtubeSource);
-          debug.push(`[Main] Successfully loaded YouTube source: ${source.id} with ${youtubeSource.videos?.length || 0} videos`);
-        } else {
-          debug.push(`[Main] YouTube source ${source.id} not found in result`);
+        const { CachedYouTubeSources } = await import('../preload/cached-youtube-sources');
+        
+        // Set up YouTube API key in the preload context
+        if (apiKey) {
+          const { YouTubeAPI } = await import('../preload/youtube');
+          YouTubeAPI.setApiKey(apiKey);
         }
+        
+        const cache = await CachedYouTubeSources.loadSourceVideos(source);
+        
+        videosBySource.push({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          thumbnail: cache.thumbnail || '',
+          videoCount: cache.totalVideos || cache.videos.length,
+          videos: cache.videos,
+          paginationState: { 
+            currentPage: 1, 
+            totalPages: Math.ceil((cache.totalVideos || cache.videos.length) / 50), 
+            totalVideos: cache.totalVideos || cache.videos.length, 
+            pageSize: 50 
+          },
+          usingCachedData: cache.usingCachedData
+        });
+        
+        debug.push(`[Main] Successfully loaded YouTube source: ${source.id} with ${cache.videos?.length || 0} videos (cached: ${cache.usingCachedData})`);
       } catch (err) {
         log.error('[Main] ERROR loading YouTube source:', source.id, err);
         debug.push(`[Main] ERROR loading YouTube source: ${source.id} - ${err}`);
@@ -1882,9 +1900,9 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
           thumbnail: '',
           videoCount: 0,
           videos: [],
-          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }, // Will be updated with actual config
-          maxDepth: source.maxDepth, // Pass through maxDepth for navigation
-          path: source.path // Pass through path for navigation
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
+          maxDepth: source.maxDepth,
+          path: source.path
         });
       }
     } else if (source.type === 'local') {
