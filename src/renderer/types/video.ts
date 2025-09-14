@@ -1,3 +1,5 @@
+import { VideoLoadError } from '../../shared/videoErrorHandling';
+
 export type VideoType = 'youtube' | 'local' | 'dlna';
 
 export interface BaseVideo {
@@ -9,6 +11,10 @@ export interface BaseVideo {
   url: string;
   streamUrl?: string;
   resumeAt?: number;
+  // Enhanced error handling fields
+  isAvailable?: boolean;
+  isFallback?: boolean;
+  errorInfo?: VideoLoadError;
 }
 
 export interface YoutubeVideo extends BaseVideo {

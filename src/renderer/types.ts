@@ -1,3 +1,5 @@
+import { VideoLoadError } from '../shared/videoErrorHandling';
+
 export interface Video {
   id: string;
   type: 'local' | 'dlna' | 'youtube' | 'downloaded';
@@ -25,6 +27,10 @@ export interface Video {
   // For downloaded videos
   downloadedAt?: string;
   filePath?: string;
+  // Enhanced error handling fields
+  isAvailable?: boolean;
+  isFallback?: boolean;
+  errorInfo?: VideoLoadError;
 }
 
 export interface ElectronAPI {
@@ -167,6 +173,8 @@ export interface ElectronAPI {
   setYouTubeCache: (cacheKey: string, data: any) => Promise<boolean>;
   clearExpiredYouTubeCache: () => Promise<boolean>;
   loadYouTubeCacheConfig: () => Promise<boolean>;
+  // External URL opening
+  openExternal: (url: string) => Promise<void>;
 }
 declare global {
   interface Window {

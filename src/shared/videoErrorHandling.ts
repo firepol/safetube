@@ -27,7 +27,7 @@ export interface VideoLoadError {
 // Video load result interface
 export interface VideoLoadResult {
   success: boolean;
-  video?: any; // Will be typed more specifically when we have the video interface
+  video?: ProcessedVideo;
   error?: VideoLoadError;
   videoId: string;
 }

@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { VideoCardBase } from './VideoCardBase';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { MemoryRouter } from 'react-router-dom';
+import { VideoErrorType } from '../../../shared/videoErrorHandling';
 
 describe('VideoCardBase', () => {
   const mockVideo = {
@@ -67,5 +68,55 @@ describe('VideoCardBase', () => {
   it('formats duration correctly for videos over an hour', () => {
     renderWithProvider(<VideoCardBase {...mockVideo} duration={3665} />); // 1:01:05
     expect(screen.getByText('1:01:05')).toBeInTheDocument();
+  });
+
+  it('renders fallback video card with error indicator', () => {
+    const mockErrorInfo = {
+      type: VideoErrorType.DELETED,
+      message: 'Video has been deleted',
+      retryable: false,
+      videoId: 'test-video',
+      timestamp: '2023-01-01T00:00:00.000Z'
+    };
+
+    renderWithProvider(
+      <VideoCardBase
+        id="test-video"
+        thumbnail="/placeholder-thumbnail.svg"
+        title="Video test-video (Unavailable)"
+        duration={0}
+        type="youtube"
+        isAvailable={false}
+        isFallback={true}
+        errorInfo={mockErrorInfo}
+      />
+    );
+
+    expect(screen.getByText('Video test-video')).toBeInTheDocument();
+    expect(screen.getByText('Video Unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Open in browser')).toBeInTheDocument();
+    expect(screen.getByText('Click to open in YouTube')).toBeInTheDocument();
+    expect(screen.getByText('Deleted')).toBeInTheDocument();
+  });
+
+  it('renders fallback video card without error info', () => {
+    renderWithProvider(
+      <VideoCardBase
+        id="test-video"
+        thumbnail="/placeholder-thumbnail.svg"
+        title="Video test-video (Unavailable)"
+        duration={0}
+        type="youtube"
+        isAvailable={false}
+        isFallback={true}
+      />
+    );
+
+    expect(screen.getByText('Video test-video')).toBeInTheDocument();
+    expect(screen.getByText('Video Unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Open in browser')).toBeInTheDocument();
+    expect(screen.getByText('Click to open in YouTube')).toBeInTheDocument();
+    // Should not show error indicator when no errorInfo provided
+    expect(screen.queryByText('Deleted')).not.toBeInTheDocument();
   });
 }); 
