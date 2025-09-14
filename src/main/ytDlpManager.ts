@@ -53,11 +53,11 @@ export class YtDlpManager {
     try {
       const ytDlpPath = this.getYtDlpPath();
       await fs.promises.access(ytDlpPath, fs.constants.F_OK);
-      
+
       // Also check if it's executable
       const stats = await fs.promises.stat(ytDlpPath);
       this.isAvailable = stats.mode & parseInt('111', 8) ? true : false;
-      
+
       logVerbose(`[YtDlpManager] yt-dlp found at: ${ytDlpPath}`);
       return this.isAvailable;
     } catch (error) {
@@ -72,7 +72,7 @@ export class YtDlpManager {
    */
   static async ensureYtDlpAvailable(): Promise<void> {
     const isAvailable = await this.isYtDlpAvailable();
-    
+
     if (isAvailable) {
       return;
     }
@@ -90,7 +90,7 @@ export class YtDlpManager {
 
     try {
       let downloadUrl: string;
-      
+
       switch (platform) {
         case 'win32':
           downloadUrl = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe';
@@ -104,7 +104,7 @@ export class YtDlpManager {
       }
 
       logVerbose(`[YtDlpManager] Downloading yt-dlp from: ${downloadUrl}`);
-      
+
       // Use curl to download (available on most systems)
       const curlCommand = `curl -L -o "${ytDlpPath}" "${downloadUrl}"`;
       await execAsync(curlCommand);
@@ -116,10 +116,10 @@ export class YtDlpManager {
 
       // Verify download
       await fs.promises.access(ytDlpPath, fs.constants.F_OK);
-      
+
       this.isAvailable = true;
       logVerbose('[YtDlpManager] yt-dlp downloaded successfully');
-      
+
     } catch (error) {
       logVerbose(`[YtDlpManager] Failed to download yt-dlp: ${error}`);
       throw new Error(`Failed to download yt-dlp: ${error}`);
@@ -131,12 +131,12 @@ export class YtDlpManager {
    */
   static getYtDlpCommand(): string {
     const ytDlpPath = this.getYtDlpPath();
-    
+
     // On Windows, we might need to use the full path
     if (process.platform === 'win32') {
       return `"${ytDlpPath}"`;
     }
-    
+
     return ytDlpPath;
   }
 
