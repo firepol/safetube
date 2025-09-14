@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { logVerbose } from './logging';
 import { VideoSource } from './types';
-import { classifyVideoError, VideoErrorLogger, VideoErrorType } from '../shared/videoErrorHandling';
+import { classifyVideoError, VideoErrorLogger, VideoErrorType, createFallbackVideo } from '../shared/videoErrorHandling';
 
 // YouTube API response schemas
 const VideoSchema = z.object({
@@ -538,8 +538,12 @@ export class YouTubeAPI {
           isAvailable: true
         };
       } else {
-        // Failed video load - create fallback entry
-        return this.createFallbackVideo(videoId, result);
+        // Failed video load - create fallback entry using shared implementation
+        let errorInfo;
+        if (result.status === 'rejected') {
+          errorInfo = classifyVideoError(result.reason, videoId);
+        }
+        return createFallbackVideo(videoId, errorInfo);
       }
     });
 
@@ -575,27 +579,7 @@ export class YouTubeAPI {
     return { videos, totalResults, pageNumber };
   }
 
-  /**
-   * Creates a fallback video object for failed video loads
-   */
-  private static createFallbackVideo(videoId: string, result: PromiseSettledResult<any>): any {
-    return {
-      id: videoId,
-      type: 'youtube',
-      title: `Video ${videoId} (Unavailable)`,
-      thumbnail: '/placeholder-thumbnail.svg',
-      duration: 0,
-      url: `https://www.youtube.com/watch?v=${videoId}`,
-      publishedAt: '',
-      isAvailable: false,
-      isFallback: true,
-      errorInfo: {
-        type: 'unknown',
-        message: result.status === 'rejected' ? result.reason?.message || 'Failed to load video' : 'Video details unavailable',
-        retryable: true
-      }
-    };
-  }
+
 
   static async getVideosForPage(sourceId: string, pageNumber: number, pageSize?: number): Promise<{ videos: any[], totalResults: number }> {
     try {

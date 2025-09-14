@@ -23,7 +23,23 @@ vi.mock('../../shared/videoErrorHandling', () => ({
     failedLoads: 1,
     errorBreakdown: { unknown: 1 },
     loadTimeMs: 100
-  })
+  }),
+  createFallbackVideo: vi.fn().mockImplementation((videoId: string, errorInfo?: any) => ({
+    id: videoId,
+    type: 'youtube',
+    title: `Video ${videoId} (Unavailable)`,
+    thumbnail: '/placeholder-thumbnail.svg',
+    duration: 0,
+    url: `https://www.youtube.com/watch?v=${videoId}`,
+    publishedAt: '',
+    isAvailable: false,
+    isFallback: true,
+    errorInfo: errorInfo || {
+      type: 'unknown',
+      message: 'Test error',
+      retryable: true
+    }
+  }))
 }));
 
 // Mock fetch for API calls

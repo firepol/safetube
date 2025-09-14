@@ -1708,25 +1708,46 @@ async function fetchVideosForPage(source: any, pageNumber: number, pageSize: num
       videoIds = result.videoIds;
     }
     
-    // Fetch video details for the IDs
-    const videoDetailsPromises = videoIds.map(async (id) => {
-      try {
-        return await YouTubeAPI.getVideoDetails(id);
-      } catch (error) {
-        log.warn(`[Main] Failed to get details for video ${id}:`, error);
-        return null; // Return null for failed videos
+    // Enhanced batch processing with Promise.allSettled for graceful failure handling
+    const videoResults = await Promise.allSettled(
+      videoIds.map(async (videoId): Promise<{ success: boolean; video?: any; videoId: string; error?: any }> => {
+        const video = await YouTubeAPI.getVideoDetails(videoId);
+        if (video) {
+          return { success: true, video, videoId };
+        } else {
+          return { success: false, videoId };
+        }
+      })
+    );
+
+    // Import fallback video creation function
+    const { createFallbackVideo, classifyVideoError } = await import('../shared/videoErrorHandling');
+
+    // Process results and create fallback entries for failed videos
+    const videoDetails = videoResults.map((result, index) => {
+      const videoId = videoIds[index];
+      
+      if (result.status === 'fulfilled' && result.value.success && result.value.video) {
+        // Successful video load
+        return result.value.video;
+      } else {
+        // Failed video load - create fallback entry using shared implementation
+        let errorInfo;
+        if (result.status === 'rejected') {
+          errorInfo = classifyVideoError(result.reason, videoId);
+        }
+        return createFallbackVideo(videoId, errorInfo);
       }
     });
     
-    const videoDetailsResults = await Promise.all(videoDetailsPromises);
-    
-    // Filter out null results (failed videos) and transform to expected format
-    const videoDetails = videoDetailsResults.filter(v => v !== null);
+    // Calculate success/failure metrics
+    const successfulLoads = videoDetails.filter((v: any) => v.isAvailable !== false).length;
+    const failedLoads = videoDetails.length - successfulLoads;
     
     if (videoDetails.length === 0) {
-      log.warn(`[Main] No valid videos found for page ${pageNumber} of source ${source.id}`);
+      log.warn(`[Main] No videos found for page ${pageNumber} of source ${source.id}`);
     } else {
-      logVerbose(`[Main] Successfully fetched ${videoDetails.length} videos for page ${pageNumber} (${videoIds.length - videoDetails.length} failed)`);
+      logVerbose(`[Main] Fetched ${videoDetails.length} videos for page ${pageNumber} (${successfulLoads} available, ${failedLoads} fallback)`);
     }
     
     // Transform to the expected video format
