@@ -379,9 +379,134 @@ export class YouTubeAPI {
     return ChannelSchema.parse(data.items[0]);
   }
 
+  static async getPlaylistDetails(playlistId: string): Promise<{ id: string; title: string; thumbnail: string; totalItems: number }> {
+    const data = await YouTubeAPI.fetch<{ items: any[]; pageInfo: any }>('playlists', {
+      part: 'snippet,contentDetails',
+      id: playlistId,
+    });
+    if (!data.items?.[0]) {
+      throw new Error(`Playlist not found: ${playlistId}`);
+    }
+    const playlist = data.items[0];
+    return {
+      id: playlist.id,
+      title: playlist.snippet.title,
+      thumbnail: playlist.snippet.thumbnails?.high?.url || playlist.snippet.thumbnails?.medium?.url || '',
+      totalItems: playlist.contentDetails.itemCount || 0
+    };
+  }
+
+  static async getChannelBasicInfo(channelId: string): Promise<{ id: string; title: string; thumbnail: string; totalVideos: number }> {
+    const channel = await this.getChannelDetails(channelId);
+
+    // Get just the count of videos without fetching them all
+    const uploadsPlaylistId = channel.contentDetails.relatedPlaylists.uploads;
+    const firstPageResult = await this.getPlaylistVideos(uploadsPlaylistId, 1); // Get just 1 video to get total count
+
+    return {
+      id: channelId,
+      title: channel.snippet.title,
+      thumbnail: channel.snippet.thumbnails?.high?.url || channel.snippet.thumbnails?.medium?.url || '',
+      totalVideos: firstPageResult.totalResults
+    };
+  }
+
+  static async getPlaylistBasicInfo(playlistId: string): Promise<{ id: string; title: string; thumbnail: string; totalVideos: number }> {
+    const playlist = await this.getPlaylistDetails(playlistId);
+    return {
+      id: playlistId,
+      title: playlist.title,
+      thumbnail: playlist.thumbnail,
+      totalVideos: playlist.totalItems
+    };
+  }
+
   static async getChannelVideos(channelId: string, maxResults?: number, pageToken?: string): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {
     const channel = await this.getChannelDetails(channelId);
     return this.getPlaylistVideos(channel.contentDetails.relatedPlaylists.uploads, maxResults, pageToken);
+  }
+
+  static async getChannelVideosPage(channelId: string, pageNumber: number, pageSize: number = 50): Promise<{ videos: any[], totalResults: number, pageNumber: number }> {
+    try {
+      const channel = await this.getChannelDetails(channelId);
+      return this.getPlaylistVideosPage(channel.contentDetails.relatedPlaylists.uploads, pageNumber, pageSize);
+    } catch (error) {
+      console.error(`[YouTubeAPI] Error in getChannelVideosPage for channelId ${channelId}:`, error);
+      throw error;
+    }
+  }
+
+  static async getPlaylistVideosPage(playlistId: string, pageNumber: number, pageSize: number = 50): Promise<{ videos: any[], totalResults: number, pageNumber: number }> {
+    console.log(`[PAGINATION DEBUG] getPlaylistVideosPage called: playlistId=${playlistId}, pageNumber=${pageNumber}, pageSize=${pageSize}`);
+
+    // Calculate how many items to skip for the requested page
+    const itemsToSkip = (pageNumber - 1) * pageSize;
+    console.log(`[PAGINATION DEBUG] Need to skip ${itemsToSkip} items to reach page ${pageNumber}`);
+
+    let currentPageToken: string | undefined = undefined;
+    let totalResults = 0;
+    let allVideoIds: string[] = [];
+
+    // Fetch batches until we have enough videos for the requested page
+    while (allVideoIds.length <= itemsToSkip + pageSize) {
+      console.log(`[PAGINATION DEBUG] Fetching batch with token: ${currentPageToken || 'none'}, current total: ${allVideoIds.length}`);
+
+      const result = await this.getPlaylistVideos(playlistId, 50, currentPageToken);
+
+      if (result.videoIds.length === 0) {
+        console.log(`[PAGINATION DEBUG] No more videos available, stopping at ${allVideoIds.length} total videos`);
+        break;
+      }
+
+      totalResults = result.totalResults;
+      allVideoIds.push(...result.videoIds);
+      currentPageToken = result.nextPageToken;
+
+      console.log(`[PAGINATION DEBUG] Batch fetched: ${result.videoIds.length} videos, total now: ${allVideoIds.length}, nextToken: ${currentPageToken || 'none'}`);
+
+      // If no more pages available, break
+      if (!currentPageToken) {
+        console.log(`[PAGINATION DEBUG] No more pages available, stopping`);
+        break;
+      }
+
+      // If we have enough videos for the requested page, we can stop
+      if (allVideoIds.length > itemsToSkip + pageSize - 1) {
+        console.log(`[PAGINATION DEBUG] Have enough videos for page ${pageNumber}, stopping fetch`);
+        break;
+      }
+    }
+
+    // Extract the videos for the requested page
+    const startIndex = itemsToSkip;
+    const endIndex = Math.min(startIndex + pageSize, allVideoIds.length);
+    const pageVideoIds = allVideoIds.slice(startIndex, endIndex);
+
+    console.log(`[PAGINATION DEBUG] Extracting videos from index ${startIndex} to ${endIndex}, got ${pageVideoIds.length} video IDs`);
+
+    if (pageVideoIds.length === 0) {
+      console.log(`[PAGINATION DEBUG] No videos for page ${pageNumber}, returning empty result`);
+      return {
+        videos: [],
+        totalResults,
+        pageNumber
+      };
+    }
+
+    // Fetch video details
+    const videoDetails = await Promise.all(pageVideoIds.map(id => this.getVideoDetails(id)));
+    const videos = videoDetails.map(v => ({
+      id: v.id,
+      type: 'youtube',
+      title: v.snippet.title,
+      publishedAt: ((v.snippet as any).publishedAt || ''),
+      thumbnail: v.snippet.thumbnails.high.url,
+      duration: YouTubeAPI.parseDuration(v.contentDetails.duration),
+      url: `https://www.youtube.com/watch?v=${v.id}`
+    }));
+
+    console.log(`[PAGINATION DEBUG] getPlaylistVideosPage SUCCESS: returning ${videos.length} videos for page ${pageNumber}`);
+    return { videos, totalResults, pageNumber };
   }
 
   static async getVideosForPage(sourceId: string, pageNumber: number, pageSize?: number): Promise<{ videos: any[], totalResults: number }> {

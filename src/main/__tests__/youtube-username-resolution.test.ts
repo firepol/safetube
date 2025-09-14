@@ -1,17 +1,32 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { YouTubeAPI } from '../youtube-api';
 import { logVerbose } from '../../shared/logging';
+import { readMainSettings } from '../../shared/fileUtils';
 
 // This test requires a real YouTube API key to work
-// Make sure VITE_YOUTUBE_API_KEY is set in your .env file
+// Make sure the API key is configured in mainSettings.json
 describe('YouTube Username Resolution', () => {
   let youtubeAPI: YouTubeAPI;
-  
-  beforeAll(() => {
-    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
-    if (!apiKey) {
-      throw new Error('YouTube API key not found. Please set VITE_YOUTUBE_API_KEY in your .env file');
+
+  beforeAll(async () => {
+    // Try mainSettings.json first (new system)
+    let apiKey = '';
+    try {
+      const mainSettings = await readMainSettings();
+      apiKey = mainSettings.youtubeApiKey || '';
+    } catch (error) {
+      console.warn('Could not read mainSettings.json, trying environment variables as fallback:', error);
     }
+
+    // Fallback to environment variables if mainSettings.json is not available
+    if (!apiKey) {
+      apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || '';
+    }
+
+    if (!apiKey) {
+      throw new Error('YouTube API key not found for testing. Please configure it in mainSettings.json (via Main Settings tab) or set VITE_YOUTUBE_API_KEY environment variable for testing.');
+    }
+
     youtubeAPI = new YouTubeAPI(apiKey);
   });
 

@@ -84,11 +84,21 @@ export const HistoryPage: React.FC = () => {
               });
             } else {
               // If video data is not available, create a fallback entry
+              // Try to determine video type based on video ID format
+              let videoType: 'youtube' | 'local' | 'dlna' = 'local';
+              if (watchedVideo.videoId.length === 11) {
+                // YouTube video IDs are typically 11 characters
+                videoType = 'youtube';
+              } else if (watchedVideo.videoId.includes('/') || watchedVideo.videoId.startsWith('_')) {
+                // Local video paths contain '/' or start with '_'
+                videoType = 'local';
+              }
+
               videosWithDetails.push({
                 id: watchedVideo.videoId,
                 title: `Video (${watchedVideo.videoId})`,
                 thumbnail: '',
-                type: 'local', // Default type
+                type: videoType, // Detected type based on ID format
                 duration: watchedVideo.duration || 0,
                 sourceId: 'unknown',
                 sourceTitle: 'Unknown Source',
@@ -98,11 +108,21 @@ export const HistoryPage: React.FC = () => {
           } catch (error) {
             logVerbose('[HistoryPage] Error loading video data for:', watchedVideo.videoId, error);
             // Create a fallback entry for videos that can't be loaded
+            // Try to determine video type based on video ID format
+            let videoType: 'youtube' | 'local' | 'dlna' = 'local';
+            if (watchedVideo.videoId.length === 11) {
+              // YouTube video IDs are typically 11 characters
+              videoType = 'youtube';
+            } else if (watchedVideo.videoId.includes('/') || watchedVideo.videoId.startsWith('_')) {
+              // Local video paths contain '/' or start with '_'
+              videoType = 'local';
+            }
+
             videosWithDetails.push({
               id: watchedVideo.videoId,
               title: `Video (${watchedVideo.videoId})`,
               thumbnail: '',
-              type: 'local', // Default type
+              type: videoType, // Detected type based on ID format
               duration: watchedVideo.duration || 0,
               sourceId: 'unknown',
               sourceTitle: 'Unknown Source',

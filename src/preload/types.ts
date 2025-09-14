@@ -46,6 +46,7 @@ export interface YouTubeSourceCache {
   }>;
   totalVideos?: number; // Total videos in the channel/playlist
   thumbnail?: string; // Thumbnail for the source (from first video)
+  title?: string; // Title for the source (from channel/playlist details)
   usingCachedData?: boolean; // Flag indicating if we're using cached data due to API failure
 }
 

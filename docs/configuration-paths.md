@@ -101,9 +101,16 @@ copy "C:\path\to\safetube\.env" "%APPDATA%\SafeTube\"
 ## Environment Variables
 
 The `.env` file should contain:
-- `VITE_YOUTUBE_API_KEY`: Your YouTube API key
+- `VITE_YOUTUBE_API_KEY`: YouTube API key (legacy fallback - use Main Settings tab instead)
 - `ADMIN_PASSWORD`: Admin access password
 - `ELECTRON_LOG_VERBOSE`: Set to `true` for verbose logging
+
+**YouTube API Key Priority**:
+1. **Main Settings tab** (Admin → Main Settings) → `mainSettings.json`
+2. **Environment variable** → `VITE_YOUTUBE_API_KEY` in `.env` file
+3. **Error message** → Guides user to proper configuration
+
+**Recommendation**: Always use the Main Settings tab for YouTube API key configuration. The environment variable is only for development/testing fallback.
 
 ## Automatic Directory Creation
 

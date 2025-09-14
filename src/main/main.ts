@@ -263,10 +263,20 @@ ipcMain.handle('get-env-var', async (_, varName: string) => {
 ipcMain.handle('load-videos-from-sources', async () => {
   try {
     console.log('[Main] load-videos-from-sources handler called (development)');
-    
+
+    // Read API key from mainSettings.json
+    let apiKey = '';
+    try {
+      const { readMainSettings } = await import('../shared/fileUtils');
+      const mainSettings = await readMainSettings();
+      apiKey = mainSettings.youtubeApiKey || '';
+      console.log('[Main] API key loaded from mainSettings.json:', apiKey ? '***configured***' : 'NOT configured');
+    } catch (error) {
+      console.warn('[Main] Could not read mainSettings for development video loading:', error);
+    }
+
     // Import and use the main process version that has the encoded IDs
     const { loadAllVideosFromSourcesMain } = await import('../main/index');
-    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
     const result = await loadAllVideosFromSourcesMain(AppPaths.getConfigPath('videoSources.json'), apiKey);
     
     console.log('[Main] Videos loaded in development:', { 
@@ -377,8 +387,19 @@ app.whenReady().then(async () => {
   // Initialize video sources on startup
   try {
     console.log('[Main] Initializing video sources...');
+
+    // Read API key from mainSettings.json
+    let apiKey = '';
+    try {
+      const { readMainSettings } = await import('../shared/fileUtils');
+      const mainSettings = await readMainSettings();
+      apiKey = mainSettings.youtubeApiKey || '';
+      console.log('[Main] API key loaded from mainSettings.json for startup:', apiKey ? '***configured***' : 'NOT configured');
+    } catch (error) {
+      console.warn('[Main] Could not read mainSettings for startup video loading:', error);
+    }
+
     const { loadAllVideosFromSourcesMain } = await import('../main/index');
-    const apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY;
     const result = await loadAllVideosFromSourcesMain(AppPaths.getConfigPath('videoSources.json'), apiKey);
     console.log('[Main] Videos loaded on startup:', { totalVideos: result.videosBySource?.length || 0, sources: result.videosBySource?.length || 0 });
     

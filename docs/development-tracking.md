@@ -559,6 +559,38 @@ Each feature PRD must include:
   - Proper Electron architecture separation ensures build compatibility
   - All Node.js-dependent code moved to main process, renderer uses IPC for communication
 
+### 11. Favorites
+- **Status**: Not Started
+- **PRD**: [Favorites PRD](prds/11-favorites.md)
+- **Current Sprint**: Sprint 4
+- **Blockers**: None
+- **Dependencies**: Project Setup, Kid Screen, Video History, Advanced Video Sources
+- **Progress**: 0%
+- **Last Updated**: 2025-09-14
+- **Completed Items**: None
+- **Remaining Items**:
+  - Create FavoriteVideo TypeScript interface and data management functions
+  - Implement favorites.json configuration file with complete video metadata storage
+  - Add star button to VideoCardBase component with dynamic add/remove states
+  - Create Favorites source integration with existing video grid system
+  - Implement Favorites page component with pagination support
+  - Add cross-source compatibility for YouTube, local, and DLNA videos
+  - Implement duplicate prevention and data validation
+  - Create comprehensive test suite for favorites functionality
+  - Integrate with existing video playback and history systems
+- **Recent Changes**:
+  - 2025-09-14: **Created comprehensive PRD for Favorites feature**
+  - 2025-09-14: **Added feature to development tracking with full requirements**
+- **Notes**:
+  - Feature allows kids to bookmark videos from any source with star buttons
+  - Favorites stored in dedicated JSON file with complete metadata (no fetching required)
+  - Appears as separate source like History and Downloaded
+  - Star button shows "Add to Favorites ⭐" for non-favorited videos
+  - Remove button shows "Remove from ⭐" with danger styling for favorited videos
+  - Supports cross-source favoriting (YouTube channels, playlists, local files, DLNA)
+  - Integrates with existing video grid, routing, and playback infrastructure
+  - Maintains data persistence and backup following existing JSON configuration patterns
+
 ## Status Legend
 
 - **Not Started**: Feature hasn't been implemented yet

@@ -108,7 +108,7 @@ export const SourcePage: React.FC = () => {
           const pageResult = await window.electron.getPaginatedVideos(sourceId, currentPage);
           setCurrentPageVideos(pageResult.videos || []);
           setPaginationState(pageResult.paginationState || null);
-          
+
           // Debug logging
           logVerbose('[SourcePage] Pagination result:', pageResult);
           logVerbose('[SourcePage] Pagination state:', pageResult.paginationState);
@@ -150,11 +150,11 @@ export const SourcePage: React.FC = () => {
 
   const handleVideoClick = (video: any, currentFolderPath?: string) => {
     if (video.type === 'youtube') {
-      navigate(`/player/${video.id}`, { 
-        state: { 
+      navigate(`/player/${video.id}`, {
+        state: {
           videoTitle: video.title,
           returnTo: `/source/${sourceId}${currentPage > 1 ? `/page/${currentPage}` : ''}`
-        } 
+        }
       });
     } else if (video.type === 'local') {
       // For local videos, include folder context in return navigation
@@ -180,15 +180,44 @@ export const SourcePage: React.FC = () => {
   const handleResetClick = async () => {
     if (!sourceId || !window.electron?.clearSourceCache) {
       console.error('Reset functionality not available');
+      alert('Reset functionality not available');
       return;
     }
 
     try {
-      await window.electron.clearSourceCache(sourceId);
-      // Reload the page to refresh the data
-      window.location.reload();
+      logVerbose('[SourcePage] Clearing cache for source:', sourceId);
+      const result = await window.electron.clearSourceCache(sourceId);
+
+      logVerbose('[SourcePage] Cache clear result:', result);
+
+      if (result.success) {
+        // Success - show success message and navigate to page 1
+        alert(`✅ ${result.message || 'Cache cleared successfully'}`);
+        // Navigate to page 1 to trigger fresh data load
+        if (currentPage === 1) {
+          // If we're already on page 1, force a reload
+          window.location.reload();
+        } else {
+          // Navigate to page 1
+          navigate(`/source/${sourceId}`);
+        }
+      } else {
+        // Error occurred - show appropriate error message
+        if (result.error === 'rate_limit') {
+          // Rate limit error - show specific message
+          alert(`⚠️ ${result.message}\n\nThe existing cache will continue to be used until the API is available again.`);
+        } else if (result.error === 'api_error') {
+          // General API error - show error message
+          alert(`❌ ${result.message}\n\nPlease check your internet connection or API configuration.`);
+        } else {
+          // General error
+          alert(`❌ ${result.message || 'Failed to clear cache'}`);
+        }
+      }
     } catch (error) {
       console.error('Error clearing cache:', error);
+      logVerbose('[SourcePage] Error clearing cache:', error);
+      alert(`❌ Failed to clear cache: ${error instanceof Error ? error.message : String(error)}`);
     }
   };
 

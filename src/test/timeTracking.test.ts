@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 // Mock the fileUtils module at the top level
-vi.mock('../shared/fileUtils', () => ({
+vi.mock('../main/fileUtils', () => ({
   readTimeLimits: vi.fn(),
   readUsageLog: vi.fn(),
   writeUsageLog: vi.fn(),
@@ -23,7 +23,7 @@ describe('Time Tracking', () => {
     vi.resetAllMocks();
     
     // Import the mocked modules
-    const fileUtils = await import('../shared/fileUtils');
+    const fileUtils = await import('../main/fileUtils');
     mockReadTimeLimits = vi.mocked(fileUtils.readTimeLimits);
     mockReadUsageLog = vi.mocked(fileUtils.readUsageLog);
     mockWriteUsageLog = vi.mocked(fileUtils.writeUsageLog);
@@ -49,7 +49,7 @@ describe('Time Tracking', () => {
     mockWriteWatchedVideos.mockResolvedValue();
     
     // Import the module under test
-    timeTracking = await import('../shared/timeTracking');
+    timeTracking = await import('../main/timeTracking');
   });
 
   afterEach(() => {

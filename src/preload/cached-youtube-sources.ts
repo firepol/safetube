@@ -11,6 +11,111 @@ function getCacheFilePath(sourceId: string) {
 }
 
 export class CachedYouTubeSources {
+  static async loadSourceBasicInfo(source: VideoSource): Promise<YouTubeSourceCache> {
+    if (source.type !== 'youtube_channel' && source.type !== 'youtube_playlist') {
+      throw new Error('Invalid source type for YouTube cache');
+    }
+    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+    const cacheFile = getCacheFilePath(source.id);
+    let cache: YouTubeSourceCache | null = null;
+    if (fs.existsSync(cacheFile)) {
+      try {
+        cache = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
+      } catch (e) {
+        cache = null;
+      }
+    }
+    const now = new Date().toISOString();
+    let totalVideos = 0;
+    let sourceThumbnail = '';
+    let sourceTitle = source.title;
+    let usingCachedData = false;
+
+    // Check if cache is still valid
+    if (cache && cache.lastFetched) {
+      const cacheAge = Date.now() - new Date(cache.lastFetched).getTime();
+
+      // Load cache duration from pagination config
+      let cacheDurationMs = 90 * 60 * 1000; // 90 minutes default
+      try {
+        const configPath = 'config/pagination.json';
+        if (fs.existsSync(configPath)) {
+          const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+          cacheDurationMs = (config.cacheDurationMinutes || 90) * 60 * 1000;
+        }
+      } catch (error) {
+        console.warn('[CachedYouTubeSources] Failed to load cache duration config:', error);
+      }
+
+      if (cacheAge < cacheDurationMs) {
+        logVerbose(`[CachedYouTubeSources] Using valid cache for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes)`);
+        return cache;
+      } else {
+        logVerbose(`[CachedYouTubeSources] Cache expired for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes), fetching fresh basic info`);
+      }
+    }
+
+    try {
+      if (source.type === 'youtube_channel') {
+        const channelId = extractChannelId(source.url);
+        let actualChannelId = channelId;
+
+        // If it's a username (starts with @), resolve it to channel ID first
+        if (channelId.startsWith('@')) {
+          try {
+            const channelDetails = await YouTubeAPI.searchChannelByUsername(channelId);
+            actualChannelId = channelDetails.channelId;
+          } catch (error) {
+            console.warn(`[CachedYouTubeSources] Could not resolve username ${channelId} to channel ID:`, error);
+            actualChannelId = channelId;
+          }
+        }
+
+        const basicInfo = await YouTubeAPI.getChannelBasicInfo(actualChannelId);
+        totalVideos = basicInfo.totalVideos;
+        sourceThumbnail = basicInfo.thumbnail;
+        sourceTitle = basicInfo.title;
+
+      } else if (source.type === 'youtube_playlist') {
+        const playlistId = extractPlaylistId(source.url);
+        const basicInfo = await YouTubeAPI.getPlaylistBasicInfo(playlistId);
+        totalVideos = basicInfo.totalVideos;
+        sourceThumbnail = basicInfo.thumbnail;
+        sourceTitle = basicInfo.title;
+      }
+    } catch (error) {
+      console.warn(`[CachedYouTubeSources] YouTube API failed for source ${source.id}:`, error);
+
+      // Always use cached data as fallback when API fails
+      if (cache) {
+        logVerbose(`[CachedYouTubeSources] Using cached data as fallback for source ${source.id} (API failed)`);
+        return { ...cache, usingCachedData: true };
+      } else {
+        // No cache available, create minimal fallback
+        logVerbose(`[CachedYouTubeSources] Creating minimal fallback for source ${source.id} (no cache available)`);
+        totalVideos = 0;
+        sourceThumbnail = '';
+        sourceTitle = source.title;
+        usingCachedData = true;
+      }
+    }
+
+    const updatedCache: YouTubeSourceCache = {
+      sourceId: source.id,
+      type: source.type,
+      lastFetched: now,
+      lastVideoDate: cache?.lastVideoDate || '',
+      videos: cache?.videos || [], // Keep existing videos if any, don't fetch new ones for basic info
+      totalVideos,
+      thumbnail: sourceThumbnail,
+      title: sourceTitle,
+      usingCachedData
+    };
+
+    fs.writeFileSync(cacheFile, JSON.stringify(updatedCache, null, 2), 'utf-8');
+    return updatedCache;
+  }
+
   static async loadSourceVideos(source: VideoSource): Promise<YouTubeSourceCache> {
     if (source.type !== 'youtube_channel' && source.type !== 'youtube_playlist') {
       throw new Error('Invalid source type for YouTube cache');
@@ -57,7 +162,7 @@ export class CachedYouTubeSources {
           videos: cache.videos,
           totalVideos: cache.totalVideos,
           thumbnail: cache.thumbnail,
-          usingCachedData: true
+          usingCachedData: false  // Valid cache hit, not rate-limited fallback
         };
       } else {
         logVerbose(`[CachedYouTubeSources] Cache expired for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes), fetching fresh data`);
@@ -125,7 +230,7 @@ export class CachedYouTubeSources {
       videos,
       totalVideos,
       thumbnail: sourceThumbnail,
-      usingCachedData // Add flag to indicate if we're using cached data
+      usingCachedData // This flag indicates if we're using cached data as fallback (API failed)
     };
     fs.writeFileSync(cacheFile, JSON.stringify(updatedCache, null, 2), 'utf-8');
     return updatedCache;

@@ -82,7 +82,12 @@ export interface ElectronAPI {
   // Logging methods
   log: (level: string, ...args: any[]) => Promise<void>;
   // Clear source cache
-  clearSourceCache: (sourceId: string) => Promise<{ success: boolean }>;
+  clearSourceCache: (sourceId: string) => Promise<{
+    success: boolean;
+    message?: string;
+    error?: string;
+    keepCache?: boolean;
+  }>;
   // Video codec detection and conversion
   getVideoCodecInfo: (filePath: string) => Promise<{
     videoCodec: string;

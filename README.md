@@ -67,12 +67,22 @@ scoop install ffmpeg
 2. Navigate to the admin area (Parent Access button)
 3. Edit the configuration files in your user data directory:
 
-#### Environment Configuration (`.env` file)
+#### YouTube API Configuration
+
+**Primary Method (Recommended)**: Use the Main Settings tab in the admin interface to configure your YouTube API key.
+1. Run SafeTube and go to Admin area (Parent Access button)
+2. Click on "Main Settings" tab
+3. Enter your YouTube API key and save
+4. The key is securely stored in `mainSettings.json`
+
+**Legacy Method**: Environment Configuration (`.env` file) - *for development/testing only*
 **Location**: `%APPDATA%\SafeTube\.env` (e.g., `C:\Users\YourName\AppData\Roaming\SafeTube\.env`)
 ```bash
-# Add your YouTube API key
+# Legacy fallback - only used if Main Settings is not configured
 VITE_YOUTUBE_API_KEY=your_youtube_api_key_here
 ```
+
+**Priority**: Main Settings tab → Environment variable → Error message
 
 #### Video Sources (`config/videoSources.json`)
 **Location**: `%APPDATA%\SafeTube\config\videoSources.json` (e.g., `C:\Users\YourName\AppData\Roaming\SafeTube\config\videoSources.json`)
@@ -163,11 +173,20 @@ yarn install
 cp .env.example .env
 ```
 
-4. Configure your environment variables:
+4. Configure your YouTube API key:
+
+**Option A (Recommended)**: Configure via Main Settings tab in the admin interface:
+1. Run `yarn electron:dev`
+2. Go to Admin area → Main Settings tab
+3. Enter your YouTube API key and save
+
+**Option B (Development Only)**: Use environment variables:
 ```bash
-# Add your YouTube API key (optional)
+# Legacy fallback for development/testing
 VITE_YOUTUBE_API_KEY=your_youtube_api_key_here
 ```
+
+**Priority**: Main Settings (mainSettings.json) → Environment variable → Error
 
 ### Development Commands
 

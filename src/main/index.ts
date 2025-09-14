@@ -659,10 +659,13 @@ ipcMain.handle('get-player-config', async () => {
 ipcMain.handle('get-video-data', async (_, videoId: string) => {
   try {
     logVerbose('[Main] Loading video data for:', videoId);
-    
-    // Check if this is a local video (encoded file path)
-    const { isEncodedFilePath, decodeFilePath } = await import('../shared/fileUtils');
-    if (isEncodedFilePath(videoId)) {
+
+    // First check if this is a YouTube video ID (11 chars, alphanumeric + dash/underscore)
+    const isYouTubeId = /^[a-zA-Z0-9_-]{11}$/.test(videoId);
+    if (!isYouTubeId) {
+      // Check if this is a local video (encoded file path)
+      const { isEncodedFilePath, decodeFilePath } = await import('../shared/fileUtils');
+      if (isEncodedFilePath(videoId)) {
       try {
         const filePath = decodeFilePath(videoId);
         logVerbose('[Main] Decoded local video path:', filePath);
@@ -710,9 +713,10 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
         log.error('[Main] Error handling local video:', error);
         return null; // Return null instead of throwing error for missing files
       }
+      }
     }
-    
-    // For non-local videos, use the existing logic
+
+    // For non-local videos (including YouTube), use the existing logic
     if (!global.currentVideos || global.currentVideos.length === 0) {
       log.error('[Main] No videos loaded from source system. Video sources may not be initialized.');
       throw new Error('Video sources not initialized. Please restart the app.');
@@ -727,7 +731,20 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
     const video = global.currentVideos.find((v: any) => v.id === videoId);
     if (video) {
       logVerbose('[Main] Video found in source system:', { id: video.id, type: video.type, title: video.title });
-      return video;
+
+      // Merge with watched data to populate resumeAt for all video types
+      const { mergeWatchedData } = await import('./fileUtils');
+      const videosWithWatchedData = await mergeWatchedData([video]);
+      const videoWithResume = videosWithWatchedData[0];
+
+      logVerbose('[Main] Merged video with watched data:', {
+        id: videoWithResume.id,
+        type: videoWithResume.type,
+        title: videoWithResume.title,
+        resumeAt: videoWithResume.resumeAt
+      });
+
+      return videoWithResume;
     } else {
       // Check if this might be a raw filename that needs to be matched by file path
       // This handles cases where old watched data contains raw filenames instead of encoded IDs
@@ -749,7 +766,20 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
         
         if (videoByPath) {
           logVerbose('[Main] Found video by path matching:', { id: videoByPath.id, url: videoByPath.url, title: videoByPath.title });
-          return videoByPath;
+
+          // Merge with watched data to populate resumeAt for path-matched videos
+          const { mergeWatchedData } = await import('./fileUtils');
+          const videosWithWatchedData = await mergeWatchedData([videoByPath]);
+          const videoWithResume = videosWithWatchedData[0];
+
+          logVerbose('[Main] Merged path-matched video with watched data:', {
+            id: videoWithResume.id,
+            type: videoWithResume.type,
+            title: videoWithResume.title,
+            resumeAt: videoWithResume.resumeAt
+          });
+
+          return videoWithResume;
         }
       }
       
@@ -1449,9 +1479,9 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
 // Handle getting paginated videos from a specific source
 ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumber: number) => {
   try {
+    console.log(`[PAGINATION] get-paginated-videos handler called: sourceId=${sourceId}, pageNumber=${pageNumber}`);
     logVerbose('[Main] get-paginated-videos handler called:', { sourceId, pageNumber });
-    
-    // Load fresh source data to check if this is a local source
+
     // Read API key from mainSettings.json
     let apiKey = '';
     try {
@@ -1461,96 +1491,31 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       logVerbose('[Main] API key loaded for pagination:', apiKey ? '***configured***' : 'NOT configured');
     } catch (error) {
       log.warn('[Main] Could not read mainSettings for pagination:', error);
-      apiKey = '';
     }
-    
-    logVerbose('[Main] Calling loadAllVideosFromSourcesMain with:', { configPath: AppPaths.getConfigPath('videoSources.json'), apiKey: apiKey ? '***configured***' : 'NOT configured' });
-    
-    const result = await loadAllVideosFromSourcesMain(AppPaths.getConfigPath('videoSources.json'), apiKey);
-    const { videosBySource } = result;
-    
-    logVerbose('[Main] loadAllVideosFromSourcesMain returned:', { 
-      videosBySourceCount: videosBySource?.length || 0,
-      debug: result.debug?.slice(0, 5) // Show first 5 debug messages
-    });
-    logVerbose('[Main] Available sources in loadAllVideosFromSourcesMain result:', videosBySource?.map(s => ({ id: s.id, type: s.type, title: s.title })) || []);
-    logVerbose('[Main] Looking for sourceId:', sourceId);
-    
-    logVerbose('[Main] Searching for source with ID:', sourceId, 'type:', typeof sourceId);
-    logVerbose('[Main] Available sources details:', videosBySource.map(s => ({ id: s.id, idType: typeof s.id, title: s.title })));
-    
-    // Try direct lookup instead of find
-    let source = null;
-    if (videosBySource && Array.isArray(videosBySource)) {
-      for (let i = 0; i < videosBySource.length; i++) {
-        const s = videosBySource[i];
-        if (s && s.id === sourceId) {
-          source = s;
-          break;
-        }
-      }
+
+    // Read source configuration directly (don't load all videos)
+    let sources = [];
+    try {
+      const sourcesPath = AppPaths.getConfigPath('videoSources.json');
+      logVerbose('[Main] Reading source config from:', sourcesPath);
+      const sourcesData = fs.readFileSync(sourcesPath, 'utf-8');
+      sources = JSON.parse(sourcesData);
+      logVerbose('[Main] Loaded source configs:', sources.length);
+    } catch (error) {
+      log.error('[Main] Error reading videoSources.json:', error);
+      throw new Error('Failed to read video sources configuration');
     }
-    
-    if (!source) {
-      log.error('[Main] Source not found. Looking for:', sourceId);
-      log.error('[Main] Available source IDs:', videosBySource?.map(s => s?.id) || []);
-      throw new Error('Source not found in source data');
-    }
-    
-    // For local sources, return empty result since they use folder navigation instead of pagination
-    if (source.type === 'local') {
-      logVerbose('[Main] Local source detected, returning empty pagination result (uses folder navigation)');
-      return {
-        videos: [],
-        paginationState: {
-          currentPage: 1,
-          totalPages: 1,
-          totalVideos: 0,
-          pageSize: 50
-        }
-      };
-    }
-    
-    // For non-local sources, use the existing pagination logic
-    if (!global.currentVideos) {
-      throw new Error('No videos loaded. Please load videos from sources first.');
-    }
-    
-    // Get videos by source from global state
-    const videosBySourceFromGlobal = [];
-    const sourceIds: string[] = [];
-    
-    // Collect unique source IDs
-    for (const video of global.currentVideos) {
-      if (!sourceIds.includes(video.sourceId)) {
-        sourceIds.push(video.sourceId);
-      }
-    }
-    
-    for (const sourceId of sourceIds) {
-      const sourceVideos = global.currentVideos.filter(v => v.sourceId === sourceId);
-      if (sourceVideos.length > 0) {
-        const firstVideo = sourceVideos[0];
-        videosBySourceFromGlobal.push({
-          id: sourceId,
-          type: firstVideo.sourceType || 'unknown',
-          title: firstVideo.sourceTitle || sourceId,
-          videos: sourceVideos,
-          videoCount: sourceVideos.length
-        });
-      }
-    }
-    
+
     // Find the specific source
-    const foundSource = videosBySourceFromGlobal.find((s: any) => s.id === sourceId);
-    if (!foundSource) {
-      throw new Error('Source not found in source data');
+    const source = sources.find((s: any) => s.id === sourceId);
+    if (!source) {
+      log.error('[Main] Source not found:', sourceId);
+      log.error('[Main] Available sources:', sources.map((s: any) => ({ id: s.id, type: s.type, title: s.title })));
+      throw new Error('Source not found');
     }
-    
-    // Get all videos for this source
-    const allVideos = foundSource.videos || [];
-    const totalVideos = allVideos.length;
-    
+
+    logVerbose('[Main] Found source:', { id: source.id, type: source.type, title: source.title });
+
     // Read page size from pagination config
     let pageSize = 50; // Default fallback
     try {
@@ -1561,32 +1526,124 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     } catch (error) {
       log.warn('[Main] Could not read pagination config, using default page size:', error);
     }
-    
-    // Calculate pagination
-    const startIndex = (pageNumber - 1) * pageSize;
-    const endIndex = startIndex + pageSize;
-    const pageVideos = allVideos.slice(startIndex, endIndex);
-    
-    const totalPages = Math.ceil(totalVideos / pageSize);
-    
-    logVerbose('[Main] Pagination result:', {
-      sourceId,
-      pageNumber,
-      videosReturned: pageVideos.length,
-      totalVideos: totalVideos,
-      totalPages: totalPages,
-      pageSize: pageSize
-    });
-    
-    return {
-      videos: pageVideos,
-      paginationState: {
-        currentPage: pageNumber,
-        totalPages: totalPages,
-        totalVideos: totalVideos,
-        pageSize: pageSize
+
+    // For local sources, use local video scanner with pagination
+    if (source.type === 'local') {
+      logVerbose('[Main] Local source detected, using local video pagination');
+
+      const { LocalVideoScanner } = await import('../preload/localVideoScanner');
+
+      // Check if source should use pagination vs folder navigation
+      // Use pagination if maxDepth is 1 or if usePagination is explicitly set
+      const usePagination = source.maxDepth === 1 || source.usePagination === true;
+
+      if (!usePagination) {
+        // Use folder navigation (existing behavior)
+        logVerbose('[Main] Local source using folder navigation (maxDepth > 1)');
+        return {
+          videos: [],
+          paginationState: {
+            currentPage: 1,
+            totalPages: 1,
+            totalVideos: 0,
+            pageSize: pageSize
+          }
+        };
       }
-    };
+
+      // Use pagination
+      try {
+        const scanResult = await LocalVideoScanner.scanFolder(
+          source.id,
+          source.path,
+          source.maxDepth || 2
+        );
+
+        const paginatedResult = LocalVideoScanner.getPaginatedVideos(scanResult, pageNumber, pageSize);
+
+        // Add source metadata to videos for compatibility
+        const videosWithMetadata = paginatedResult.videos.map(video => ({
+          ...video,
+          sourceId: sourceId,
+          sourceTitle: source.title,
+          sourceThumbnail: '',
+          sourceType: 'local'
+        }));
+
+        logVerbose('[Main] Local pagination result:', {
+          sourceId,
+          pageNumber,
+          videosReturned: videosWithMetadata.length,
+          totalVideos: paginatedResult.paginationState.totalVideos,
+          totalPages: paginatedResult.paginationState.totalPages,
+          pageSize
+        });
+
+        return {
+          videos: videosWithMetadata,
+          paginationState: paginatedResult.paginationState
+        };
+      } catch (error) {
+        console.error('[Main] Error scanning local source:', error);
+        return {
+          videos: [],
+          paginationState: {
+            currentPage: 1,
+            totalPages: 1,
+            totalVideos: 0,
+            pageSize: pageSize
+          }
+        };
+      }
+    } else if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
+      // For YouTube sources, use smart page fetching with caching
+      if (!apiKey) {
+        throw new Error('YouTube API key not configured for pagination');
+      }
+
+      const { YouTubeAPI } = await import('../preload/youtube');
+      const { YouTubePageFetcher } = await import('../preload/youtubePageFetcher');
+
+      YouTubeAPI.setApiKey(apiKey);
+      await YouTubeAPI.loadCacheConfig(); // Load cache configuration
+
+      const pageResult = await YouTubePageFetcher.fetchPage(source, pageNumber, pageSize);
+
+      // Calculate total pages from total results
+      const totalPages = Math.ceil(pageResult.totalResults / pageSize);
+
+      logVerbose('[Main] YouTube pagination result:', {
+        sourceId,
+        pageNumber,
+        videosReturned: pageResult.videos.length,
+        totalVideos: pageResult.totalResults,
+        totalPages,
+        pageSize,
+        fromCache: pageResult.fromCache,
+        fallback: pageResult.fallback
+      });
+
+      // Add source metadata to videos for compatibility
+      const videosWithMetadata = pageResult.videos.map(video => ({
+        ...video,
+        sourceId: sourceId,
+        sourceTitle: source.title,
+        sourceThumbnail: source.thumbnail || '',
+        sourceType: source.type
+      }));
+
+      return {
+        videos: videosWithMetadata,
+        paginationState: {
+          currentPage: pageNumber,
+          totalPages,
+          totalVideos: pageResult.totalResults,
+          pageSize
+        }
+      };
+    } else {
+      throw new Error(`Unsupported source type: ${source.type}`);
+    }
   } catch (error) {
     log.error('[Main] Error getting paginated videos:', error);
     throw error;
@@ -1811,53 +1868,161 @@ ipcMain.handle('logging:log', async (_, level: string, ...args: any[]) => {
   }
 });
 
-// Handle clearing cache for a specific source
+// Handle clearing cache for a specific source (smart cache management)
 ipcMain.handle('clear-source-cache', async (_, sourceId: string) => {
   try {
-    logVerbose('[Main] Clearing cache for source:', sourceId);
-    
-    const fs = require('fs');
-    const path = require('path');
-    const cacheDir = path.join('.', '.cache');
-    
-    // Clear YouTube source cache
-    const sourceCacheFile = path.join(cacheDir, `youtube-${sourceId}.json`);
-    if (fs.existsSync(sourceCacheFile)) {
-      fs.unlinkSync(sourceCacheFile);
-      logVerbose('[Main] Deleted YouTube source cache file:', sourceCacheFile);
-    }
-    
-    // Clear ALL YouTube API cache files (since we can't easily map sourceId to specific API calls)
-    // This ensures fresh API calls for the next load
+    logVerbose('[Main] Smart cache clearing for source:', sourceId);
+
+    // First, read source configuration to determine source type
+    let sources = [];
     try {
-      const files = fs.readdirSync(cacheDir);
-      let clearedApiCacheCount = 0;
-      
-      for (const file of files) {
-        if (file.startsWith('youtube_api_') && file.endsWith('.json')) {
-          const filePath = path.join(cacheDir, file);
-          fs.unlinkSync(filePath);
-          clearedApiCacheCount++;
+      const sourcesPath = AppPaths.getConfigPath('videoSources.json');
+      const sourcesData = fs.readFileSync(sourcesPath, 'utf-8');
+      sources = JSON.parse(sourcesData);
+    } catch (error) {
+      log.error('[Main] Error reading videoSources.json:', error);
+      throw new Error('Failed to read video sources configuration');
+    }
+
+    const source = sources.find((s: any) => s.id === sourceId);
+    if (!source) {
+      log.error('[Main] Source not found for cache clearing:', sourceId);
+      throw new Error('Source not found');
+    }
+
+    logVerbose('[Main] Found source for cache clearing:', { id: source.id, type: source.type, title: source.title });
+
+    // Handle different source types
+    if (source.type === 'local') {
+      // For local sources, always safe to clear cache (no API dependency)
+      try {
+        const { LocalVideoScanner } = await import('../preload/localVideoScanner');
+        LocalVideoScanner.clearCache(sourceId);
+        logVerbose('[Main] Cleared local video cache for source:', sourceId);
+        return { success: true, message: 'Local source cache cleared successfully' };
+      } catch (error) {
+        log.warn('[Main] Error clearing local video cache:', error);
+        throw new Error('Failed to clear local source cache');
+      }
+    } else if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
+      // For YouTube sources, test API first before clearing cache
+      logVerbose('[Main] Testing YouTube API before clearing cache...');
+
+      // Read API key
+      let apiKey = '';
+      try {
+        const { readMainSettings } = await import('./fileUtils');
+        const mainSettings = await readMainSettings();
+        apiKey = mainSettings.youtubeApiKey || '';
+      } catch (error) {
+        log.warn('[Main] Could not read mainSettings for API test:', error);
+      }
+
+      if (!apiKey) {
+        throw new Error('YouTube API key not configured. Cannot test API before clearing cache.');
+      }
+
+      // Test the API with a minimal request
+      try {
+        const { YouTubeAPI } = await import('../preload/youtube');
+        YouTubeAPI.setApiKey(apiKey);
+
+        // Test with a simple API call
+        logVerbose('[Main] Testing YouTube API availability...');
+        if (source.type === 'youtube_channel') {
+          // For channels, test with a basic channel info request
+          let channelId = '';
+          if (source.url.includes('/@')) {
+            // Handle @username format
+            const username = source.url.split('/@')[1];
+            const result = await YouTubeAPI.searchChannelByUsername(username);
+            channelId = result.channelId;
+          } else {
+            // Handle direct channel URL format
+            channelId = source.url.split('/channel/')[1] || source.url.split('c/')[1];
+          }
+
+          if (!channelId) {
+            throw new Error('Could not extract channel ID for API test');
+          }
+
+          // Make a minimal API call to test connectivity and quota
+          await YouTubeAPI.getChannelBasicInfo(channelId);
+        } else if (source.type === 'youtube_playlist') {
+          // For playlists, test with a basic playlist info request
+          const playlistId = source.url.split('list=')[1];
+          if (!playlistId) {
+            throw new Error('Could not extract playlist ID for API test');
+          }
+
+          // Make a minimal API call to test connectivity and quota
+          await YouTubeAPI.getPlaylistBasicInfo(playlistId);
+        }
+
+        logVerbose('[Main] YouTube API test successful, proceeding with cache clearing...');
+
+        // API test succeeded, safe to clear cache
+        const cacheDir = path.join('.', '.cache');
+
+        // Clear YouTube source cache
+        const sourceCacheFile = path.join(cacheDir, `youtube-${sourceId}.json`);
+        if (fs.existsSync(sourceCacheFile)) {
+          fs.unlinkSync(sourceCacheFile);
+          logVerbose('[Main] Deleted YouTube source cache file:', sourceCacheFile);
+        }
+
+        // Clear YouTube page cache files for this specific source
+        try {
+          const { YouTubePageCache } = await import('../preload/youtubePageCache');
+          YouTubePageCache.clearSourcePages(sourceId);
+          logVerbose('[Main] Cleared YouTube page cache for source:', sourceId);
+        } catch (error) {
+          log.warn('[Main] Error clearing YouTube page cache:', error);
+        }
+
+        return {
+          success: true,
+          message: 'YouTube source cache cleared successfully after API test passed'
+        };
+
+      } catch (error) {
+        // API test failed - keep existing cache
+        log.warn('[Main] YouTube API test failed, keeping existing cache:', error);
+
+        const isRateLimitError = error instanceof Error && (
+          error.message.includes('quotaExceeded') ||
+          error.message.includes('quota') ||
+          error.message.includes('rate limit') ||
+          error.message.includes('403')
+        );
+
+        if (isRateLimitError) {
+          return {
+            success: false,
+            error: 'rate_limit',
+            message: 'YouTube API quota exceeded. Keeping existing cache to avoid data loss. Please try again later or check your API quota.',
+            keepCache: true
+          };
+        } else {
+          return {
+            success: false,
+            error: 'api_error',
+            message: `YouTube API error: ${error instanceof Error ? error.message : String(error)}. Keeping existing cache.`,
+            keepCache: true
+          };
         }
       }
-      
-      if (clearedApiCacheCount > 0) {
-        logVerbose(`[Main] Cleared ${clearedApiCacheCount} YouTube API cache files`);
-      }
-    } catch (error) {
-      log.warn('[Main] Error clearing YouTube API cache:', error);
+    } else {
+      throw new Error(`Unsupported source type for cache clearing: ${source.type}`);
     }
-    
-    // Clear pagination cache for this source
-    const { PaginationService } = await import('../preload/paginationService');
-    const paginationService = PaginationService.getInstance();
-    paginationService.clearCache(sourceId);
-    logVerbose('[Main] Cleared pagination cache for source:', sourceId);
-    
-    return { success: true };
   } catch (error) {
-    log.error('[Main] Error clearing source cache:', error);
-    throw error;
+    log.error('[Main] Error in smart cache clearing:', error);
+
+    return {
+      success: false,
+      error: 'general_error',
+      message: error instanceof Error ? error.message : String(error)
+    };
   }
 });
 
@@ -1877,7 +2042,7 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
     '[Main] Found 0 video sources' // Will be updated after loading
   ];
   let sources: any[] = [];
-  
+
   try {
     logVerbose('[Main] Loading video sources from:', configPath);
     logVerbose('[Main] API key provided:', apiKey ? '***configured***' : 'NOT configured');
@@ -1906,32 +2071,45 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
       try {
         const { CachedYouTubeSources } = await import('../preload/cached-youtube-sources');
         
-        // Set up YouTube API key in the preload context
+        // Set up YouTube API using the preload context (matching the expected pattern)
         logVerbose('[Main] Loading YouTube source:', source.id, source.title);
+
+        let cache;
         if (apiKey) {
           const { YouTubeAPI } = await import('../preload/youtube');
           YouTubeAPI.setApiKey(apiKey);
           await YouTubeAPI.loadCacheConfig();
           logVerbose('[Main] YouTube API configured for source:', source.id);
+          cache = await CachedYouTubeSources.loadSourceVideos(source);
         } else {
           log.warn('[Main] No API key provided for YouTube source:', source.id);
+          // Try to load from cache without API key (cache-only mode)
+          cache = await CachedYouTubeSources.loadSourceVideos(source);
         }
-        
-        const cache = await CachedYouTubeSources.loadSourceVideos(source);
+
         logVerbose('[Main] Cache loaded for source:', source.id, 'videos:', cache.videos?.length || 0, 'cached:', cache.usingCachedData);
-        
+
+        // Add source metadata to each video for global.currentVideos compatibility
+        const videosWithMetadata = cache.videos.map(video => ({
+          ...video,
+          type: 'youtube',  // PlayerRouter expects this for YouTube videos
+          sourceId: source.id,
+          sourceType: source.type,  // Use original type (youtube_channel/youtube_playlist)
+          sourceTitle: source.title
+        }));
+
         videosBySource.push({
           id: source.id,
           type: source.type,
           title: source.title,
           thumbnail: cache.thumbnail || '',
           videoCount: cache.totalVideos || cache.videos.length,
-          videos: cache.videos,
-          paginationState: { 
-            currentPage: 1, 
-            totalPages: Math.ceil((cache.totalVideos || cache.videos.length) / 50), 
-            totalVideos: cache.totalVideos || cache.videos.length, 
-            pageSize: 50 
+          videos: videosWithMetadata,  // Use videos with added metadata
+          paginationState: {
+            currentPage: 1,
+            totalPages: Math.ceil((cache.totalVideos || cache.videos.length) / 50),
+            totalVideos: cache.totalVideos || cache.videos.length,
+            pageSize: 50
           },
           usingCachedData: cache.usingCachedData
         });
@@ -2039,6 +2217,23 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
   } catch (err) {
     log.error('[Main] ERROR loading downloaded videos:', err);
     debug.push(`[Main] ERROR loading downloaded videos: ${err}`);
+  }
+
+  // Collect all videos for global access (needed for video playback)
+  const allVideos: any[] = [];
+  for (const source of videosBySource) {
+    if (source.videos && source.videos.length > 0) {
+      allVideos.push(...source.videos);
+    }
+  }
+
+  // Store videos globally so the player can access them
+  global.currentVideos = allVideos;
+  logVerbose('[Main] Set global.currentVideos with', allVideos.length, 'videos');
+
+  if (allVideos.length > 0) {
+    const sampleVideos = allVideos.slice(0, 5);
+    logVerbose('[Main] Sample videos in global.currentVideos:', sampleVideos.map(v => ({ id: v.id, type: v.type, title: v.title, sourceId: v.sourceId })));
   }
 
   return { videosBySource, debug };

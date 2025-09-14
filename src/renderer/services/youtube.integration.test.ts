@@ -29,8 +29,27 @@ testRunner('YouTubeAPI Integration', () => {
     const customUrlMatch = url.match(/@([^/]+)/);
     if (customUrlMatch) {
       // For custom URLs like @SerieA, we need to make an API call to get the channel ID
+      let apiKey = '';
+      try {
+        // Try to get API key from main process (if in Electron context)
+        if (typeof window !== 'undefined' && (window as any).electron?.getYouTubeApiKey) {
+          apiKey = await (window as any).electron.getYouTubeApiKey();
+        }
+      } catch (error) {
+        console.warn('[YouTube Integration Test] Could not get API key from main process:', error);
+      }
+
+      // Fallback to environment variable for testing (legacy method)
+      if (!apiKey) {
+        apiKey = import.meta.env.VITE_YOUTUBE_API_KEY || '';
+      }
+
+      if (!apiKey) {
+        throw new Error('YouTube API key not configured for integration test. Configure via Main Settings tab or set VITE_YOUTUBE_API_KEY environment variable.');
+      }
+
       const response = await fetch(
-        `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${customUrlMatch[1]}&type=channel&key=${import.meta.env.VITE_YOUTUBE_API_KEY}`
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${customUrlMatch[1]}&type=channel&key=${apiKey}`
       );
       const data = await response.json();
       return data.items?.[0]?.id?.channelId;

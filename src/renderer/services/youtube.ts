@@ -145,13 +145,34 @@ export interface AudioTrack {
   bitrate?: number;
 }
 
-const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 const BASE_URL = 'https://www.googleapis.com/youtube/v3';
 
 class YouTubeAPI {
+  private static async getApiKey(): Promise<string> {
+    try {
+      // Try to get API key from main process (mainSettings.json)
+      const apiKey = await (window as any).electron.getYouTubeApiKey();
+      if (apiKey) {
+        return apiKey;
+      }
+    } catch (error) {
+      console.warn('[YouTubeAPI] Could not get API key from main process:', error);
+    }
+
+    // Fallback to environment variable for development/testing
+    const envApiKey = import.meta.env.VITE_YOUTUBE_API_KEY;
+    if (envApiKey) {
+      console.warn('[YouTubeAPI] Using fallback environment variable API key');
+      return envApiKey;
+    }
+
+    throw new Error('YouTube API key not configured. Please configure it in the Main Settings tab (Admin → Main Settings) or set VITE_YOUTUBE_API_KEY environment variable for development.');
+  }
+
   private static async fetch<T>(endpoint: string, params: Record<string, string>): Promise<T> {
+    const apiKey = await this.getApiKey();
     const queryParams = new URLSearchParams({
-      key: API_KEY,
+      key: apiKey,
       ...params,
     });
     const response = await fetch(`${BASE_URL}/${endpoint}?${queryParams}`);

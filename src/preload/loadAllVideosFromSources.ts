@@ -163,30 +163,12 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
         const { YouTubeAPI } = await import('./youtube');
         YouTubeAPI.setApiKey(apiKey);
         
-        const cache: YouTubeSourceCache = await CachedYouTubeSources.loadSourceVideos(typedSource);
-        let sourceTitle = typedSource.title;
-        let sourceThumbnail = (typedSource as any).thumbnail;
-        if (!sourceTitle || !sourceThumbnail) {
-          if (cache && cache.videos.length > 0) {
-            if (!sourceTitle) {
-              if (typedSource.type === 'youtube_channel') {
-                sourceTitle = cache.videos[0].channelTitle || '';
-              } else if (typedSource.type === 'youtube_playlist') {
-                sourceTitle = cache.videos[0].playlistTitle || '';
-              }
-            }
-            if (!sourceThumbnail) {
-              if (typedSource.type === 'youtube_channel') {
-                sourceThumbnail = cache.videos[0].thumbnail || '';
-              } else if (typedSource.type === 'youtube_playlist') {
-                sourceThumbnail = cache.videos[0].thumbnail || '';
-              }
-            }
-          }
-        }
-        debug.push(`[Loader] YouTube source ${(typedSource as any).id}: ${cache.videos.length} videos loaded. Title: ${sourceTitle || typedSource.title}, Thumbnail: ${sourceThumbnail ? '[set]' : '[blank]'}`);
-        logVerbose(`[Loader] YouTube source ${(typedSource as any).id}: ${cache.videos.length} videos loaded. Title: ${sourceTitle || typedSource.title}, Thumbnail: ${sourceThumbnail ? '[set]' : '[blank]'}`);
-        
+        const cache: YouTubeSourceCache = await CachedYouTubeSources.loadSourceBasicInfo(typedSource);
+        let sourceTitle = cache.title || typedSource.title;
+        let sourceThumbnail = cache.thumbnail || '';
+        debug.push(`[Loader] YouTube source ${(typedSource as any).id}: Basic info loaded. Title: ${sourceTitle || typedSource.title}, Thumbnail: ${sourceThumbnail ? '[set]' : '[blank]'}, Total: ${cache.totalVideos || 0}`);
+        logVerbose(`[Loader] YouTube source ${(typedSource as any).id}: Basic info loaded. Title: ${sourceTitle || typedSource.title}, Thumbnail: ${sourceThumbnail ? '[set]' : '[blank]'}, Total: ${cache.totalVideos || 0}`);
+
         const videos = cache.videos.map(v => ({
           id: v.id,
           type: 'youtube' as const,

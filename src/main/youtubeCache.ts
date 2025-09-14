@@ -4,7 +4,7 @@ import { logVerbose } from '../shared/logging';
 
 // Cache configuration
 const CACHE_DIR = path.join('.', '.cache');
-const CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+let CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes default
 
 // Ensure cache directory exists
 if (!fs.existsSync(CACHE_DIR)) {
@@ -39,7 +39,8 @@ export class YouTubeCache {
   static isCacheValid(cacheData: any): boolean {
     if (!cacheData || !cacheData.timestamp) return false;
     const age = Date.now() - cacheData.timestamp;
-    return age < CACHE_DURATION_MS;
+    const currentCacheDuration = this.getCacheDuration();
+    return age < currentCacheDuration;
   }
 
   /**
@@ -88,7 +89,6 @@ export class YouTubeCache {
       if (!fs.existsSync(CACHE_DIR)) return;
 
       const files = fs.readdirSync(CACHE_DIR);
-      const now = Date.now();
       let clearedCount = 0;
 
       for (const file of files) {
@@ -130,15 +130,29 @@ export class YouTubeCache {
       if (fs.existsSync(configPath)) {
         const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
         const cacheDurationMinutes = config.cacheDurationMinutes || 30;
-        // Update the module-level constant
-        const newCacheDuration = cacheDurationMinutes * 60 * 1000;
-        logVerbose(`[YouTubeCache] Cache duration set to ${cacheDurationMinutes} minutes`);
-
-        // Note: In a more sophisticated implementation, we'd make CACHE_DURATION_MS
-        // configurable, but for now we'll just log the configuration
+        // Update the module-level variable
+        CACHE_DURATION_MS = cacheDurationMinutes * 60 * 1000;
+        logVerbose(`[YouTubeCache] Cache duration set to ${cacheDurationMinutes} minutes (${CACHE_DURATION_MS}ms)`);
       }
     } catch (e) {
       console.warn('[YouTubeCache] Could not load cache config, using default 30 minutes:', e);
     }
+  }
+
+  /**
+   * Get current cache duration from configuration
+   */
+  static getCacheDuration(): number {
+    try {
+      const configPath = path.join('.', 'config', 'pagination.json');
+      if (fs.existsSync(configPath)) {
+        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+        const cacheDurationMinutes = config.cacheDurationMinutes || 30;
+        return cacheDurationMinutes * 60 * 1000;
+      }
+    } catch (e) {
+      // Fall back to current value
+    }
+    return CACHE_DURATION_MS;
   }
 }

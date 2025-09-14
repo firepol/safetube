@@ -4,8 +4,20 @@ import { CachedYouTubeAPI } from './__tests__/cached-youtube';
 import { testCache } from './__tests__/test-cache';
 import { logVerboseRenderer } from '@/shared/logging';
 
-// Mock environment variables
+// Mock environment variables (legacy fallback for testing)
+// Primary method is now IPC call to main process for mainSettings.json
 vi.stubEnv('VITE_YOUTUBE_API_KEY', 'test-api-key');
+
+// Mock electron IPC for YouTube API key (primary method)
+const mockElectron = {
+  getYouTubeApiKey: vi.fn().mockResolvedValue('test-api-key-from-main-settings')
+};
+
+// Mock window.electron
+Object.defineProperty(window, 'electron', {
+  value: mockElectron,
+  writable: true
+});
 
 // Mock fetch for API calls
 const mockFetch = vi.fn();
