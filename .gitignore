@@ -65,3 +65,6 @@ config/
 .cache
 
 test-videos/
+
+# Kiro folder
+.kiro
