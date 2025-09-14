@@ -99,6 +99,8 @@ contextBridge.exposeInMainWorld(
     getYouTubeCache: (cacheKey: string) => ipcRenderer.invoke('youtube-cache:get', cacheKey),
     setYouTubeCache: (cacheKey: string, data: any) => ipcRenderer.invoke('youtube-cache:set', cacheKey, data),
     clearExpiredYouTubeCache: () => ipcRenderer.invoke('youtube-cache:clear-expired'),
-    loadYouTubeCacheConfig: () => ipcRenderer.invoke('youtube-cache:load-config')
+    loadYouTubeCacheConfig: () => ipcRenderer.invoke('youtube-cache:load-config'),
+    // External URL opening
+    openExternal: (url: string) => ipcRenderer.invoke('open-external', url)
   }
 );

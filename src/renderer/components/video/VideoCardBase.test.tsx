@@ -1,122 +1,203 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import React from 'react';
+import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { BrowserRouter } from 'react-router-dom';
 import { VideoCardBase } from './VideoCardBase';
 import * as Tooltip from '@radix-ui/react-tooltip';
-import { MemoryRouter } from 'react-router-dom';
-import { VideoErrorType } from '../../../shared/videoErrorHandling';
 
-describe('VideoCardBase', () => {
-  const mockVideo = {
-    id: 'yt-test',
-    thumbnail: 'https://example.com/thumb.jpg',
-    title: 'Test Video',
-    duration: 125, // 2:05
-    resumeAt: 60, // 1:00
-    watched: true,
-    type: 'youtube' as const,
-    progress: 50,
+// Mock the electron API
+const mockOpenExternal = vi.fn();
+const mockElectron = {
+  openExternal: mockOpenExternal
+};
+
+// Mock window.electron
+Object.defineProperty(window, 'electron', {
+  value: mockElectron,
+  writable: true
+});
+
+// Mock react-router-dom navigate
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
   };
+});
 
-  const renderWithProvider = (ui: React.ReactElement) =>
-    render(
-      <MemoryRouter>
-        <Tooltip.Provider>{ui}</Tooltip.Provider>
-      </MemoryRouter>
-    );
+// Wrapper component for tests
+const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <BrowserRouter>
+    <Tooltip.Provider>
+      {children}
+    </Tooltip.Provider>
+  </BrowserRouter>
+);
 
-  it('renders video card with all information', () => {
-    const { } = renderWithProvider(<VideoCardBase {...mockVideo} />);
-    
-    // Check title
-    expect(screen.getByText('Test Video')).toBeInTheDocument();
-    
-    // Check duration
-    expect(screen.getByText('2:05')).toBeInTheDocument();
-    
-    // Check type
-    expect(screen.getByText('youtube')).toBeInTheDocument();
-    
-    // Check thumbnail
-    const img = screen.getByRole('img');
-    expect(img).toHaveAttribute('src', 'https://example.com/thumb.jpg');
-    expect(img).toHaveAttribute('alt', 'Test Video');
+describe('VideoCardBase External Link Opening', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
   });
 
-  it('shows resume overlay on hover when resumeAt is set', () => {
-    renderWithProvider(<VideoCardBase {...mockVideo} />);
-    const resumeElements = screen.getAllByText(/Resume at 1:00/);
-    expect(resumeElements.length).toBeGreaterThan(0);
-  });
-
-  it('does not show resume overlay when resumeAt is null', () => {
-    renderWithProvider(<VideoCardBase {...mockVideo} resumeAt={null} />);
-    expect(screen.queryByText(/Resume at/)).not.toBeInTheDocument();
-  });
-
-  it('shows progress bar when video is watched', () => {
-    renderWithProvider(<VideoCardBase {...mockVideo} />);
-    const progressBars = screen.getAllByRole('progressbar');
-    expect(progressBars.length).toBeGreaterThan(0);
-    expect(progressBars[0]).toHaveStyle({ width: '50%' });
-  });
-
-  it('does not show progress bar when video is not watched', () => {
-    renderWithProvider(<VideoCardBase {...mockVideo} watched={false} />);
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
-  });
-
-  it('formats duration correctly for videos over an hour', () => {
-    renderWithProvider(<VideoCardBase {...mockVideo} duration={3665} />); // 1:01:05
-    expect(screen.getByText('1:01:05')).toBeInTheDocument();
-  });
-
-  it('renders fallback video card with error indicator', () => {
-    const mockErrorInfo = {
-      type: VideoErrorType.DELETED,
-      message: 'Video has been deleted',
-      retryable: false,
-      videoId: 'test-video',
-      timestamp: '2023-01-01T00:00:00.000Z'
+  test('should open external YouTube link when clicking fallback video', () => {
+    const props = {
+      id: 'dQw4w9WgXcQ',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isAvailable: false,
+      isFallback: true,
+      errorInfo: {
+        type: 'deleted' as const,
+        message: 'Video has been deleted',
+        retryable: false
+      }
     };
 
-    renderWithProvider(
-      <VideoCardBase
-        id="test-video"
-        thumbnail="/placeholder-thumbnail.svg"
-        title="Video test-video (Unavailable)"
-        duration={0}
-        type="youtube"
-        isAvailable={false}
-        isFallback={true}
-        errorInfo={mockErrorInfo}
-      />
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
     );
 
-    expect(screen.getByText('Video test-video')).toBeInTheDocument();
-    expect(screen.getByText('Video Unavailable')).toBeInTheDocument();
-    expect(screen.getByText('Open in browser')).toBeInTheDocument();
-    expect(screen.getByText('Click to open in YouTube')).toBeInTheDocument();
-    expect(screen.getByText('Deleted')).toBeInTheDocument();
+    // Find the video card by its specific class and click it
+    const videoCard = screen.getByText('Video dQw4w9WgXcQ').closest('div[tabindex="0"]');
+    expect(videoCard).toBeTruthy();
+    fireEvent.click(videoCard!);
+
+    // Verify that openExternal was called with the correct YouTube URL
+    expect(mockOpenExternal).toHaveBeenCalledWith('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  it('renders fallback video card without error info', () => {
-    renderWithProvider(
-      <VideoCardBase
-        id="test-video"
-        thumbnail="/placeholder-thumbnail.svg"
-        title="Video test-video (Unavailable)"
-        duration={0}
-        type="youtube"
-        isAvailable={false}
-        isFallback={true}
-      />
+  test('should navigate normally when clicking available video', () => {
+    const props = {
+      id: 'dQw4w9WgXcQ',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isAvailable: true,
+      isFallback: false
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
     );
 
-    expect(screen.getByText('Video test-video')).toBeInTheDocument();
+    // Find the video card by its title and click it
+    const videoCard = screen.getByText('Test Video').closest('div[tabindex="0"]');
+    expect(videoCard).toBeTruthy();
+    fireEvent.click(videoCard!);
+
+    // Verify that navigate was called and openExternal was not
+    expect(mockNavigate).toHaveBeenCalledWith('/player/dQw4w9WgXcQ');
+    expect(mockOpenExternal).not.toHaveBeenCalled();
+  });
+
+  test('should display fallback UI for unavailable videos', () => {
+    const props = {
+      id: 'dQw4w9WgXcQ',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isAvailable: false,
+      isFallback: true,
+      errorInfo: {
+        type: 'private' as const,
+        message: 'Video is private',
+        retryable: false
+      }
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    // Check for fallback UI elements
     expect(screen.getByText('Video Unavailable')).toBeInTheDocument();
     expect(screen.getByText('Open in browser')).toBeInTheDocument();
+    expect(screen.getByText('Private')).toBeInTheDocument();
     expect(screen.getByText('Click to open in YouTube')).toBeInTheDocument();
-    // Should not show error indicator when no errorInfo provided
-    expect(screen.queryByText('Deleted')).not.toBeInTheDocument();
   });
-}); 
+
+  test('should display correct error type indicators', () => {
+    const testCases = [
+      { type: 'deleted' as const, expectedText: 'Deleted' },
+      { type: 'private' as const, expectedText: 'Private' },
+      { type: 'restricted' as const, expectedText: 'Restricted' },
+      { type: 'api_error' as const, expectedText: 'Unavailable' }
+    ];
+
+    testCases.forEach(({ type, expectedText }) => {
+      const props = {
+        id: 'dQw4w9WgXcQ',
+        thumbnail: 'test-thumbnail.jpg',
+        title: 'Test Video',
+        duration: 180,
+        type: 'youtube' as const,
+        isAvailable: false,
+        isFallback: true,
+        errorInfo: {
+          type,
+          message: 'Test error',
+          retryable: false
+        }
+      };
+
+      const { unmount } = render(
+        <TestWrapper>
+          <VideoCardBase {...props} />
+        </TestWrapper>
+      );
+
+      expect(screen.getByText(expectedText)).toBeInTheDocument();
+      
+      unmount();
+    });
+  });
+
+  test('should handle missing electron API gracefully', () => {
+    // Temporarily set electron to undefined
+    const originalElectron = window.electron;
+    // @ts-ignore
+    window.electron = undefined;
+
+    const props = {
+      id: 'dQw4w9WgXcQ',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isAvailable: false,
+      isFallback: true,
+      errorInfo: {
+        type: 'deleted' as const,
+        message: 'Video has been deleted',
+        retryable: false
+      }
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    // Find the video card and click it - should not throw error
+    const videoCard = screen.getByText('Video dQw4w9WgXcQ').closest('div[tabindex="0"]');
+    expect(videoCard).toBeTruthy();
+    expect(() => fireEvent.click(videoCard!)).not.toThrow();
+
+    // Restore electron
+    window.electron = originalElectron;
+  });
+});

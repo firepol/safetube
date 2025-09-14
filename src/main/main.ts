@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as http from 'http';
@@ -244,6 +244,18 @@ ipcMain.handle('logging:get-verbose', async () => {
     return { verbose: process.env.ELECTRON_LOG_VERBOSE === 'true' };
   } catch (error) {
     console.error('Error getting verbose logging state:', error);
+    throw error;
+  }
+});
+
+// Handle opening external URLs in default browser
+ipcMain.handle('open-external', async (_, url: string) => {
+  try {
+    logVerbose('[Main] Opening external URL:', url);
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('[Main] Error opening external URL:', error);
     throw error;
   }
 });
