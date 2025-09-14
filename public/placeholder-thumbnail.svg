@@ -1,0 +1,26 @@
+<svg width="320" height="180" viewBox="0 0 320 180" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="320" height="180" fill="#f3f4f6"/>
+  
+  <!-- Border -->
+  <rect x="1" y="1" width="318" height="178" stroke="#d1d5db" stroke-width="2" fill="none" stroke-dasharray="8,4"/>
+  
+  <!-- Warning Icon -->
+  <g transform="translate(160, 90)">
+    <!-- Triangle -->
+    <path d="M-20 15 L0 -15 L20 15 Z" fill="#fbbf24" stroke="#f59e0b" stroke-width="2"/>
+    <!-- Exclamation mark -->
+    <circle cx="0" cy="5" r="2" fill="#1f2937"/>
+    <rect x="-1" y="-8" width="2" height="10" fill="#1f2937"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="160" y="130" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#6b7280">
+    Video Unavailable
+  </text>
+  
+  <!-- Subtitle -->
+  <text x="160" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#9ca3af">
+    Click to open in YouTube
+  </text>
+</svg>
