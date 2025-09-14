@@ -215,9 +215,9 @@ export class VideoErrorLogger {
     }
     
     logVerbose('[VideoError] Error Summary:');
-    for (const [errorType, count] of this.errorCounts.entries()) {
+    this.errorCounts.forEach((count, errorType) => {
       logVerbose(`[VideoError]   ${errorType}: ${count}`);
-    }
+    });
   }
   
   /**
@@ -249,10 +249,10 @@ export class VideoErrorLogger {
     };
     
     let totalErrors = 0;
-    for (const [errorType, count] of this.errorCounts.entries()) {
-      errorBreakdown[errorType] = count;
+    this.errorCounts.forEach((count, errorType) => {
+      errorBreakdown[errorType as VideoErrorType] = count;
       totalErrors += count;
-    }
+    });
     
     return { totalErrors, errorBreakdown };
   }

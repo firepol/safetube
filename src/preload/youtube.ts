@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { logVerbose } from './logging';
 import { VideoSource } from './types';
-import { classifyVideoError, VideoErrorLogger } from '../shared/videoErrorHandling';
+import { classifyVideoError, VideoErrorLogger, VideoErrorType } from '../shared/videoErrorHandling';
 
 // YouTube API response schemas
 const VideoSchema = z.object({
@@ -452,6 +452,8 @@ export class YouTubeAPI {
   static async getPlaylistVideosPage(playlistId: string, pageNumber: number, pageSize: number = 50): Promise<{ videos: any[], totalResults: number, pageNumber: number }> {
     console.log(`[PAGINATION DEBUG] getPlaylistVideosPage called: playlistId=${playlistId}, pageNumber=${pageNumber}, pageSize=${pageSize}`);
 
+    const startTime = Date.now();
+
     // Calculate how many items to skip for the requested page
     const itemsToSkip = (pageNumber - 1) * pageSize;
     console.log(`[PAGINATION DEBUG] Need to skip ${itemsToSkip} items to reach page ${pageNumber}`);
@@ -506,23 +508,93 @@ export class YouTubeAPI {
       };
     }
 
-    // Fetch video details
-    const videoDetailsResults = await Promise.all(pageVideoIds.map(id => this.getVideoDetails(id)));
-    
-    // Filter out null results (failed videos) and transform to expected format
-    const videoDetails = videoDetailsResults.filter(v => v !== null);
-    const videos = videoDetails.map(v => ({
-      id: v.id,
-      type: 'youtube',
-      title: v.snippet.title,
-      publishedAt: ((v.snippet as any).publishedAt || ''),
-      thumbnail: v.snippet.thumbnails.high.url,
-      duration: YouTubeAPI.parseDuration(v.contentDetails.duration),
-      url: `https://www.youtube.com/watch?v=${v.id}`
-    }));
+    // Enhanced batch processing with Promise.allSettled for graceful failure handling
+    const videoResults = await Promise.allSettled(
+      pageVideoIds.map(async (videoId): Promise<{ success: boolean; video?: YouTubeVideo; videoId: string; error?: any }> => {
+        const video = await this.getVideoDetails(videoId);
+        if (video) {
+          return { success: true, video, videoId };
+        } else {
+          return { success: false, videoId };
+        }
+      })
+    );
 
-    console.log(`[PAGINATION DEBUG] getPlaylistVideosPage SUCCESS: returning ${videos.length} videos for page ${pageNumber}`);
+    // Process results and create fallback entries for failed videos
+    const videos = videoResults.map((result, index) => {
+      const videoId = pageVideoIds[index];
+      
+      if (result.status === 'fulfilled' && result.value.success && result.value.video) {
+        // Successful video load - transform to expected format
+        const video = result.value.video;
+        return {
+          id: video.id,
+          type: 'youtube',
+          title: video.snippet.title,
+          publishedAt: ((video.snippet as any).publishedAt || ''),
+          thumbnail: video.snippet.thumbnails.high.url,
+          duration: YouTubeAPI.parseDuration(video.contentDetails.duration),
+          url: `https://www.youtube.com/watch?v=${video.id}`,
+          isAvailable: true
+        };
+      } else {
+        // Failed video load - create fallback entry
+        return this.createFallbackVideo(videoId, result);
+      }
+    });
+
+    // Calculate and log metrics
+    const loadTimeMs = Date.now() - startTime;
+    const successfulLoads = videos.filter(v => v.isAvailable !== false).length;
+    const failedLoads = videos.length - successfulLoads;
+    
+    // Create error breakdown
+    const errorBreakdown = {
+      deleted: 0,
+      private: 0,
+      restricted: 0,
+      api_error: 0,
+      network_error: 0,
+      unknown: failedLoads // For now, count all failures as unknown
+    };
+
+    // Log metrics using the enhanced logging
+    const { VideoErrorLogger, createVideoLoadMetrics } = await import('../shared/videoErrorHandling');
+    const metrics = createVideoLoadMetrics(
+      videos.length,
+      successfulLoads,
+      failedLoads,
+      errorBreakdown,
+      loadTimeMs,
+      playlistId,
+      pageNumber
+    );
+    VideoErrorLogger.logVideoLoadMetrics(metrics);
+
+    console.log(`[PAGINATION DEBUG] getPlaylistVideosPage SUCCESS: returning ${videos.length} videos (${successfulLoads} available, ${failedLoads} fallback) for page ${pageNumber}`);
     return { videos, totalResults, pageNumber };
+  }
+
+  /**
+   * Creates a fallback video object for failed video loads
+   */
+  private static createFallbackVideo(videoId: string, result: PromiseSettledResult<any>): any {
+    return {
+      id: videoId,
+      type: 'youtube',
+      title: `Video ${videoId} (Unavailable)`,
+      thumbnail: '/placeholder-thumbnail.svg',
+      duration: 0,
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      publishedAt: '',
+      isAvailable: false,
+      isFallback: true,
+      errorInfo: {
+        type: 'unknown',
+        message: result.status === 'rejected' ? result.reason?.message || 'Failed to load video' : 'Video details unavailable',
+        retryable: true
+      }
+    };
   }
 
   static async getVideosForPage(sourceId: string, pageNumber: number, pageSize?: number): Promise<{ videos: any[], totalResults: number }> {
