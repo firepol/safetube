@@ -1,5 +1,6 @@
 import https from 'https';
 import { URL } from 'url';
+import { classifyVideoError, VideoErrorLogger } from '../shared/videoErrorHandling';
 
 // YouTube Data API v3 client
 export class YouTubeAPI {
@@ -135,6 +136,38 @@ export class YouTubeAPI {
       throw error;
     }
   }
+
+  // Get video details (title, description, thumbnail, duration, etc.)
+  async getVideoDetails(videoId: string): Promise<any | null> {
+    try {
+      const response = await this.makeRequest(
+        `${this.baseUrl}/videos?part=snippet,contentDetails,status&id=${videoId}&key=${this.apiKey}`
+      );
+      
+      if (!response.items || response.items.length === 0) {
+        // Classify and log the "not found" error
+        const errorInfo = classifyVideoError(new Error(`Video not found: ${videoId}`), videoId);
+        VideoErrorLogger.logVideoError(videoId, errorInfo);
+        return null;
+      }
+      
+      const video = response.items[0];
+      return {
+        id: video.id,
+        snippet: video.snippet,
+        contentDetails: video.contentDetails,
+        status: video.status
+      };
+      
+    } catch (error) {
+      // Enhanced error logging with classification
+      const errorInfo = classifyVideoError(error, videoId);
+      VideoErrorLogger.logVideoError(videoId, errorInfo);
+      
+      // Return null instead of throwing to allow graceful failure
+      return null;
+    }
+  }
   
   // Helper method to make HTTP requests
   private makeRequest(url: string): Promise<any> {
@@ -183,5 +216,17 @@ export class YouTubeAPI {
       
       req.end();
     });
+  }
+
+  // Helper to convert ISO 8601 duration to seconds
+  static parseDuration(duration: string): number {
+    const match = duration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    if (!match) return 0;
+    const [, hours, minutes, seconds] = match;
+    return (
+      (parseInt(hours || '0') * 3600) +
+      (parseInt(minutes || '0') * 60) +
+      parseInt(seconds || '0')
+    );
   }
 }

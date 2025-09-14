@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { logVerboseRenderer } from '@/shared/logging';
+import { classifyVideoError, VideoErrorLogger } from '../../shared/videoErrorHandling';
 
 // YouTube API response schemas
 const VideoSchema = z.object({
@@ -182,15 +183,27 @@ class YouTubeAPI {
     return response.json();
   }
 
-  static async getVideoDetails(videoId: string): Promise<YouTubeVideo> {
-    const data = await YouTubeAPI.fetch<{ items: YouTubeVideo[] }>('videos', {
-      part: 'snippet,contentDetails,status',
-      id: videoId,
-    });
-    if (!data.items?.[0]) {
-      throw new Error(`Video not found: ${videoId}`);
+  static async getVideoDetails(videoId: string): Promise<YouTubeVideo | null> {
+    try {
+      const data = await YouTubeAPI.fetch<{ items: YouTubeVideo[] }>('videos', {
+        part: 'snippet,contentDetails,status',
+        id: videoId,
+      });
+      if (!data.items?.[0]) {
+        // Classify and log the "not found" error
+        const errorInfo = classifyVideoError(new Error(`Video not found: ${videoId}`), videoId);
+        VideoErrorLogger.logVideoError(videoId, errorInfo);
+        return null;
+      }
+      return VideoSchema.parse(data.items[0]);
+    } catch (error) {
+      // Enhanced error logging with classification
+      const errorInfo = classifyVideoError(error, videoId);
+      VideoErrorLogger.logVideoError(videoId, errorInfo);
+      
+      // Return null instead of throwing to allow graceful failure
+      return null;
     }
-    return VideoSchema.parse(data.items[0]);
   }
 
   static async getVideoPlayer(videoId: string): Promise<YouTubePlayer> {

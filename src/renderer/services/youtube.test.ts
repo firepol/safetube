@@ -188,14 +188,15 @@ describe('YouTubeAPI', () => {
     expect(YouTubeAPI.parseDuration('PT30S')).toBe(30);
   });
 
-  it('handles API errors', async () => {
+  it('handles API errors gracefully', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 404,
       statusText: 'Not Found'
     });
 
-    await expect(YouTubeAPI.getVideoDetails('invalid')).rejects.toThrow('YouTube API error: Not Found');
+    const result = await YouTubeAPI.getVideoDetails('invalid');
+    expect(result).toBeNull();
   });
 });
 

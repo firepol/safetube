@@ -258,7 +258,10 @@ function extractPlaylistId(url: string): string {
 async function fetchNewYouTubeVideos(allVideoIds: string[], cachedVideos: any[]) {
   const cachedIds = new Set(cachedVideos.map(v => v.id));
   const newIds = allVideoIds.filter(id => !cachedIds.has(id));
-  const details = await Promise.all(newIds.map(id => YouTubeAPI.getVideoDetails(id)));
+  const detailsResults = await Promise.all(newIds.map(id => YouTubeAPI.getVideoDetails(id)));
+  
+  // Filter out null results (failed videos) and transform to expected format
+  const details = detailsResults.filter(v => v !== null);
   return details.map(v => ({
     id: v.id,
     title: v.snippet.title,
