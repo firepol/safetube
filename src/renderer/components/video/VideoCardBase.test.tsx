@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
 import { VideoCardBase } from './VideoCardBase';
+import { VideoErrorType } from '../../../shared/videoErrorHandling';
 import * as Tooltip from '@radix-ui/react-tooltip';
 
 // Mock window.electron (not needed for external links but kept for consistency)
@@ -48,7 +49,7 @@ describe('VideoCardBase External Link Opening', () => {
       isAvailable: false,
       isFallback: true,
       errorInfo: {
-        type: 'deleted' as const,
+        type: VideoErrorType.DELETED,
         message: 'Video has been deleted',
         retryable: false
       }
@@ -107,7 +108,7 @@ describe('VideoCardBase External Link Opening', () => {
       isAvailable: false,
       isFallback: true,
       errorInfo: {
-        type: 'private' as const,
+        type: VideoErrorType.PRIVATE,
         message: 'Video is private',
         retryable: false
       }
@@ -128,10 +129,10 @@ describe('VideoCardBase External Link Opening', () => {
 
   test('should display correct error type indicators', () => {
     const testCases = [
-      { type: 'deleted' as const, expectedText: 'Deleted' },
-      { type: 'private' as const, expectedText: 'Private' },
-      { type: 'restricted' as const, expectedText: 'Restricted' },
-      { type: 'api_error' as const, expectedText: 'Unavailable' }
+      { type: VideoErrorType.DELETED, expectedText: 'Deleted' },
+      { type: VideoErrorType.PRIVATE, expectedText: 'Private' },
+      { type: VideoErrorType.RESTRICTED, expectedText: 'Restricted' },
+      { type: VideoErrorType.API_ERROR, expectedText: 'Unavailable' }
     ];
 
     testCases.forEach(({ type, expectedText }) => {
@@ -177,7 +178,7 @@ describe('VideoCardBase External Link Opening', () => {
       isAvailable: false,
       isFallback: true,
       errorInfo: {
-        type: 'deleted' as const,
+        type: VideoErrorType.DELETED,
         message: 'Video has been deleted',
         retryable: false
       }
