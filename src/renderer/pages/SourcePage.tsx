@@ -3,6 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 import { LocalFolderNavigator } from '../components/video/LocalFolderNavigator';
+import { VideoCardBase } from '../components/video/VideoCardBase';
 import { logVerbose } from '../lib/logging';
 
 export const SourcePage: React.FC = () => {
@@ -330,40 +331,22 @@ export const SourcePage: React.FC = () => {
         {currentPageVideos.map((video: any) => {
           const { isWatched, isClicked } = getVideoStatus(video.id);
           
-          // Determine CSS classes - watched takes priority over clicked
-          const cssClasses = [
-            'bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105',
-            isWatched ? 'watched' : isClicked ? 'clicked' : ''
-          ].filter(Boolean).join(' ');
-          
           return (
-            <div
-              key={video.id}
-              className={cssClasses}
-              onClick={() => handleVideoClick(video)}
-            >
-            <div className="aspect-video bg-gray-200 overflow-hidden">
-              {video.thumbnail ? (
-                <img 
-                  src={video.thumbnail} 
-                  alt={video.title}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                  <div className="text-2xl text-gray-500">📹</div>
-                </div>
-              )}
+            <div key={video.id} className={isWatched ? 'watched' : isClicked ? 'clicked' : ''}>
+              <VideoCardBase
+                id={video.id}
+                thumbnail={video.thumbnail || '/placeholder-thumbnail.svg'}
+                title={video.title}
+                duration={video.duration || 0}
+                type={video.type}
+                watched={isWatched}
+                isAvailable={video.isAvailable !== false}
+                isFallback={video.isFallback === true}
+                errorInfo={video.errorInfo}
+                resumeAt={video.resumeAt}
+                onVideoClick={(videoProps) => handleVideoClick(video)}
+              />
             </div>
-            <div className="p-3">
-              <h3 className="font-medium text-gray-900 text-sm line-clamp-2 mb-1">
-                {video.title}
-              </h3>
-              <p className="text-xs text-gray-500">
-                {video.type === 'youtube' ? 'YouTube' : 'Local Video'}
-              </p>
-            </div>
-          </div>
           );
         })}
       </div>

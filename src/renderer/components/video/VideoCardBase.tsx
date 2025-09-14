@@ -18,6 +18,8 @@ export interface VideoCardBaseProps {
   isAvailable?: boolean;
   isFallback?: boolean;
   errorInfo?: VideoLoadError;
+  // Optional custom click handler
+  onVideoClick?: (video: VideoCardBaseProps) => void;
 }
 
 export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
@@ -32,6 +34,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   isAvailable = true,
   isFallback = false,
   errorInfo,
+  onVideoClick,
 }) => {
   const progressPercentage = Math.min(100, Math.max(0, progress ?? 0));
   const isLongTitle = title.length > 32;
@@ -40,7 +43,26 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   const handleClick = () => {
     // Only handle click for available videos - fallback videos use the link
     if (!isFallback) {
-      navigate(`/player/${id}`);
+      if (onVideoClick) {
+        // Use custom click handler if provided
+        onVideoClick({
+          id,
+          thumbnail,
+          title,
+          duration,
+          resumeAt,
+          watched,
+          type,
+          progress,
+          isAvailable,
+          isFallback,
+          errorInfo,
+          onVideoClick
+        });
+      } else {
+        // Default navigation
+        navigate(`/player/${id}`);
+      }
     }
   };
 
