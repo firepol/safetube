@@ -38,26 +38,15 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   const navigate = useNavigate();
 
   const handleClick = () => {
-    if (isFallback) {
-      // Open external YouTube link for fallback videos
-      window.electron?.openExternal(`https://www.youtube.com/watch?v=${id}`);
-    } else {
-      // Normal navigation for available videos
+    // Only handle click for available videos - fallback videos use the link
+    if (!isFallback) {
       navigate(`/player/${id}`);
     }
   };
 
-  return (
-    <div
-      className={cn(
-        'bg-card rounded-xl border shadow-md flex flex-col max-w-[340px] w-full cursor-pointer',
-        'transition-transform hover:scale-[1.03]',
-        isFallback ? 'opacity-60 border-dashed border-yellow-400' : '',
-        watched ? 'opacity-80' : ''
-      )}
-      tabIndex={0}
-      onClick={handleClick}
-    >
+  // Common card content
+  const cardContent = (
+    <>
       {/* Thumbnail */}
       <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
         {isFallback ? (
@@ -145,6 +134,38 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
           {type}
         </p>
       </div>
+    </>
+  );
+
+  const cardClasses = cn(
+    'bg-card rounded-xl border shadow-md flex flex-col max-w-[340px] w-full cursor-pointer',
+    'transition-transform hover:scale-[1.03]',
+    isFallback ? 'opacity-60 border-dashed border-yellow-400' : '',
+    watched ? 'opacity-80' : ''
+  );
+
+  // For fallback videos, wrap in a link that opens externally
+  if (isFallback) {
+    return (
+      <a
+        href={`https://www.youtube.com/watch?v=${id}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={cn(cardClasses, 'no-underline text-inherit')}
+      >
+        {cardContent}
+      </a>
+    );
+  }
+
+  // For available videos, use the regular div with click handler
+  return (
+    <div
+      className={cardClasses}
+      tabIndex={0}
+      onClick={handleClick}
+    >
+      {cardContent}
     </div>
   );
 }; 

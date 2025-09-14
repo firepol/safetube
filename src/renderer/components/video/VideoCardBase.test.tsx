@@ -5,11 +5,8 @@ import { BrowserRouter } from 'react-router-dom';
 import { VideoCardBase } from './VideoCardBase';
 import * as Tooltip from '@radix-ui/react-tooltip';
 
-// Mock the electron API
-const mockOpenExternal = vi.fn();
-const mockElectron = {
-  openExternal: mockOpenExternal
-};
+// Mock window.electron (not needed for external links but kept for consistency)
+const mockElectron = {};
 
 // Mock window.electron
 Object.defineProperty(window, 'electron', {
@@ -41,7 +38,7 @@ describe('VideoCardBase External Link Opening', () => {
     vi.clearAllMocks();
   });
 
-  test('should open external YouTube link when clicking fallback video', () => {
+  test('should render fallback video as external link', () => {
     const props = {
       id: 'dQw4w9WgXcQ',
       thumbnail: 'test-thumbnail.jpg',
@@ -63,13 +60,14 @@ describe('VideoCardBase External Link Opening', () => {
       </TestWrapper>
     );
 
-    // Find the video card by its specific class and click it
-    const videoCard = screen.getByText('Video dQw4w9WgXcQ').closest('div[tabindex="0"]');
-    expect(videoCard).toBeTruthy();
-    fireEvent.click(videoCard!);
+    // Find the link element
+    const linkElement = screen.getByRole('link');
+    expect(linkElement).toBeInTheDocument();
+    expect(linkElement).toHaveAttribute('href', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    expect(linkElement).toHaveAttribute('target', '_blank');
+    expect(linkElement).toHaveAttribute('rel', 'noopener noreferrer');
 
-    // Verify that openExternal was called with the correct YouTube URL
-    expect(mockOpenExternal).toHaveBeenCalledWith('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    // Verify that navigate is not called (since it's a standard link)
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
@@ -95,9 +93,8 @@ describe('VideoCardBase External Link Opening', () => {
     expect(videoCard).toBeTruthy();
     fireEvent.click(videoCard!);
 
-    // Verify that navigate was called and openExternal was not
+    // Verify that navigate was called
     expect(mockNavigate).toHaveBeenCalledWith('/player/dQw4w9WgXcQ');
-    expect(mockOpenExternal).not.toHaveBeenCalled();
   });
 
   test('should display fallback UI for unavailable videos', () => {
@@ -165,7 +162,7 @@ describe('VideoCardBase External Link Opening', () => {
     });
   });
 
-  test('should handle missing electron API gracefully', () => {
+  test('should work without electron API since fallback uses standard links', () => {
     // Temporarily set electron to undefined
     const originalElectron = window.electron;
     // @ts-ignore
@@ -192,10 +189,10 @@ describe('VideoCardBase External Link Opening', () => {
       </TestWrapper>
     );
 
-    // Find the video card and click it - should not throw error
-    const videoCard = screen.getByText('Video dQw4w9WgXcQ').closest('div[tabindex="0"]');
-    expect(videoCard).toBeTruthy();
-    expect(() => fireEvent.click(videoCard!)).not.toThrow();
+    // Should still render the link correctly even without electron API
+    const linkElement = screen.getByRole('link');
+    expect(linkElement).toBeInTheDocument();
+    expect(linkElement).toHaveAttribute('href', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
 
     // Restore electron
     window.electron = originalElectron;

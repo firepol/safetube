@@ -173,8 +173,6 @@ export interface ElectronAPI {
   setYouTubeCache: (cacheKey: string, data: any) => Promise<boolean>;
   clearExpiredYouTubeCache: () => Promise<boolean>;
   loadYouTubeCacheConfig: () => Promise<boolean>;
-  // External URL opening
-  openExternal: (url: string) => Promise<void>;
 }
 declare global {
   interface Window {
