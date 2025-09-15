@@ -73,3 +73,7 @@ Follow the Cursor rules in `@.cursor/rules/` for:
 - **Environment**: `ELECTRON_LOG_VERBOSE=true` for debug logging
 
 For detailed information, always reference the specific documentation files mentioned above.
+
+## More rules to follow
+
+- Always write and run tests (or specify what to test if automated tests are impractical), and ensure you run `yarn build:all` before committing changes
