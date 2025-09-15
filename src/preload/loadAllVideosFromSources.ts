@@ -4,6 +4,7 @@ import { PaginationService } from './paginationService';
 import fs from 'fs';
 import path from 'path';
 import { logVerbose } from './utils';
+import { createLocalVideoId } from '../shared/fileUtils';
 
 // Helper to scan local folders recursively up to maxDepth
 async function scanLocalFolder(folderPath: string, maxDepth: number, currentDepth = 1): Promise<any[]> {
@@ -28,17 +29,9 @@ async function scanLocalFolder(folderPath: string, maxDepth: number, currentDept
           videos = videos.concat(subVideos);
         }
       } else if (entry.isFile() && isVideoFile(entry.name)) {
-        // Generate encoded ID for local video to avoid routing issues
-        let videoId: string;
-        try {
-          // Use the same encoding method as the main process
-          const { encodeFilePath } = await import('../shared/fileUtils');
-          videoId = encodeFilePath(fullPath);
-          logVerbose('[Preload] Found video at depth', currentDepth, ':', fullPath);
-        } catch (error) {
-          console.error('[Preload] Error encoding file path, using fallback ID:', error);
-          videoId = `local_${Buffer.from(fullPath).toString('hex').substring(0, 16)}`;
-        }
+        // Generate URI-style ID for local video
+        const videoId = createLocalVideoId(fullPath);
+        logVerbose('[Preload] Found video at depth', currentDepth, ':', fullPath);
         
         videos.push({
           id: videoId,
@@ -76,17 +69,9 @@ async function scanFolderDeeper(folderPath: string, currentDepth: number): Promi
         const deeperVideos = await scanFolderDeeper(fullPath, currentDepth + 1);
         videos = videos.concat(deeperVideos);
       } else if (entry.isFile() && isVideoFile(entry.name)) {
-        // Generate encoded ID for local video to avoid routing issues
-        let videoId: string;
-        try {
-          // Use the same encoding method as the main process
-          const { encodeFilePath } = await import('../shared/fileUtils');
-          videoId = encodeFilePath(fullPath);
-          logVerbose('[Preload] Found video at depth', currentDepth, 'flattened to maxDepth');
-        } catch (error) {
-          console.error('[Preload] Error encoding file path, using fallback ID:', error);
-          videoId = `local_${Buffer.from(fullPath).toString('hex').substring(0, 16)}`;
-        }
+        // Generate URI-style ID for local video
+        const videoId = createLocalVideoId(fullPath);
+        logVerbose('[Preload] Found video at depth', currentDepth, 'flattened to maxDepth');
         
         videos.push({
           id: videoId,

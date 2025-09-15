@@ -7,6 +7,7 @@ import { YouTubeAPI } from './youtube-api'
 import fs from 'fs'
 import { recordVideoWatching, getTimeTrackingState } from './timeTracking'
 import { readTimeLimits, encodeFilePath } from './fileUtils'
+import { createLocalVideoId } from '../shared/fileUtils'
 
 // Load environment variables from .env file
 import dotenv from 'dotenv'
@@ -157,16 +158,9 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
           } else if (stat.isFile()) {
             const ext = path.extname(item).toLowerCase();
             if (supportedExtensions.includes(ext)) {
-              // Generate a unique ID using base64 encoding of the file path
-              let videoId: string;
-              try {
-                videoId = encodeFilePath(itemPath);
-                logVerbose('[Main] Found video at depth', depth, ':', itemPath);
-              } catch (error) {
-                log.error('[Main] Error encoding file path, using fallback ID:', error);
-                // Fallback: use a hash-based ID
-                videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
-              }
+              // Generate URI-style ID for local video
+              const videoId = createLocalVideoId(itemPath);
+              logVerbose('[Main] Found video at depth', depth, ':', itemPath);
 
               // Extract video duration
               const { extractVideoDuration } = await import('../shared/videoDurationUtils');
@@ -211,16 +205,9 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
           } else if (stat.isFile()) {
             const ext = path.extname(item).toLowerCase();
             if (supportedExtensions.includes(ext)) {
-              // Generate a unique ID using base64 encoding of the file path
-              let videoId: string;
-              try {
-                videoId = encodeFilePath(itemPath);
-                logVerbose('[Main] Found video at depth', depth, 'flattened to maxDepth:', maxDepth);
-              } catch (error) {
-                log.error('[Main] Error encoding file path, using fallback ID:', error);
-                // Fallback: use a hash-based ID
-                videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
-              }
+              // Generate URI-style ID for local video
+              const videoId = createLocalVideoId(itemPath);
+              logVerbose('[Main] Found video at depth', depth, 'flattened to maxDepth:', maxDepth);
 
               // Extract video duration
               const { extractVideoDuration } = await import('../shared/videoDurationUtils');
@@ -312,16 +299,9 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
       } else if (stat.isFile()) {
         const ext = path.extname(item).toLowerCase();
         if (supportedExtensions.includes(ext)) {
-          // Generate a unique ID using base64 encoding of the file path
-          let videoId: string;
-          try {
-            videoId = encodeFilePath(itemPath);
-            logVerbose('[Main] Found video at depth', currentDepth, ':', itemPath);
-          } catch (error) {
-            log.error('[Main] Error encoding file path, using fallback ID:', error);
-            // Fallback: use a hash-based ID
-            videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
-          }
+          // Generate URI-style ID for local video
+          const videoId = createLocalVideoId(itemPath);
+          logVerbose('[Main] Found video at depth', currentDepth, ':', itemPath);
 
           // Don't extract duration upfront to avoid performance issues
           // Duration will be extracted lazily when needed
@@ -477,15 +457,9 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
       } else if (stat.isFile()) {
         const ext = path.extname(item).toLowerCase();
         if (supportedExtensions.includes(ext)) {
-          // Generate a unique ID using base64 encoding of the file path
-          let videoId: string;
-          try {
-            videoId = encodeFilePath(itemPath);
-            logVerbose('[Main] Found flattened video at depth', depth, ':', itemPath);
-          } catch (error) {
-            log.error('[Main] Error encoding file path, using fallback ID:', error);
-            videoId = `local_${Buffer.from(itemPath).toString('hex').substring(0, 16)}`;
-          }
+          // Generate URI-style ID for local video
+          const videoId = createLocalVideoId(itemPath);
+          logVerbose('[Main] Found flattened video at depth', depth, ':', itemPath);
 
           // Don't extract duration upfront to avoid performance issues
           // Duration will be extracted lazily when needed

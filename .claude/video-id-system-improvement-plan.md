@@ -33,16 +33,16 @@ Store complete metadata in `watched.json`:
 ## Implementation Plan (8 Atomic Tasks)
 
 ### Task 1: Update TypeScript Types
-- [ ] Extend `WatchedVideo` interface with new fields: `title`, `duration`, `thumbnail`, `source`
-- [ ] Create video ID utility functions for parsing URI-style IDs
-- [ ] Add backward compatibility flags
-- **Test**: Type checking passes, interfaces compile correctly
+- [x] Extend `WatchedVideo` interface with new fields: `title`, `duration`, `thumbnail`, `source`
+- [x] Create video ID utility functions for parsing URI-style IDs
+- [x] Add backward compatibility flags
+- **Test**: Type checking passes, interfaces compile correctly ✅
 
 ### Task 2: Create Video ID Utilities
-- [ ] Replace base64/hex encoding with URI-style parsing
-- [ ] Functions: `parseVideoId()`, `createLocalVideoId()`, `createDLNAVideoId()`
-- [ ] Handle JSON escaping for special characters in paths
-- **Test**: Unit tests for all video ID parsing scenarios
+- [x] Replace base64/hex encoding with URI-style parsing
+- [x] Functions: `parseVideoId()`, `createLocalVideoId()`, `createDLNAVideoId()`
+- [x] Handle JSON escaping for special characters in paths
+- **Test**: Unit tests for all video ID parsing scenarios ✅ (20 tests pass)
 
 ### Task 3: Update Local Video Scanner
 - [ ] Generate `local:/path` IDs instead of encoded hashes

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { logVerbose } from './logging';
+import { createLocalVideoId } from '../shared/fileUtils';
 
 interface LocalVideoScanResult {
   videos: LocalVideoItem[];
@@ -23,6 +24,7 @@ interface LocalVideoItem {
 
 const CACHE_DIR = path.join('.', '.cache');
 const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
+const THUMBNAIL_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 
 export class LocalVideoScanner {
   /**
@@ -136,16 +138,19 @@ export class LocalVideoScanner {
             await this.scanFolderRecursive(fullPath, basePath, videos, maxDepth, currentDepth + 1, sourceId);
           }
         } else if (entry.isFile() && this.isVideoFile(entry.name)) {
-          // Generate encoded ID for local video
-          const videoId = `local_${Buffer.from(fullPath).toString('base64').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 16)}`;
+          // Generate URI-style ID for local video using the new system
+          const videoId = createLocalVideoId(fullPath);
           const relativePath = path.relative(basePath, fullPath);
+
+          // Check for thumbnail file with same name
+          const thumbnail = this.findThumbnailForVideo(fullPath);
 
           videos.push({
             id: videoId,
             title: path.basename(entry.name, path.extname(entry.name)),
             url: fullPath,
             type: 'local',
-            thumbnail: '',
+            thumbnail: thumbnail,
             duration: 0, // Will be populated lazily when needed
             depth: currentDepth,
             relativePath
@@ -163,6 +168,31 @@ export class LocalVideoScanner {
   private static isVideoFile(filename: string): boolean {
     const ext = path.extname(filename).toLowerCase();
     return VIDEO_EXTENSIONS.includes(ext);
+  }
+
+  /**
+   * Find thumbnail file for a video (same filename but image extension)
+   */
+  private static findThumbnailForVideo(videoPath: string): string {
+    try {
+      const videoDir = path.dirname(videoPath);
+      const videoName = path.basename(videoPath, path.extname(videoPath));
+
+      // Check for thumbnail files with same name but different extension
+      for (const thumbExt of THUMBNAIL_EXTENSIONS) {
+        const thumbnailPath = path.join(videoDir, videoName + thumbExt);
+        if (fs.existsSync(thumbnailPath)) {
+          logVerbose(`[LocalVideoScanner] Found thumbnail for ${path.basename(videoPath)}: ${thumbnailPath}`);
+          return thumbnailPath;
+        }
+      }
+
+      // No thumbnail found
+      return '';
+    } catch (error) {
+      console.warn(`[LocalVideoScanner] Error checking for thumbnail for ${videoPath}:`, error);
+      return '';
+    }
   }
 
   /**
