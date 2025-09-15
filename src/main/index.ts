@@ -232,10 +232,6 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
               const videoId = createLocalVideoId(itemPath);
               logVerbose('[Main] Found video at depth', depth, ':', itemPath);
 
-              // Extract video duration
-              const { extractVideoDuration } = await import('../shared/videoDurationUtils');
-              const duration = await extractVideoDuration(itemPath);
-
               // Find thumbnail file with same name as video
               let thumbnailUrl = findThumbnailForVideo(itemPath);
 
@@ -259,7 +255,7 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
                 id: videoId,
                 title: path.basename(item, ext),
                 thumbnail: thumbnailUrl,
-                duration,
+                duration: 0, // Will be extracted lazily when needed
                 url: itemPath,
                 video: itemPath,
                 audio: undefined,
@@ -295,10 +291,6 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
               const videoId = createLocalVideoId(itemPath);
               logVerbose('[Main] Found video at depth', depth, 'flattened to maxDepth:', maxDepth);
 
-              // Extract video duration
-              const { extractVideoDuration } = await import('../shared/videoDurationUtils');
-              const duration = await extractVideoDuration(itemPath);
-
               // Find thumbnail file with same name as video
               let thumbnailUrl = findThumbnailForVideo(itemPath);
 
@@ -322,7 +314,7 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
                 id: videoId,
                 title: path.basename(item, ext),
                 thumbnail: thumbnailUrl,
-                duration,
+                duration: 0, // Will be extracted lazily when needed
                 url: itemPath,
                 video: itemPath,
                 audio: undefined,
@@ -405,10 +397,6 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
           const videoId = createLocalVideoId(itemPath);
           logVerbose('[Main] Found video at depth', currentDepth, ':', itemPath);
 
-          // Extract video duration
-          const { extractVideoDuration } = await import('../shared/videoDurationUtils');
-          const duration = await extractVideoDuration(itemPath);
-
           // Find thumbnail file with same name as video
           let thumbnailUrl = findThumbnailForVideo(itemPath);
 
@@ -432,7 +420,7 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
             id: videoId,
             title: path.basename(item, ext),
             thumbnail: thumbnailUrl,
-            duration,
+            duration: 0, // Will be extracted lazily when needed
             url: itemPath,
             video: itemPath,
             audio: undefined,
@@ -584,10 +572,6 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
           const videoId = createLocalVideoId(itemPath);
           logVerbose('[Main] Found flattened video at depth', depth, ':', itemPath);
 
-          // Extract video duration
-          const { extractVideoDuration } = await import('../shared/videoDurationUtils');
-          const duration = await extractVideoDuration(itemPath);
-
           // Find thumbnail file with same name as video
           let thumbnailUrl = findThumbnailForVideo(itemPath);
 
@@ -611,7 +595,7 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
             id: videoId,
             title: path.basename(item, ext),
             thumbnail: thumbnailUrl,
-            duration,
+            duration: 0, // Will be extracted lazily when needed
             url: itemPath,
             video: itemPath,
             audio: undefined,
