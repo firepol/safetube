@@ -102,6 +102,23 @@ function filterDuplicateVideos(videos: any[]): any[] {
   return filteredVideos;
 }
 
+// Helper function to find thumbnail file for a video
+function findThumbnailForVideo(videoFilePath: string): string {
+  const videoDir = path.dirname(videoFilePath);
+  const baseName = path.basename(videoFilePath, path.extname(videoFilePath));
+  const thumbnailExtensions = ['.webp', '.jpg', '.jpeg', '.png'];
+  
+  for (const ext of thumbnailExtensions) {
+    const thumbnailPath = path.join(videoDir, baseName + ext);
+    if (fs.existsSync(thumbnailPath)) {
+      logVerbose('[Main] Found thumbnail for video:', thumbnailPath);
+      return `file://${thumbnailPath}`;
+    }
+  }
+  
+  return ''; // No thumbnail found
+}
+
 // Helper function for scanning local folders
 async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<any[]> {
   const videos: any[] = [];
@@ -155,10 +172,13 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
               const { extractVideoDuration } = await import('../shared/videoDurationUtils');
               const duration = await extractVideoDuration(itemPath);
 
+              // Find thumbnail file with same name as video
+              const thumbnailUrl = findThumbnailForVideo(itemPath);
+
               videos.push({
                 id: videoId,
                 title: path.basename(item, ext),
-                thumbnail: '',
+                thumbnail: thumbnailUrl,
                 duration,
                 url: itemPath,
                 video: itemPath,
@@ -206,10 +226,13 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
               const { extractVideoDuration } = await import('../shared/videoDurationUtils');
               const duration = await extractVideoDuration(itemPath);
 
+              // Find thumbnail file with same name as video
+              const thumbnailUrl = findThumbnailForVideo(itemPath);
+
               videos.push({
                 id: videoId,
                 title: path.basename(item, ext),
-                thumbnail: '',
+                thumbnail: thumbnailUrl,
                 duration,
                 url: itemPath,
                 video: itemPath,
@@ -1604,20 +1627,11 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         
         logVerbose('[Main] Scanning download folder as local source:', downloadPath);
 
-        // Use the same local video scanner logic
-        const { LocalVideoScanner } = await import('../preload/localVideoScanner');
-
-        // Scan the download folder like any local source (maxDepth 2 to include subfolders)
-        const scanResult = await LocalVideoScanner.scanFolder(
-          'downloaded',
-          downloadPath,
-          2 // Allow subfolders like "Best_of_SasFox"
-        );
-
-        const paginatedResult = LocalVideoScanner.getPaginatedVideos(scanResult, pageNumber, pageSize);
+        // Use the same scanLocalFolder logic that handles durations and thumbnails properly
+        const allVideos = await scanLocalFolder(downloadPath, 2); // maxDepth 2 for subfolders
 
         // Add source metadata to videos for compatibility
-        const videosWithMetadata = paginatedResult.videos.map(video => ({
+        const videosWithMetadata = allVideos.map(video => ({
           ...video,
           sourceId: 'downloaded',
           sourceTitle: 'Downloaded Videos',
@@ -1643,20 +1657,27 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
           }
         });
 
+        // Apply pagination manually
+        const totalVideos = videosWithMetadata.length;
+        const totalPages = Math.ceil(totalVideos / pageSize);
+        const startIndex = (pageNumber - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedVideos = videosWithMetadata.slice(startIndex, endIndex);
+
         logVerbose('[Main] Downloaded videos treated as local source:', {
-          totalVideos: paginatedResult.paginationState.totalVideos,
-          totalPages: paginatedResult.paginationState.totalPages,
+          totalVideos,
+          totalPages,
           currentPage: pageNumber,
           pageSize,
-          returnedVideos: videosWithMetadata.length
+          returnedVideos: paginatedVideos.length
         });
 
         return {
-          videos: videosWithMetadata,
+          videos: paginatedVideos,
           pagination: {
             currentPage: pageNumber,
-            totalPages: paginatedResult.paginationState.totalPages,
-            totalVideos: paginatedResult.paginationState.totalVideos,
+            totalPages: totalPages,
+            totalVideos: totalVideos,
             pageSize: pageSize
           }
         };
