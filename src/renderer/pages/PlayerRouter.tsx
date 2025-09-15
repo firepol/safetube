@@ -8,7 +8,8 @@ import { logVerbose } from '../lib/logging';
 
 export const PlayerRouter: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const videoId = id;
+  // URL decode the video ID since it was encoded when creating navigation links
+  const videoId = id ? decodeURIComponent(id) : id;
   const [, setPlayerType] = useState<YouTubePlayerType>('mediasource');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

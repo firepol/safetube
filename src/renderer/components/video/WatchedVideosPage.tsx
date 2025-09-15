@@ -168,7 +168,7 @@ export const WatchedVideosPage: React.FC = () => {
   }, [sourceId, currentPage]);
 
   const handleVideoClick = (video: VideoWithDetails) => {
-    navigate(`/player/${video.id}`);
+    navigate(`/player/${encodeURIComponent(video.id)}`);
   };
 
   const handlePageChange = (newPage: number) => {

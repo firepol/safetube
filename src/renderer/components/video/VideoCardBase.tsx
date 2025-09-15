@@ -60,8 +60,8 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
           onVideoClick
         });
       } else {
-        // Default navigation
-        navigate(`/player/${id}`);
+        // Default navigation - URL encode the video ID to handle special characters
+        navigate(`/player/${encodeURIComponent(id)}`);
       }
     }
   };

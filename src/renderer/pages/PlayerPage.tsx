@@ -26,6 +26,8 @@ function getSrc(val: unknown): string {
 
 export const PlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  // URL decode the video ID since it was encoded when creating navigation links
+  const videoId = id ? decodeURIComponent(id) : id;
   const navigate = useNavigate();
   const [video, setVideo] = useState<Video | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -163,11 +165,11 @@ export const PlayerPage: React.FC = () => {
   // Load video data when component mounts or ID changes
   useEffect(() => {
     const loadVideoData = async () => {
-      if (!id) return;
+      if (!videoId) return;
       
       try {
         setIsLoading(true);
-        const videoData = await window.electron.getVideoData(id);
+        const videoData = await window.electron.getVideoData(videoId);
         logVerbose('[PlayerPage] Loaded video data:', videoData);
         if (videoData) {
           setVideo(videoData);
@@ -187,7 +189,7 @@ export const PlayerPage: React.FC = () => {
     };
 
     loadVideoData();
-  }, [id]);
+  }, [videoId]);
 
   // Check conversion status when video is loaded
   useEffect(() => {

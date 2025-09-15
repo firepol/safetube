@@ -160,7 +160,7 @@ export const HistoryPage: React.FC = () => {
   }, [currentPage]);
 
   const handleVideoClick = (video: VideoWithDetails) => {
-    navigate(`/player/${video.id}`);
+    navigate(`/player/${encodeURIComponent(video.id)}`);
   };
 
   const handlePageChange = (newPage: number) => {

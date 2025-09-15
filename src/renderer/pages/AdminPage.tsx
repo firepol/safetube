@@ -215,7 +215,7 @@ export const AdminPage: React.FC = () => {
         
         // Then navigate to the video player, adding it to history
         // Now the history will be: [previous page] -> [source page] -> [video player]
-        navigate(`/player/${lastWatchedInfo.video.videoId}`);
+        navigate(`/player/${encodeURIComponent(lastWatchedInfo.video.videoId)}`);
         
         setSaveMessage(`Returning to ${lastWatchedInfo.video.title || 'your video'} where you last left off.`);
       } else {

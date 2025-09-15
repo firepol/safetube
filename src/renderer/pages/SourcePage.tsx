@@ -151,7 +151,7 @@ export const SourcePage: React.FC = () => {
 
   const handleVideoClick = (video: any, currentFolderPath?: string) => {
     if (video.type === 'youtube') {
-      navigate(`/player/${video.id}`, {
+      navigate(`/player/${encodeURIComponent(video.id)}`, {
         state: {
           videoTitle: video.title,
           returnTo: `/source/${sourceId}${currentPage > 1 ? `/page/${currentPage}` : ''}`
@@ -169,7 +169,7 @@ export const SourcePage: React.FC = () => {
         returnTo += `?folder=${encodeURIComponent(relativePath)}`;
       }
       
-      navigate(`/player/${video.id}`, {
+      navigate(`/player/${encodeURIComponent(video.id)}`, {
         state: { 
           returnTo: returnTo,
           currentFolderPath: currentFolderPath
