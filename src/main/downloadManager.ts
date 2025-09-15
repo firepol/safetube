@@ -3,12 +3,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { logVerbose } from '../shared/logging';
 import { YtDlpManager } from './ytDlpManager';
-import { 
-  readMainSettings, 
-  getDefaultDownloadPath, 
-  updateDownloadStatus, 
+import {
+  readMainSettings,
+  getDefaultDownloadPath,
+  updateDownloadStatus,
   getDownloadStatus,
-  addDownloadedVideo 
+  addDownloadedVideo
 } from './fileUtils';
 import { DownloadStatus, DownloadedVideo } from '../shared/types';
 
@@ -42,7 +42,7 @@ export class DownloadManager {
    * Start downloading a YouTube video
    */
   static async startDownload(
-    videoId: string, 
+    videoId: string,
     videoTitle: string,
     sourceInfo: {
       type: 'youtube_channel' | 'youtube_playlist';
@@ -53,11 +53,11 @@ export class DownloadManager {
   ): Promise<void> {
     try {
       logVerbose('[DownloadManager] Starting download for:', { videoId, videoTitle, sourceInfo });
-      
+
       // Check if already downloading
       const existingStatus = await getDownloadStatus(videoId);
       logVerbose('[DownloadManager] Existing status:', existingStatus);
-      
+
       if (existingStatus && (existingStatus.status === 'downloading' || existingStatus.status === 'pending')) {
         throw new Error('Video is already being downloaded');
       }
@@ -71,7 +71,7 @@ export class DownloadManager {
       const { readDownloadedVideos } = await import('./fileUtils');
       const downloadedVideos = await readDownloadedVideos();
       logVerbose('[DownloadManager] Downloaded videos count:', downloadedVideos.length);
-      
+
       const alreadyDownloaded = downloadedVideos.find(dv => dv.videoId === videoId);
       if (alreadyDownloaded) {
         throw new Error('Video has already been downloaded');
@@ -86,7 +86,7 @@ export class DownloadManager {
       const folderName = this.getFolderName(sourceInfo);
       const fullDownloadPath = path.join(downloadPath, folderName);
       logVerbose('[DownloadManager] Full download path:', fullDownloadPath);
-      
+
       // Ensure directory exists
       try {
         if (!fs.existsSync(fullDownloadPath)) {
@@ -119,10 +119,10 @@ export class DownloadManager {
       const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
       const sanitizedTitle = this.sanitizeFileName(videoTitle);
       const outputTemplate = path.join(fullDownloadPath, `${sanitizedTitle}.%(ext)s`);
-      
+
       logVerbose('[DownloadManager] Original title:', videoTitle);
       logVerbose('[DownloadManager] Sanitized title:', sanitizedTitle);
-      
+
       const args = [
         '--output', outputTemplate,
         '--no-playlist',
@@ -169,7 +169,7 @@ export class DownloadManager {
       // Handle process completion
       ytDlpProcess.on('close', async (code) => {
         this.activeDownloads.delete(videoId);
-        
+
         if (code === 0) {
           // Download completed successfully
           await this.handleDownloadComplete(videoId, videoTitle, downloadedFilePath, sourceInfo);
@@ -219,17 +219,17 @@ export class DownloadManager {
     if (sourceInfo.type === 'youtube_channel' && sourceInfo.channelTitle) {
       return this.sanitizeFolderName(sourceInfo.channelTitle);
     }
-    
+
     // For YouTube playlists, use playlist title
     if (sourceInfo.type === 'youtube_playlist' && sourceInfo.playlistTitle) {
       return this.sanitizeFolderName(sourceInfo.playlistTitle);
     }
-    
+
     // If we have a channel title but it's a playlist, still use channel title (channel takes priority)
     if (sourceInfo.channelTitle) {
       return this.sanitizeFolderName(sourceInfo.channelTitle);
     }
-    
+
     // Fallback to source title or source ID
     const fallbackName = sourceInfo.playlistTitle || sourceInfo.channelTitle || sourceInfo.sourceId;
     return this.sanitizeFolderName(fallbackName);
@@ -257,7 +257,7 @@ export class DownloadManager {
     try {
       // Find the actual video file (yt-dlp might have added extension)
       const videoFile = this.findVideoFile(filePath);
-      
+
       // Get video info from JSON file if available
       const infoFile = filePath.replace(/\.[^/.]+$/, '.info.json');
       let duration = 0;
@@ -317,10 +317,10 @@ export class DownloadManager {
   private static findVideoFile(outputPath: string): string {
     const dir = path.dirname(outputPath);
     const baseName = path.basename(outputPath, path.extname(outputPath));
-    
+
     // Look for video files with common extensions
     const videoExtensions = ['.mp4', '.webm', '.mkv', '.avi', '.mov'];
-    
+
     for (const ext of videoExtensions) {
       const videoFile = path.join(dir, baseName + ext);
       if (fs.existsSync(videoFile)) {
@@ -340,7 +340,7 @@ export class DownloadManager {
     if (process) {
       process.kill();
       this.activeDownloads.delete(videoId);
-      
+
       await updateDownloadStatus(videoId, {
         status: 'failed',
         progress: 0,
