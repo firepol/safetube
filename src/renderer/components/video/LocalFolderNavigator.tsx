@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { VideoGrid } from '../layout/VideoGrid';
 import { logVerbose } from '../../lib/logging';
 
 interface FolderItem {
@@ -389,27 +390,34 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
       {contents.folders.length > 0 && (
         <div className="mb-8">
           <h2 className="text-lg font-semibold mb-4 text-gray-700">📁 Folders</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {contents.folders.map((folder) => {
               const isLoading = loadingFolderCounts[folder.path];
               const videoCount = folderVideoCounts[folder.path];
-              
+
               return (
-                <div
-                  key={folder.path}
-                  onClick={() => handleFolderClick(folder)}
-                  className="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 border-2 border-blue-100 hover:border-blue-300"
-                >
-                  <div className="text-4xl mb-2">📁</div>
-                  <h3 className="font-semibold text-gray-900">{folder.name}</h3>
-                  <p className="text-sm text-gray-500">
-                    {isLoading 
-                      ? 'Loading...' 
-                      : videoCount !== undefined 
-                        ? `${videoCount} video${videoCount !== 1 ? 's' : ''}`
-                        : 'Click to open'
-                    }
-                  </p>
+                <div key={folder.path} className="w-full flex justify-center">
+                  <div
+                    onClick={() => handleFolderClick(folder)}
+                    className="bg-white rounded-xl border shadow-md flex flex-col w-full cursor-pointer max-w-[280px] sm:max-w-[320px] lg:max-w-[380px] xl:max-w-[420px] 2xl:max-w-[500px] transition-transform hover:scale-[1.03]"
+                  >
+                    <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
+                      <div className="h-full w-full bg-blue-100 flex items-center justify-center">
+                        <div className="text-6xl text-blue-500">📁</div>
+                      </div>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-between p-3">
+                      <h3 className="text-base font-semibold text-foreground truncate">{folder.name}</h3>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {isLoading
+                          ? 'Loading...'
+                          : videoCount !== undefined
+                            ? `${videoCount} video${videoCount !== 1 ? 's' : ''}`
+                            : 'Click to open'
+                        }
+                      </p>
+                    </div>
+                  </div>
                 </div>
               );
             })}
@@ -421,49 +429,29 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
       {contents.videos.length > 0 && (
         <div>
           <h2 className="text-lg font-semibold mb-4 text-gray-700">🎬 Videos</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {contents.videos.map((video) => {
+          <VideoGrid
+            videos={contents.videos.map((video) => {
               const { isWatched, isClicked } = getVideoStatus(video.id);
-              
-              // Determine CSS classes - watched takes priority over clicked
-              const cssClasses = [
-                'bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105',
-                isWatched ? 'watched' : isClicked ? 'clicked' : ''
-              ].filter(Boolean).join(' ');
-              
-              return (
-                <div
-                  key={video.id}
-                  onClick={() => {
-                    // Cancel any ongoing duration loading when video is clicked
-                    if (durationLoadingController) {
-                      durationLoadingController.abort();
-                    }
-                    onVideoClick(video, currentFolderPath);
-                  }}
-                  className={cssClasses}
-                >
-                <div className="aspect-video bg-gray-200 flex items-center justify-center">
-                  <div className="text-4xl">🎬</div>
-                </div>
-                <div className="p-3">
-                  <h3 className="font-semibold text-gray-900 mb-1">{video.title}</h3>
-                  <p className="text-xs text-gray-400">
-                    {loadingDurations[video.id] 
-                      ? 'Loading duration...' 
-                      : videoDurations[video.id] 
-                        ? `${Math.floor(videoDurations[video.id] / 60)}:${(videoDurations[video.id] % 60).toString().padStart(2, '0')}`
-                        : 'Duration unknown'
-                    }
-                  </p>
-                  {video.relativePath && (
-                    <p className="text-xs text-gray-400 mt-1 truncate">{video.relativePath}</p>
-                  )}
-                </div>
-              </div>
-              );
+
+              return {
+                id: video.id,
+                thumbnail: video.thumbnail || '',
+                title: video.title,
+                duration: videoDurations[video.id] || 0,
+                type: video.type,
+                watched: isWatched,
+                isClicked: isClicked,
+                onVideoClick: () => {
+                  // Cancel any ongoing duration loading when video is clicked
+                  if (durationLoadingController) {
+                    durationLoadingController.abort();
+                  }
+                  onVideoClick(video, currentFolderPath);
+                }
+              };
             })}
-          </div>
+            groupByType={false}
+          />
         </div>
       )}
 

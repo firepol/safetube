@@ -82,12 +82,28 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
               <div className="text-xs text-gray-500 mt-1">Open in browser</div>
             </div>
           </div>
-        ) : (
+        ) : thumbnail ? (
           <img
             src={thumbnail}
             alt={title}
             className="h-full w-full object-cover"
+            onError={(e) => {
+              // Hide broken image and show fallback
+              e.currentTarget.style.display = 'none';
+              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+              if (fallback) fallback.style.display = 'flex';
+            }}
           />
+        ) : null}
+
+        {/* Fallback thumbnail for local videos or broken images */}
+        {(!thumbnail || type === 'local') && (
+          <div
+            className="h-full w-full bg-gray-300 flex items-center justify-center"
+            style={{ display: thumbnail && type !== 'local' ? 'none' : 'flex' }}
+          >
+            <div className="text-4xl text-gray-500">🎬</div>
+          </div>
         )}
         
         {/* Error indicator overlay */}
