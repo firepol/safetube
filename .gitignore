@@ -70,3 +70,7 @@ test-videos/
 .kiro
 
 .vscode
+
+# yt-dlp executable (should use system version)
+yt-dlp
+yt-dlp.exe

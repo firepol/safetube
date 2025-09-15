@@ -97,7 +97,6 @@ export class DownloadManager {
       const outputTemplate = path.join(fullDownloadPath, `${videoTitle}.%(ext)s`);
       
       const args = [
-        '--format', 'best[height<=720]', // Limit to 720p to save space
         '--output', outputTemplate,
         '--no-playlist',
         '--write-info-json',

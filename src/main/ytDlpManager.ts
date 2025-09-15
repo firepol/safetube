@@ -43,13 +43,37 @@ export class YtDlpManager {
   }
 
   /**
-   * Check if yt-dlp is available
+   * Check if yt-dlp is available in system PATH
+   */
+  static async isSystemYtDlpAvailable(): Promise<boolean> {
+    try {
+      // Try to run yt-dlp --version to check if it's available in PATH
+      const { stdout } = await execAsync('yt-dlp --version');
+      logVerbose(`[YtDlpManager] System yt-dlp found, version: ${stdout.trim()}`);
+      return true;
+    } catch (error) {
+      logVerbose(`[YtDlpManager] System yt-dlp not found in PATH: ${error}`);
+      return false;
+    }
+  }
+
+  /**
+   * Check if yt-dlp is available (system first, then local)
    */
   static async isYtDlpAvailable(): Promise<boolean> {
     if (this.isAvailable !== null) {
       return this.isAvailable;
     }
 
+    // First check if yt-dlp is available in system PATH
+    const systemAvailable = await this.isSystemYtDlpAvailable();
+    if (systemAvailable) {
+      this.ytDlpPath = 'yt-dlp'; // Use system command
+      this.isAvailable = true;
+      return true;
+    }
+
+    // If not in system PATH, check local project directory
     try {
       const ytDlpPath = this.getYtDlpPath();
       await fs.promises.access(ytDlpPath, fs.constants.F_OK);
@@ -58,10 +82,10 @@ export class YtDlpManager {
       const stats = await fs.promises.stat(ytDlpPath);
       this.isAvailable = stats.mode & parseInt('111', 8) ? true : false;
 
-      logVerbose(`[YtDlpManager] yt-dlp found at: ${ytDlpPath}`);
+      logVerbose(`[YtDlpManager] Local yt-dlp found at: ${ytDlpPath}`);
       return this.isAvailable;
     } catch (error) {
-      logVerbose(`[YtDlpManager] yt-dlp not found: ${error}`);
+      logVerbose(`[YtDlpManager] Local yt-dlp not found: ${error}`);
       this.isAvailable = false;
       return false;
     }
@@ -74,6 +98,11 @@ export class YtDlpManager {
     const isAvailable = await this.isYtDlpAvailable();
 
     if (isAvailable) {
+      if (this.ytDlpPath === 'yt-dlp') {
+        logVerbose('[YtDlpManager] Using system yt-dlp from PATH');
+      } else {
+        logVerbose('[YtDlpManager] Using local yt-dlp');
+      }
       return;
     }
 
@@ -130,6 +159,11 @@ export class YtDlpManager {
    * Get yt-dlp command with proper path
    */
   static getYtDlpCommand(): string {
+    // If we're using system yt-dlp, just return the command name
+    if (this.ytDlpPath === 'yt-dlp') {
+      return 'yt-dlp';
+    }
+
     const ytDlpPath = this.getYtDlpPath();
 
     // On Windows, we might need to use the full path
