@@ -147,8 +147,11 @@ describe('Enhanced History Recording', () => {
       lastWatched: '2025-01-01T10:00:00.000Z',
       timeWatched: 15,
       duration: 120,
+      watched: false,
       title: 'Old Title',
-      source: 'old-source'
+      thumbnail: '',
+      source: 'old-source',
+      firstWatched: '2025-01-01T10:00:00.000Z'
     };
 
     vi.mocked(fileUtils.readWatchedVideos).mockResolvedValue([existingEntry]);

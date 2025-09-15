@@ -108,28 +108,21 @@ export const WatchedVideosPage: React.FC = () => {
                 continue;
               }
             } else {
-              // Video data not available, check if it's a local video by trying to decode the ID
-              const { isEncodedFilePath, decodeFilePath } = await import('../../../shared/fileUtils');
-              if (isEncodedFilePath(watchedVideo.videoId)) {
-                try {
-                  const filePath = decodeFilePath(watchedVideo.videoId);
-                  // Check if this file belongs to the current source
-                  if (sourceData.path && filePath.startsWith(sourceData.path)) {
-                    const fileName = path.basename(filePath, path.extname(filePath));
-                    videosWithDetails.push({
-                      id: watchedVideo.videoId,
-                      title: fileName,
-                      thumbnail: '',
-                      type: 'local',
-                      duration: watchedVideo.duration || 0,
-                      sourceId: sourceId,
-                      sourceTitle: sourceData.title,
-                      watchedData: watchedVideo
-                    });
-                  }
-                } catch (decodeError) {
-                  logVerbose('[WatchedVideosPage] Error decoding file path:', watchedVideo.videoId, decodeError);
-                }
+              // Video data not available, check if it's a local video by extracting path from URI-style ID
+              const { extractPathFromVideoId } = await import('../../../shared/fileUtils');
+              const filePath = extractPathFromVideoId(watchedVideo.videoId);
+              if (filePath && sourceData.path && filePath.startsWith(sourceData.path)) {
+                const fileName = path.basename(filePath, path.extname(filePath));
+                videosWithDetails.push({
+                  id: watchedVideo.videoId,
+                  title: watchedVideo.title || fileName,
+                  thumbnail: watchedVideo.thumbnail || '',
+                  type: 'local',
+                  duration: watchedVideo.duration || 0,
+                  sourceId: sourceId,
+                  sourceTitle: sourceData.title,
+                  watchedData: watchedVideo
+                });
               }
             }
           } catch (error) {

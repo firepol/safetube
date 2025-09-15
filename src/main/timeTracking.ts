@@ -154,7 +154,8 @@ export async function recordVideoWatching(
       // Enhanced metadata for faster history loading
       title: videoMetadata.title,
       thumbnail: videoMetadata.thumbnail,
-      source: videoMetadata.source
+      source: videoMetadata.source,
+      firstWatched: new Date().toISOString() // Will be overridden for existing entries
     };
 
     if (existingIndex >= 0) {
@@ -164,7 +165,7 @@ export async function recordVideoWatching(
         ...existing,
         ...watchedEntry,
         // Preserve original first watched date if available
-        firstWatched: existing.lastWatched,
+        firstWatched: existing.firstWatched || existing.lastWatched,
       };
     } else {
       watchedVideos.push(watchedEntry);

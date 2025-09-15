@@ -192,20 +192,3 @@ export async function mergeWatchedData(videos: any[]): Promise<any[]> {
   }
 }
 
-// File path encoding/decoding utilities
-export function encodeFilePath(filePath: string): string {
-  return Buffer.from(filePath, 'utf8').toString('base64');
-}
-
-export function decodeFilePath(encodedPath: string): string {
-  return Buffer.from(encodedPath, 'base64').toString('utf8');
-}
-
-export function isEncodedFilePath(videoId: string): boolean {
-  try {
-    decodeFilePath(videoId);
-    return true;
-  } catch {
-    return false;
-  }
-}

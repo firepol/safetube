@@ -252,16 +252,22 @@ describe('Time Tracking', () => {
       mockReadUsageLog.mockResolvedValue({
         '2024-01-15': 1800
       });
-      
+
       mockReadWatchedVideos.mockResolvedValue([
         {
           videoId: 'video1',
           position: 300,
           lastWatched: '2024-01-15T09:00:00.000Z',
-          timeWatched: 600
+          timeWatched: 600,
+          duration: 900,
+          watched: false,
+          title: 'Test Video 1',
+          thumbnail: '',
+          source: 'test-source',
+          firstWatched: '2024-01-15T09:00:00.000Z'
         }
       ]);
-      
+
       await timeTracking.recordVideoWatching('video1', 600, 300);
       
       expect(mockWriteUsageLog).toHaveBeenCalledWith({
@@ -273,7 +279,13 @@ describe('Time Tracking', () => {
           videoId: 'video1',
           position: 600,
           lastWatched: expect.any(String),
-          timeWatched: 900 // 600 + 300
+          timeWatched: 900, // 600 + 300
+          duration: 900,
+          watched: expect.any(Boolean),
+          title: expect.any(String),
+          thumbnail: expect.any(String),
+          source: expect.any(String),
+          firstWatched: '2024-01-15T09:00:00.000Z'
         }
       ]);
       vi.useRealTimers();
@@ -286,16 +298,22 @@ describe('Time Tracking', () => {
       mockReadUsageLog.mockResolvedValue({
         '2024-01-15': 1800
       });
-      
+
       mockReadWatchedVideos.mockResolvedValue([
         {
           videoId: 'video1',
           position: 300,
           lastWatched: '2024-01-15T09:00:00.000Z',
-          timeWatched: 600
+          timeWatched: 600,
+          duration: 900,
+          watched: false,
+          title: 'Test Video 1',
+          thumbnail: '',
+          source: 'test-source',
+          firstWatched: '2024-01-15T09:00:00.000Z'
         }
       ]);
-      
+
       await timeTracking.recordVideoWatching('new-video', 300, 180);
       
       expect(mockWriteWatchedVideos).toHaveBeenCalledWith([
@@ -303,13 +321,25 @@ describe('Time Tracking', () => {
           videoId: 'video1',
           position: 300,
           lastWatched: '2024-01-15T09:00:00.000Z',
-          timeWatched: 600
+          timeWatched: 600,
+          duration: 900,
+          watched: false,
+          title: 'Test Video 1',
+          thumbnail: '',
+          source: 'test-source',
+          firstWatched: '2024-01-15T09:00:00.000Z'
         },
         {
           videoId: 'new-video',
           position: 300,
           lastWatched: expect.any(String),
-          timeWatched: 180
+          timeWatched: 180,
+          duration: expect.any(Number),
+          watched: expect.any(Boolean),
+          title: expect.any(String),
+          thumbnail: expect.any(String),
+          source: expect.any(String),
+          firstWatched: expect.any(String)
         }
       ]);
       vi.useRealTimers();
@@ -323,13 +353,25 @@ describe('Time Tracking', () => {
           videoId: 'video1',
           position: 300,
           lastWatched: '2024-01-15T10:00:00.000Z',
-          timeWatched: 600
+          timeWatched: 600,
+          duration: 900,
+          watched: false,
+          title: 'Test Video 1',
+          thumbnail: '',
+          source: 'test-source',
+          firstWatched: '2024-01-15T10:00:00.000Z'
         },
         {
           videoId: 'video2',
           position: 600,
           lastWatched: '2024-01-15T09:00:00.000Z',
-          timeWatched: 900
+          timeWatched: 900,
+          duration: 1200,
+          watched: false,
+          title: 'Test Video 2',
+          thumbnail: '',
+          source: 'test-source',
+          firstWatched: '2024-01-15T09:00:00.000Z'
         }
       ];
       mockReadWatchedVideos.mockResolvedValue(watchedVideos);

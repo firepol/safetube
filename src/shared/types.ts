@@ -31,13 +31,13 @@ export interface WatchedVideo {
   position: number; // seconds
   lastWatched: string; // ISO date string
   timeWatched: number; // seconds
-  duration?: number; // video duration in seconds (optional for backward compatibility)
-  watched?: boolean; // whether video was fully watched (optional for backward compatibility)
+  duration: number; // video duration in seconds
+  watched: boolean; // whether video was fully watched
   // Enhanced metadata for faster history loading
-  title?: string; // video title (optional for backward compatibility)
-  thumbnail?: string; // thumbnail URL or local path (optional for backward compatibility)
-  source?: string; // source ID this video belongs to (optional for backward compatibility)
-  firstWatched?: string; // ISO date string when first watched (optional for backward compatibility)
+  title: string; // video title
+  thumbnail: string; // thumbnail URL or local path
+  source: string; // source ID this video belongs to
+  firstWatched: string; // ISO date string when first watched
 }
 
 // Video source types for configuration-driven system
