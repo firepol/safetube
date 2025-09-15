@@ -68,3 +68,5 @@ test-videos/
 
 # Kiro folder
 .kiro
+
+.vscode
