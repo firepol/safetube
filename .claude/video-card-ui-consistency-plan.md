@@ -62,12 +62,12 @@ grid-template-columns: repeat(5, minmax(500px, 1fr))
 - **Test**: All pages use consistent video card display and functionality ✅
 
 ### Task 4: Standardize Navigation
-- [ ] Create shared PageHeader component for consistent navigation
-- [ ] Add top navigation to HistoryPage using PageHeader
-- [ ] Add top navigation to WatchedVideosPage using PageHeader
-- [ ] Update SourcePage to use PageHeader for consistency
-- [ ] Ensure consistent back button styling and behavior
-- **Test**: Navigation works consistently across all pages ⏳
+- [x] Create shared PageHeader component for consistent navigation ✅
+- [x] Add top navigation to HistoryPage using PageHeader ✅
+- [x] Add top navigation to WatchedVideosPage using PageHeader ✅
+- [x] Update SourcePage to use PageHeader for consistency ✅
+- [x] Ensure consistent back button styling and behavior ✅
+- **Test**: Navigation works consistently across all pages ✅
 
 ### Task 5: Code Organization Improvements
 - [ ] Create `useVideoStatus` hook for consistent status checking
@@ -92,14 +92,15 @@ grid-template-columns: repeat(5, minmax(500px, 1fr))
 
 ## Implementation Status
 
-✅ **TASKS 1-3 COMPLETED**: Core video card standardization implemented and tested.
+✅ **TASKS 1-4 COMPLETED**: Core video card standardization and navigation implemented and tested.
 
 ### Summary of Changes
-- **3 atomic implementations** completing video card and grid standardization
+- **4 atomic implementations** completing video card, grid, and navigation standardization
 - **Enhanced VideoCardBase component** with isClicked prop and watched video overlays
 - **Responsive grid system** with fixed breakpoints and progressive card sizing
 - **Unified page layouts** using VideoGrid across HistoryPage, WatchedVideosPage, SourcePage
-- **Comprehensive testing** ensuring consistent functionality across all pages
+- **Standardized navigation** with PageHeader component across all pages
+- **Comprehensive testing** ensuring consistent functionality and navigation across all pages
 
 ### Benefits Achieved
 1. ✅ **Consistent visual design**: All pages now use unified VideoCardBase component
@@ -108,36 +109,41 @@ grid-template-columns: repeat(5, minmax(500px, 1fr))
 4. ✅ **Code maintainability**: Eliminated duplicate video card implementations
 5. ✅ **Better UX**: Violet type label highlighting for clicked videos
 6. ✅ **Fallback handling**: Movie icons for local videos without thumbnails
+7. ✅ **Unified navigation**: Standardized PageHeader component with consistent back buttons and layout
 
-## Task 4: Standardize Navigation System
+---
+
+## Task 5: Code Organization Improvements
 
 **Status**: ⏳ Next Task
 
-Create unified navigation component for consistent top-level navigation across all pages.
+Extract common patterns and create reusable utilities to reduce code duplication.
 
 ### Components to Create
-- **PageHeader component**: Reusable navigation header with title, back button, and optional right content
-- **Navigation integration**: Add to HistoryPage, WatchedVideosPage, and enhance SourcePage
-- **Consistent styling**: Unified back button appearance and behavior
+- **useVideoStatus hook**: Centralized logic for determining watched/clicked status from watched.json
+- **usePagination hook**: Common pagination logic for video grid pages
+- **LoadingState component**: Standardized loading display component
+- **ErrorState component**: Standardized error display component
 
 ### Files to Update
-- Create new `src/renderer/components/layout/PageHeader.tsx`
-- Update `src/renderer/pages/HistoryPage.tsx`
-- Update `src/renderer/components/video/WatchedVideosPage.tsx`
-- Update `src/renderer/pages/SourcePage.tsx`
+- Create new `src/renderer/hooks/useVideoStatus.ts`
+- Create new `src/renderer/hooks/usePagination.ts`
+- Create new `src/renderer/components/layout/LoadingState.tsx`
+- Create new `src/renderer/components/layout/ErrorState.tsx`
+- Update pages to use these shared utilities
 
-### Benefits of Navigation Standardization
-- **Consistent UX**: Same navigation pattern across all pages
-- **Better accessibility**: Standardized keyboard navigation and focus management
-- **Easier maintenance**: Single navigation component to update
-- **Visual consistency**: Uniform back button styling and positioning
+### Benefits of Code Organization
+- **Reduced duplication**: Common patterns extracted into reusable utilities
+- **Easier maintenance**: Single source of truth for status logic and pagination
+- **Better testability**: Isolated hooks and components easier to unit test
+- **Consistent behavior**: Same pagination and status logic across all pages
 
-**Test**: Navigation works consistently across all pages with proper back button functionality ⏳
+**Test**: Code is well-organized with minimal duplication and consistent behavior ⏳
 
 ---
 
 ## Current Status
 
-**TASKS 1-3**: ✅ Completed - Video card and grid standardization fully implemented
-**TASK 4**: ⏳ Ready to begin - Navigation standardization
-**TASKS 5-6**: ⏳ Planned - Code organization and thumbnail enhancements
+**TASKS 1-4**: ✅ Completed - Video card, grid, and navigation standardization fully implemented
+**TASK 5**: ⏳ Ready to begin - Code organization improvements
+**TASK 6**: ⏳ Planned - Local video thumbnail enhancements
