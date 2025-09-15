@@ -29,8 +29,12 @@ export class DownloadManager {
     }
   ): Promise<void> {
     try {
+      logVerbose('[DownloadManager] Starting download for:', { videoId, videoTitle, sourceInfo });
+      
       // Check if already downloading
       const existingStatus = await getDownloadStatus(videoId);
+      logVerbose('[DownloadManager] Existing status:', existingStatus);
+      
       if (existingStatus && (existingStatus.status === 'downloading' || existingStatus.status === 'pending')) {
         throw new Error('Video is already being downloaded');
       }
@@ -43,6 +47,8 @@ export class DownloadManager {
       // Also check the downloaded videos list to prevent duplicates
       const { readDownloadedVideos } = await import('./fileUtils');
       const downloadedVideos = await readDownloadedVideos();
+      logVerbose('[DownloadManager] Downloaded videos count:', downloadedVideos.length);
+      
       const alreadyDownloaded = downloadedVideos.find(dv => dv.videoId === videoId);
       if (alreadyDownloaded) {
         throw new Error('Video has already been downloaded');
@@ -51,23 +57,36 @@ export class DownloadManager {
       // Get download path from settings
       const settings = await readMainSettings();
       const downloadPath = settings.downloadPath || await getDefaultDownloadPath();
+      logVerbose('[DownloadManager] Download path:', downloadPath);
 
       // Create folder structure
       const folderName = this.getFolderName(sourceInfo);
       const fullDownloadPath = path.join(downloadPath, folderName);
+      logVerbose('[DownloadManager] Full download path:', fullDownloadPath);
       
       // Ensure directory exists
-      if (!fs.existsSync(fullDownloadPath)) {
-        fs.mkdirSync(fullDownloadPath, { recursive: true });
+      try {
+        if (!fs.existsSync(fullDownloadPath)) {
+          logVerbose('[DownloadManager] Creating directory:', fullDownloadPath);
+          fs.mkdirSync(fullDownloadPath, { recursive: true });
+          logVerbose('[DownloadManager] Directory created successfully');
+        } else {
+          logVerbose('[DownloadManager] Directory already exists');
+        }
+      } catch (dirError) {
+        logVerbose('[DownloadManager] Error creating directory:', dirError);
+        throw new Error(`Failed to create download directory: ${dirError}`);
       }
 
       // Update status to downloading
+      logVerbose('[DownloadManager] Updating download status to downloading');
       await updateDownloadStatus(videoId, {
         status: 'downloading',
         progress: 0,
         startTime: Date.now(),
         sourceInfo
       });
+      logVerbose('[DownloadManager] Download status updated successfully');
 
       // Ensure yt-dlp is available
       await YtDlpManager.ensureYtDlpAvailable();

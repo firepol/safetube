@@ -28,8 +28,14 @@ async function readJsonFile<T>(filename: string): Promise<T> {
     return JSON.parse(content) as T;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      // File doesn't exist, return default value
-      return {} as T;
+      // File doesn't exist, return default value based on filename
+      if (filename.includes('downloadStatus.json') || 
+          filename.includes('downloadedVideos.json') || 
+          filename.includes('videoSources.json') || 
+          filename.includes('watched.json')) {
+        return [] as T; // Return empty array for array-type files
+      }
+      return {} as T; // Return empty object for object-type files
     }
     throw new Error(`Failed to read ${filename}: ${error}`);
   }
