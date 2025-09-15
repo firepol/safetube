@@ -350,20 +350,19 @@ export const YouTubePlayerPage: React.FC = () => {
 
 
   return (
-    <>
-      <BasePlayerPage
-        video={video}
-        isLoading={isLoading}
-        error={error}
-        isVideoPlaying={isVideoPlaying}
-        timeRemainingSeconds={timeRemainingSeconds}
-        countdownWarningSeconds={countdownWarningSeconds}
-      >
-        <div ref={containerRef} id={PLAYER_CONTAINER_ID} className="w-full aspect-video bg-black">
-          {/* YouTube player will be mounted here */}
-        </div>
-      </BasePlayerPage>
+    <BasePlayerPage
+      video={video}
+      isLoading={isLoading}
+      error={error}
+      isVideoPlaying={isVideoPlaying}
+      timeRemainingSeconds={timeRemainingSeconds}
+      countdownWarningSeconds={countdownWarningSeconds}
+    >
+      <div ref={containerRef} id={PLAYER_CONTAINER_ID} className="w-full aspect-video bg-black">
+        {/* YouTube player will be mounted here */}
+      </div>
       
+      {/* Download UI using shared component */}
       <DownloadUI
         video={video}
         downloadStatus={downloadStatus}
@@ -371,6 +370,6 @@ export const YouTubePlayerPage: React.FC = () => {
         onStartDownload={onStartDownload}
         onCancelDownload={onCancelDownload}
       />
-    </>
+    </BasePlayerPage>
   );
 }; 
