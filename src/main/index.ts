@@ -39,6 +39,76 @@ declare global {
   var currentVideos: any[];
 }
 
+// Background thumbnail generation queue
+const thumbnailGenerationQueue = new Set<string>();
+const thumbnailGenerationInProgress = new Set<string>();
+
+// Schedule thumbnail generation in background
+function scheduleBackgroundThumbnailGeneration(videoId: string, videoPath: string): void {
+  const key = `${videoId}:${videoPath}`;
+
+  // Don't queue if already queued or in progress
+  if (thumbnailGenerationQueue.has(key) || thumbnailGenerationInProgress.has(key)) {
+    return;
+  }
+
+  thumbnailGenerationQueue.add(key);
+  logVerbose('[Main] Scheduled background thumbnail generation for:', videoId);
+
+  // Process queue asynchronously
+  setImmediate(() => processNextThumbnailInQueue());
+}
+
+// Process thumbnail generation queue
+async function processNextThumbnailInQueue(): Promise<void> {
+  if (thumbnailGenerationQueue.size === 0 || thumbnailGenerationInProgress.size >= 2) {
+    return; // Limit concurrent generation to 2
+  }
+
+  const next = thumbnailGenerationQueue.values().next().value;
+  if (!next) return;
+
+  thumbnailGenerationQueue.delete(next);
+  thumbnailGenerationInProgress.add(next);
+
+  const [videoId, videoPath] = next.split(':', 2);
+
+  try {
+    logVerbose('[Main] Starting background thumbnail generation for:', videoId);
+    const { ThumbnailGenerator } = await import('./thumbnailGenerator');
+    const generatedThumbnail = await ThumbnailGenerator.generateCachedThumbnail(videoId, videoPath);
+
+    if (generatedThumbnail) {
+      const relativeThumbnail = path.relative(path.join(process.cwd(), 'public'), generatedThumbnail);
+      const thumbnailUrl = `/${relativeThumbnail.replace(/\\/g, '/')}`;
+      logVerbose('[Main] Background thumbnail generated:', videoId, '->', thumbnailUrl);
+
+      // Notify renderer about thumbnail update
+      notifyThumbnailReady(videoId, thumbnailUrl);
+    }
+  } catch (error) {
+    logVerbose('[Main] Background thumbnail generation failed for:', videoId, error);
+  } finally {
+    thumbnailGenerationInProgress.delete(next);
+    // Process next item in queue
+    setImmediate(() => processNextThumbnailInQueue());
+  }
+}
+
+// Notify renderer that thumbnail is ready
+function notifyThumbnailReady(videoId: string, thumbnailUrl: string): void {
+  // Find all browser windows and send thumbnail update
+  const { BrowserWindow } = require('electron');
+  const windows = BrowserWindow.getAllWindows();
+
+  for (const window of windows) {
+    if (!window.isDestroyed()) {
+      window.webContents.send('thumbnail-ready', { videoId, thumbnailUrl });
+      logVerbose('[Main] Sent thumbnail-ready event for:', videoId);
+    }
+  }
+}
+
 // Helper function to filter out converted videos when original exists
 function filterDuplicateVideos(videos: any[]): any[] {
   const filteredVideos: any[] = [];
@@ -167,7 +237,23 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
               const duration = await extractVideoDuration(itemPath);
 
               // Find thumbnail file with same name as video
-              const thumbnailUrl = findThumbnailForVideo(itemPath);
+              let thumbnailUrl = findThumbnailForVideo(itemPath);
+
+              // Check if thumbnail already exists in cache
+              if (!thumbnailUrl) {
+                const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
+                const cacheKey = getThumbnailCacheKey(videoId, 'local');
+                const cachedThumbnailPath = path.join(process.cwd(), 'public', 'thumbnails', `${cacheKey}.jpg`);
+
+                if (fs.existsSync(cachedThumbnailPath)) {
+                  const relativeThumbnail = path.relative(path.join(process.cwd(), 'public'), cachedThumbnailPath);
+                  thumbnailUrl = `/${relativeThumbnail.replace(/\\/g, '/')}`;
+                  logVerbose('[Main] Using existing cached thumbnail:', thumbnailUrl);
+                } else {
+                  // Schedule thumbnail generation in background (non-blocking)
+                  scheduleBackgroundThumbnailGeneration(videoId, itemPath);
+                }
+              }
 
               videos.push({
                 id: videoId,
@@ -214,7 +300,23 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
               const duration = await extractVideoDuration(itemPath);
 
               // Find thumbnail file with same name as video
-              const thumbnailUrl = findThumbnailForVideo(itemPath);
+              let thumbnailUrl = findThumbnailForVideo(itemPath);
+
+              // Check if thumbnail already exists in cache
+              if (!thumbnailUrl) {
+                const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
+                const cacheKey = getThumbnailCacheKey(videoId, 'local');
+                const cachedThumbnailPath = path.join(process.cwd(), 'public', 'thumbnails', `${cacheKey}.jpg`);
+
+                if (fs.existsSync(cachedThumbnailPath)) {
+                  const relativeThumbnail = path.relative(path.join(process.cwd(), 'public'), cachedThumbnailPath);
+                  thumbnailUrl = `/${relativeThumbnail.replace(/\\/g, '/')}`;
+                  logVerbose('[Main] Using existing cached thumbnail for flattened video:', thumbnailUrl);
+                } else {
+                  // Schedule thumbnail generation in background (non-blocking)
+                  scheduleBackgroundThumbnailGeneration(videoId, itemPath);
+                }
+              }
 
               videos.push({
                 id: videoId,
@@ -303,13 +405,34 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
           const videoId = createLocalVideoId(itemPath);
           logVerbose('[Main] Found video at depth', currentDepth, ':', itemPath);
 
-          // Don't extract duration upfront to avoid performance issues
-          // Duration will be extracted lazily when needed
+          // Extract video duration
+          const { extractVideoDuration } = await import('../shared/videoDurationUtils');
+          const duration = await extractVideoDuration(itemPath);
+
+          // Find thumbnail file with same name as video
+          let thumbnailUrl = findThumbnailForVideo(itemPath);
+
+          // Check if thumbnail already exists in cache
+          if (!thumbnailUrl) {
+            const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
+            const cacheKey = getThumbnailCacheKey(videoId, 'local');
+            const cachedThumbnailPath = path.join(process.cwd(), 'public', 'thumbnails', `${cacheKey}.jpg`);
+
+            if (fs.existsSync(cachedThumbnailPath)) {
+              const relativeThumbnail = path.relative(path.join(process.cwd(), 'public'), cachedThumbnailPath);
+              thumbnailUrl = `/${relativeThumbnail.replace(/\\/g, '/')}`;
+              logVerbose('[Main] Using existing cached thumbnail for folder contents video:', thumbnailUrl);
+            } else {
+              // Schedule thumbnail generation in background (non-blocking)
+              scheduleBackgroundThumbnailGeneration(videoId, itemPath);
+            }
+          }
+
           videos.push({
             id: videoId,
             title: path.basename(item, ext),
-            thumbnail: '',
-            duration: 0, // Will be extracted lazily
+            thumbnail: thumbnailUrl,
+            duration,
             url: itemPath,
             video: itemPath,
             audio: undefined,
@@ -461,13 +584,34 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
           const videoId = createLocalVideoId(itemPath);
           logVerbose('[Main] Found flattened video at depth', depth, ':', itemPath);
 
-          // Don't extract duration upfront to avoid performance issues
-          // Duration will be extracted lazily when needed
+          // Extract video duration
+          const { extractVideoDuration } = await import('../shared/videoDurationUtils');
+          const duration = await extractVideoDuration(itemPath);
+
+          // Find thumbnail file with same name as video
+          let thumbnailUrl = findThumbnailForVideo(itemPath);
+
+          // Check if thumbnail already exists in cache
+          if (!thumbnailUrl) {
+            const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
+            const cacheKey = getThumbnailCacheKey(videoId, 'local');
+            const cachedThumbnailPath = path.join(process.cwd(), 'public', 'thumbnails', `${cacheKey}.jpg`);
+
+            if (fs.existsSync(cachedThumbnailPath)) {
+              const relativeThumbnail = path.relative(path.join(process.cwd(), 'public'), cachedThumbnailPath);
+              thumbnailUrl = `/${relativeThumbnail.replace(/\\/g, '/')}`;
+              logVerbose('[Main] Using existing cached thumbnail for getFlattenedContent video:', thumbnailUrl);
+            } else {
+              // Schedule thumbnail generation in background (non-blocking)
+              scheduleBackgroundThumbnailGeneration(videoId, itemPath);
+            }
+          }
+
           videos.push({
             id: videoId,
             title: path.basename(item, ext),
-            thumbnail: '',
-            duration: 0, // Will be extracted lazily
+            thumbnail: thumbnailUrl,
+            duration,
             url: itemPath,
             video: itemPath,
             audio: undefined,

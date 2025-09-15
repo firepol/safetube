@@ -173,6 +173,9 @@ export interface ElectronAPI {
   setYouTubeCache: (cacheKey: string, data: any) => Promise<boolean>;
   clearExpiredYouTubeCache: () => Promise<boolean>;
   loadYouTubeCacheConfig: () => Promise<boolean>;
+  // Thumbnail update events
+  onThumbnailReady: (callback: (data: { videoId: string; thumbnailUrl: string }) => void) => any;
+  offThumbnailReady: (wrappedCallback: any) => void;
 }
 declare global {
   interface Window {

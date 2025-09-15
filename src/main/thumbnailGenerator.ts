@@ -8,7 +8,7 @@ import { ThumbnailGenerationOptions, getThumbnailCacheKey } from '../shared/thum
  * Service for generating video thumbnails using FFmpeg
  */
 export class ThumbnailGenerator {
-  private static thumbnailsDir = path.join('.', '.cache', 'thumbnails');
+  private static thumbnailsDir = path.join(process.cwd(), 'public', 'thumbnails');
 
   /**
    * Ensure thumbnails directory exists

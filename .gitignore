@@ -64,6 +64,10 @@ config/
 # Cache
 .cache
 
+# Thumbnails
+.thumbnails
+public/thumbnails
+
 test-videos/
 
 # Kiro folder

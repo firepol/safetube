@@ -99,6 +99,15 @@ contextBridge.exposeInMainWorld(
     getYouTubeCache: (cacheKey: string) => ipcRenderer.invoke('youtube-cache:get', cacheKey),
     setYouTubeCache: (cacheKey: string, data: any) => ipcRenderer.invoke('youtube-cache:set', cacheKey, data),
     clearExpiredYouTubeCache: () => ipcRenderer.invoke('youtube-cache:clear-expired'),
-    loadYouTubeCacheConfig: () => ipcRenderer.invoke('youtube-cache:load-config')
+    loadYouTubeCacheConfig: () => ipcRenderer.invoke('youtube-cache:load-config'),
+    // Thumbnail update events
+    onThumbnailReady: (callback: (data: { videoId: string; thumbnailUrl: string }) => void) => {
+      const wrappedCallback = (_: any, data: { videoId: string; thumbnailUrl: string }) => callback(data);
+      ipcRenderer.on('thumbnail-ready', wrappedCallback);
+      return wrappedCallback; // Return wrapped callback for cleanup
+    },
+    offThumbnailReady: (wrappedCallback: any) => {
+      ipcRenderer.off('thumbnail-ready', wrappedCallback);
+    }
   }
 );

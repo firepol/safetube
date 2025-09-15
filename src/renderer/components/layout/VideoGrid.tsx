@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { VideoCardBase, VideoCardBaseProps } from '../video/VideoCardBase';
+import { useThumbnailUpdates } from '../../hooks/useThumbnailUpdates';
 
 interface VideoGridProps {
   videos: VideoCardBaseProps[];
@@ -13,8 +14,29 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   groupByType = true,
   className,
 }) => {
+  const [updatedVideos, setUpdatedVideos] = useState<VideoCardBaseProps[]>(videos);
+
+  // Use the thumbnail updates hook
+  const { getThumbnailForVideo } = useThumbnailUpdates({
+    onThumbnailUpdate: (videoId: string, thumbnailUrl: string) => {
+      // Update the video with the new thumbnail
+      setUpdatedVideos(prevVideos =>
+        prevVideos.map(video =>
+          video.id === videoId
+            ? { ...video, thumbnail: thumbnailUrl }
+            : video
+        )
+      );
+    }
+  });
+
+  // Update local state when videos prop changes
+  useEffect(() => {
+    setUpdatedVideos(videos);
+  }, [videos]);
+
   const groupedVideos = groupByType
-    ? videos.reduce((acc, video) => {
+    ? updatedVideos.reduce((acc, video) => {
         const type = video.type;
         if (!acc[type]) {
           acc[type] = [];
@@ -22,7 +44,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
         acc[type].push(video);
         return acc;
       }, {} as Record<string, VideoCardBaseProps[]>)
-    : { all: videos };
+    : { all: updatedVideos };
 
   return (
     <div className={cn('space-y-8', className)}>
