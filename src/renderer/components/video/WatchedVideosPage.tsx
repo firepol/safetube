@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Pagination } from '../layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../layout/TimeIndicator';
+import { VideoGrid } from '../layout/VideoGrid';
 import { logVerbose } from '../../lib/logging';
 import path from 'path';
 
@@ -200,96 +201,69 @@ export const WatchedVideosPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={handleBackClick}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-200"
-            >
-              ← Back to {source?.title || 'Source'}
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                ✅ Watched Videos
-              </h1>
-              <p className="text-gray-600">
-                {source?.title || 'Source'} • {paginationState?.totalVideos || 0} videos fully watched
-              </p>
-            </div>
-          </div>
-          <TimeIndicator realTime={true} updateInterval={3000} />
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handleBackClick}
+            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+          >
+            ← Back to {source?.title || 'Source'}
+          </button>
+          <h1 className="text-2xl font-bold">✅ Watched Videos</h1>
+          <span className="text-sm text-gray-500">({paginationState?.totalVideos || 0} videos fully watched)</span>
         </div>
-
-        {/* Watched Videos Grid */}
-        {watchedVideos.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">✅</div>
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">No Fully Watched Videos</h2>
-            <p className="text-gray-500 mb-4">
-              You haven't fully watched any videos from this source yet.
-            </p>
-            <button
-              onClick={handleBackClick}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              ← Back to Source
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-              {watchedVideos.map((video) => (
-                <div
-                  key={video.id}
-                  className={`bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 ${
-                    video.watchedData.watched === false ? 'border-2 border-blue-400' : 
-                    video.watchedData.watched === undefined ? 'border-2 border-gray-300' : ''
-                  }`}
-                  onClick={() => handleVideoClick(video)}
-                >
-                  <div className="aspect-video bg-gray-200 overflow-hidden">
-                    {video.thumbnail ? (
-                      <img 
-                        src={video.thumbnail} 
-                        alt={video.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                        <div className="text-2xl text-gray-500">📹</div>
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <h3 className="font-medium text-gray-900 text-sm line-clamp-2 mb-1">
-                      {video.title}
-                    </h3>
-                    <div className="flex items-center justify-between text-xs text-gray-500 mb-1">
-                      <span>{video.type === 'youtube' ? 'YouTube' : 'Local Video'}</span>
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      Last watched: {new Date(video.watchedData.lastWatched).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            
-            {/* Pagination */}
-            {paginationState && paginationState.totalPages > 1 && (
-              <Pagination
-                currentPage={paginationState.currentPage}
-                totalPages={paginationState.totalPages}
-                onPageChange={handlePageChange}
-                className="mb-6"
-              />
-            )}
-          </>
-        )}
+        <TimeIndicator realTime={true} updateInterval={3000} />
       </div>
+
+      {/* Watched Videos Grid */}
+      {watchedVideos.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">✅</div>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">No Fully Watched Videos</h2>
+          <p className="text-gray-500 mb-4">
+            You haven't fully watched any videos from this source yet.
+          </p>
+          <button
+            onClick={handleBackClick}
+            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+          >
+            ← Back to Source
+          </button>
+        </div>
+      ) : (
+        <>
+          <VideoGrid
+            videos={watchedVideos.map((video) => {
+              const isWatched = video.watchedData.watched === true;
+              const isClicked = true; // All videos in watched videos page have been clicked
+
+              return {
+                id: video.id,
+                thumbnail: video.thumbnail || '',
+                title: video.title,
+                duration: video.duration || 0,
+                type: video.type,
+                watched: isWatched,
+                isClicked: isClicked,
+                onVideoClick: () => handleVideoClick(video)
+              };
+            })}
+            groupByType={false}
+            className="mb-6"
+          />
+
+          {/* Pagination */}
+          {paginationState && paginationState.totalPages > 1 && (
+            <Pagination
+              currentPage={paginationState.currentPage}
+              totalPages={paginationState.totalPages}
+              onPageChange={handlePageChange}
+              className="mb-6"
+            />
+          )}
+        </>
+      )}
     </div>
   );
 };

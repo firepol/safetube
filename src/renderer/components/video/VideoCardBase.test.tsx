@@ -242,7 +242,7 @@ describe('VideoCardBase External Link Opening', () => {
     expect(checkmark).not.toBeInTheDocument();
   });
 
-  test('should show violet border for clicked videos', () => {
+  test('should show violet background on type label for clicked videos', () => {
     const props = {
       id: 'dQw4w9WgXcQ',
       thumbnail: 'test-thumbnail.jpg',
@@ -258,12 +258,12 @@ describe('VideoCardBase External Link Opening', () => {
       </TestWrapper>
     );
 
-    // Find the video card and check for violet border classes
-    const videoCard = screen.getByText('Test Video').closest('div[tabindex="0"]');
-    expect(videoCard).toHaveClass('border-2', 'border-violet-500', 'shadow-lg', 'shadow-violet-200');
+    // Find the type label and check for violet background
+    const typeLabel = screen.getByText('youtube');
+    expect(typeLabel).toHaveClass('bg-violet-500', 'text-white', 'px-2', 'py-1', 'rounded');
   });
 
-  test('should not show violet border for non-clicked videos', () => {
+  test('should not show violet background for non-clicked videos', () => {
     const props = {
       id: 'dQw4w9WgXcQ',
       thumbnail: 'test-thumbnail.jpg',
@@ -279,9 +279,10 @@ describe('VideoCardBase External Link Opening', () => {
       </TestWrapper>
     );
 
-    // Find the video card and check that violet border classes are not present
-    const videoCard = screen.getByText('Test Video').closest('div[tabindex="0"]');
-    expect(videoCard).not.toHaveClass('border-2', 'border-violet-500', 'shadow-lg', 'shadow-violet-200');
+    // Find the type label and check that violet background is not present
+    const typeLabel = screen.getByText('youtube');
+    expect(typeLabel).not.toHaveClass('bg-violet-500', 'text-white', 'px-2', 'py-1', 'rounded');
+    expect(typeLabel).toHaveClass('text-muted-foreground');
   });
 
   test('should handle both watched and clicked states simultaneously', () => {
@@ -301,12 +302,17 @@ describe('VideoCardBase External Link Opening', () => {
       </TestWrapper>
     );
 
-    // Check for both checkmark and violet border
+    // Check for checkmark
     const checkmark = screen.getByText('✓');
     expect(checkmark).toBeInTheDocument();
 
-    const videoCard = screen.getByText('Test Video').closest('div[tabindex="0"]');
-    expect(videoCard).toHaveClass('border-2', 'border-violet-500', 'shadow-lg', 'shadow-violet-200');
-    expect(videoCard).toHaveClass('opacity-80'); // watched state styling
+    // Check for violet type label
+    const typeLabel = screen.getByText('youtube');
+    expect(typeLabel).toHaveClass('bg-violet-500', 'text-white', 'px-2', 'py-1', 'rounded');
+
+    // Check for white faded overlay on watched videos
+    const thumbnail = checkmark.closest('.relative');
+    const overlay = thumbnail?.querySelector('.bg-white\\/40');
+    expect(overlay).toBeInTheDocument();
   });
 });

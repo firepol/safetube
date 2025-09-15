@@ -117,16 +117,21 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
         
         {/* Duration Overlay - only show for available videos */}
         {!isFallback && (
-          <div className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 py-0.5 text-xs text-white">
+          <div className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 py-0.5 text-xs text-white z-20">
             {formatDuration(duration)}
           </div>
         )}
 
-        {/* Watched Video Checkmark Overlay */}
+        {/* Watched Video Overlay Effect */}
         {watched && !isFallback && (
-          <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-lg">
-            ✓
-          </div>
+          <>
+            {/* White faded overlay to make thumbnail look washed out */}
+            <div className="absolute inset-0 bg-white/40 rounded-t-xl z-10" />
+            {/* Checkmark - appears above overlay */}
+            <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-lg z-20">
+              ✓
+            </div>
+          </>
         )}
         {/* Progress Bar */}
         {watched && (
@@ -178,7 +183,10 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
           </p>
         )}
         
-        <p className="mt-1 text-xs text-muted-foreground capitalize">
+        <p className={cn(
+          "mt-1 text-xs capitalize",
+          isClicked ? "bg-violet-500 text-white px-2 py-1 rounded" : "text-muted-foreground"
+        )}>
           {type}
         </p>
       </div>
@@ -189,9 +197,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
     'bg-card rounded-xl border shadow-md flex flex-col w-full cursor-pointer',
     'max-w-[280px] sm:max-w-[320px] lg:max-w-[380px] xl:max-w-[420px] 2xl:max-w-[500px]',
     'transition-transform hover:scale-[1.03]',
-    isFallback ? 'opacity-60 border-dashed border-yellow-400' : '',
-    watched ? 'opacity-80' : '',
-    isClicked ? 'border-2 border-violet-500 shadow-lg shadow-violet-200' : ''
+    isFallback ? 'opacity-60 border-dashed border-yellow-400' : ''
   );
 
   // For fallback videos, wrap in a link that opens externally

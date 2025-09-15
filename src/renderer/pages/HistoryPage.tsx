@@ -200,73 +200,64 @@ export const HistoryPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <button
-              onClick={handleBackClick}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-200"
-            >
-              ← Back to Home
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                📚 Video History
-              </h1>
-              <p className="text-gray-600">
-                All your watched videos • {paginationState?.totalVideos || 0} videos total
-              </p>
-            </div>
-          </div>
-          <TimeIndicator realTime={true} updateInterval={3000} />
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handleBackClick}
+            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+          >
+            ← Back to Home
+          </button>
+          <h1 className="text-2xl font-bold">📚 Video History</h1>
+          <span className="text-sm text-gray-500">({paginationState?.totalVideos || 0} videos total)</span>
         </div>
+        <TimeIndicator realTime={true} updateInterval={3000} />
+      </div>
 
-        {/* History Videos Grid */}
-        {watchedVideos.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">📚</div>
-            <h2 className="text-xl font-semibold text-gray-700 mb-2">No Video History</h2>
-            <p className="text-gray-500 mb-4">
-              You haven't watched any videos yet. Start watching to see your history here!
-            </p>
-            <button
-              onClick={handleBackClick}
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              ← Back to Home
-            </button>
-          </div>
-        ) : (
-          <>
-            <VideoGrid
-              videos={watchedVideos.map((video) => ({
-                id: video.id,
-                thumbnail: video.thumbnail || '',
-                title: video.title,
-                duration: video.duration || 0,
-                type: video.type,
-                watched: video.watchedData.watched === true,
-                isClicked: true, // All videos in history have been clicked
-                onVideoClick: () => handleVideoClick(video)
-              }))}
-              groupByType={false}
+      {/* History Videos Grid */}
+      {watchedVideos.length === 0 ? (
+        <div className="text-center py-12">
+          <div className="text-6xl mb-4">📚</div>
+          <h2 className="text-xl font-semibold text-gray-700 mb-2">No Video History</h2>
+          <p className="text-gray-500 mb-4">
+            You haven't watched any videos yet. Start watching to see your history here!
+          </p>
+          <button
+            onClick={handleBackClick}
+            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+          >
+            ← Back to Home
+          </button>
+        </div>
+      ) : (
+        <>
+          <VideoGrid
+            videos={watchedVideos.map((video) => ({
+              id: video.id,
+              thumbnail: video.thumbnail || '',
+              title: video.title,
+              duration: video.duration || 0,
+              type: video.type,
+              watched: video.watchedData.watched === true,
+              isClicked: true, // All videos in history have been clicked
+              onVideoClick: () => handleVideoClick(video)
+            }))}
+            groupByType={false}
+            className="mb-6"
+          />
+
+          {/* Pagination */}
+          {paginationState && paginationState.totalPages > 1 && (
+            <Pagination
+              currentPage={paginationState.currentPage}
+              totalPages={paginationState.totalPages}
+              onPageChange={handlePageChange}
               className="mb-6"
             />
-            
-            {/* Pagination */}
-            {paginationState && paginationState.totalPages > 1 && (
-              <Pagination
-                currentPage={paginationState.currentPage}
-                totalPages={paginationState.totalPages}
-                onPageChange={handlePageChange}
-                className="mb-6"
-              />
-            )}
-          </>
-        )}
-      </div>
+          )}
+        </>
+      )}
     </div>
   );
 };
