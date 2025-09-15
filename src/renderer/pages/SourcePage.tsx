@@ -268,7 +268,15 @@ export const SourcePage: React.FC = () => {
 
   // Check if this is a local source that should use the navigator
   const isLocalSource = source?.type === 'local';
-  
+
+  // Debug logging to help diagnose navigation issues
+  logVerbose('[SourcePage] Source type check:', {
+    sourceId,
+    sourceType: source?.type,
+    isLocalSource,
+    sourceTitle: source?.title
+  });
+
   // For local sources, get maxDepth from the source data
   // The backend should provide this information when loading the source
   const maxDepth = source?.maxDepth || 2;
@@ -289,15 +297,26 @@ export const SourcePage: React.FC = () => {
   }
 
   // For other sources (YouTube, DLNA), use the regular video grid
+  logVerbose('[SourcePage] Rendering PageHeader for non-local source:', {
+    sourceType: source?.type,
+    sourceTitle: source?.title
+  });
+
   return (
     <div className="p-4">
       <PageHeader
         title={source.title}
         subtitle={`${source.videoCount} videos`}
         onBackClick={handleBackClick}
-        backButtonText="← Back to Sources"
+        backButtonText="← Back"
         rightContent={
           <div className="flex items-center space-x-3">
+            <button
+              onClick={() => navigate(`/source/${sourceId}/watched`)}
+              className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+            >
+              Watched Videos
+            </button>
             <button
               onClick={handleResetClick}
               className="text-sm text-gray-500 hover:text-gray-700 underline cursor-pointer"
@@ -309,22 +328,17 @@ export const SourcePage: React.FC = () => {
         }
       />
       
-      {/* Watched Videos Folder */}
-      <div className="mb-6">
-        <div
-          onClick={() => navigate(`/source/${sourceId}/watched`)}
-          className="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 border-2 border-blue-100 hover:border-blue-300 inline-block"
-        >
-          <div className="flex items-center space-x-3">
-            <div className="text-4xl">✅</div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Watched Videos</h3>
-              <p className="text-sm text-gray-500">View videos you've fully watched from this source</p>
-            </div>
-          </div>
+      {/* Pagination - Top (centered on page) */}
+      {paginationState && paginationState.totalPages > 1 && (
+        <div className="flex justify-center mb-6">
+          <Pagination
+            currentPage={paginationState.currentPage}
+            totalPages={paginationState.totalPages}
+            onPageChange={handlePageChange}
+          />
         </div>
-      </div>
-      
+      )}
+
       {/* Video Grid */}
       <VideoGrid
         videos={currentPageVideos.map((video: any) => {
@@ -349,15 +363,25 @@ export const SourcePage: React.FC = () => {
         className="mb-6"
       />
       
-      {/* Pagination */}
-      {paginationState && paginationState.totalPages > 1 && (
-        <Pagination
-          currentPage={paginationState.currentPage}
-          totalPages={paginationState.totalPages}
-          onPageChange={handlePageChange}
-          className="mb-6"
-        />
-      )}
+      {/* Bottom navigation with Back button and Pagination */}
+      <div className="relative flex justify-center mb-6">
+        {/* Back button positioned absolutely on the left */}
+        <button
+          onClick={handleBackClick}
+          className="absolute left-0 top-0 px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+        >
+          ← Back
+        </button>
+
+        {/* Pagination centered (ignoring Back button position) */}
+        {paginationState && paginationState.totalPages > 1 && (
+          <Pagination
+            currentPage={paginationState.currentPage}
+            totalPages={paginationState.totalPages}
+            onPageChange={handlePageChange}
+          />
+        )}
+      </div>
     </div>
   );
 };
