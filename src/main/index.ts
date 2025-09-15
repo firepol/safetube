@@ -499,13 +499,13 @@ async function fixDownloadedVideosPaths(downloadedVideos: any[]): Promise<any[]>
   const { readMainSettings, getDefaultDownloadPath } = await import('./fileUtils');
   const settings = await readMainSettings();
   const downloadPath = settings.downloadPath || await getDefaultDownloadPath();
-  
+
   let hasUpdates = false;
   const fixedVideos = [];
 
   for (const dv of downloadedVideos) {
     let fixedVideo = { ...dv };
-    
+
     // If filePath is missing, try to find it
     if (!dv.filePath || dv.filePath === '') {
       // Reconstruct the expected path based on source info and title
@@ -520,10 +520,10 @@ async function fixDownloadedVideosPaths(downloadedVideos: any[]): Promise<any[]>
         .replace(/^[\s.]+|[\s.]+$/g, '')
         .substring(0, 200)
         .trim();
-      
+
       const expectedDir = path.join(downloadPath, sanitizedFolderName);
       const videoExtensions = ['.mp4', '.webm', '.mkv', '.avi', '.mov'];
-      
+
       for (const ext of videoExtensions) {
         const expectedPath = path.join(expectedDir, sanitizedTitle + ext);
         if (fs.existsSync(expectedPath)) {
@@ -534,13 +534,13 @@ async function fixDownloadedVideosPaths(downloadedVideos: any[]): Promise<any[]>
         }
       }
     }
-    
+
     // If thumbnail is missing, try to find it
     if ((!dv.thumbnail || dv.thumbnail === '') && fixedVideo.filePath) {
       const videoDir = path.dirname(fixedVideo.filePath);
       const baseName = path.basename(fixedVideo.filePath, path.extname(fixedVideo.filePath));
       const thumbnailExtensions = ['.webp', '.jpg', '.jpeg', '.png'];
-      
+
       for (const ext of thumbnailExtensions) {
         const expectedThumbnail = path.join(videoDir, baseName + ext);
         if (fs.existsSync(expectedThumbnail)) {
@@ -551,10 +551,10 @@ async function fixDownloadedVideosPaths(downloadedVideos: any[]): Promise<any[]>
         }
       }
     }
-    
+
     fixedVideos.push(fixedVideo);
   }
-  
+
   // If we made updates, save them back to the file
   if (hasUpdates) {
     try {
@@ -565,7 +565,7 @@ async function fixDownloadedVideosPaths(downloadedVideos: any[]): Promise<any[]>
       logVerbose(`[Main] Failed to update downloadedVideos.json: ${error}`);
     }
   }
-  
+
   return fixedVideos;
 }
 
@@ -1594,87 +1594,84 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
 
     // Handle special "downloaded" source
     if (sourceId === 'downloaded') {
-      logVerbose('[Main] Downloaded source requested, loading downloaded videos');
+      logVerbose('[Main] Downloaded source requested, treating as local folder');
 
       try {
-        const { readDownloadedVideos } = await import('./fileUtils');
-        const downloadedVideos = await readDownloadedVideos();
+        // Get download path
+        const { readMainSettings, getDefaultDownloadPath } = await import('./fileUtils');
+        const settings = await readMainSettings();
+        const downloadPath = settings.downloadPath || await getDefaultDownloadPath();
+        
+        logVerbose('[Main] Scanning download folder as local source:', downloadPath);
 
-        if (downloadedVideos.length === 0) {
-          return {
-            videos: [],
-            pagination: {
-              currentPage: 1,
-              totalPages: 1,
-              totalVideos: 0,
-              pageSize: pageSize
-            }
-          };
+        // Use the same local video scanner logic
+        const { LocalVideoScanner } = await import('../preload/localVideoScanner');
+
+        // Scan the download folder like any local source (maxDepth 2 to include subfolders)
+        const scanResult = await LocalVideoScanner.scanFolder(
+          'downloaded',
+          downloadPath,
+          2 // Allow subfolders like "Best_of_SasFox"
+        );
+
+        const paginatedResult = LocalVideoScanner.getPaginatedVideos(scanResult, pageNumber, pageSize);
+
+        // Add source metadata to videos for compatibility
+        const videosWithMetadata = paginatedResult.videos.map(video => ({
+          ...video,
+          sourceId: 'downloaded',
+          sourceTitle: 'Downloaded Videos',
+          sourceThumbnail: '',
+          sourceType: 'local', // Use 'local' type for proper playback
+          type: 'local' // Ensure type is 'local' for PlayerRouter
+        }));
+
+        // Store videos in global.currentVideos so the player can access them
+        if (!global.currentVideos) {
+          global.currentVideos = [];
         }
 
-        // Fix any downloaded videos with missing file paths
-        const fixedDownloadedVideos = await fixDownloadedVideosPaths(downloadedVideos);
-
-        // Convert downloaded videos to the expected format
-        const videos = fixedDownloadedVideos.map(dv => {
-          // Generate proper file URL for video
-          const videoUrl = dv.filePath ? `file://${dv.filePath}` : '';
-          
-          // Generate proper file URL for thumbnail if it exists
-          const thumbnailUrl = dv.thumbnail ? `file://${dv.thumbnail}` : '';
-          
-          logVerbose(`[Main] Processing downloaded video:`, {
-            id: dv.videoId,
-            title: dv.title,
-            filePath: dv.filePath,
-            thumbnail: dv.thumbnail,
-            videoUrl,
-            thumbnailUrl
-          });
-
-          return {
-            id: dv.videoId,
-            type: 'downloaded' as const,
-            title: dv.title,
-            thumbnail: thumbnailUrl,
-            duration: dv.duration || 0,
-            url: videoUrl,
-            sourceId: dv.sourceId,
-            sourceTitle: dv.channelTitle || dv.playlistTitle || 'Unknown Source',
-            sourceType: dv.sourceType,
-            sourceThumbnail: '',
-            downloadedAt: dv.downloadedAt,
-            filePath: dv.filePath
-          };
+        // Add new videos to global.currentVideos, avoiding duplicates
+        videosWithMetadata.forEach(video => {
+          const existingIndex = global.currentVideos.findIndex((v: any) => v.id === video.id);
+          if (existingIndex >= 0) {
+            // Update existing video with new data
+            global.currentVideos[existingIndex] = video;
+          } else {
+            // Add new video
+            global.currentVideos.push(video);
+          }
         });
 
-        // Apply pagination
-        const totalVideos = videos.length;
-        const totalPages = Math.ceil(totalVideos / pageSize);
-        const startIndex = (pageNumber - 1) * pageSize;
-        const endIndex = startIndex + pageSize;
-        const paginatedVideos = videos.slice(startIndex, endIndex);
-
-        logVerbose('[Main] Downloaded videos pagination:', {
-          totalVideos,
-          totalPages,
+        logVerbose('[Main] Downloaded videos treated as local source:', {
+          totalVideos: paginatedResult.paginationState.totalVideos,
+          totalPages: paginatedResult.paginationState.totalPages,
           currentPage: pageNumber,
           pageSize,
-          returnedVideos: paginatedVideos.length
+          returnedVideos: videosWithMetadata.length
         });
 
         return {
-          videos: paginatedVideos,
+          videos: videosWithMetadata,
           pagination: {
             currentPage: pageNumber,
-            totalPages: totalPages,
-            totalVideos: totalVideos,
+            totalPages: paginatedResult.paginationState.totalPages,
+            totalVideos: paginatedResult.paginationState.totalVideos,
             pageSize: pageSize
           }
         };
       } catch (error) {
-        log.error('[Main] Error loading downloaded videos:', error);
-        throw new Error('Failed to load downloaded videos');
+        log.error('[Main] Error loading downloaded videos as local source:', error);
+        // Return empty result instead of throwing
+        return {
+          videos: [],
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalVideos: 0,
+            pageSize: pageSize
+          }
+        };
       }
     }
 
