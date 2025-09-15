@@ -1482,6 +1482,17 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     console.log(`[PAGINATION] get-paginated-videos handler called: sourceId=${sourceId}, pageNumber=${pageNumber}`);
     logVerbose('[Main] get-paginated-videos handler called:', { sourceId, pageNumber });
 
+    // Read page size from pagination config first (needed for downloaded source)
+    let pageSize = 50; // Default fallback
+    try {
+      const { readPaginationConfig } = await import('./fileUtils');
+      const paginationConfig = await readPaginationConfig();
+      pageSize = paginationConfig.pageSize;
+      logVerbose('[Main] Using page size from config:', pageSize);
+    } catch (error) {
+      log.warn('[Main] Could not read pagination config, using default page size:', error);
+    }
+
     // Read API key from mainSettings.json
     let apiKey = '';
     try {
@@ -1581,17 +1592,6 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     }
 
     logVerbose('[Main] Found source:', { id: source.id, type: source.type, title: source.title });
-
-    // Read page size from pagination config
-    let pageSize = 50; // Default fallback
-    try {
-      const { readPaginationConfig } = await import('./fileUtils');
-      const paginationConfig = await readPaginationConfig();
-      pageSize = paginationConfig.pageSize;
-      logVerbose('[Main] Using page size from config:', pageSize);
-    } catch (error) {
-      log.warn('[Main] Could not read pagination config, using default page size:', error);
-    }
 
     // For local sources, use local video scanner with pagination
     if (source.type === 'local') {
