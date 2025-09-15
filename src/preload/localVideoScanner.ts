@@ -16,7 +16,7 @@ interface LocalVideoItem {
   title: string;
   url: string; // File path
   type: 'local';
-  thumbnail: '';
+  thumbnail: string;
   duration: number; // Will be 0 initially, can be filled later
   depth: number;
   relativePath: string;

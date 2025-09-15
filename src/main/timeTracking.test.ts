@@ -10,12 +10,29 @@ vi.mock('../shared/videoDurationUtils', () => ({
   extractVideoDuration: vi.fn().mockResolvedValue(120) // 2 minutes
 }));
 
-// Mock fs
+// Mock fs and path modules
 vi.mock('fs', async (importOriginal) => {
   const actual = await importOriginal();
   return {
     ...actual,
     existsSync: vi.fn().mockReturnValue(false)
+  };
+});
+
+vi.mock('path', async (importOriginal) => {
+  const actual = await importOriginal();
+  return {
+    ...actual,
+    basename: vi.fn().mockImplementation((filePath: string, ext?: string) => {
+      const name = filePath.split('/').pop() || '';
+      if (ext && name.endsWith(ext)) {
+        return name.slice(0, -ext.length);
+      }
+      return name.split('.')[0];
+    }),
+    dirname: vi.fn().mockReturnValue('/home/user/videos'),
+    extname: vi.fn().mockReturnValue('.mp4'),
+    join: vi.fn().mockImplementation((...args) => args.join('/'))
   };
 });
 

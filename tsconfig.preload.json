@@ -10,5 +10,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src/preload/**/*", "src/shared/**/*"]
+  "include": ["src/preload/**/*", "src/shared/**/*"],
+  "exclude": ["**/*.test.ts", "**/*.spec.ts"]
 } 

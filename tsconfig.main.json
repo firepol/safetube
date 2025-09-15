@@ -11,5 +11,5 @@
     "forceConsistentCasingInFileNames": true,
     "typeRoots": ["./src/types", "./node_modules/@types"]
   },
-  "include": ["src/main/index.ts", "src/shared/**/*"]
+  "include": ["src/main/index.ts", "src/main/timeTracking.ts", "src/main/fileUtils.ts", "src/main/appPaths.ts", "src/main/firstRunSetup.ts", "src/main/logger.ts", "src/main/migrations.ts", "src/main/youtube.ts", "src/main/youtube-api.ts", "src/main/youtubeCache.ts", "src/shared/**/*"]
 } 
