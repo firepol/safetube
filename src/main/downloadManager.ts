@@ -257,17 +257,20 @@ export class DownloadManager {
     try {
       // Find the actual video file (yt-dlp might have added extension)
       const videoFile = this.findVideoFile(filePath);
+      logVerbose(`[DownloadManager] Video file found: ${videoFile}`);
+
+      // Find thumbnail file
+      const thumbnailFile = this.findThumbnailFile(videoFile);
 
       // Get video info from JSON file if available
       const infoFile = filePath.replace(/\.[^/.]+$/, '.info.json');
       let duration = 0;
-      let thumbnail = '';
 
       if (fs.existsSync(infoFile)) {
         try {
           const info = JSON.parse(fs.readFileSync(infoFile, 'utf-8'));
           duration = info.duration || 0;
-          thumbnail = info.thumbnail || '';
+          logVerbose(`[DownloadManager] Duration from info file: ${duration}`);
         } catch (error) {
           logVerbose(`[DownloadManager] Failed to read info file: ${error}`);
         }
@@ -282,10 +285,18 @@ export class DownloadManager {
         filePath: videoFile,
         downloadedAt: new Date().toISOString(),
         duration,
-        thumbnail,
+        thumbnail: thumbnailFile,
         sourceType: sourceInfo.type,
         sourceId: sourceInfo.sourceId
       };
+
+      logVerbose(`[DownloadManager] Created downloaded video entry:`, {
+        videoId,
+        title: videoTitle,
+        filePath: videoFile,
+        thumbnail: thumbnailFile,
+        duration
+      });
 
       // Add to downloaded videos list
       await addDownloadedVideo(downloadedVideo);
@@ -330,6 +341,28 @@ export class DownloadManager {
 
     // Fallback to original path
     return outputPath;
+  }
+
+  /**
+   * Find thumbnail file for a video
+   */
+  private static findThumbnailFile(videoFilePath: string): string {
+    const dir = path.dirname(videoFilePath);
+    const baseName = path.basename(videoFilePath, path.extname(videoFilePath));
+
+    // Look for thumbnail files with common extensions (webp first as yt-dlp prefers it)
+    const thumbnailExtensions = ['.webp', '.jpg', '.jpeg', '.png'];
+
+    for (const ext of thumbnailExtensions) {
+      const thumbnailFile = path.join(dir, baseName + ext);
+      if (fs.existsSync(thumbnailFile)) {
+        logVerbose(`[DownloadManager] Found thumbnail: ${thumbnailFile}`);
+        return thumbnailFile;
+      }
+    }
+
+    logVerbose(`[DownloadManager] No thumbnail found for: ${baseName}`);
+    return '';
   }
 
   /**
