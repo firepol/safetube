@@ -8,6 +8,7 @@ import fs from 'fs'
 import { recordVideoWatching, getTimeTrackingState } from './timeTracking'
 import { readTimeLimits, encodeFilePath } from './fileUtils'
 import { createLocalVideoId } from '../shared/fileUtils'
+import { migrateWatchedHistory, needsHistoryMigration } from './migrations'
 
 // Load environment variables from .env file
 import dotenv from 'dotenv'
@@ -2624,6 +2625,24 @@ app.on('ready', async () => {
     log.error('[Main] Error during first-time setup:', error);
   }
 
+  // Check and run migrations if needed
+  try {
+    logVerbose('[Main] Checking if history migration is needed...');
+    const needsMigration = await needsHistoryMigration();
+    if (needsMigration) {
+      logVerbose('[Main] Running automatic history migration...');
+      const migrationResult = await migrateWatchedHistory();
+      logVerbose(`[Main] Migration completed: ${migrationResult.migratedVideos} migrated, ${migrationResult.skippedVideos} skipped, ${migrationResult.errors.length} errors`);
+      if (migrationResult.errors.length > 0) {
+        log.warn('[Main] Migration errors:', migrationResult.errors);
+      }
+    } else {
+      logVerbose('[Main] No history migration needed');
+    }
+  } catch (error) {
+    log.error('[Main] Error during automatic migration:', error);
+  }
+
   logVerbose('[Main] About to call createWindow...');
   createWindow()
   logVerbose('[Main] createWindow called');
@@ -2798,6 +2817,32 @@ ipcMain.handle('youtube-cache:load-config', async () => {
   } catch (error) {
     logVerbose('[Main] youtube-cache:load-config error:', error);
     return false;
+  }
+});
+
+// Migration IPC Handlers
+ipcMain.handle('migration:check-needs-migration', async () => {
+  try {
+    logVerbose('[Main] migration:check-needs-migration called');
+    return await needsHistoryMigration();
+  } catch (error) {
+    log.error('[Main] migration:check-needs-migration error:', error);
+    return false;
+  }
+});
+
+ipcMain.handle('migration:migrate-history', async () => {
+  try {
+    logVerbose('[Main] migration:migrate-history called');
+    return await migrateWatchedHistory();
+  } catch (error) {
+    log.error('[Main] migration:migrate-history error:', error);
+    return {
+      totalVideos: 0,
+      migratedVideos: 0,
+      skippedVideos: 0,
+      errors: [`Migration failed: ${error}`]
+    };
   }
 });
 

@@ -58,10 +58,12 @@ Store complete metadata in `watched.json`:
 - **Test**: All video types load correctly with new ID system ✅
 
 ### Task 5: Enhanced History Recording
-- [ ] Update `recordVideoWatching` to store complete metadata
-- [ ] Add thumbnail detection for local videos (same filename with image extension)
-- [ ] Include source information in history entries
-- **Test**: History entries saved with complete metadata
+- [x] Update `recordVideoWatching` to store complete metadata
+- [x] Add thumbnail detection for local videos (same filename with image extension)
+- [x] Include source information in history entries
+- [x] Add firstWatched field to track when video was originally watched
+- [x] Preserve existing data when updating entries
+- **Test**: History entries saved with complete metadata ✅
 
 ### Task 6: Migrate Existing History Data
 - [ ] Create migration script for existing `watched.json`
