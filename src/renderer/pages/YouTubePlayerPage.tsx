@@ -5,6 +5,8 @@ import { BasePlayerPage } from './BasePlayerPage';
 import { Video } from '../types';
 import { logVerbose } from '../lib/logging';
 import { audioWarningService } from '../services/audioWarning';
+import { useDownload } from '../hooks/useDownload';
+import { DownloadUI } from '../components/video/DownloadUI';
 
 
 const PLAYER_CONTAINER_ID = 'youtube-player-container';
@@ -23,6 +25,15 @@ export const YouTubePlayerPage: React.FC = () => {
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
+
+  // Download state management using shared hook
+  const {
+    downloadStatus,
+    isDownloading,
+    checkDownloadStatus,
+    handleStartDownload,
+    handleCancelDownload
+  } = useDownload();
 
   // Load video data when component mounts
   useEffect(() => {
@@ -148,6 +159,13 @@ export const YouTubePlayerPage: React.FC = () => {
     fetchCountdownConfig();
   }, []);
 
+  // Check download status when video loads
+  useEffect(() => {
+    if (video?.id && video.type === 'youtube') {
+      checkDownloadStatus(video.id);
+    }
+  }, [video?.id, video?.type, checkDownloadStatus]);
+
     // Time tracking state
   const timeTrackingRef = useRef<{
     startTime: number;
@@ -209,6 +227,19 @@ export const YouTubePlayerPage: React.FC = () => {
       timeTrackingRef.current.isTracking = false;
     }
   }, [updateTimeTracking]);
+
+  // Download handlers
+  const onStartDownload = useCallback(() => {
+    if (video) {
+      handleStartDownload(video);
+    }
+  }, [video, handleStartDownload]);
+
+  const onCancelDownload = useCallback(() => {
+    if (video?.id) {
+      handleCancelDownload(video.id);
+    }
+  }, [video?.id, handleCancelDownload]);
 
   // Initialize YouTube player
   useEffect(() => {
@@ -319,18 +350,27 @@ export const YouTubePlayerPage: React.FC = () => {
 
 
   return (
-    <BasePlayerPage
-      video={video}
-      isLoading={isLoading}
-      error={error}
-      isVideoPlaying={isVideoPlaying}
-      timeRemainingSeconds={timeRemainingSeconds}
-      countdownWarningSeconds={countdownWarningSeconds}
-
-    >
-      <div ref={containerRef} id={PLAYER_CONTAINER_ID} className="w-full aspect-video bg-black">
-        {/* YouTube player will be mounted here */}
-      </div>
-    </BasePlayerPage>
+    <>
+      <BasePlayerPage
+        video={video}
+        isLoading={isLoading}
+        error={error}
+        isVideoPlaying={isVideoPlaying}
+        timeRemainingSeconds={timeRemainingSeconds}
+        countdownWarningSeconds={countdownWarningSeconds}
+      >
+        <div ref={containerRef} id={PLAYER_CONTAINER_ID} className="w-full aspect-video bg-black">
+          {/* YouTube player will be mounted here */}
+        </div>
+      </BasePlayerPage>
+      
+      <DownloadUI
+        video={video}
+        downloadStatus={downloadStatus}
+        isDownloading={isDownloading}
+        onStartDownload={onStartDownload}
+        onCancelDownload={onCancelDownload}
+      />
+    </>
   );
 }; 
