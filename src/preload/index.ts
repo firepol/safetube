@@ -100,6 +100,9 @@ contextBridge.exposeInMainWorld(
     setYouTubeCache: (cacheKey: string, data: any) => ipcRenderer.invoke('youtube-cache:set', cacheKey, data),
     clearExpiredYouTubeCache: () => ipcRenderer.invoke('youtube-cache:clear-expired'),
     loadYouTubeCacheConfig: () => ipcRenderer.invoke('youtube-cache:load-config'),
+    // Download reset functionality
+    resetDownloadStatus: (videoId: string) => ipcRenderer.invoke('download:reset-status', videoId),
+    checkDownloadedVideo: (videoId: string) => ipcRenderer.invoke('download:check-downloaded', videoId),
     // Thumbnail update events
     onThumbnailReady: (callback: (data: { videoId: string; thumbnailUrl: string }) => void) => {
       const wrappedCallback = (_: any, data: { videoId: string; thumbnailUrl: string }) => callback(data);

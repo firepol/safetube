@@ -2919,6 +2919,46 @@ ipcMain.handle('youtube-cache:load-config', async () => {
   }
 });
 
+// Download Reset IPC Handlers
+ipcMain.handle('download:reset-status', async (_, videoId: string) => {
+  try {
+    logVerbose('[Main] download:reset-status called with:', videoId);
+    const { DownloadResetService } = await import('./downloadResetService');
+    await DownloadResetService.resetDownloadStatus(videoId);
+    return { success: true };
+  } catch (error) {
+    logVerbose('[Main] download:reset-status error:', error);
+    return { success: false, error: error instanceof Error ? error.message : String(error) };
+  }
+});
+
+ipcMain.handle('download:check-downloaded', async (_, videoId: string) => {
+  try {
+    logVerbose('[Main] download:check-downloaded called with:', videoId);
+    const { DownloadResetService } = await import('./downloadResetService');
+    
+    const isDownloaded = await DownloadResetService.isVideoDownloaded(videoId);
+    const filePath = await DownloadResetService.getDownloadedVideoPath(videoId);
+    const downloadedVideo = await DownloadResetService.getDownloadedVideo(videoId);
+    
+    return {
+      isDownloaded,
+      filePath,
+      downloadedVideo,
+      isAccessible: filePath !== null
+    };
+  } catch (error) {
+    logVerbose('[Main] download:check-downloaded error:', error);
+    return {
+      isDownloaded: false,
+      filePath: null,
+      downloadedVideo: null,
+      isAccessible: false,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+});
+
 
 // Log uncaught exceptions
 process.on('uncaughtException', (error) => {
