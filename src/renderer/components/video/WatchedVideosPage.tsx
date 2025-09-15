@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Pagination } from '../layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../layout/TimeIndicator';
 import { VideoGrid } from '../layout/VideoGrid';
+import { PageHeader } from '../layout/PageHeader';
 import { logVerbose } from '../../lib/logging';
 import path from 'path';
 
@@ -202,19 +203,13 @@ export const WatchedVideosPage: React.FC = () => {
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={handleBackClick}
-            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-          >
-            ← Back to {source?.title || 'Source'}
-          </button>
-          <h1 className="text-2xl font-bold">✅ Watched Videos</h1>
-          <span className="text-sm text-gray-500">({paginationState?.totalVideos || 0} videos fully watched)</span>
-        </div>
-        <TimeIndicator realTime={true} updateInterval={3000} />
-      </div>
+      <PageHeader
+        title="✅ Watched Videos"
+        subtitle={`${paginationState?.totalVideos || 0} videos fully watched`}
+        onBackClick={handleBackClick}
+        backButtonText={`← Back to ${source?.title || 'Source'}`}
+        rightContent={<TimeIndicator realTime={true} updateInterval={3000} />}
+      />
 
       {/* Watched Videos Grid */}
       {watchedVideos.length === 0 ? (

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 import { VideoGrid } from '../components/layout/VideoGrid';
+import { PageHeader } from '../components/layout/PageHeader';
 import { logVerbose } from '../lib/logging';
 
 interface WatchedVideo {
@@ -201,19 +202,13 @@ export const HistoryPage: React.FC = () => {
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={handleBackClick}
-            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-          >
-            ← Back to Home
-          </button>
-          <h1 className="text-2xl font-bold">📚 Video History</h1>
-          <span className="text-sm text-gray-500">({paginationState?.totalVideos || 0} videos total)</span>
-        </div>
-        <TimeIndicator realTime={true} updateInterval={3000} />
-      </div>
+      <PageHeader
+        title="📚 Video History"
+        subtitle={`${paginationState?.totalVideos || 0} videos total`}
+        onBackClick={handleBackClick}
+        backButtonText="← Back to Home"
+        rightContent={<TimeIndicator realTime={true} updateInterval={3000} />}
+      />
 
       {/* History Videos Grid */}
       {watchedVideos.length === 0 ? (

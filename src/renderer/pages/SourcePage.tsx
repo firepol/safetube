@@ -4,6 +4,7 @@ import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 import { LocalFolderNavigator } from '../components/video/LocalFolderNavigator';
 import { VideoGrid } from '../components/layout/VideoGrid';
+import { PageHeader } from '../components/layout/PageHeader';
 import { logVerbose } from '../lib/logging';
 
 export const SourcePage: React.FC = () => {
@@ -290,25 +291,23 @@ export const SourcePage: React.FC = () => {
   // For other sources (YouTube, DLNA), use the regular video grid
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={handleBackClick}
-            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-          >
-            ← Back to Sources
-          </button>
-          <h1 className="text-2xl font-bold">{source.title}</h1>
-          <span className="text-sm text-gray-500">({source.videoCount} videos)</span>
-          <button
-            onClick={handleResetClick}
-            className="text-sm text-gray-500 hover:text-gray-700 underline cursor-pointer"
-          >
-            Reset
-          </button>
-        </div>
-        <TimeIndicator initialState={timeTrackingState} />
-      </div>
+      <PageHeader
+        title={source.title}
+        subtitle={`${source.videoCount} videos`}
+        onBackClick={handleBackClick}
+        backButtonText="← Back to Sources"
+        rightContent={
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleResetClick}
+              className="text-sm text-gray-500 hover:text-gray-700 underline cursor-pointer"
+            >
+              Reset
+            </button>
+            <TimeIndicator initialState={timeTrackingState} />
+          </div>
+        }
+      />
       
       {/* Watched Videos Folder */}
       <div className="mb-6">
