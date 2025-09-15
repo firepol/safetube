@@ -1,50 +1,181 @@
-import { 
-  readTimeLimits, 
-  readUsageLog, 
-  writeUsageLog, 
-  readWatchedVideos, 
-  writeWatchedVideos, 
-  readTimeExtra, 
+import {
+  readTimeLimits,
+  readUsageLog,
+  writeUsageLog,
+  readWatchedVideos,
+  writeWatchedVideos,
+  readTimeExtra,
   writeTimeExtra,
   readVideoSources
 } from './fileUtils';
 import { TimeLimits, UsageLog, WatchedVideo, TimeExtra } from '../shared/types';
 import { logVerbose } from '../shared/logging';
+import { parseVideoId, extractPathFromVideoId } from '../shared/fileUtils';
+import fs from 'fs';
+import path from 'path';
+
+interface VideoMetadata {
+  title: string;
+  thumbnail: string;
+  source: string;
+  duration: number;
+}
 
 /**
- * Record video watching time
+ * Get video metadata for enhanced history storage
+ */
+async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
+  try {
+    const parseResult = parseVideoId(videoId);
+
+    // Handle local videos
+    if (parseResult.success && parseResult.parsed?.type === 'local') {
+      const filePath = extractPathFromVideoId(videoId);
+      if (filePath) {
+        // Extract title from filename
+        const title = path.basename(filePath, path.extname(filePath));
+
+        // Find thumbnail for local video
+        const thumbnail = findThumbnailForLocalVideo(filePath);
+
+        // Try to determine source from video sources config
+        const source = await findSourceForLocalVideo(filePath);
+
+        // Extract duration
+        let duration = 0;
+        try {
+          const { extractVideoDuration } = await import('../shared/videoDurationUtils');
+          duration = await extractVideoDuration(filePath);
+        } catch (error) {
+          logVerbose(`[TimeTracking] Could not extract duration for ${filePath}:`, error);
+        }
+
+        return {
+          title,
+          thumbnail,
+          source: source || 'local',
+          duration
+        };
+      }
+    }
+
+    // Handle YouTube videos - check global videos cache
+    if (parseResult.success && parseResult.parsed?.type === 'youtube') {
+      const video = global.currentVideos?.find((v: any) => v.id === videoId);
+      if (video) {
+        return {
+          title: video.title || `Video ${videoId}`,
+          thumbnail: video.thumbnail || '',
+          source: video.sourceId || 'youtube',
+          duration: video.duration || 0
+        };
+      }
+    }
+
+    // Fallback for unknown or legacy videos
+    return {
+      title: `Video ${videoId}`,
+      thumbnail: '',
+      source: 'unknown',
+      duration: 0
+    };
+  } catch (error) {
+    logVerbose(`[TimeTracking] Error getting video metadata for ${videoId}:`, error);
+    return {
+      title: `Video ${videoId}`,
+      thumbnail: '',
+      source: 'unknown',
+      duration: 0
+    };
+  }
+}
+
+/**
+ * Find thumbnail file for a local video
+ */
+function findThumbnailForLocalVideo(videoPath: string): string {
+  try {
+    const videoDir = path.dirname(videoPath);
+    const videoName = path.basename(videoPath, path.extname(videoPath));
+    const thumbnailExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
+
+    for (const ext of thumbnailExtensions) {
+      const thumbnailPath = path.join(videoDir, videoName + ext);
+      if (fs.existsSync(thumbnailPath)) {
+        return thumbnailPath;
+      }
+    }
+    return '';
+  } catch (error) {
+    return '';
+  }
+}
+
+/**
+ * Find which source a local video belongs to
+ */
+async function findSourceForLocalVideo(videoPath: string): Promise<string | null> {
+  try {
+    const sources = await readVideoSources();
+    for (const source of sources) {
+      if (source.type === 'local' && videoPath.startsWith(source.path)) {
+        return source.id;
+      }
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Record video watching time with enhanced metadata
  */
 export async function recordVideoWatching(
-  videoId: string, 
-  position: number, 
-  timeWatched: number, 
+  videoId: string,
+  position: number,
+  timeWatched: number,
   duration?: number
 ): Promise<void> {
   try {
     const watchedVideos = await readWatchedVideos();
     const existingIndex = watchedVideos.findIndex(v => v.videoId === videoId);
-    
+
+    // Get video metadata for enhanced history storage
+    const videoMetadata = await getVideoMetadata(videoId);
+
     const watchedEntry: WatchedVideo = {
       videoId,
       position,
       lastWatched: new Date().toISOString(),
       timeWatched,
-      duration,
-      watched: duration ? position >= duration * 0.9 : false // Consider watched if 90% complete
+      duration: duration || videoMetadata.duration,
+      watched: (duration || videoMetadata.duration) ? position >= (duration || videoMetadata.duration) * 0.9 : false,
+      // Enhanced metadata for faster history loading
+      title: videoMetadata.title,
+      thumbnail: videoMetadata.thumbnail,
+      source: videoMetadata.source
     };
-    
+
     if (existingIndex >= 0) {
-      watchedVideos[existingIndex] = watchedEntry;
+      // Preserve existing data, but update with new info
+      const existing = watchedVideos[existingIndex];
+      watchedVideos[existingIndex] = {
+        ...existing,
+        ...watchedEntry,
+        // Preserve original first watched date if available
+        firstWatched: existing.lastWatched,
+      };
     } else {
       watchedVideos.push(watchedEntry);
     }
-    
+
     await writeWatchedVideos(watchedVideos);
-    
+
     // Also record in usage log
     await recordUsageTime(timeWatched);
-    
-    logVerbose(`[TimeTracking] Recorded watching: ${videoId}, position: ${position}, time: ${timeWatched}s`);
+
+    logVerbose(`[TimeTracking] Recorded watching: ${videoId} (${videoMetadata.title}), position: ${position}, time: ${timeWatched}s`);
   } catch (error) {
     logVerbose(`[TimeTracking] Error recording video watching: ${error}`);
     throw error;

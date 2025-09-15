@@ -37,6 +37,7 @@ export interface WatchedVideo {
   title?: string; // video title (optional for backward compatibility)
   thumbnail?: string; // thumbnail URL or local path (optional for backward compatibility)
   source?: string; // source ID this video belongs to (optional for backward compatibility)
+  firstWatched?: string; // ISO date string when first watched (optional for backward compatibility)
 }
 
 // Video source types for configuration-driven system

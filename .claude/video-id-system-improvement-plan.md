@@ -51,10 +51,11 @@ Store complete metadata in `watched.json`:
 - **Test**: Local folder scanning works with new ID format ✅
 
 ### Task 4: Update Video Loading System
-- [ ] Modify main process video loading to handle URI-style IDs
-- [ ] Update path resolution from `local:` prefix
-- [ ] Maintain compatibility with YouTube IDs
-- **Test**: All video types load correctly with new ID system
+- [x] Modify main process video loading to handle URI-style IDs
+- [x] Update path resolution from `local:` prefix
+- [x] Maintain compatibility with YouTube IDs
+- [x] Add backward compatibility for legacy encoded IDs
+- **Test**: All video types load correctly with new ID system ✅
 
 ### Task 5: Enhanced History Recording
 - [ ] Update `recordVideoWatching` to store complete metadata
