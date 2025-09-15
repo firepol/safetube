@@ -12,6 +12,7 @@ export interface VideoCardBaseProps {
   duration: number;
   resumeAt?: number | null;
   watched?: boolean;
+  isClicked?: boolean;
   type: 'youtube' | 'dlna' | 'local';
   progress?: number;
   // Enhanced error handling props
@@ -29,6 +30,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   duration,
   resumeAt,
   watched,
+  isClicked,
   type,
   progress,
   isAvailable = true,
@@ -52,6 +54,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
           duration,
           resumeAt,
           watched,
+          isClicked,
           type,
           progress,
           isAvailable,
@@ -100,6 +103,13 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
         {!isFallback && (
           <div className="absolute bottom-2 right-2 rounded bg-black/75 px-1.5 py-0.5 text-xs text-white">
             {formatDuration(duration)}
+          </div>
+        )}
+
+        {/* Watched Video Checkmark Overlay */}
+        {watched && !isFallback && (
+          <div className="absolute top-2 right-2 bg-green-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold shadow-lg">
+            ✓
           </div>
         )}
         {/* Progress Bar */}
@@ -163,7 +173,8 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
     'bg-card rounded-xl border shadow-md flex flex-col max-w-[340px] w-full cursor-pointer',
     'transition-transform hover:scale-[1.03]',
     isFallback ? 'opacity-60 border-dashed border-yellow-400' : '',
-    watched ? 'opacity-80' : ''
+    watched ? 'opacity-80' : '',
+    isClicked ? 'border-2 border-violet-500 shadow-lg shadow-violet-200' : ''
   );
 
   // For fallback videos, wrap in a link that opens externally

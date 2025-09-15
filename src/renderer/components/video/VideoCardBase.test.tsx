@@ -198,4 +198,115 @@ describe('VideoCardBase External Link Opening', () => {
     // Restore electron
     window.electron = originalElectron;
   });
+
+  test('should show watched checkmark overlay for watched videos', () => {
+    const props = {
+      id: 'dQw4w9WgXcQ',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      watched: true
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    // Check for the checkmark overlay
+    const checkmark = screen.getByText('✓');
+    expect(checkmark).toBeInTheDocument();
+    expect(checkmark).toHaveClass('bg-green-500', 'text-white', 'rounded-full');
+  });
+
+  test('should not show watched checkmark for unwatched videos', () => {
+    const props = {
+      id: 'dQw4w9WgXcQ',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      watched: false
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    // Check that checkmark is not present
+    const checkmark = screen.queryByText('✓');
+    expect(checkmark).not.toBeInTheDocument();
+  });
+
+  test('should show violet border for clicked videos', () => {
+    const props = {
+      id: 'dQw4w9WgXcQ',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isClicked: true
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    // Find the video card and check for violet border classes
+    const videoCard = screen.getByText('Test Video').closest('div[tabindex="0"]');
+    expect(videoCard).toHaveClass('border-2', 'border-violet-500', 'shadow-lg', 'shadow-violet-200');
+  });
+
+  test('should not show violet border for non-clicked videos', () => {
+    const props = {
+      id: 'dQw4w9WgXcQ',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isClicked: false
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    // Find the video card and check that violet border classes are not present
+    const videoCard = screen.getByText('Test Video').closest('div[tabindex="0"]');
+    expect(videoCard).not.toHaveClass('border-2', 'border-violet-500', 'shadow-lg', 'shadow-violet-200');
+  });
+
+  test('should handle both watched and clicked states simultaneously', () => {
+    const props = {
+      id: 'dQw4w9WgXcQ',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      watched: true,
+      isClicked: true
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    // Check for both checkmark and violet border
+    const checkmark = screen.getByText('✓');
+    expect(checkmark).toBeInTheDocument();
+
+    const videoCard = screen.getByText('Test Video').closest('div[tabindex="0"]');
+    expect(videoCard).toHaveClass('border-2', 'border-violet-500', 'shadow-lg', 'shadow-violet-200');
+    expect(videoCard).toHaveClass('opacity-80'); // watched state styling
+  });
 });

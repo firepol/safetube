@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
+import { VideoCardBase } from '../components/video/VideoCardBase';
 import { logVerbose } from '../lib/logging';
 
 interface WatchedVideo {
@@ -240,41 +241,25 @@ export const HistoryPage: React.FC = () => {
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-              {watchedVideos.map((video) => (
-                <div
-                  key={video.id}
-                  className={`bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 ${
-                    video.watchedData.watched === false ? 'border-2 border-blue-400' : 
-                    video.watchedData.watched === undefined ? 'border-2 border-gray-300' : ''
-                  }`}
-                  onClick={() => handleVideoClick(video)}
-                >
-                  <div className="aspect-video bg-gray-200 overflow-hidden">
-                    {video.thumbnail ? (
-                      <img 
-                        src={video.thumbnail} 
-                        alt={video.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                        <div className="text-2xl text-gray-500">📹</div>
-                      </div>
-                    )}
+              {watchedVideos.map((video) => {
+                const isWatched = video.watchedData.watched === true;
+                const isClicked = true; // All videos in history have been clicked
+
+                return (
+                  <div key={video.id} className={isWatched ? 'watched' : isClicked ? 'clicked' : ''}>
+                    <VideoCardBase
+                      id={video.id}
+                      thumbnail={video.thumbnail || ''}
+                      title={video.title}
+                      duration={video.duration || 0}
+                      type={video.type}
+                      watched={isWatched}
+                      isClicked={isClicked}
+                      onVideoClick={() => handleVideoClick(video)}
+                    />
                   </div>
-                  <div className="p-3">
-                    <h3 className="font-medium text-gray-900 text-sm line-clamp-2 mb-1">
-                      {video.title}
-                    </h3>
-                    <div className="text-xs text-gray-500 mb-1">
-                      {video.sourceTitle}
-                    </div>
-                    <div className="text-xs text-gray-400">
-                      Last watched: {new Date(video.watchedData.lastWatched).toLocaleDateString()}
-                    </div>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             
             {/* Pagination */}
