@@ -496,9 +496,9 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
 
 // Helper function to fix downloaded videos with missing file paths
 async function fixDownloadedVideosPaths(downloadedVideos: any[]): Promise<any[]> {
-  const { readMainSettings } = await import('./fileUtils');
+  const { readMainSettings, getDefaultDownloadPath } = await import('./fileUtils');
   const settings = await readMainSettings();
-  const downloadPath = settings.downloadPath || await import('./fileUtils').then(m => m.getDefaultDownloadPath());
+  const downloadPath = settings.downloadPath || await getDefaultDownloadPath();
   
   let hasUpdates = false;
   const fixedVideos = [];
