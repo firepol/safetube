@@ -19,8 +19,11 @@ export type {
 export function encodeFilePath(filePath: string): string {
   // Use base64 encoding to safely encode file paths for use as video IDs
   if (typeof btoa !== 'undefined') {
-    // Browser environment
-    return btoa(filePath);
+    // Browser environment - handle Unicode properly
+    // Convert to UTF-8 bytes first, then base64 encode
+    const utf8Bytes = new TextEncoder().encode(filePath);
+    const binaryString = Array.from(utf8Bytes, byte => String.fromCharCode(byte)).join('');
+    return btoa(binaryString);
   } else {
     // Node.js environment
     return Buffer.from(filePath, 'utf8').toString('base64');
@@ -30,8 +33,14 @@ export function encodeFilePath(filePath: string): string {
 export function decodeFilePath(encodedPath: string): string {
   // Decode base64 encoded file paths
   if (typeof atob !== 'undefined') {
-    // Browser environment
-    return atob(encodedPath);
+    // Browser environment - handle Unicode properly
+    // Base64 decode first, then convert from UTF-8 bytes
+    const binaryString = atob(encodedPath);
+    const utf8Bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      utf8Bytes[i] = binaryString.charCodeAt(i);
+    }
+    return new TextDecoder().decode(utf8Bytes);
   } else {
     // Node.js environment
     return Buffer.from(encodedPath, 'base64').toString('utf8');
