@@ -1506,6 +1506,72 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       throw new Error('Failed to read video sources configuration');
     }
 
+    // Handle special "downloaded" source
+    if (sourceId === 'downloaded') {
+      logVerbose('[Main] Downloaded source requested, loading downloaded videos');
+      
+      try {
+        const { readDownloadedVideos } = await import('./fileUtils');
+        const downloadedVideos = await readDownloadedVideos();
+        
+        if (downloadedVideos.length === 0) {
+          return {
+            videos: [],
+            pagination: {
+              currentPage: 1,
+              totalPages: 1,
+              totalVideos: 0,
+              pageSize: pageSize
+            }
+          };
+        }
+
+        // Convert downloaded videos to the expected format
+        const videos = downloadedVideos.map(dv => ({
+          id: dv.videoId,
+          type: 'downloaded' as const,
+          title: dv.title,
+          thumbnail: dv.thumbnail,
+          duration: dv.duration,
+          url: `file://${dv.filePath}`,
+          sourceId: dv.sourceId,
+          sourceTitle: dv.channelTitle || dv.playlistTitle || 'Unknown Source',
+          sourceType: dv.sourceType,
+          sourceThumbnail: '',
+          downloadedAt: dv.downloadedAt,
+          filePath: dv.filePath
+        }));
+
+        // Apply pagination
+        const totalVideos = videos.length;
+        const totalPages = Math.ceil(totalVideos / pageSize);
+        const startIndex = (pageNumber - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedVideos = videos.slice(startIndex, endIndex);
+
+        logVerbose('[Main] Downloaded videos pagination:', {
+          totalVideos,
+          totalPages,
+          currentPage: pageNumber,
+          pageSize,
+          returnedVideos: paginatedVideos.length
+        });
+
+        return {
+          videos: paginatedVideos,
+          pagination: {
+            currentPage: pageNumber,
+            totalPages: totalPages,
+            totalVideos: totalVideos,
+            pageSize: pageSize
+          }
+        };
+      } catch (error) {
+        log.error('[Main] Error loading downloaded videos:', error);
+        throw new Error('Failed to load downloaded videos');
+      }
+    }
+
     // Find the specific source
     const source = sources.find((s: any) => s.id === sourceId);
     if (!source) {
