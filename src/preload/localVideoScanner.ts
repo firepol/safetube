@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import { logVerbose } from './logging';
 import { createLocalVideoId } from '../shared/fileUtils';
+import { getBestThumbnail, normalizeThumbnailPath } from '../shared/thumbnailUtils';
+import { ThumbnailGenerator } from '../main/thumbnailGenerator';
 
 interface LocalVideoScanResult {
   videos: LocalVideoItem[];
@@ -143,7 +145,9 @@ export class LocalVideoScanner {
           const relativePath = path.relative(basePath, fullPath);
 
           // Check for thumbnail file with same name
-          const thumbnail = this.findThumbnailForVideo(fullPath);
+          const foundThumbnail = this.findThumbnailForVideo(fullPath);
+          // Use thumbnail utilities to get the best thumbnail
+          const thumbnail = normalizeThumbnailPath(foundThumbnail, 'local');
 
           videos.push({
             id: videoId,
@@ -193,6 +197,50 @@ export class LocalVideoScanner {
       console.warn(`[LocalVideoScanner] Error checking for thumbnail for ${videoPath}:`, error);
       return '';
     }
+  }
+
+  /**
+   * Enhance videos with generated thumbnails (async background operation)
+   */
+  static async enhanceWithGeneratedThumbnails(videos: LocalVideoItem[]): Promise<LocalVideoItem[]> {
+    const enhanced = [...videos];
+
+    // Check if FFmpeg is available
+    const ffmpegAvailable = await ThumbnailGenerator.isFFmpegAvailable();
+    if (!ffmpegAvailable) {
+      logVerbose('[LocalVideoScanner] FFmpeg not available, skipping thumbnail generation');
+      return enhanced;
+    }
+
+    // Process videos that don't have thumbnails or only have fallbacks
+    for (let i = 0; i < enhanced.length; i++) {
+      const video = enhanced[i];
+
+      // Skip if video already has a real thumbnail (not a fallback)
+      if (video.thumbnail &&
+          !video.thumbnail.includes('local-video-thumbnail.svg') &&
+          !video.thumbnail.includes('placeholder-thumbnail.svg')) {
+        continue;
+      }
+
+      try {
+        // Try to generate thumbnail from video
+        const generatedThumbnail = await ThumbnailGenerator.generateCachedThumbnail(video.id, video.url);
+
+        if (generatedThumbnail) {
+          // Update the video with generated thumbnail
+          enhanced[i] = {
+            ...video,
+            thumbnail: generatedThumbnail
+          };
+          logVerbose(`[LocalVideoScanner] Generated thumbnail for ${video.title}`);
+        }
+      } catch (error) {
+        logVerbose(`[LocalVideoScanner] Failed to generate thumbnail for ${video.title}: ${error}`);
+      }
+    }
+
+    return enhanced;
   }
 
   /**
