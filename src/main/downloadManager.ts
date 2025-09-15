@@ -16,6 +16,29 @@ export class DownloadManager {
   private static activeDownloads = new Map<string, ChildProcess>();
 
   /**
+   * Sanitize a string to be safe for use as a file name across different operating systems
+   */
+  private static sanitizeFileName(fileName: string): string {
+    // Replace problematic characters with safe alternatives
+    return fileName
+      // Replace forward and back slashes with dash (prevents unwanted subdirectories)
+      .replace(/[\/\\]/g, ' - ')
+      // Replace colons with dash (problematic on Windows)
+      .replace(/:/g, ' -')
+      // Replace other problematic characters with nothing
+      .replace(/[<>"|?*]/g, '')
+      // Replace pipe character
+      .replace(/\|/g, ' - ')
+      // Replace multiple spaces with single space
+      .replace(/\s+/g, ' ')
+      // Remove leading/trailing spaces and dots (problematic on Windows)
+      .replace(/^[\s.]+|[\s.]+$/g, '')
+      // Limit length to prevent filesystem issues (200 chars should be safe)
+      .substring(0, 200)
+      .trim();
+  }
+
+  /**
    * Start downloading a YouTube video
    */
   static async startDownload(
@@ -94,7 +117,11 @@ export class DownloadManager {
 
       // Build yt-dlp command
       const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-      const outputTemplate = path.join(fullDownloadPath, `${videoTitle}.%(ext)s`);
+      const sanitizedTitle = this.sanitizeFileName(videoTitle);
+      const outputTemplate = path.join(fullDownloadPath, `${sanitizedTitle}.%(ext)s`);
+      
+      logVerbose('[DownloadManager] Original title:', videoTitle);
+      logVerbose('[DownloadManager] Sanitized title:', sanitizedTitle);
       
       const args = [
         '--output', outputTemplate,
