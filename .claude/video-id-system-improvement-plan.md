@@ -45,10 +45,10 @@ Store complete metadata in `watched.json`:
 - **Test**: Unit tests for all video ID parsing scenarios ✅ (20 tests pass)
 
 ### Task 3: Update Local Video Scanner
-- [ ] Generate `local:/path` IDs instead of encoded hashes
-- [ ] Keep original full file paths intact
-- [ ] Update video metadata collection to include thumbnails
-- **Test**: Local folder scanning works with new ID format
+- [x] Generate `local:/path` IDs instead of encoded hashes
+- [x] Keep original full file paths intact
+- [x] Update video metadata collection to include thumbnails
+- **Test**: Local folder scanning works with new ID format ✅
 
 ### Task 4: Update Video Loading System
 - [ ] Modify main process video loading to handle URI-style IDs

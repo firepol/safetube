@@ -732,59 +732,77 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
   try {
     logVerbose('[Main] Loading video data for:', videoId);
 
-    // First check if this is a YouTube video ID (11 chars, alphanumeric + dash/underscore)
-    const isYouTubeId = /^[a-zA-Z0-9_-]{11}$/.test(videoId);
-    if (!isYouTubeId) {
-      // Check if this is a local video (encoded file path)
-      const { isEncodedFilePath, decodeFilePath } = await import('../shared/fileUtils');
-      if (isEncodedFilePath(videoId)) {
-        try {
-          const filePath = decodeFilePath(videoId);
-          logVerbose('[Main] Decoded local video path:', filePath);
+    // Parse the video ID to determine its type
+    const { parseVideoId, extractPathFromVideoId } = await import('../shared/fileUtils');
+    const parseResult = parseVideoId(videoId);
 
-          // Check if file exists
-          if (!fs.existsSync(filePath)) {
-            logVerbose('[Main] Local video file not found, returning null:', filePath);
-            return null; // Return null instead of throwing error for missing files
-          }
+    // Handle local videos (both new URI-style and legacy encoded)
+    let localFilePath: string | null = null;
 
-          // Extract video duration using ffprobe
-          const { extractVideoDuration } = await import('../shared/videoDurationUtils');
-          const duration = await extractVideoDuration(filePath);
+    if (parseResult.success && parseResult.parsed?.type === 'local') {
+      // New URI-style local video ID
+      localFilePath = extractPathFromVideoId(videoId);
+      if (localFilePath) {
+        logVerbose('[Main] Parsed URI-style local video path:', localFilePath);
+      }
+    } else if (!parseResult.success) {
+      // Try legacy decoding for backward compatibility
+      try {
+        const { isEncodedFilePath, decodeFilePath } = await import('../shared/fileUtils');
+        if (isEncodedFilePath(videoId)) {
+          localFilePath = decodeFilePath(videoId);
+          logVerbose('[Main] Decoded legacy local video path:', localFilePath);
+        }
+      } catch (error) {
+        logVerbose('[Main] Failed to decode as legacy local video:', error);
+      }
+    }
 
-          // Create video object for local video
-          const video = {
-            id: videoId,
-            type: 'local',
-            title: path.basename(filePath, path.extname(filePath)),
-            thumbnail: '',
-            duration,
-            url: filePath,
-            video: filePath,
-            audio: undefined,
-            preferredLanguages: ['en'],
-            sourceId: 'local', // We'll need to determine the actual source ID
-            sourceTitle: 'Local Video',
-            sourceThumbnail: '',
-            resumeAt: undefined as number | undefined, // Add resumeAt property
-          };
-
-          // Merge with watched data to populate resumeAt
-          const { mergeWatchedData } = await import('./fileUtils');
-          const videosWithWatchedData = await mergeWatchedData([video]);
-          const videoWithResume = videosWithWatchedData[0];
-
-          logVerbose('[Main] Created local video object with resume data:', {
-            id: videoWithResume.id,
-            type: videoWithResume.type,
-            title: videoWithResume.title,
-            resumeAt: videoWithResume.resumeAt
-          });
-          return videoWithResume;
-        } catch (error) {
-          log.error('[Main] Error handling local video:', error);
+    // If we have a local file path, process it
+    if (localFilePath) {
+      try {
+        // Check if file exists
+        if (!fs.existsSync(localFilePath)) {
+          logVerbose('[Main] Local video file not found, returning null:', localFilePath);
           return null; // Return null instead of throwing error for missing files
         }
+
+        // Extract video duration using ffprobe
+        const { extractVideoDuration } = await import('../shared/videoDurationUtils');
+        const duration = await extractVideoDuration(localFilePath);
+
+        // Create video object for local video
+        const video = {
+          id: videoId,
+          type: 'local',
+          title: path.basename(localFilePath, path.extname(localFilePath)),
+          thumbnail: '',
+          duration,
+          url: localFilePath,
+          video: localFilePath,
+          audio: undefined,
+          preferredLanguages: ['en'],
+          sourceId: 'local', // We'll need to determine the actual source ID
+          sourceTitle: 'Local Video',
+          sourceThumbnail: '',
+          resumeAt: undefined as number | undefined, // Add resumeAt property
+        };
+
+        // Merge with watched data to populate resumeAt
+        const { mergeWatchedData } = await import('./fileUtils');
+        const videosWithWatchedData = await mergeWatchedData([video]);
+        const videoWithResume = videosWithWatchedData[0];
+
+        logVerbose('[Main] Created local video object with resume data:', {
+          id: videoWithResume.id,
+          type: videoWithResume.type,
+          title: videoWithResume.title,
+          resumeAt: videoWithResume.resumeAt
+        });
+        return videoWithResume;
+      } catch (error) {
+        log.error('[Main] Error handling local video:', error);
+        return null; // Return null instead of throwing error for missing files
       }
     }
 
