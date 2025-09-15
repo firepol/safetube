@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { VideoGrid } from '../layout/VideoGrid';
+import { PageHeader } from '../layout/PageHeader';
+import { TimeIndicator, TimeTrackingState } from '../layout/TimeIndicator';
 import { logVerbose } from '../../lib/logging';
 
 interface FolderItem {
@@ -74,6 +76,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   
   const [currentFolderPath, setCurrentFolderPath] = useState(initialFolderPath || sourcePath);
   const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
+  const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
 
   const currentDepth = navigationStack.length;
 
@@ -91,6 +94,31 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     };
     loadWatchedVideos();
   }, []);
+
+  // Load time tracking state
+  useEffect(() => {
+    const checkTimeLimits = async () => {
+      try {
+        if (!(window as any).electron || !(window as any).electron.getTimeTrackingState) {
+          throw new Error('window.electron.getTimeTrackingState not available');
+        }
+        const state = await (window as any).electron.getTimeTrackingState();
+        if (state.isLimitReached) {
+          navigate('/time-up');
+          return;
+        }
+        setTimeTrackingState({
+          timeRemaining: state.timeRemaining,
+          timeLimit: state.timeLimitToday,
+          timeUsed: state.timeUsedToday,
+          isLimitReached: state.isLimitReached
+        });
+      } catch (error) {
+        console.error('Error checking time limits:', error);
+      }
+    };
+    checkTimeLimits();
+  }, [navigate]);
 
   // Function to check video status
   const getVideoStatus = (videoId: string) => {
@@ -353,38 +381,23 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
 
   return (
     <div className="p-4">
-      {/* Navigation Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={handleBackClick}
-            className="px-3 py-2 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors flex items-center space-x-2"
-          >
-            <span>←</span>
-            <span>Back</span>
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold">{getCurrentFolderName()}</h1>
-            <p className="text-sm text-gray-500">{getBreadcrumbPath()}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Watched Videos Folder */}
-      <div className="mb-6">
-        <div
-          onClick={handleWatchedFolderClick}
-          className="bg-white rounded-lg shadow-md p-4 cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 border-2 border-blue-100 hover:border-blue-300 inline-block"
-        >
+      <PageHeader
+        title={getCurrentFolderName()}
+        subtitle={getBreadcrumbPath()}
+        onBackClick={handleBackClick}
+        backButtonText="← Back"
+        rightContent={
           <div className="flex items-center space-x-3">
-            <div className="text-4xl">✅</div>
-            <div>
-              <h3 className="font-semibold text-gray-900">Watched Videos</h3>
-              <p className="text-sm text-gray-500">View videos you've fully watched from this source</p>
-            </div>
+            <button
+              onClick={handleWatchedFolderClick}
+              className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+            >
+              Watched Videos
+            </button>
+            <TimeIndicator initialState={timeTrackingState} />
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Folders Section */}
       {contents.folders.length > 0 && (
