@@ -162,7 +162,8 @@ export class DownloadManager {
         // Extract filename from output
         const filenameMatch = output.match(/Destination: (.+)/);
         if (filenameMatch) {
-          downloadedFilePath = filenameMatch[1];
+          downloadedFilePath = filenameMatch[1].trim();
+          logVerbose(`[DownloadManager] Extracted downloadedFilePath: ${downloadedFilePath}`);
         }
       });
 
@@ -172,9 +173,16 @@ export class DownloadManager {
 
         if (code === 0) {
           // Download completed successfully
-          await this.handleDownloadComplete(videoId, videoTitle, downloadedFilePath, sourceInfo);
+          logVerbose(`[DownloadManager] Download completed successfully for ${videoId}, downloadedFilePath: ${downloadedFilePath}`);
+
+          // If downloadedFilePath is empty, use the output template as fallback
+          const finalFilePath = downloadedFilePath || outputTemplate;
+          logVerbose(`[DownloadManager] Using final file path: ${finalFilePath}`);
+
+          await this.handleDownloadComplete(videoId, videoTitle, finalFilePath, sourceInfo);
         } else {
           // Download failed
+          logVerbose(`[DownloadManager] Download failed for ${videoId} with exit code: ${code}`);
           await updateDownloadStatus(videoId, {
             status: 'failed',
             progress: 0,
@@ -255,6 +263,13 @@ export class DownloadManager {
     sourceInfo: any
   ): Promise<void> {
     try {
+      logVerbose(`[DownloadManager] handleDownloadComplete called with:`, {
+        videoId,
+        videoTitle,
+        filePath,
+        sourceInfo
+      });
+
       // Find the actual video file (yt-dlp might have added extension)
       const videoFile = this.findVideoFile(filePath);
       logVerbose(`[DownloadManager] Video file found: ${videoFile}`);
@@ -263,18 +278,27 @@ export class DownloadManager {
       const thumbnailFile = this.findThumbnailFile(videoFile);
 
       // Get video info from JSON file if available
-      const infoFile = filePath.replace(/\.[^/.]+$/, '.info.json');
       let duration = 0;
+      const infoFile = this.findInfoJsonFile(videoFile);
 
-      if (fs.existsSync(infoFile)) {
+      if (infoFile && fs.existsSync(infoFile)) {
         try {
           const info = JSON.parse(fs.readFileSync(infoFile, 'utf-8'));
           duration = info.duration || 0;
-          logVerbose(`[DownloadManager] Duration from info file: ${duration}`);
+          logVerbose(`[DownloadManager] Duration from info file: ${duration} (${infoFile})`);
+
+          // Clean up info.json file after extracting needed metadata
+          fs.unlinkSync(infoFile);
+          logVerbose(`[DownloadManager] Cleaned up info.json file: ${infoFile}`);
         } catch (error) {
-          logVerbose(`[DownloadManager] Failed to read info file: ${error}`);
+          logVerbose(`[DownloadManager] Failed to read or cleanup info file: ${error}`);
         }
+      } else {
+        logVerbose(`[DownloadManager] No info.json file found for: ${videoFile}`);
       }
+
+      // Clean up any remaining temporary files, keeping only essential video and thumbnail files
+      this.cleanupTemporaryFiles(videoFile);
 
       // Create downloaded video entry
       const downloadedVideo: DownloadedVideo = {
@@ -363,6 +387,99 @@ export class DownloadManager {
 
     logVerbose(`[DownloadManager] No thumbnail found for: ${baseName}`);
     return '';
+  }
+
+  /**
+   * Find info.json file for a video
+   */
+  private static findInfoJsonFile(videoFilePath: string): string | null {
+    const dir = path.dirname(videoFilePath);
+    const baseName = path.basename(videoFilePath, path.extname(videoFilePath));
+
+    logVerbose(`[DownloadManager] Looking for info.json file in: ${dir}, baseName: ${baseName}`);
+
+    // Try the exact base name first
+    const infoFile = path.join(dir, baseName + '.info.json');
+    logVerbose(`[DownloadManager] Checking for info.json at: ${infoFile}`);
+    if (fs.existsSync(infoFile)) {
+      logVerbose(`[DownloadManager] Found exact match info.json: ${infoFile}`);
+      return infoFile;
+    }
+
+    // If not found, scan the directory for any .info.json files
+    try {
+      const files = fs.readdirSync(dir);
+      logVerbose(`[DownloadManager] Scanning directory for .info.json files. Found ${files.length} files total.`);
+
+      const infoJsonFiles = files.filter(file => file.endsWith('.info.json'));
+      logVerbose(`[DownloadManager] Found ${infoJsonFiles.length} .info.json files: ${infoJsonFiles.join(', ')}`);
+
+      if (infoJsonFiles.length > 0) {
+        const fullPath = path.join(dir, infoJsonFiles[0]);
+        logVerbose(`[DownloadManager] Using first info.json file found: ${fullPath}`);
+        return fullPath;
+      }
+    } catch (error) {
+      logVerbose(`[DownloadManager] Error scanning directory for info.json: ${error}`);
+    }
+
+    logVerbose(`[DownloadManager] No info.json file found for: ${baseName} in directory: ${dir}`);
+    return null;
+  }
+
+  /**
+   * Clean up temporary files created by yt-dlp, keeping only essential video and thumbnail files
+   */
+  private static cleanupTemporaryFiles(videoFilePath: string): void {
+    try {
+      const dir = path.dirname(videoFilePath);
+      const baseName = path.basename(videoFilePath, path.extname(videoFilePath));
+
+      // List of temporary file extensions that yt-dlp might create
+      const temporaryExtensions = [
+        '.description',  // Video description file
+        '.annotations.xml',  // Annotations file
+        '.live_chat.json',  // Live chat replay
+        '.f4v',  // Flash video format (if downloaded as intermediate)
+        '.part',  // Partial download files
+        '.ytdl',  // yt-dlp temporary files
+        '.temp'   // Other temporary files
+      ];
+
+      // Clean up temporary files with the same base name
+      for (const ext of temporaryExtensions) {
+        const tempFile = path.join(dir, baseName + ext);
+        if (fs.existsSync(tempFile)) {
+          try {
+            fs.unlinkSync(tempFile);
+            logVerbose(`[DownloadManager] Cleaned up temporary file: ${tempFile}`);
+          } catch (error) {
+            logVerbose(`[DownloadManager] Failed to cleanup temporary file ${tempFile}: ${error}`);
+          }
+        }
+      }
+
+      // Also check for any .info.json files that might have been missed
+      try {
+        const files = fs.readdirSync(dir);
+        for (const file of files) {
+          if (file.endsWith('.info.json')) {
+            const infoFile = path.join(dir, file);
+            try {
+              fs.unlinkSync(infoFile);
+              logVerbose(`[DownloadManager] Cleaned up remaining info.json file: ${infoFile}`);
+            } catch (error) {
+              logVerbose(`[DownloadManager] Failed to cleanup info.json file ${infoFile}: ${error}`);
+            }
+          }
+        }
+      } catch (error) {
+        logVerbose(`[DownloadManager] Error scanning directory for remaining info.json files: ${error}`);
+      }
+
+    } catch (error) {
+      logVerbose(`[DownloadManager] Error during temporary file cleanup: ${error}`);
+    }
   }
 
   /**
