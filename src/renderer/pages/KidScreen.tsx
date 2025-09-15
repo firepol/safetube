@@ -146,28 +146,26 @@ export const KidScreen: React.FC = () => {
       
       {/* Sources Container */}
       <div className="sources-container">
-        <SourceGrid 
-          sources={sources} 
-          onSourceClick={handleSourceClick}
+        <SourceGrid
+          sources={[
+            ...sources,
+            {
+              id: 'history',
+              title: 'Video History',
+              type: 'history',
+              videos: [],
+              videoCount: 0,
+              thumbnail: '📚'
+            }
+          ]}
+          onSourceClick={(source) => {
+            if (source.id === 'history') {
+              handleHistoryClick();
+            } else {
+              handleSourceClick(source);
+            }
+          }}
         />
-        
-        {/* History Folder */}
-        <div className="mt-6">
-          <div
-            onClick={handleHistoryClick}
-            className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 max-w-sm"
-          >
-            <div className="aspect-video bg-gray-200 overflow-hidden">
-              <div className="w-full h-full bg-purple-100 flex items-center justify-center">
-                <div className="text-6xl text-purple-500">📚</div>
-              </div>
-            </div>
-            <div className="p-4">
-              <h3 className="font-semibold text-gray-900 text-lg mb-1">Video History</h3>
-              <p className="text-sm text-gray-500">All your watched videos</p>
-            </div>
-          </div>
-        </div>
       </div>
       
       {/* Only show debug info if verbose logging is enabled */}

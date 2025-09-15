@@ -56,15 +56,15 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
     if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
       if (source.thumbnail) {
         return (
-          <img 
-            src={source.thumbnail} 
+          <img
+            src={source.thumbnail}
             alt={source.title}
             className="w-full h-full object-cover"
           />
         );
       }
     }
-    
+
     // For local sources, show folder icon
     if (source.type === 'local') {
       return (
@@ -73,7 +73,16 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
         </div>
       );
     }
-    
+
+    // For history source, show special purple background
+    if (source.type === 'history') {
+      return (
+        <div className="w-full h-full bg-purple-100 flex items-center justify-center">
+          <div className="text-6xl text-purple-500">📚</div>
+        </div>
+      );
+    }
+
     // Default fallback
     return (
       <div className="w-full h-full bg-gray-300 flex items-center justify-center">
@@ -92,6 +101,8 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
         return '📁';
       case 'dlna':
         return '🌐';
+      case 'history':
+        return '📚';
       default:
         return '📹';
     }
@@ -107,17 +118,19 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
         return 'Local Folder';
       case 'dlna':
         return 'DLNA Server';
+      case 'history':
+        return 'Video History';
       default:
         return 'Video Source';
     }
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
       {sources.map((source) => (
-        <div 
-          key={source.id} 
-          className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105"
+        <div
+          key={source.id}
+          className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
           onClick={() => handleSourceClick(source)}
         >
           {/* Source Thumbnail */}
@@ -133,8 +146,10 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
             </div>
             <h3 className="text-lg font-semibold text-gray-900 mb-1">{source.title}</h3>
             <p className="text-sm text-gray-400">
-              {source.type === 'local' && loadingCounts[source.id] 
-                ? 'Counting videos...' 
+              {source.type === 'history'
+                ? 'All your watched videos'
+                : source.type === 'local' && loadingCounts[source.id]
+                ? 'Counting videos...'
                 : `${videoCounts[source.id] ?? source.videoCount} videos`
               }
             </p>

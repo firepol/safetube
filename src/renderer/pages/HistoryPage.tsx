@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
-import { VideoCardBase } from '../components/video/VideoCardBase';
+import { VideoGrid } from '../components/layout/VideoGrid';
 import { logVerbose } from '../lib/logging';
 
 interface WatchedVideo {
@@ -240,27 +240,20 @@ export const HistoryPage: React.FC = () => {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-              {watchedVideos.map((video) => {
-                const isWatched = video.watchedData.watched === true;
-                const isClicked = true; // All videos in history have been clicked
-
-                return (
-                  <div key={video.id} className={isWatched ? 'watched' : isClicked ? 'clicked' : ''}>
-                    <VideoCardBase
-                      id={video.id}
-                      thumbnail={video.thumbnail || ''}
-                      title={video.title}
-                      duration={video.duration || 0}
-                      type={video.type}
-                      watched={isWatched}
-                      isClicked={isClicked}
-                      onVideoClick={() => handleVideoClick(video)}
-                    />
-                  </div>
-                );
-              })}
-            </div>
+            <VideoGrid
+              videos={watchedVideos.map((video) => ({
+                id: video.id,
+                thumbnail: video.thumbnail || '',
+                title: video.title,
+                duration: video.duration || 0,
+                type: video.type,
+                watched: video.watchedData.watched === true,
+                isClicked: true, // All videos in history have been clicked
+                onVideoClick: () => handleVideoClick(video)
+              }))}
+              groupByType={false}
+              className="mb-6"
+            />
             
             {/* Pagination */}
             {paginationState && paginationState.totalPages > 1 && (

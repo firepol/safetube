@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 import { LocalFolderNavigator } from '../components/video/LocalFolderNavigator';
-import { VideoCardBase } from '../components/video/VideoCardBase';
+import { VideoGrid } from '../components/layout/VideoGrid';
 import { logVerbose } from '../lib/logging';
 
 export const SourcePage: React.FC = () => {
@@ -327,29 +327,28 @@ export const SourcePage: React.FC = () => {
       </div>
       
       {/* Video Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
-        {currentPageVideos.map((video: any) => {
+      <VideoGrid
+        videos={currentPageVideos.map((video: any) => {
           const { isWatched, isClicked } = getVideoStatus(video.id);
-          
-          return (
-            <div key={video.id} className={isWatched ? 'watched' : isClicked ? 'clicked' : ''}>
-              <VideoCardBase
-                id={video.id}
-                thumbnail={video.thumbnail || '/placeholder-thumbnail.svg'}
-                title={video.title}
-                duration={video.duration || 0}
-                type={video.type}
-                watched={isWatched}
-                isAvailable={video.isAvailable !== false}
-                isFallback={video.isFallback === true}
-                errorInfo={video.errorInfo}
-                resumeAt={video.resumeAt}
-                onVideoClick={(videoProps) => handleVideoClick(video)}
-              />
-            </div>
-          );
+
+          return {
+            id: video.id,
+            thumbnail: video.thumbnail || '/placeholder-thumbnail.svg',
+            title: video.title,
+            duration: video.duration || 0,
+            type: video.type,
+            watched: isWatched,
+            isClicked: isClicked,
+            isAvailable: video.isAvailable !== false,
+            isFallback: video.isFallback === true,
+            errorInfo: video.errorInfo,
+            resumeAt: video.resumeAt,
+            onVideoClick: () => handleVideoClick(video)
+          };
         })}
-      </div>
+        groupByType={false}
+        className="mb-6"
+      />
       
       {/* Pagination */}
       {paginationState && paginationState.totalPages > 1 && (

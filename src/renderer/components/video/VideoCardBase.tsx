@@ -170,7 +170,8 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   );
 
   const cardClasses = cn(
-    'bg-card rounded-xl border shadow-md flex flex-col max-w-[340px] w-full cursor-pointer',
+    'bg-card rounded-xl border shadow-md flex flex-col w-full cursor-pointer',
+    'max-w-[280px] sm:max-w-[320px] lg:max-w-[380px] xl:max-w-[420px] 2xl:max-w-[500px]',
     'transition-transform hover:scale-[1.03]',
     isFallback ? 'opacity-60 border-dashed border-yellow-400' : '',
     watched ? 'opacity-80' : '',
