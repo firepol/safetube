@@ -119,5 +119,72 @@ Store complete metadata in `watched.json`:
 5. ✅ **Better debugging**: Easy to identify videos in JSON files
 6. ✅ **Cross-platform**: Works reliably on Windows, Linux, macOS
 
+## Task 9: Remove Legacy Migration Code and Simplify System
+
+**Status**: Pending
+
+After successful implementation, the migration system adds unnecessary complexity. Since users can start fresh with a new `watched.json`, we should remove all backward compatibility code.
+
+### Files to Remove Completely
+- [ ] **`src/main/migrations.ts`** - Entire migration system (226 lines)
+- [ ] **`src/main/migrations.test.ts`** - Migration tests (307 lines)
+
+### Files to Update
+- [ ] **`src/shared/types.ts`**: Make all optional fields required in `WatchedVideo` interface
+  - Remove "optional for backward compatibility" comments
+  - Change `duration?`, `watched?`, `title?`, `thumbnail?`, `source?`, `firstWatched?` to required fields
+- [ ] **`src/shared/fileUtils.ts`**: Remove old base64 encoding functions
+  - Remove `encodeFilePath()`, `decodeFilePath()`, `isEncodedFilePath()` functions
+  - Keep only the new URI-style video ID functions
+- [ ] **`src/main/index.ts`**: Remove migration system integration
+  - Remove migration imports and IPC handlers
+  - Remove automatic migration on startup
+  - Clean up `encodeFilePath` import (if still present)
+- [ ] **`src/main/fileUtils.ts`**: Remove any legacy encoding functions if present
+
+### Tests to Update
+- [ ] **All test files**: Remove tests for legacy functionality
+  - Update tests that expect optional fields to expect required fields
+  - Remove any tests testing old encoding/decoding
+
+### Configuration Files to Reset
+Users should delete and recreate these files to start fresh:
+1. **`config/watched.json`** - Main watch history file (user moved the old one)
+2. **`config/usageLog.json`** - Daily usage tracking
+3. **`.cache/local-videos-*.json`** - Local video cache files
+4. **`.cache/youtube-*.json`** - YouTube cache files
+
+### Benefits of Cleanup
+- **Simpler codebase**: Remove ~600+ lines of migration code
+- **Required metadata**: All video entries will have complete information
+- **Cleaner types**: No more optional fields with backward compatibility comments
+- **Better performance**: No migration checks on startup
+- **Easier maintenance**: One consistent data format
+
+**Test**: All video functionality works with required metadata fields ⏳
+
+---
+
+## Implementation Status
+
+✅ **COMPLETED**: Tasks 1-8 have been successfully implemented and tested.
+🔄 **PENDING**: Task 9 - Remove legacy migration code and simplify system.
+
+### Summary of Changes
+- **6 atomic commits** implementing each major component
+- **Full backward compatibility** maintained throughout (to be removed in Task 9)
+- **Comprehensive testing** with 20+ unit tests for video ID utilities
+- **Automatic migration** runs transparently on app startup (to be removed in Task 9)
+- **Enhanced metadata** stored in watch history for faster loading
+- **Human-readable video IDs** using `local:/path/to/video.mp4` format
+
+### Benefits Achieved
+1. ✅ **Human-readable history**: `watched.json` now shows actual file paths
+2. ✅ **No data loss**: Full paths preserved, no truncation
+3. ✅ **Faster history**: Complete metadata stored, no additional fetching needed
+4. ✅ **Cleaner routing**: Simple path handling instead of base64 encoding/decoding
+5. ✅ **Better debugging**: Easy to identify videos in JSON files
+6. ✅ **Cross-platform**: Works reliably on Windows, Linux, macOS
+
 ### Next Steps
-The video ID system improvement is **complete and ready for production use**. The system will automatically migrate existing data on first run and handle both old and new formats seamlessly.
+Task 9 will complete the system by removing unnecessary migration complexity, resulting in a clean, simple video ID system ready for production use.
