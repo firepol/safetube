@@ -1570,6 +1570,23 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
           sourceType: 'local'
         }));
 
+        // Store videos in global.currentVideos so the player can access them
+        if (!global.currentVideos) {
+          global.currentVideos = [];
+        }
+        
+        // Add new videos to global.currentVideos, avoiding duplicates
+        videosWithMetadata.forEach(video => {
+          const existingIndex = global.currentVideos.findIndex((v: any) => v.id === video.id);
+          if (existingIndex >= 0) {
+            // Update existing video with new data
+            global.currentVideos[existingIndex] = video;
+          } else {
+            // Add new video
+            global.currentVideos.push(video);
+          }
+        });
+
         logVerbose('[Main] Local pagination result:', {
           sourceId,
           pageNumber,
@@ -1577,6 +1594,11 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
           totalVideos: paginatedResult.paginationState.totalVideos,
           totalPages: paginatedResult.paginationState.totalPages,
           pageSize
+        });
+
+        logVerbose('[Main] Updated global.currentVideos with local videos:', {
+          newVideos: videosWithMetadata.length,
+          totalGlobalVideos: global.currentVideos.length
         });
 
         return {
@@ -1631,6 +1653,30 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         sourceThumbnail: source.thumbnail || '',
         sourceType: source.type
       }));
+
+      // Store videos in global.currentVideos so the player can access them
+      // This is critical for fallback videos to work properly
+      if (!global.currentVideos) {
+        global.currentVideos = [];
+      }
+      
+      // Add new videos to global.currentVideos, avoiding duplicates
+      videosWithMetadata.forEach(video => {
+        const existingIndex = global.currentVideos.findIndex((v: any) => v.id === video.id);
+        if (existingIndex >= 0) {
+          // Update existing video with new data
+          global.currentVideos[existingIndex] = video;
+        } else {
+          // Add new video
+          global.currentVideos.push(video);
+        }
+      });
+
+      logVerbose('[Main] Updated global.currentVideos with paginated videos:', {
+        newVideos: videosWithMetadata.length,
+        totalGlobalVideos: global.currentVideos.length,
+        sampleIds: videosWithMetadata.slice(0, 3).map(v => v.id)
+      });
 
       return {
         videos: videosWithMetadata,
