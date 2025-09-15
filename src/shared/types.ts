@@ -33,6 +33,10 @@ export interface WatchedVideo {
   timeWatched: number; // seconds
   duration?: number; // video duration in seconds (optional for backward compatibility)
   watched?: boolean; // whether video was fully watched (optional for backward compatibility)
+  // Enhanced metadata for faster history loading
+  title?: string; // video title (optional for backward compatibility)
+  thumbnail?: string; // thumbnail URL or local path (optional for backward compatibility)
+  source?: string; // source ID this video belongs to (optional for backward compatibility)
 }
 
 // Video source types for configuration-driven system
@@ -175,4 +179,18 @@ export interface DownloadedVideo {
   thumbnail: string;
   sourceType: 'youtube_channel' | 'youtube_playlist';
   sourceId: string;
+}
+
+// Video ID parsing and generation utilities
+export interface ParsedVideoId {
+  type: 'youtube' | 'local' | 'dlna';
+  originalId: string;
+  path?: string; // for local and dlna videos
+  host?: string; // for dlna videos (e.g., "192.168.1.100:8200")
+}
+
+export interface VideoIdUtilityResult {
+  success: boolean;
+  parsed?: ParsedVideoId;
+  error?: string;
 } 
