@@ -65,9 +65,14 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
     if (field === 'url') {
       setValidation({ isValid: true, errors: [] });
       setUrlValidated(false);
-      // Clear title when URL changes for YouTube sources
+      // Reset to generic 'youtube' type and clear title when URL changes for YouTube sources
       if (formData.type === 'youtube_channel' || formData.type === 'youtube_playlist' || formData.type === 'youtube') {
-        setFormData(prev => ({ ...prev, [field]: value as string, title: '' }));
+        setFormData(prev => ({
+          ...prev,
+          [field]: value as string,
+          title: '',
+          type: 'youtube' // Reset to generic type to trigger fresh auto-detection
+        }));
         return; // Return early to avoid double setting
       }
     }
@@ -82,9 +87,9 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
     setTitlePending(true);
 
     try {
-      // Auto-detect YouTube URL type if using generic "youtube" type
+      // Always auto-detect YouTube URL type for YouTube sources
       let detectedType: VideoSourceType | null = null;
-      if (formData.type === 'youtube') {
+      if (formData.type === 'youtube' || formData.type === 'youtube_channel' || formData.type === 'youtube_playlist') {
         detectedType = detectYouTubeUrlType(formData.url);
         if (!detectedType) {
           setValidation({
@@ -96,10 +101,10 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
           setUrlValidated(false);
           return;
         }
-        // Update the form data with the detected type
+        // Always update the form data with the freshly detected type
         setFormData(prev => ({ ...prev, type: detectedType! }));
       } else {
-        // Use the explicitly selected type
+        // Use the explicitly selected type (for local sources)
         detectedType = formData.type as VideoSourceType;
       }
 
