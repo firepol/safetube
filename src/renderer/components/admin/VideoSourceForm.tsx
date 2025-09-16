@@ -66,8 +66,8 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
       setValidation({ isValid: true, errors: [] });
       setUrlValidated(false);
       // Clear title when URL changes for YouTube sources
-      if (formData.type === 'youtube_channel' || formData.type === 'youtube_playlist') {
-        setFormData(prev => ({ ...prev, [field]: value, title: '' }));
+      if (formData.type === 'youtube_channel' || formData.type === 'youtube_playlist' || formData.type === 'youtube') {
+        setFormData(prev => ({ ...prev, [field]: value as string, title: '' }));
         return; // Return early to avoid double setting
       }
     }
@@ -134,7 +134,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
       // Advanced validation with YouTube API to fetch metadata
       const result = await window.electron.videoSourcesValidateYouTubeUrl(
         formData.url,
-        detectedType
+        detectedType as 'youtube_channel' | 'youtube_playlist'
       );
 
       if (!result.isValid) {
@@ -174,9 +174,16 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
     setIsValidating(true);
 
     try {
+      // Skip validation for generic 'youtube' type - should be resolved by auto-validation
+      if (formData.type === 'youtube') {
+        setValidation({ isValid: true, errors: [] });
+        setIsValidating(false);
+        return;
+      }
+
       // Basic validation (URL format only, title validated separately)
       const basicValidation = validateVideoSource(
-        formData.type,
+        formData.type as VideoSourceType,
         formData.url,
         formData.path,
         '' // Don't validate title here - it's validated by form submission logic
@@ -431,7 +438,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
           </label>
           <select
             id="sortOrder"
-            value={formData.sortOrder || getDefaultSortOrder(formData.type)}
+            value={formData.sortOrder || (formData.type === 'local' ? getDefaultSortOrder('local') : 'newestFirst')}
             onChange={(e) => handleInputChange('sortOrder', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >

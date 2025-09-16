@@ -91,13 +91,16 @@ export function detectYouTubeUrlType(url: string): 'youtube_channel' | 'youtube_
     return null;
   }
 
+  // Clean the URL first to remove suffixes like /videos, /playlists, etc.
+  const cleanedUrl = cleanYouTubeChannelUrl(url.trim());
+
   // Check for playlist patterns first (more specific)
-  if (isValidYouTubePlaylistUrl(url)) {
+  if (isValidYouTubePlaylistUrl(cleanedUrl)) {
     return 'youtube_playlist';
   }
 
   // Check for channel patterns
-  if (isValidYouTubeChannelUrl(url)) {
+  if (isValidYouTubeChannelUrl(cleanedUrl)) {
     return 'youtube_channel';
   }
 
