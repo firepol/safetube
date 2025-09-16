@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Video } from '../types';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
 import { CountdownOverlay } from '../components/video/CountdownOverlay';
+import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
 import { audioWarningService } from '../services/audioWarning';
 import { logVerbose } from '../lib/logging';
 
@@ -77,15 +78,102 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
     };
   }, []);
 
+  const getBreadcrumbItems = (): BreadcrumbItem[] => {
+    const videoNavigationContext = (video as any)?.navigationContext;
+    const locationState = location.state as any;
+    const breadcrumbData = videoNavigationContext?.breadcrumb || locationState?.breadcrumb;
+
+    logVerbose('[BasePlayerPage] getBreadcrumbItems - video navigation context:', videoNavigationContext);
+    logVerbose('[BasePlayerPage] getBreadcrumbItems - location state:', locationState);
+    logVerbose('[BasePlayerPage] getBreadcrumbItems - breadcrumb data:', breadcrumbData);
+
+    const items: BreadcrumbItem[] = [
+      { label: 'Home', path: '/' }
+    ];
+
+    if (breadcrumbData?.sourceName) {
+      if (breadcrumbData.sourceId) {
+        items.push({
+          label: breadcrumbData.sourceName,
+          path: `/source/${breadcrumbData.sourceId}`
+        });
+      } else if (breadcrumbData.historyPath) {
+        // Special handling for History page
+        items.push({
+          label: breadcrumbData.sourceName,
+          path: breadcrumbData.historyPath
+        });
+      } else {
+        items.push({ label: breadcrumbData.sourceName });
+      }
+    }
+
+    if (breadcrumbData?.folderPath && breadcrumbData.folderPath.length > 0) {
+      logVerbose('[BasePlayerPage] Processing folderPath:', breadcrumbData.folderPath);
+      breadcrumbData.folderPath.forEach((folder: { name: string; path?: string }, index: number) => {
+        logVerbose('[BasePlayerPage] Processing folder:', folder);
+        if (folder.path && breadcrumbData.sourceId && breadcrumbData.basePath) {
+          // Create relative path by removing base path
+          let relativePath = folder.path;
+          logVerbose('[BasePlayerPage] Original relativePath:', relativePath);
+          if (relativePath.startsWith(breadcrumbData.basePath)) {
+            relativePath = relativePath.substring(breadcrumbData.basePath.length);
+            // Remove leading slash if present
+            if (relativePath.startsWith('/')) {
+              relativePath = relativePath.substring(1);
+            }
+          }
+          logVerbose('[BasePlayerPage] Final relativePath:', relativePath);
+
+          const generatedPath = `/source/${breadcrumbData.sourceId}?folder=${encodeURIComponent(relativePath)}`;
+          logVerbose('[BasePlayerPage] Generated breadcrumb path:', generatedPath);
+
+          items.push({
+            label: folder.name,
+            path: generatedPath
+          });
+        } else {
+          logVerbose('[BasePlayerPage] Adding non-clickable folder:', folder.name);
+          items.push({ label: folder.name });
+        }
+      });
+    } else {
+      logVerbose('[BasePlayerPage] No folderPath found or empty folderPath');
+    }
+
+    // Add "Watched Videos" breadcrumb if this is from WatchedVideos page
+    if (breadcrumbData?.isWatchedVideos && breadcrumbData?.sourceId) {
+      items.push({
+        label: 'Watched Videos',
+        path: `/source/${breadcrumbData.sourceId}/watched`
+      });
+    }
+
+    if (video?.title) {
+      items.push({ label: video.title, isActive: true });
+    }
+
+    logVerbose('[BasePlayerPage] Generated breadcrumb items:', items);
+
+    // Also log the returnTo logic for comparison
+    const returnTo = videoNavigationContext?.returnTo || locationState?.returnTo;
+    logVerbose('[BasePlayerPage] returnTo value (what old Back button used):', returnTo);
+
+    return items;
+  };
+
   const handleBackClick = () => {
     // First check if the video has preserved navigation context (for downloaded videos)
     const videoNavigationContext = (video as any)?.navigationContext;
     const locationState = location.state as any;
-    
+
+    logVerbose('[BasePlayerPage] handleBackClick - videoNavigationContext:', videoNavigationContext);
+    logVerbose('[BasePlayerPage] handleBackClick - locationState:', locationState);
+
     // Use navigation context from video if available (for downloaded videos),
     // otherwise use location state (for regular videos)
     const returnTo = videoNavigationContext?.returnTo || locationState?.returnTo;
-    
+
     if (returnTo) {
       logVerbose('[BasePlayerPage] Navigating back to preserved returnTo:', returnTo);
       navigate(returnTo);
@@ -111,12 +199,7 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
         <div className="p-4">
-          <button
-            onClick={handleBackClick}
-            className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            ← Back
-          </button>
+          <BreadcrumbNavigation items={getBreadcrumbItems()} className="mb-4" />
           <div className="text-center">
             <div className="text-lg mb-2">Loading video...</div>
             <div className="text-sm text-gray-500">This may take a few moments</div>
@@ -130,12 +213,7 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
         <div className="p-4">
-          <button
-            onClick={handleBackClick}
-            className="mb-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            ← Back
-          </button>
+          <BreadcrumbNavigation items={getBreadcrumbItems()} className="mb-4" />
           <div className="text-red-500">{error || 'Video not found'}</div>
         </div>
       </div>
@@ -146,12 +224,7 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
     <div className="flex flex-col min-h-screen bg-gray-100">
       <div className="p-4">
         <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={handleBackClick}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            ← Back
-          </button>
+          <BreadcrumbNavigation items={getBreadcrumbItems()} />
           <TimeIndicator realTime={true} updateInterval={3000} />
         </div>
         <h1 className="text-2xl font-bold mb-4">{video.title}</h1>

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Pagination } from '../layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../layout/TimeIndicator';
 import { VideoGrid } from '../layout/VideoGrid';
-import { PageHeader } from '../layout/PageHeader';
+import { BreadcrumbNavigation, BreadcrumbItem } from '../layout/BreadcrumbNavigation';
 import { logVerbose } from '../../lib/logging';
 import path from 'path';
 
@@ -193,7 +193,18 @@ export const WatchedVideosPage: React.FC = () => {
   }, [sourceId, currentPage]);
 
   const handleVideoClick = (video: VideoWithDetails) => {
-    navigate(`/player/${encodeURIComponent(video.id)}`);
+    navigate(`/player/${encodeURIComponent(video.id)}`, {
+      state: {
+        videoTitle: video.title,
+        returnTo: `/source/${sourceId}/watched`,
+        breadcrumb: {
+          sourceName: source?.title || 'Source',
+          sourceId: sourceId,
+          basePath: `/source/${sourceId}/watched`,
+          isWatchedVideos: true
+        }
+      }
+    });
   };
 
   const handlePageChange = (newPage: number) => {
@@ -202,6 +213,20 @@ export const WatchedVideosPage: React.FC = () => {
 
   const handleBackClick = () => {
     navigate(`/source/${sourceId}`);
+  };
+
+  const getBreadcrumbItems = (): BreadcrumbItem[] => {
+    const items: BreadcrumbItem[] = [
+      { label: 'Home', path: '/' }
+    ];
+
+    if (source?.title) {
+      items.push({ label: source.title, path: `/source/${sourceId}` });
+    }
+
+    items.push({ label: 'Watched Videos', isActive: true });
+
+    return items;
   };
 
   if (isLoading) {
@@ -233,13 +258,13 @@ export const WatchedVideosPage: React.FC = () => {
 
   return (
     <div className="p-4">
-      <PageHeader
-        title="✅ Watched Videos"
-        subtitle={`${paginationState?.totalVideos || 0} videos fully watched`}
-        onBackClick={handleBackClick}
-        backButtonText={`← Back to ${source?.title || 'Source'}`}
-        rightContent={<TimeIndicator realTime={true} updateInterval={3000} />}
-      />
+      <div className="flex items-center justify-between mb-6">
+        <BreadcrumbNavigation items={getBreadcrumbItems()} />
+        <TimeIndicator realTime={true} updateInterval={3000} />
+      </div>
+
+      <h1 className="text-2xl font-bold mb-2">✅ Watched Videos</h1>
+      <p className="text-gray-600 mb-6">{paginationState?.totalVideos || 0} videos fully watched</p>
 
       {/* Watched Videos Grid */}
       {watchedVideos.length === 0 ? (

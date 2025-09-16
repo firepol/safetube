@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { VideoGrid } from '../layout/VideoGrid';
 import { PageHeader } from '../layout/PageHeader';
+import { BreadcrumbNavigation, BreadcrumbItem } from '../layout/BreadcrumbNavigation';
 import { TimeIndicator, TimeTrackingState } from '../layout/TimeIndicator';
 import { logVerbose } from '../../lib/logging';
 
@@ -37,6 +38,7 @@ interface LocalFolderNavigatorProps {
   onBackClick: () => void;
   onVideoClick: (video: VideoItem, currentFolderPath: string) => void;
   initialFolderPath?: string;
+  sourceId?: string;
 }
 
 export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
@@ -45,7 +47,8 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   sourceTitle,
   onBackClick,
   onVideoClick,
-  initialFolderPath
+  initialFolderPath,
+  sourceId
 }) => {
   const navigate = useNavigate();
   const [contents, setContents] = useState<FolderContents | null>(null);
@@ -57,24 +60,23 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   const processedVideosRef = useRef<Set<string>>(new Set());
   const [folderVideoCounts, setFolderVideoCounts] = useState<Record<string, number>>({});
   const [loadingFolderCounts, setLoadingFolderCounts] = useState<Record<string, boolean>>({});
-  const [navigationStack, setNavigationStack] = useState<string[]>(() => {
+  // NUCLEAR APPROACH: Always derive state from props, never use useState for navigation
+  const currentFolderPath = initialFolderPath || sourcePath;
+  const navigationStack = (() => {
     if (initialFolderPath) {
-      // Build navigation stack from source path to initial folder path
       const pathParts = initialFolderPath.replace(sourcePath, '').split('/').filter(Boolean);
       const stack = [sourcePath];
       let currentPath = sourcePath;
-      
+
       for (const part of pathParts) {
         currentPath = `${currentPath}/${part}`;
         stack.push(currentPath);
       }
-      
+
       return stack;
     }
     return [sourcePath];
-  });
-  
-  const [currentFolderPath, setCurrentFolderPath] = useState(initialFolderPath || sourcePath);
+  })();
   const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
   const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
 
@@ -129,16 +131,6 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
       isWatched: watchedData.watched === true,
       isClicked: true // If it's in watched.json, it was clicked
     };
-    
-    // Debug logging
-    if (watchedData) {
-      logVerbose(`[LocalFolderNavigator] Video ${videoId}:`, {
-        watched: watchedData.watched,
-        position: watchedData.position,
-        isWatched: status.isWatched,
-        isClicked: status.isClicked
-      });
-    }
     
     return status;
   };
@@ -311,10 +303,12 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     if (durationLoadingController) {
       durationLoadingController.abort();
     }
-    
-    setNavigationStack(prev => [...prev, folder.path]);
-    setCurrentFolderPath(folder.path);
-    setContents(null); // Clear contents to show loading state
+
+    // Navigate using URL instead of state updates
+    if (sourceId) {
+      const relativePath = folder.path.replace(`${sourcePath}/`, '');
+      navigate(`/source/${sourceId}?folder=${encodeURIComponent(relativePath)}`);
+    }
   };
 
   const handleBackClick = () => {
@@ -322,12 +316,18 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     if (durationLoadingController) {
       durationLoadingController.abort();
     }
-    
+
+    // Navigate using URL instead of state updates
     if (navigationStack.length > 1) {
-      const newStack = navigationStack.slice(0, -1);
-      setNavigationStack(newStack);
-      setCurrentFolderPath(newStack[newStack.length - 1]);
-      setContents(null); // Clear contents to show loading state
+      const parentPath = navigationStack[navigationStack.length - 2];
+      if (parentPath === sourcePath) {
+        // Going back to source root
+        navigate(`/source/${sourceId}`);
+      } else {
+        // Going back to parent folder
+        const relativePath = parentPath.replace(`${sourcePath}/`, '');
+        navigate(`/source/${sourceId}?folder=${encodeURIComponent(relativePath)}`);
+      }
     } else {
       onBackClick();
     }
@@ -338,6 +338,48 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
       return sourceTitle;
     }
     return currentFolderPath.split('/').pop() || 'Unknown';
+  };
+
+  const getBreadcrumbItems = (): BreadcrumbItem[] => {
+    const items: BreadcrumbItem[] = [
+      { label: 'Home', path: '/' }
+    ];
+
+    // Determine if we're at the source root or in a subfolder
+    const isAtSourceRoot = currentFolderPath === sourcePath;
+    const currentStackIndex = navigationStack.length - 1; // Index of current location
+
+    // Add source item - clickable if we're in a subfolder, active if we're at source root
+    if (sourceId) {
+      if (isAtSourceRoot) {
+        items.push({ label: sourceTitle, isActive: true });
+      } else {
+        items.push({ label: sourceTitle, path: `/source/${sourceId}` });
+      }
+    } else {
+      items.push({ label: sourceTitle, isActive: isAtSourceRoot });
+    }
+
+    // Add folder path items (skip the source path at index 0)
+    navigationStack.slice(1).forEach((path, index) => {
+      const folderName = path.split('/').pop() || 'Unknown';
+      const actualIndex = index + 1; // Adjust for slice(1)
+      const isCurrentLocation = actualIndex === currentStackIndex;
+
+      if (sourceId && !isCurrentLocation) {
+        // Make intermediate folders clickable
+        const relativePath = path.replace(`${sourcePath}/`, '');
+        items.push({
+          label: folderName,
+          path: `/source/${sourceId}?folder=${encodeURIComponent(relativePath)}`
+        });
+      } else {
+        // Current location should be active (bold, non-clickable)
+        items.push({ label: folderName, isActive: isCurrentLocation });
+      }
+    });
+
+    return items;
   };
 
   const getBreadcrumbPath = () => {
@@ -381,23 +423,20 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
 
   return (
     <div className="p-4">
-      <PageHeader
-        title={getCurrentFolderName()}
-        subtitle={getBreadcrumbPath()}
-        onBackClick={handleBackClick}
-        backButtonText="← Back"
-        rightContent={
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={handleWatchedFolderClick}
-              className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-            >
-              Watched Videos
-            </button>
-            <TimeIndicator initialState={timeTrackingState} />
-          </div>
-        }
-      />
+      <div className="flex items-center justify-between mb-6">
+        <BreadcrumbNavigation items={getBreadcrumbItems()} />
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={handleWatchedFolderClick}
+            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+          >
+            Watched Videos
+          </button>
+          <TimeIndicator initialState={timeTrackingState} />
+        </div>
+      </div>
+
+      <h1 className="text-2xl font-bold mb-6">{getCurrentFolderName()}</h1>
 
       {/* Folders Section */}
       {contents.folders.length > 0 && (
@@ -459,7 +498,33 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
                   if (durationLoadingController) {
                     durationLoadingController.abort();
                   }
-                  onVideoClick(video, currentFolderPath);
+
+                  // Pass breadcrumb data with video click
+                  const enhancedOnVideoClick = (video: VideoItem, folderPath: string) => {
+                    // Create enhanced video with breadcrumb data
+                    const breadcrumbData = {
+                      sourceName: sourceTitle,
+                      sourceId: sourceId,
+                      basePath: sourcePath,
+                      folderPath: navigationStack.slice(1).map(path => ({
+                        name: path.split('/').pop() || 'Unknown',
+                        path: path
+                      }))
+                    };
+
+                    // Extend the video object to include navigation context
+                    const videoWithContext = {
+                      ...video,
+                      navigationContext: {
+                        breadcrumb: breadcrumbData,
+                        returnTo: sourceId ? `/source/${sourceId}?folder=${encodeURIComponent(folderPath.replace(sourcePath + '/', ''))}` : undefined
+                      }
+                    };
+
+                    onVideoClick(videoWithContext, folderPath);
+                  };
+
+                  enhancedOnVideoClick(video, currentFolderPath);
                 }
               };
             })}

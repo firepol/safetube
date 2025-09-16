@@ -5,6 +5,7 @@ import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndic
 import { LocalFolderNavigator } from '../components/video/LocalFolderNavigator';
 import { VideoGrid } from '../components/layout/VideoGrid';
 import { PageHeader } from '../components/layout/PageHeader';
+import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
 import { logVerbose } from '../lib/logging';
 
 export const SourcePage: React.FC = () => {
@@ -146,6 +147,18 @@ export const SourcePage: React.FC = () => {
   // For local sources, we need to get the maxDepth from the source data
   // The source object should already contain this information from the backend
 
+  const getBreadcrumbItems = (): BreadcrumbItem[] => {
+    const items: BreadcrumbItem[] = [
+      { label: 'Home', path: '/' }
+    ];
+
+    if (source?.title) {
+      items.push({ label: source.title, isActive: true });
+    }
+
+    return items;
+  };
+
   const handleBackClick = () => {
     navigate('/');
   };
@@ -159,17 +172,26 @@ export const SourcePage: React.FC = () => {
   };
 
   const handleVideoClick = (video: any, currentFolderPath?: string) => {
+    // Check if video already has navigation context (from LocalFolderNavigator)
+    // If so, use that breadcrumb data instead of creating new one
+    const breadcrumbData = video.navigationContext?.breadcrumb || {
+      sourceName: source?.title,
+      sourceId: sourceId,
+      basePath: source?.path
+    };
+
     if (video.type === 'youtube') {
       navigate(`/player/${encodeURIComponent(video.id)}`, {
         state: {
           videoTitle: video.title,
-          returnTo: `/source/${sourceId}${currentPage > 1 ? `/page/${currentPage}` : ''}`
+          returnTo: `/source/${sourceId}${currentPage > 1 ? `/page/${currentPage}` : ''}`,
+          breadcrumb: breadcrumbData
         }
       });
     } else if (video.type === 'local') {
       // For local videos, include folder context in return navigation
       let returnTo = `/source/${sourceId}${currentPage > 1 ? `/page/${currentPage}` : ''}`;
-      
+
       // If we have a current folder path and it's different from the source path,
       // we need to include folder context in the return URL
       if (currentFolderPath && source?.path && currentFolderPath !== source.path) {
@@ -177,11 +199,12 @@ export const SourcePage: React.FC = () => {
         const relativePath = currentFolderPath.replace(source.path, '').replace(/^\//, '');
         returnTo += `?folder=${encodeURIComponent(relativePath)}`;
       }
-      
+
       navigate(`/player/${encodeURIComponent(video.id)}`, {
-        state: { 
+        state: {
           returnTo: returnTo,
-          currentFolderPath: currentFolderPath
+          currentFolderPath: currentFolderPath,
+          breadcrumb: breadcrumbData
         }
       });
     }
@@ -244,15 +267,7 @@ export const SourcePage: React.FC = () => {
   if (error) {
     return (
       <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={handleBackClick}
-            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-          >
-            ← Back to Sources
-          </button>
-          <h1 className="text-2xl font-bold">Error</h1>
-        </div>
+        <BreadcrumbNavigation items={getBreadcrumbItems()} className="mb-4" />
         <div className="text-red-600">{error}</div>
       </div>
     );
@@ -261,15 +276,8 @@ export const SourcePage: React.FC = () => {
   if (!source) {
     return (
       <div className="p-4">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={handleBackClick}
-            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-          >
-            ← Back to Sources
-          </button>
-          <h1 className="text-2xl font-bold">Source Not Found</h1>
-        </div>
+        <BreadcrumbNavigation items={getBreadcrumbItems()} className="mb-4" />
+        <h1 className="text-2xl font-bold">Source Not Found</h1>
       </div>
     );
   }
@@ -292,14 +300,18 @@ export const SourcePage: React.FC = () => {
 
   // For local sources, use the folder navigator
   if (isLocalSource) {
+    const componentKey = `localfoldernav-${sourceId}-${initialFolderPath || 'source-root'}`;
+
     return (
       <LocalFolderNavigator
+        key={componentKey}
         sourcePath={sourcePath}
         maxDepth={maxDepth}
         sourceTitle={source?.title || 'Local Source'}
         onBackClick={handleBackClick}
         onVideoClick={handleVideoClick}
         initialFolderPath={initialFolderPath}
+        sourceId={sourceId}
       />
     );
   }
@@ -312,29 +324,27 @@ export const SourcePage: React.FC = () => {
 
   return (
     <div className="p-4">
-      <PageHeader
-        title={source.title}
-        subtitle={`${source.videoCount} videos`}
-        onBackClick={handleBackClick}
-        backButtonText="← Back"
-        rightContent={
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => navigate(`/source/${sourceId}/watched`)}
-              className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-            >
-              Watched Videos
-            </button>
-            <button
-              onClick={handleResetClick}
-              className="text-sm text-gray-500 hover:text-gray-700 underline cursor-pointer"
-            >
-              Reset
-            </button>
-            <TimeIndicator initialState={timeTrackingState} />
-          </div>
-        }
-      />
+      <div className="flex items-center justify-between mb-6">
+        <BreadcrumbNavigation items={getBreadcrumbItems()} />
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={() => navigate(`/source/${sourceId}/watched`)}
+            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+          >
+            Watched Videos
+          </button>
+          <button
+            onClick={handleResetClick}
+            className="text-sm text-gray-500 hover:text-gray-700 underline cursor-pointer"
+          >
+            Reset
+          </button>
+          <TimeIndicator initialState={timeTrackingState} />
+        </div>
+      </div>
+
+      <h1 className="text-2xl font-bold mb-2">{source.title}</h1>
+      <p className="text-gray-600 mb-6">{source.videoCount} videos</p>
       
       {/* Pagination - Top (centered on page) */}
       {paginationState && paginationState.totalPages > 1 && (
@@ -371,25 +381,16 @@ export const SourcePage: React.FC = () => {
         className="mb-6"
       />
       
-      {/* Bottom navigation with Back button and Pagination */}
-      <div className="relative flex justify-center mb-6">
-        {/* Back button positioned absolutely on the left */}
-        <button
-          onClick={handleBackClick}
-          className="absolute left-0 top-0 px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-        >
-          ← Back
-        </button>
-
-        {/* Pagination centered (ignoring Back button position) */}
-        {paginationState && paginationState.totalPages > 1 && (
+      {/* Bottom pagination */}
+      {paginationState && paginationState.totalPages > 1 && (
+        <div className="flex justify-center mb-6">
           <Pagination
             currentPage={paginationState.currentPage}
             totalPages={paginationState.totalPages}
             onPageChange={handlePageChange}
           />
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

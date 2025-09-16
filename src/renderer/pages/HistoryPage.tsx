@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 import { VideoGrid } from '../components/layout/VideoGrid';
-import { PageHeader } from '../components/layout/PageHeader';
+import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
 import { logVerbose } from '../lib/logging';
 
 interface WatchedVideo {
@@ -201,7 +201,17 @@ export const HistoryPage: React.FC = () => {
   }, [currentPage]);
 
   const handleVideoClick = (video: VideoWithDetails) => {
-    navigate(`/player/${encodeURIComponent(video.id)}`);
+    navigate(`/player/${encodeURIComponent(video.id)}`, {
+      state: {
+        videoTitle: video.title,
+        returnTo: '/history',
+        breadcrumb: {
+          sourceName: 'History',
+          historyPath: '/history', // Special field for History page navigation
+          basePath: '/history'
+        }
+      }
+    });
   };
 
   const handlePageChange = (newPage: number) => {
@@ -212,10 +222,21 @@ export const HistoryPage: React.FC = () => {
     navigate('/');
   };
 
+  const getBreadcrumbItems = (): BreadcrumbItem[] => {
+    return [
+      { label: 'Home', path: '/' },
+      { label: 'History', isActive: true }
+    ];
+  };
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-6">
+          <BreadcrumbNavigation items={getBreadcrumbItems()} />
+          <TimeIndicator realTime={true} updateInterval={3000} />
+        </div>
+        <div className="text-center py-12">
           <div className="text-lg mb-2">Loading video history...</div>
           <div className="text-sm text-gray-500">This may take a few moments</div>
         </div>
@@ -225,15 +246,14 @@ export const HistoryPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-6">
+          <BreadcrumbNavigation items={getBreadcrumbItems()} />
+          <TimeIndicator realTime={true} updateInterval={3000} />
+        </div>
+        <div className="text-center py-12">
           <div className="text-lg mb-2 text-red-500">Error: {error}</div>
-          <button
-            onClick={handleBackClick}
-            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            ← Back to Home
-          </button>
+          <p className="text-gray-500">There was a problem loading your video history.</p>
         </div>
       </div>
     );
@@ -241,28 +261,22 @@ export const HistoryPage: React.FC = () => {
 
   return (
     <div className="p-4">
-      <PageHeader
-        title="📚 Video History"
-        subtitle={`${paginationState?.totalVideos || 0} videos total`}
-        onBackClick={handleBackClick}
-        backButtonText="← Back to Home"
-        rightContent={<TimeIndicator realTime={true} updateInterval={3000} />}
-      />
+      <div className="flex items-center justify-between mb-6">
+        <BreadcrumbNavigation items={getBreadcrumbItems()} />
+        <TimeIndicator realTime={true} updateInterval={3000} />
+      </div>
+
+      <h1 className="text-2xl font-bold mb-2">📚 Video History</h1>
+      <p className="text-gray-600 mb-6">{paginationState?.totalVideos || 0} videos total</p>
 
       {/* History Videos Grid */}
       {watchedVideos.length === 0 ? (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">📚</div>
           <h2 className="text-xl font-semibold text-gray-700 mb-2">No Video History</h2>
-          <p className="text-gray-500 mb-4">
+          <p className="text-gray-500">
             You haven't watched any videos yet. Start watching to see your history here!
           </p>
-          <button
-            onClick={handleBackClick}
-            className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
-          >
-            ← Back to Home
-          </button>
         </div>
       ) : (
         <>
