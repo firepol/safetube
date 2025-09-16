@@ -168,6 +168,26 @@ export interface ElectronAPI {
     sourceType: 'youtube_channel' | 'youtube_playlist';
     sourceId: string;
   }>>;
+  // Download reset functionality
+  resetDownloadStatus: (videoId: string) => Promise<{ success: boolean; error?: string }>;
+  checkDownloadedVideo: (videoId: string) => Promise<{
+    isDownloaded: boolean;
+    filePath: string | null;
+    downloadedVideo: {
+      videoId: string;
+      title: string;
+      channelTitle?: string;
+      playlistTitle?: string;
+      filePath: string;
+      downloadedAt: string;
+      duration: number;
+      thumbnail: string;
+      sourceType: 'youtube_channel' | 'youtube_playlist';
+      sourceId: string;
+    } | null;
+    isAccessible: boolean;
+    error?: string;
+  }>;
   // YouTube Cache
   getYouTubeCache: (cacheKey: string) => Promise<any | null>;
   setYouTubeCache: (cacheKey: string, data: any) => Promise<boolean>;
