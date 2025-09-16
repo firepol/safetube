@@ -1,20 +1,31 @@
 import fs from 'fs';
 import path from 'path';
 import { logVerbose } from '../shared/logging';
+import { AppPaths } from './appPaths';
 
 // Cache configuration
-const CACHE_DIR = path.join('.', '.cache');
+let CACHE_DIR: string;
 let CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes default
 
-// Ensure cache directory exists
-if (!fs.existsSync(CACHE_DIR)) {
-  try {
-    fs.mkdirSync(CACHE_DIR, { recursive: true });
-    logVerbose('[YouTubeCache] Created cache directory');
-  } catch (e) {
-    console.warn('[YouTubeCache] Could not create cache directory:', e);
+// Initialize cache directory
+function initializeCacheDir() {
+  CACHE_DIR = AppPaths.getCacheDir();
+
+  // Ensure cache directory exists
+  if (!fs.existsSync(CACHE_DIR)) {
+    try {
+      fs.mkdirSync(CACHE_DIR, { recursive: true });
+      logVerbose(`[YouTubeCache] Created cache directory: ${CACHE_DIR}`);
+    } catch (e) {
+      console.warn('[YouTubeCache] Could not create cache directory:', e);
+    }
+  } else {
+    logVerbose(`[YouTubeCache] Using cache directory: ${CACHE_DIR}`);
   }
 }
+
+// Initialize cache directory on module load
+initializeCacheDir();
 
 export class YouTubeCache {
   /**

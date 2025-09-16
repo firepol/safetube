@@ -39,6 +39,17 @@ logVerbose('[Main] YouTube API key will be loaded from mainSettings.json');
 logVerbose('[Main] ADMIN_PASSWORD:', process.env.ADMIN_PASSWORD ? '***configured***' : 'NOT configured');
 logVerbose('[Main] NODE_ENV:', process.env.NODE_ENV);
 
+// Debug: Log all directory paths for troubleshooting
+logVerbose('\n🗂️  SafeTube Directory Paths:');
+logVerbose(`   User Data: ${AppPaths.getUserDataDir()}`);
+logVerbose(`   Config:    ${AppPaths.getConfigDir()}`);
+logVerbose(`   Cache:     ${AppPaths.getCacheDir()}`);
+logVerbose(`   Logs:      ${AppPaths.getLogsDir()}`);
+logVerbose(`   Thumbnails: ${AppPaths.getThumbnailsDir()}`);
+logVerbose(`   Environment: ${AppPaths.isDev() ? 'Development' : 'Production'}`);
+logVerbose(`   Platform:  ${process.platform}`);
+logVerbose('─'.repeat(60));
+
 // Global type declaration for current videos
 declare global {
   var currentVideos: any[];

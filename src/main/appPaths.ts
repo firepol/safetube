@@ -1,5 +1,6 @@
 import { app } from 'electron';
 import * as path from 'path';
+import * as os from 'os';
 
 export class AppPaths {
   /**
@@ -17,6 +18,7 @@ export class AppPaths {
 
   /**
    * Get the appropriate cache directory
+   * Windows uses .cache subdirectory to avoid conflicts with Electron's built-in Cache folder
    */
   static getCacheDir(): string {
     if (this.isDev()) {
@@ -24,7 +26,14 @@ export class AppPaths {
       return path.join(process.cwd(), 'cache');
     } else {
       // In production, use user data directory
-      return path.join(app.getPath('userData'), 'cache');
+      const isWindows = os.platform() === 'win32';
+      if (isWindows) {
+        // On Windows, use .cache to avoid conflicts with Electron's Cache folder
+        return path.join(app.getPath('userData'), '.cache');
+      } else {
+        // On Linux/macOS, use cache as before
+        return path.join(app.getPath('userData'), 'cache');
+      }
     }
   }
 
