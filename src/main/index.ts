@@ -1,5 +1,5 @@
 import path from 'path'
-import { app, BrowserWindow, ipcMain } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol } from 'electron'
 import log from './logger'
 import { Client } from 'node-ssdp'
 import { setupYouTubeHandlers } from './youtube'
@@ -79,8 +79,7 @@ async function processNextThumbnailInQueue(): Promise<void> {
     const generatedThumbnail = await ThumbnailGenerator.generateCachedThumbnail(videoId, videoPath);
 
     if (generatedThumbnail) {
-      const relativeThumbnail = path.relative(path.join(process.cwd(), 'public'), generatedThumbnail);
-      const thumbnailUrl = `/${relativeThumbnail.replace(/\\/g, '/')}`;
+      const thumbnailUrl = getThumbnailUrl(generatedThumbnail);
       logVerbose('[Main] Background thumbnail generated:', videoId, '->', thumbnailUrl);
 
       // Notify renderer about thumbnail update
@@ -93,6 +92,12 @@ async function processNextThumbnailInQueue(): Promise<void> {
     // Process next item in queue
     setImmediate(() => processNextThumbnailInQueue());
   }
+}
+
+// Helper function to get thumbnail URL for custom protocol
+function getThumbnailUrl(thumbnailPath: string): string {
+  const filename = path.basename(thumbnailPath);
+  return `safetube-thumbnails://${filename}`;
 }
 
 // Notify renderer that thumbnail is ready
@@ -239,11 +244,10 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
               if (!thumbnailUrl) {
                 const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
                 const cacheKey = getThumbnailCacheKey(videoId, 'local');
-                const cachedThumbnailPath = path.join(process.cwd(), 'public', 'thumbnails', `${cacheKey}.jpg`);
+                const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
 
                 if (fs.existsSync(cachedThumbnailPath)) {
-                  const relativeThumbnail = path.relative(path.join(process.cwd(), 'public'), cachedThumbnailPath);
-                  thumbnailUrl = `/${relativeThumbnail.replace(/\\/g, '/')}`;
+                  thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
                   logVerbose('[Main] Using existing cached thumbnail:', thumbnailUrl);
                 } else {
                   // Schedule thumbnail generation in background (non-blocking)
@@ -298,11 +302,10 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
               if (!thumbnailUrl) {
                 const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
                 const cacheKey = getThumbnailCacheKey(videoId, 'local');
-                const cachedThumbnailPath = path.join(process.cwd(), 'public', 'thumbnails', `${cacheKey}.jpg`);
+                const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
 
                 if (fs.existsSync(cachedThumbnailPath)) {
-                  const relativeThumbnail = path.relative(path.join(process.cwd(), 'public'), cachedThumbnailPath);
-                  thumbnailUrl = `/${relativeThumbnail.replace(/\\/g, '/')}`;
+                  thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
                   logVerbose('[Main] Using existing cached thumbnail for flattened video:', thumbnailUrl);
                 } else {
                   // Schedule thumbnail generation in background (non-blocking)
@@ -404,13 +407,20 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
           if (!thumbnailUrl) {
             const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
             const cacheKey = getThumbnailCacheKey(videoId, 'local');
-            const cachedThumbnailPath = path.join(process.cwd(), 'public', 'thumbnails', `${cacheKey}.jpg`);
+            const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
+
+            logVerbose('[Main] 🔍 Checking for cached thumbnail (folder contents):', {
+              videoId,
+              cacheKey,
+              cachedThumbnailPath,
+              exists: fs.existsSync(cachedThumbnailPath)
+            });
 
             if (fs.existsSync(cachedThumbnailPath)) {
-              const relativeThumbnail = path.relative(path.join(process.cwd(), 'public'), cachedThumbnailPath);
-              thumbnailUrl = `/${relativeThumbnail.replace(/\\/g, '/')}`;
-              logVerbose('[Main] Using existing cached thumbnail for folder contents video:', thumbnailUrl);
+              thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
+              logVerbose('[Main] ✅ Using existing cached thumbnail for folder contents video:', thumbnailUrl);
             } else {
+              logVerbose('[Main] ❌ No cached thumbnail found, scheduling generation for:', videoId, itemPath);
               // Schedule thumbnail generation in background (non-blocking)
               scheduleBackgroundThumbnailGeneration(videoId, itemPath);
             }
@@ -579,11 +589,10 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
           if (!thumbnailUrl) {
             const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
             const cacheKey = getThumbnailCacheKey(videoId, 'local');
-            const cachedThumbnailPath = path.join(process.cwd(), 'public', 'thumbnails', `${cacheKey}.jpg`);
+            const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
 
             if (fs.existsSync(cachedThumbnailPath)) {
-              const relativeThumbnail = path.relative(path.join(process.cwd(), 'public'), cachedThumbnailPath);
-              thumbnailUrl = `/${relativeThumbnail.replace(/\\/g, '/')}`;
+              thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
               logVerbose('[Main] Using existing cached thumbnail for getFlattenedContent video:', thumbnailUrl);
             } else {
               // Schedule thumbnail generation in background (non-blocking)
@@ -2774,10 +2783,97 @@ app.on('ready', async () => {
     log.error('[Main] Error during first-time setup:', error);
   }
 
+  // Set up custom protocol for serving thumbnails from user data folder
+  try {
+    protocol.handle('safetube-thumbnails', (request) => {
+      const url = new URL(request.url);
+
+      // For custom protocols, the "filename" might be in the hostname part
+      let filename = url.hostname || url.pathname.slice(1);
+
+      // Remove trailing slash if present
+      if (filename.endsWith('/')) {
+        filename = filename.slice(0, -1);
+      }
+
+      logVerbose('[Main] ✅ THUMBNAIL REQUEST:', request.url);
+      logVerbose('[Main] 🔍 URL parts - hostname:', url.hostname, 'pathname:', url.pathname, 'parsed filename:', filename);
+
+      // Validate filename
+      if (!filename || filename.trim() === '') {
+        logVerbose('[Main] ❌ Invalid thumbnail filename:', filename);
+        return new Response('Bad Request - No filename', { status: 400 });
+      }
+
+      const thumbnailPath = AppPaths.getThumbnailPath(filename);
+
+      logVerbose('[Main] 🔍 Looking for thumbnail:', filename, 'at path:', thumbnailPath);
+
+      if (fs.existsSync(thumbnailPath)) {
+        // Check if it's a file, not a directory
+        const stats = fs.statSync(thumbnailPath);
+        if (stats.isFile()) {
+          logVerbose('[Main] ✅ Serving thumbnail successfully:', filename, 'size:', stats.size, 'bytes');
+          return new Response(fs.readFileSync(thumbnailPath), {
+            headers: { 'Content-Type': 'image/jpeg' }
+          });
+        } else {
+          logVerbose('[Main] ❌ Thumbnail path is not a file:', thumbnailPath);
+          return new Response('Bad Request - Not a file', { status: 400 });
+        }
+      } else {
+        logVerbose('[Main] ❌ Thumbnail file not found at:', thumbnailPath);
+        // List directory contents for debugging
+        const dirPath = path.dirname(thumbnailPath);
+        if (fs.existsSync(dirPath)) {
+          const dirContents = fs.readdirSync(dirPath);
+          logVerbose('[Main] 📁 Directory contents:', dirContents.slice(0, 10)); // Show first 10 files
+        }
+        return new Response('Not Found', { status: 404 });
+      }
+    });
+    logVerbose('[Main] Custom thumbnail protocol registered successfully');
+  } catch (error) {
+    log.error('[Main] Error setting up thumbnail protocol:', error);
+  }
 
   logVerbose('[Main] About to call createWindow...');
   createWindow()
   logVerbose('[Main] createWindow called');
+})
+
+// IPC handler to get the best available thumbnail for a video ID
+ipcMain.handle('get-best-thumbnail', async (event, videoId: string) => {
+  try {
+    logVerbose('[Main] get-best-thumbnail called for:', videoId);
+
+    const { parseVideoId } = await import('../shared/fileUtils');
+    const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
+
+    const parsed = parseVideoId(videoId);
+    if (!parsed.success) {
+      logVerbose('[Main] Failed to parse video ID:', parsed.error);
+      return null;
+    }
+
+    // Only handle local videos for now
+    if (parsed.parsed?.type === 'local') {
+      const cacheKey = getThumbnailCacheKey(videoId, 'local');
+      const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
+
+      if (fs.existsSync(cachedThumbnailPath)) {
+        const thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
+        logVerbose('[Main] Found cached thumbnail for video:', videoId, '->', thumbnailUrl);
+        return thumbnailUrl;
+      }
+    }
+
+    logVerbose('[Main] No cached thumbnail found for:', videoId);
+    return null;
+  } catch (error) {
+    logVerbose('[Main] Error getting best thumbnail for:', videoId, error);
+    return null;
+  }
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common

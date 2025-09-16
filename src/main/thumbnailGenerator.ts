@@ -3,12 +3,15 @@ import fs from 'fs';
 import path from 'path';
 import { logVerbose } from '../shared/logging';
 import { ThumbnailGenerationOptions, getThumbnailCacheKey } from '../shared/thumbnailUtils';
+import { AppPaths } from './appPaths';
 
 /**
  * Service for generating video thumbnails using FFmpeg
  */
 export class ThumbnailGenerator {
-  private static thumbnailsDir = path.join(process.cwd(), 'public', 'thumbnails');
+  private static get thumbnailsDir(): string {
+    return AppPaths.getThumbnailsDir();
+  }
 
   /**
    * Ensure thumbnails directory exists

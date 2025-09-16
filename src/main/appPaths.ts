@@ -42,6 +42,19 @@ export class AppPaths {
   }
 
   /**
+   * Get the appropriate thumbnails directory
+   */
+  static getThumbnailsDir(): string {
+    if (this.isDev()) {
+      // In development, use project root thumbnails folder
+      return path.join(process.cwd(), 'thumbnails');
+    } else {
+      // In production, use user data directory
+      return path.join(app.getPath('userData'), 'thumbnails');
+    }
+  }
+
+  /**
    * Get the user data directory (always Electron's user data path)
    */
   static getUserDataDir(): string {
@@ -74,5 +87,12 @@ export class AppPaths {
    */
   static getLogPath(filename: string): string {
     return path.join(this.getLogsDir(), filename);
+  }
+
+  /**
+   * Get the appropriate thumbnail file path
+   */
+  static getThumbnailPath(filename: string): string {
+    return path.join(this.getThumbnailsDir(), filename);
   }
 }

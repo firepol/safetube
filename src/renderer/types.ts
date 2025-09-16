@@ -196,6 +196,7 @@ export interface ElectronAPI {
   // Thumbnail update events
   onThumbnailReady: (callback: (data: { videoId: string; thumbnailUrl: string }) => void) => any;
   offThumbnailReady: (wrappedCallback: any) => void;
+  getBestThumbnail: (videoId: string) => Promise<string | null>;
 }
 declare global {
   interface Window {

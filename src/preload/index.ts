@@ -111,6 +111,8 @@ contextBridge.exposeInMainWorld(
     },
     offThumbnailReady: (wrappedCallback: any) => {
       ipcRenderer.off('thumbnail-ready', wrappedCallback);
-    }
+    },
+    // Get best available thumbnail for a video ID
+    getBestThumbnail: (videoId: string) => ipcRenderer.invoke('get-best-thumbnail', videoId)
   }
 );

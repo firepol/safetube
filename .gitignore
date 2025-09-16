@@ -67,6 +67,7 @@ config/
 # Thumbnails
 .thumbnails
 public/thumbnails
+thumbnails/
 
 test-videos/
 

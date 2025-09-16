@@ -80,8 +80,23 @@ export const HistoryPage: React.FC = () => {
           try {
             const videoData = await (window as any).electron.getVideoData(watchedVideo.videoId);
             if (videoData) {
+              // Check for best available thumbnail if original is empty
+              let bestThumbnail = videoData.thumbnail;
+              if (!bestThumbnail || bestThumbnail.trim() === '') {
+                try {
+                  const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
+                  if (generatedThumbnail) {
+                    bestThumbnail = generatedThumbnail;
+                    logVerbose('[HistoryPage] Using generated thumbnail for:', watchedVideo.videoId, '->', generatedThumbnail);
+                  }
+                } catch (error) {
+                  logVerbose('[HistoryPage] Error getting best thumbnail for:', watchedVideo.videoId, error);
+                }
+              }
+
               videosWithDetails.push({
                 ...videoData,
+                thumbnail: bestThumbnail,
                 watchedData: watchedVideo
               });
             } else {
@@ -96,10 +111,22 @@ export const HistoryPage: React.FC = () => {
                 videoType = 'local';
               }
 
+              // Check for best available thumbnail for fallback entry
+              let bestThumbnail = '';
+              try {
+                const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
+                if (generatedThumbnail) {
+                  bestThumbnail = generatedThumbnail;
+                  logVerbose('[HistoryPage] Using generated thumbnail for fallback video:', watchedVideo.videoId, '->', generatedThumbnail);
+                }
+              } catch (error) {
+                logVerbose('[HistoryPage] Error getting best thumbnail for fallback video:', watchedVideo.videoId, error);
+              }
+
               videosWithDetails.push({
                 id: watchedVideo.videoId,
                 title: `Video (${watchedVideo.videoId})`,
-                thumbnail: '',
+                thumbnail: bestThumbnail,
                 type: videoType, // Detected type based on ID format
                 duration: watchedVideo.duration || 0,
                 sourceId: 'unknown',
@@ -120,10 +147,22 @@ export const HistoryPage: React.FC = () => {
               videoType = 'local';
             }
 
+            // Check for best available thumbnail for error fallback entry
+            let bestThumbnail = '';
+            try {
+              const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
+              if (generatedThumbnail) {
+                bestThumbnail = generatedThumbnail;
+                logVerbose('[HistoryPage] Using generated thumbnail for error fallback video:', watchedVideo.videoId, '->', generatedThumbnail);
+              }
+            } catch (error) {
+              logVerbose('[HistoryPage] Error getting best thumbnail for error fallback video:', watchedVideo.videoId, error);
+            }
+
             videosWithDetails.push({
               id: watchedVideo.videoId,
               title: `Video (${watchedVideo.videoId})`,
-              thumbnail: '',
+              thumbnail: bestThumbnail,
               type: videoType, // Detected type based on ID format
               duration: watchedVideo.duration || 0,
               sourceId: 'unknown',

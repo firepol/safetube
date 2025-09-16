@@ -96,13 +96,28 @@ export const WatchedVideosPage: React.FC = () => {
             if (videoData) {
               // For local videos, check if the video path matches the source path
               // For other videos, check sourceId
-              const belongsToSource = videoData.sourceId === sourceId || 
-                (videoData.type === 'local' && videoData.url && sourceData.path && 
+              const belongsToSource = videoData.sourceId === sourceId ||
+                (videoData.type === 'local' && videoData.url && sourceData.path &&
                  videoData.url.startsWith(sourceData.path));
-              
+
               if (belongsToSource) {
+                // Check for best available thumbnail if original is empty
+                let bestThumbnail = videoData.thumbnail;
+                if (!bestThumbnail || bestThumbnail.trim() === '') {
+                  try {
+                    const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
+                    if (generatedThumbnail) {
+                      bestThumbnail = generatedThumbnail;
+                      logVerbose('[WatchedVideosPage] Using generated thumbnail for:', watchedVideo.videoId, '->', generatedThumbnail);
+                    }
+                  } catch (error) {
+                    logVerbose('[WatchedVideosPage] Error getting best thumbnail for:', watchedVideo.videoId, error);
+                  }
+                }
+
                 videosWithDetails.push({
                   ...videoData,
+                  thumbnail: bestThumbnail,
                   watchedData: watchedVideo
                 });
               } else {
@@ -115,10 +130,25 @@ export const WatchedVideosPage: React.FC = () => {
               const filePath = extractPathFromVideoId(watchedVideo.videoId);
               if (filePath && sourceData.path && filePath.startsWith(sourceData.path)) {
                 const fileName = path.basename(filePath, path.extname(filePath));
+
+                // Check for best available thumbnail for this video
+                let bestThumbnail = watchedVideo.thumbnail || '';
+                if (!bestThumbnail || bestThumbnail.trim() === '') {
+                  try {
+                    const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
+                    if (generatedThumbnail) {
+                      bestThumbnail = generatedThumbnail;
+                      logVerbose('[WatchedVideosPage] Using generated thumbnail for fallback video:', watchedVideo.videoId, '->', generatedThumbnail);
+                    }
+                  } catch (error) {
+                    logVerbose('[WatchedVideosPage] Error getting best thumbnail for fallback video:', watchedVideo.videoId, error);
+                  }
+                }
+
                 videosWithDetails.push({
                   id: watchedVideo.videoId,
                   title: watchedVideo.title || fileName,
-                  thumbnail: watchedVideo.thumbnail || '',
+                  thumbnail: bestThumbnail,
                   type: 'local',
                   duration: watchedVideo.duration || 0,
                   sourceId: sourceId,
