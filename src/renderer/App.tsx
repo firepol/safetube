@@ -7,6 +7,7 @@ import { SourcePage } from './pages/SourcePage';
 import { AdminPage } from './pages/AdminPage';
 import { WatchedVideosPage } from './components/video/WatchedVideosPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { ErrorFallbackPage } from './pages/ErrorFallbackPage';
 import { RateLimitWarning } from './components/layout/RateLimitWarning';
 import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
 
@@ -71,6 +72,7 @@ function App() {
               <Route path="/player/:id" element={<PlayerRouter />} />
               <Route path="/time-up" element={<TimeUpPage />} />
               <Route path="/admin" element={<AdminPage />} />
+              <Route path="*" element={<ErrorFallbackPage />} />
             </Routes>
           </div>
         </HashRouter>
