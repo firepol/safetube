@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { VideoSource, VideoSourceFormData, VideoSourceManagementState } from '@/shared/types';
-import { VideoSourceList } from './VideoSourceList';
+
 import { VideoSourceForm } from './VideoSourceForm';
+import { VideoSourceList } from './VideoSourceList';
+
+import { VideoSource, VideoSourceFormData, VideoSourceManagementState } from '@/shared/types';
 
 export const VideoSourcesManager: React.FC = () => {
   const [state, setState] = useState<VideoSourceManagementState>({
@@ -230,14 +232,6 @@ export const VideoSourcesManager: React.FC = () => {
         </div>
       )}
 
-      {/* Sources List */}
-      <VideoSourceList
-        sources={state.sources}
-        onEdit={handleEditSource}
-        onDelete={handleDeleteSource}
-        onMove={handleMoveSource}
-      />
-
       {/* Add/Edit Form */}
       {state.editingSource && (
         <VideoSourceForm
@@ -247,6 +241,14 @@ export const VideoSourcesManager: React.FC = () => {
           onCancel={handleCancelEdit}
         />
       )}
+
+      {/* Sources List */}
+      <VideoSourceList
+        sources={state.sources}
+        onEdit={handleEditSource}
+        onDelete={handleDeleteSource}
+        onMove={handleMoveSource}
+      />
     </div>
   );
 };

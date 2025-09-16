@@ -1,18 +1,23 @@
-import path from 'path'
-import { app, BrowserWindow, ipcMain, protocol } from 'electron'
-import log from './logger'
-import { Client } from 'node-ssdp'
-import { setupYouTubeHandlers } from './youtube'
-import { YouTubeAPI } from './youtube-api'
 import fs from 'fs'
-import { recordVideoWatching, getTimeTrackingState } from './timeTracking'
-import { readTimeLimits } from './fileUtils'
+import path from 'path'
+
+import dotenv from 'dotenv'
+import { app, BrowserWindow, ipcMain, protocol } from 'electron'
+import { Client } from 'node-ssdp'
+
+
 import { createLocalVideoId } from '../shared/fileUtils'
 
 // Load environment variables from .env file
-import dotenv from 'dotenv'
+
 import { logVerbose } from '../shared/logging'
+
 import { AppPaths } from './appPaths'
+import { readTimeLimits } from './fileUtils'
+import log from './logger'
+import { recordVideoWatching, getTimeTrackingState } from './timeTracking'
+import { setupYouTubeHandlers } from './youtube'
+import { YouTubeAPI } from './youtube-api'
 
 // Load .env file from multiple possible locations
 const possibleEnvPaths = [
@@ -1248,10 +1253,15 @@ ipcMain.handle('video-sources:save-all', async (_, sources: any[]) => {
 
 ipcMain.handle('video-sources:validate-youtube-url', async (_, url: string, type: 'youtube_channel' | 'youtube_playlist') => {
   try {
-    const { validateVideoSource, cleanYouTubePlaylistUrl } = await import('../shared/videoSourceUtils');
+    const { validateVideoSource, cleanYouTubePlaylistUrl, cleanYouTubeChannelUrl, extractChannelId, extractPlaylistId } = await import('../shared/videoSourceUtils');
 
-    // Clean the URL if it's a playlist watch URL
-    const cleanedUrl = type === 'youtube_playlist' ? cleanYouTubePlaylistUrl(url) : url;
+    // Clean the URL based on type
+    let cleanedUrl = url;
+    if (type === 'youtube_playlist') {
+      cleanedUrl = cleanYouTubePlaylistUrl(url);
+    } else if (type === 'youtube_channel') {
+      cleanedUrl = cleanYouTubeChannelUrl(url);
+    }
 
     // Basic validation
     const validation = validateVideoSource(type, cleanedUrl, undefined, 'Test Title');
@@ -1264,12 +1274,67 @@ ipcMain.handle('video-sources:validate-youtube-url', async (_, url: string, type
       };
     }
 
-    // For now, return basic validation success
-    // TODO: Add actual YouTube API validation when API key is available
+    // Try to fetch metadata from YouTube API
+    try {
+      const { readMainSettings } = await import('./fileUtils');
+      const settings = await readMainSettings();
+
+      if (settings.youtubeApiKey) {
+        const { YouTubeAPI } = await import('./youtube-api');
+        const youtubeApi = new YouTubeAPI(settings.youtubeApiKey);
+
+        let title = '';
+
+        if (type === 'youtube_channel') {
+          // Extract channel ID or resolve from username
+          let channelId = extractChannelId(cleanedUrl);
+
+          if (!channelId && cleanedUrl.includes('@')) {
+            // Try to resolve username to channel ID
+            const username = cleanedUrl.split('@')[1];
+            try {
+              const channelDetails = await youtubeApi.searchChannelByUsername(username);
+              title = channelDetails.title;
+            } catch (error) {
+              // If username resolution fails, still return valid but without title
+              logVerbose('[Main] Could not resolve username to channel:', username);
+            }
+          } else if (channelId) {
+            try {
+              const channelDetails = await youtubeApi.getChannelDetails(channelId);
+              title = channelDetails.title;
+            } catch (error) {
+              logVerbose('[Main] Could not fetch channel details:', channelId);
+            }
+          }
+        } else if (type === 'youtube_playlist') {
+          const playlistId = extractPlaylistId(cleanedUrl);
+          if (playlistId) {
+            try {
+              const playlistDetails = await youtubeApi.getPlaylistDetails(playlistId);
+              title = playlistDetails.title;
+            } catch (error) {
+              logVerbose('[Main] Could not fetch playlist details:', playlistId);
+            }
+          }
+        }
+
+        return {
+          isValid: true,
+          cleanedUrl,
+          title: title || undefined,
+          message: title ? 'URL validated and metadata fetched' : 'URL format is valid'
+        };
+      }
+    } catch (error) {
+      logVerbose('[Main] Could not fetch YouTube metadata (API key may not be configured):', error);
+    }
+
+    // Return basic validation success
     return {
       isValid: true,
       cleanedUrl,
-      message: 'URL format is valid (API validation not implemented yet)'
+      message: 'URL format is valid'
     };
   } catch (error) {
     log.error('Error validating YouTube URL:', error);

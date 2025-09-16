@@ -9,12 +9,30 @@ export function cleanYouTubePlaylistUrl(url: string): string {
   // Check if it's a watch URL with playlist parameter
   const watchWithPlaylistRegex = /^https?:\/\/(www\.)?youtube\.com\/watch\?.*list=([^&]+)/;
   const match = url.match(watchWithPlaylistRegex);
-  
+
   if (match) {
     const playlistId = match[2];
     return `https://www.youtube.com/playlist?list=${playlistId}`;
   }
-  
+
+  return url;
+}
+
+/**
+ * Cleans a YouTube channel URL by removing suffixes like /videos, /playlists, etc.
+ * Converts: https://www.youtube.com/@username/videos
+ * To: https://www.youtube.com/@username
+ */
+export function cleanYouTubeChannelUrl(url: string): string {
+  // Remove common channel suffixes
+  const suffixes = ['/videos', '/playlists', '/community', '/channels', '/about', '/featured'];
+
+  for (const suffix of suffixes) {
+    if (url.endsWith(suffix)) {
+      return url.slice(0, -suffix.length);
+    }
+  }
+
   return url;
 }
 

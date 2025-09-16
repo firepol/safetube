@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+
 import { VideoSourceFormData, VideoSourceType } from '@/shared/types';
-import { validateVideoSource, getDefaultSortOrder } from '@/shared/videoSourceUtils';
+import { validateVideoSource, getDefaultSortOrder, isValidYouTubeChannelUrl, isValidYouTubePlaylistUrl } from '@/shared/videoSourceUtils';
 
 interface VideoSourceFormProps {
   source: VideoSourceFormData;
@@ -21,10 +22,28 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
     errors: []
   });
   const [isValidating, setIsValidating] = useState(false);
+  const [titlePending, setTitlePending] = useState(false);
+  const [urlValidated, setUrlValidated] = useState(false);
 
   useEffect(() => {
     setFormData(source);
-  }, [source]);
+    setUrlValidated(false);
+    // For editing existing sources, the title should be enabled
+    if (!isAdding && source.title) {
+      setUrlValidated(true);
+    }
+  }, [source, isAdding]);
+
+  // Auto-validate URL when it changes
+  useEffect(() => {
+    if (formData.url && (formData.type === 'youtube_channel' || formData.type === 'youtube_playlist')) {
+      const timeoutId = setTimeout(() => {
+        autoValidateUrl();
+      }, 500); // Debounce for 500ms
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [formData.url, formData.type]);
 
   const handleTypeChange = (type: VideoSourceType) => {
     const newFormData = {
@@ -40,18 +59,105 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
 
   const handleInputChange = (field: keyof VideoSourceFormData, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+
+    // Reset validation state when URL changes
+    if (field === 'url') {
+      setValidation({ isValid: true, errors: [] });
+      setUrlValidated(false);
+      // Clear title when URL changes for YouTube sources
+      if (formData.type === 'youtube_channel' || formData.type === 'youtube_playlist') {
+        setFormData(prev => ({ ...prev, [field]: value, title: '' }));
+        return; // Return early to avoid double setting
+      }
+    }
+  };
+
+  const autoValidateUrl = async () => {
+    if (!formData.url || (formData.type !== 'youtube_channel' && formData.type !== 'youtube_playlist')) {
+      return;
+    }
+
+    setIsValidating(true);
+    setTitlePending(true);
+
+    try {
+      // Basic URL format validation only (without title requirement)
+      let urlValidationErrors: string[] = [];
+
+      if (formData.type === 'youtube_channel') {
+        if (!formData.url || formData.url.trim().length === 0) {
+          urlValidationErrors.push('YouTube channel URL is required');
+        } else if (!isValidYouTubeChannelUrl(formData.url)) {
+          urlValidationErrors.push('Invalid YouTube channel URL format');
+        }
+      } else if (formData.type === 'youtube_playlist') {
+        if (!formData.url || formData.url.trim().length === 0) {
+          urlValidationErrors.push('YouTube playlist URL is required');
+        } else if (!isValidYouTubePlaylistUrl(formData.url)) {
+          urlValidationErrors.push('Invalid YouTube playlist URL format');
+        }
+      }
+
+      if (urlValidationErrors.length > 0) {
+        setValidation({
+          isValid: false,
+          errors: urlValidationErrors
+        });
+        setIsValidating(false);
+        setTitlePending(false);
+        setUrlValidated(false);
+        return;
+      }
+
+      // Advanced validation with YouTube API to fetch metadata
+      const result = await window.electron.videoSourcesValidateYouTubeUrl(
+        formData.url,
+        formData.type
+      );
+
+      if (!result.isValid) {
+        setValidation({
+          isValid: false,
+          errors: result.errors || ['Invalid YouTube URL']
+        });
+        setUrlValidated(false);
+      } else {
+        setValidation({ isValid: true, errors: [] });
+        setUrlValidated(true);
+
+        // Auto-populate title from fetched metadata
+        if (result.title) {
+          setFormData(prev => ({ ...prev, title: result.title! }));
+        }
+
+        // Update URL if it was cleaned
+        if (result.cleanedUrl && result.cleanedUrl !== formData.url) {
+          setFormData(prev => ({ ...prev, url: result.cleanedUrl! }));
+        }
+      }
+    } catch (error) {
+      console.error('Auto-validation error:', error);
+      setValidation({
+        isValid: false,
+        errors: ['Validation failed: ' + (error instanceof Error ? error.message : String(error))]
+      });
+      setUrlValidated(false);
+    } finally {
+      setIsValidating(false);
+      setTitlePending(false);
+    }
   };
 
   const validateForm = async () => {
     setIsValidating(true);
-    
+
     try {
-      // Basic validation
+      // Basic validation (URL format only, title validated separately)
       const basicValidation = validateVideoSource(
         formData.type,
         formData.url,
         formData.path,
-        formData.title
+        '' // Don't validate title here - it's validated by form submission logic
       );
 
       if (!basicValidation.isValid) {
@@ -109,12 +215,32 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    await validateForm();
-    
-    if (validation.isValid) {
-      onSave(formData);
+
+    // Check if title is provided (required for all source types)
+    if (!formData.title.trim()) {
+      setValidation({
+        isValid: false,
+        errors: ['Title is required']
+      });
+      return;
     }
+
+    // For local paths, validate one more time since they don't auto-validate
+    if (formData.type === 'local' && formData.path) {
+      await validateForm();
+      if (!validation.isValid) return;
+    }
+
+    // For YouTube sources, we already have validation from auto-validation
+    if ((formData.type === 'youtube_channel' || formData.type === 'youtube_playlist') && !urlValidated) {
+      setValidation({
+        isValid: false,
+        errors: ['Please enter a valid URL first']
+      });
+      return;
+    }
+
+    onSave(formData);
   };
 
   const getSortOrderOptions = (type: VideoSourceType) => {
@@ -179,16 +305,35 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
         <div>
           <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-2">
             Title *
+            {titlePending && formData.type !== 'local' && (
+              <span className="ml-2 text-sm text-blue-600">Fetching title...</span>
+            )}
           </label>
           <input
             type="text"
             id="title"
             value={formData.title}
             onChange={(e) => handleInputChange('title', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Enter a descriptive title"
+            disabled={formData.type !== 'local' && !urlValidated}
+            className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+              (formData.type !== 'local' && !urlValidated) || titlePending ? 'bg-gray-100 text-gray-500' : ''
+            }`}
+            placeholder={
+              formData.type === 'local'
+                ? "Enter a descriptive title"
+                : titlePending
+                  ? "Fetching title from URL..."
+                  : !urlValidated
+                    ? "Paste URL first to enable title field"
+                    : "Enter a descriptive title"
+            }
             required
           />
+          {formData.type !== 'local' && !formData.title.trim() && !titlePending && formData.url && (
+            <p className="text-xs text-gray-500 mt-1">
+              Title will be auto-filled when you paste a valid URL
+            </p>
+          )}
         </div>
 
         {/* URL or Path */}
@@ -308,19 +453,17 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
             Cancel
           </button>
           <button
-            type="button"
-            onClick={validateForm}
-            disabled={isValidating}
-            className="px-4 py-2 text-blue-700 bg-blue-100 rounded-md hover:bg-blue-200 transition-colors duration-200 disabled:opacity-50"
-          >
-            {isValidating ? 'Validating...' : 'Validate'}
-          </button>
-          <button
             type="submit"
-            disabled={!validation.isValid || isValidating}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!validation.isValid || isValidating || !formData.title.trim()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
-            {isAdding ? 'Add Source' : 'Save Changes'}
+            {isValidating && (
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+            {isValidating ? 'Validating...' : (isAdding ? 'Add Source' : 'Save Changes')}
           </button>
         </div>
       </form>
