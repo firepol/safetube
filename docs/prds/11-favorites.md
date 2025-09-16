@@ -1,50 +1,48 @@
-# Favorites PRD
+# Favorites PRD (Simplified Star/Unstar)
 
 ## Overview
-The Favorites feature allows children to bookmark videos from any source (YouTube channels, playlists, local files, DLNA) for quick and easy access. Favorites are stored in a dedicated JSON file with complete video metadata, eliminating the need to fetch data when displaying the favorites collection. The feature integrates seamlessly with the existing video grid system as a separate source, similar to History and Downloaded.
+The Favorites feature provides a simple and intuitive way for children to bookmark videos using star icons. Videos can be favorited/unfavorited through hover interactions on video cards or traditional buttons on player pages. The feature focuses purely on star/unstar functionality without complex playlist management, keeping the user experience simple and focused. Favorited videos appear as a separate source in the video grid, similar to History and Downloaded.
 
 ## User Stories
-- As a child, I want to save my favorite videos so that I can easily find and watch them again
-- As a child, I want to add videos to favorites with a simple star button so that it's easy to bookmark content I like
-- As a child, I want to remove videos from favorites when I no longer want them saved
+- As a child, I want to save my favorite videos with a simple star click so that I can easily find them again
+- As a child, I want to see a star appear when I hover over videos so that I know I can favorite them
+- As a child, I want favorited videos to show a star icon so that I can see which ones I've saved
+- As a child, I want to unfavorite videos by clicking the star when I no longer want them saved
 - As a child, I want to see all my favorite videos in one place so that I can quickly choose what to watch
-- As a parent, I want my child to be able to curate their own collection of appropriate content
-- As a parent, I want favorites to work with all video sources so that my child can bookmark any approved content
+- As a child, I want the star functionality to work the same way across all video types
+- As a parent, I want my child to be able to curate their own simple collection of appropriate content
 
 ## Success Criteria
-- Children can add any video from any source to favorites with a single click
-- Children can remove videos from favorites with a clear, distinguishable button
-- Favorited videos are visually distinct from non-favorited videos
+- Star hole (☆) appears on video card hover, indicating favoritability
+- Single click on star hole adds video to favorites and shows filled star (⭐)
+- Filled star (⭐) is always visible on favorited videos as overlay icon
+- Single click on filled star removes video from favorites
+- Player pages show traditional "Add to Favorites ⭐" / "Remove from ⭐" buttons
 - Favorites appear as a separate source in the main video grid
-- All favorited videos display with complete metadata without requiring additional data fetching
+- Star interactions work consistently across all video sources
 - Favorites persist across app restarts and crashes
-- Favorites integrate seamlessly with existing video playback infrastructure
+- Star functionality integrates seamlessly with existing video infrastructure
 - The favorites list supports pagination for large collections
-- Star buttons are intuitive and follow established UI patterns
 
 ## Technical Requirements
 
 ### Core Functionality
-- **JSON Storage System**: Favorites stored in `config/favorites.json` with complete video metadata
+- **Simplified JSON Storage**: Favorites stored in `config/favorites.json` with basic video ID list
 - **Cross-Source Support**: Works with YouTube channels, playlists, local files, and DLNA sources
 - **Unique Video Identification**: Uses existing video ID system for consistent identification across sources
-- **Metadata Storage**: Store title, thumbnail, duration, source info, and URL/path for each favorite
-- **Duplicate Prevention**: Prevent duplicate favorites and handle edge cases gracefully
+- **Minimal Metadata**: Store only essential data (video ID, date added) - fetch full metadata when needed
+- **Duplicate Prevention**: Simple set-based storage prevents duplicate favorites automatically
 - **Data Persistence**: Automatic backup and recovery mechanisms following existing patterns
 
 ### Data Structure
 ```typescript
 interface FavoriteVideo {
   videoId: string;
-  title: string;
-  thumbnail: string;
-  duration: number; // seconds
-  sourceType: 'youtube_channel' | 'youtube_playlist' | 'local';
-  sourceId: string;
-  sourceName: string;
-  url?: string; // for YouTube videos
-  path?: string; // for local videos
   dateAdded: string; // ISO date string
+}
+
+interface FavoritesConfig {
+  favorites: FavoriteVideo[];
 }
 ```
 
@@ -62,13 +60,19 @@ interface FavoriteVideo {
 
 ## UI/UX Requirements
 
-### Star Button Implementation
-- **Add to Favorites**: ⭐ "Add to Favorites" button with star emoji, visible on non-favorited videos
-- **Remove from Favorites**: "Remove from ⭐" button with danger styling (red with opacity), visible only on favorited videos
-- **Button Placement**: Positioned below video title in VideoCardBase component, integrated naturally
-- **Visual States**: Clear visual distinction between add/remove states using color and opacity
-- **Hover Effects**: Appropriate hover states that match existing button patterns
+### Star Icon Implementation
+- **Hover State**: Star hole (☆) appears on video card hover, positioned as overlay icon
+- **Unfavorited Videos**: Show star hole on hover only, no permanent star visible
+- **Favorited Videos**: Filled star (⭐) always visible as overlay icon, positioned like checkmark for watched videos
+- **Click Behavior**: Click star hole to favorite, click filled star to unfavorite
+- **Icon Placement**: Positioned as overlay icon in same area as watched video checkmarks
+- **Visual Consistency**: Star overlays follow same styling patterns as existing video status overlays
 - **Accessibility**: Proper ARIA labels and keyboard navigation support
+
+### Player Page Integration
+- **Traditional Buttons**: "Add to Favorites ⭐" / "Remove from ⭐" buttons on player pages
+- **Button Styling**: Standard button styling consistent with existing player page buttons
+- **Dynamic State**: Button text and functionality changes based on current favorite status
 
 ### Favorites Source Page
 - **Source Integration**: Appears as "Favorites" source in main video grid alongside other sources
@@ -87,11 +91,12 @@ interface FavoriteVideo {
 
 ### User Flow
 1. Child browses any video source
-2. Child sees "Add to Favorites ⭐" button on video cards
-3. Child clicks star button to add video to favorites
-4. Button changes to "Remove from ⭐" with danger styling
+2. Child hovers over video card and sees star hole (☆) appear as overlay
+3. Child clicks star hole to add video to favorites
+4. Star hole immediately changes to filled star (⭐) and remains visible as overlay
 5. Child can navigate to Favorites source to see all saved videos
-6. Child can remove favorites by clicking the remove button on favorited videos
+6. Child can remove favorites by clicking the filled star (⭐) on favorited videos
+7. On player pages, child can use traditional "Add to Favorites ⭐" / "Remove from ⭐" buttons
 
 ## Testing Requirements
 
@@ -124,29 +129,29 @@ interface FavoriteVideo {
 
 ## Implementation Plan
 
-### Phase 1: Core Data Layer
-- Create FavoriteVideo TypeScript interface in shared/types.ts
-- Implement favorites management functions (add, remove, list, load, save)
-- Create favorites.json configuration file structure
+### Phase 1: Core Data Layer (Simplified)
+- Create simplified FavoriteVideo TypeScript interface in shared/types.ts
+- Implement basic favorites management functions (add, remove, isFavorited, list)
+- Create minimal favorites.json configuration file structure
 - Add comprehensive unit tests for data layer
 
-### Phase 2: UI Integration
-- Add star button to VideoCardBase component with state management
-- Implement add/remove favorites functionality in UI
-- Create visual states for favorited vs non-favorited videos
-- Add hover effects and accessibility features
+### Phase 2: Star Icon UI Integration
+- Add star hover state to VideoCardBase component with CSS transitions
+- Implement star overlay positioning (same area as watched checkmarks)
+- Create star hole (☆) on hover for unfavorited videos
+- Add filled star (⭐) overlay for favorited videos
+- Implement click handlers for star icons
 
-### Phase 3: Favorites Source
+### Phase 3: Player Page Integration
+- Add "Add to Favorites ⭐" / "Remove from ⭐" buttons to player pages
+- Implement dynamic button state based on favorite status
+- Integrate with existing player page button styling and layout
+
+### Phase 4: Favorites Source & Polish
 - Create Favorites source integration with existing source system
-- Implement Favorites page component with video grid layout
+- Implement Favorites page component with standard video grid layout
 - Add pagination support for large favorites collections
-- Integrate with existing routing and navigation system
-
-### Phase 4: Polish and Testing
-- Complete integration testing across all video sources
-- Performance optimization for large favorites collections
-- Error handling and edge case resolution
-- Accessibility improvements and keyboard navigation
+- Complete accessibility improvements and comprehensive testing
 
 ## Dependencies
 - Existing video source system and VideoCardBase component

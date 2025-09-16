@@ -559,37 +559,77 @@ Each feature PRD must include:
   - Proper Electron architecture separation ensures build compatibility
   - All Node.js-dependent code moved to main process, renderer uses IPC for communication
 
-### 11. Favorites
+### 11. Favorites (Simplified Star/Unstar)
 - **Status**: Not Started
 - **PRD**: [Favorites PRD](prds/11-favorites.md)
 - **Current Sprint**: Sprint 4
 - **Blockers**: None
 - **Dependencies**: Project Setup, Kid Screen, Video History, Advanced Video Sources
 - **Progress**: 0%
-- **Last Updated**: 2025-09-14
+- **Last Updated**: 2025-09-16
 - **Completed Items**: None
 - **Remaining Items**:
-  - Create FavoriteVideo TypeScript interface and data management functions
-  - Implement favorites.json configuration file with complete video metadata storage
-  - Add star button to VideoCardBase component with dynamic add/remove states
+  - Create simplified FavoriteVideo TypeScript interface and data management functions
+  - Implement favorites.json configuration file with basic video ID storage
+  - Add star hover and click functionality to VideoCardBase component
+  - Implement star icon overlay on favorited video thumbnails (like checkmark for watched videos)
   - Create Favorites source integration with existing video grid system
-  - Implement Favorites page component with pagination support
-  - Add cross-source compatibility for YouTube, local, and DLNA videos
-  - Implement duplicate prevention and data validation
+  - Add "Add to Favorites ⭐" / "Remove from ⭐" buttons to player page
+  - Implement cross-source compatibility for YouTube, local, and DLNA videos
   - Create comprehensive test suite for favorites functionality
   - Integrate with existing video playback and history systems
 - **Recent Changes**:
+  - 2025-09-16: **Simplified scope to focus on star/unstar functionality only**
+  - 2025-09-16: **Updated UI requirements to use star hole on hover, filled star when favorited**
+  - 2025-09-16: **Separated complex playlist functionality into dedicated KidLists feature**
   - 2025-09-14: **Created comprehensive PRD for Favorites feature**
   - 2025-09-14: **Added feature to development tracking with full requirements**
 - **Notes**:
-  - Feature allows kids to bookmark videos from any source with star buttons
-  - Favorites stored in dedicated JSON file with complete metadata (no fetching required)
-  - Appears as separate source like History and Downloaded
-  - Star button shows "Add to Favorites ⭐" for non-favorited videos
-  - Remove button shows "Remove from ⭐" with danger styling for favorited videos
-  - Supports cross-source favoriting (YouTube channels, playlists, local files, DLNA)
-  - Integrates with existing video grid, routing, and playback infrastructure
-  - Maintains data persistence and backup following existing JSON configuration patterns
+  - **Simplified UI**: Star hole (☆) appears on video card hover, filled star (⭐) always visible when favorited
+  - **Video Cards**: Click star hole to favorite, click filled star to unfavorite
+  - **Player Page**: Traditional "Add to Favorites ⭐" / "Remove from ⭐" buttons
+  - **Star Icon Overlay**: Favorited videos show star icon like checkmark overlay for watched videos
+  - **Simple Storage**: favorites.json stores video IDs and basic metadata
+  - **Focused Scope**: Pure star/unstar functionality without playlist complexity
+  - **Cross-Source Support**: Works with YouTube channels, playlists, local files, DLNA
+  - **Integration**: Appears as separate source like History and Downloaded
+
+### 12. KidLists System (Watch Later & Custom Playlists)
+- **Status**: Not Started
+- **PRD**: [KidLists System PRD](prds/12-kidlists-system.md)
+- **Current Sprint**: Sprint 4-5
+- **Blockers**: None
+- **Dependencies**: Project Setup, Kid Screen, Video History, Advanced Video Sources, Favorites
+- **Progress**: 0%
+- **Last Updated**: 2025-09-16
+- **Completed Items**: None
+- **Remaining Items**:
+  - Create KidList and KidListVideo TypeScript interfaces and data management
+  - Implement kidlists.json configuration file with comprehensive metadata storage
+  - Create "Watch Later" system kidlist that auto-removes fully watched videos
+  - Implement custom kidlist creation, renaming, and deletion functionality
+  - Add "Save to KidList" button with playlist selection modal/dropdown
+  - Create KidList management UI for creating and organizing custom kidlists
+  - Implement each kidlist as separate source in video grid system
+  - Add comprehensive permission system (kids can't delete Watch Later)
+  - Create integration with watch history for auto-removal behavior
+  - Implement comprehensive test suite for all kidlist functionality
+  - Integrate with existing video playback and history systems
+- **Recent Changes**:
+  - 2025-09-16: **Created new comprehensive feature for playlist functionality**
+  - 2025-09-16: **Separated from Favorites to maintain focused feature scope**
+  - 2025-09-16: **Used "KidLists" terminology to avoid YouTube playlist confusion**
+  - 2025-09-16: **Designed extensible architecture for future playlist types**
+- **Notes**:
+  - **Watch Later**: Special system kidlist that automatically removes videos when fully watched
+  - **Custom KidLists**: User-created kidlists that kids can create, rename, and delete
+  - **Save Interface**: YouTube-like "Save to KidList" button with kidlist selection and creation
+  - **Permission System**: Kids cannot delete "Watch Later" but can manage custom kidlists
+  - **Auto-Removal**: Watch Later integrates with watch history to remove completed videos
+  - **Source Integration**: Each kidlist appears as separate source like other video sources
+  - **Extensible Design**: Foundation supports future kidlist types and features
+  - **Cross-Source Support**: Videos from any source can be added to any kidlist
+  - **Storage**: kidlists.json with comprehensive metadata and video information
 
 ## Status Legend
 
