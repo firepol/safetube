@@ -43,7 +43,6 @@ export class YouTubePageFetcher {
       if (source.type === 'youtube_channel') {
         const channelId = this.extractChannelId(source.url);
         let actualChannelId = channelId;
-        console.log(`[PAGINATION DEBUG] Channel source: ${source.id}, extracted channelId: ${channelId}`);
 
         // Handle @username format
         if (channelId.startsWith('@')) {
@@ -56,12 +55,9 @@ export class YouTubePageFetcher {
           }
         }
 
-        console.log(`[PAGINATION DEBUG] Calling getChannelVideosPage with actualChannelId=${actualChannelId}, pageNumber=${pageNumber}, pageSize=${pageSize}`);
         result = await YouTubeAPI.getChannelVideosPage(actualChannelId, pageNumber, pageSize);
       } else {
         const playlistId = this.extractPlaylistId(source.url);
-        console.log(`[PAGINATION DEBUG] Playlist source: ${source.id}, extracted playlistId: ${playlistId}`);
-        console.log(`[PAGINATION DEBUG] Calling getPlaylistVideosPage with playlistId=${playlistId}, pageNumber=${pageNumber}, pageSize=${pageSize}`);
         result = await YouTubeAPI.getPlaylistVideosPage(playlistId, pageNumber, pageSize);
       }
 

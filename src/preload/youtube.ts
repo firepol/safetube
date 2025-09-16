@@ -450,13 +450,11 @@ export class YouTubeAPI {
   }
 
   static async getPlaylistVideosPage(playlistId: string, pageNumber: number, pageSize: number = 50): Promise<{ videos: any[], totalResults: number, pageNumber: number }> {
-    console.log(`[PAGINATION DEBUG] getPlaylistVideosPage called: playlistId=${playlistId}, pageNumber=${pageNumber}, pageSize=${pageSize}`);
 
     const startTime = Date.now();
 
     // Calculate how many items to skip for the requested page
     const itemsToSkip = (pageNumber - 1) * pageSize;
-    console.log(`[PAGINATION DEBUG] Need to skip ${itemsToSkip} items to reach page ${pageNumber}`);
 
     let currentPageToken: string | undefined = undefined;
     let totalResults = 0;
@@ -464,12 +462,10 @@ export class YouTubeAPI {
 
     // Fetch batches until we have enough videos for the requested page
     while (allVideoIds.length <= itemsToSkip + pageSize) {
-      console.log(`[PAGINATION DEBUG] Fetching batch with token: ${currentPageToken || 'none'}, current total: ${allVideoIds.length}`);
 
       const result = await this.getPlaylistVideos(playlistId, 50, currentPageToken);
 
       if (result.videoIds.length === 0) {
-        console.log(`[PAGINATION DEBUG] No more videos available, stopping at ${allVideoIds.length} total videos`);
         break;
       }
 
@@ -477,17 +473,13 @@ export class YouTubeAPI {
       allVideoIds.push(...result.videoIds);
       currentPageToken = result.nextPageToken;
 
-      console.log(`[PAGINATION DEBUG] Batch fetched: ${result.videoIds.length} videos, total now: ${allVideoIds.length}, nextToken: ${currentPageToken || 'none'}`);
-
       // If no more pages available, break
       if (!currentPageToken) {
-        console.log(`[PAGINATION DEBUG] No more pages available, stopping`);
         break;
       }
 
       // If we have enough videos for the requested page, we can stop
       if (allVideoIds.length > itemsToSkip + pageSize - 1) {
-        console.log(`[PAGINATION DEBUG] Have enough videos for page ${pageNumber}, stopping fetch`);
         break;
       }
     }
@@ -497,10 +489,7 @@ export class YouTubeAPI {
     const endIndex = Math.min(startIndex + pageSize, allVideoIds.length);
     const pageVideoIds = allVideoIds.slice(startIndex, endIndex);
 
-    console.log(`[PAGINATION DEBUG] Extracting videos from index ${startIndex} to ${endIndex}, got ${pageVideoIds.length} video IDs`);
-
     if (pageVideoIds.length === 0) {
-      console.log(`[PAGINATION DEBUG] No videos for page ${pageNumber}, returning empty result`);
       return {
         videos: [],
         totalResults,
@@ -575,7 +564,6 @@ export class YouTubeAPI {
     );
     VideoErrorLogger.logVideoLoadMetrics(metrics);
 
-    console.log(`[PAGINATION DEBUG] getPlaylistVideosPage SUCCESS: returning ${videos.length} videos (${successfulLoads} available, ${failedLoads} fallback) for page ${pageNumber}`);
     return { videos, totalResults, pageNumber };
   }
 

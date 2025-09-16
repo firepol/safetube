@@ -1730,7 +1730,6 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
 // Handle getting paginated videos from a specific source
 ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumber: number) => {
   try {
-    console.log(`[PAGINATION] get-paginated-videos handler called: sourceId=${sourceId}, pageNumber=${pageNumber}`);
     logVerbose('[Main] get-paginated-videos handler called:', { sourceId, pageNumber });
 
     // Read page size from pagination config first (needed for downloaded source)
