@@ -97,7 +97,9 @@ async function processNextThumbnailInQueue(): Promise<void> {
 // Helper function to get thumbnail URL for custom protocol
 function getThumbnailUrl(thumbnailPath: string): string {
   const filename = path.basename(thumbnailPath);
-  return `safetube-thumbnails://${filename}`;
+  // Encode filename to handle spaces, emojis, and special characters
+  const encodedFilename = encodeURIComponent(filename);
+  return `safetube-thumbnails://${encodedFilename}`;
 }
 
 // Notify renderer that thumbnail is ready
@@ -2794,6 +2796,13 @@ app.on('ready', async () => {
       // Remove trailing slash if present
       if (filename.endsWith('/')) {
         filename = filename.slice(0, -1);
+      }
+
+      // Decode URL encoding to handle spaces, emojis, and special characters
+      try {
+        filename = decodeURIComponent(filename);
+      } catch (error) {
+        logVerbose('[Main] ⚠️ Failed to decode thumbnail filename, using as-is:', filename, error);
       }
 
       logVerbose('[Main] ✅ THUMBNAIL REQUEST:', request.url);
