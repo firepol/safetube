@@ -69,6 +69,28 @@ export const PlayerRouter: React.FC = () => {
         }
         setPlayerType(finalPlayerType);
 
+        // Smart routing: Check for downloaded versions of YouTube videos first
+        if (video && video.type === 'youtube') {
+          try {
+            logVerbose('[PlayerRouter] Checking for downloaded version of YouTube video:', videoId);
+            const downloadedCheck = await window.electron.checkDownloadedVideo(videoId);
+            
+            if (downloadedCheck.isDownloaded && downloadedCheck.filePath) {
+              // Downloaded version exists and is accessible - route to local player
+              console.log(`[PlayerRouter] Playing downloaded version instead of YouTube for video: ${videoId}`);
+              logVerbose('[PlayerRouter] Using PlayerPage for downloaded YouTube video:', downloadedCheck.filePath);
+              setSelectedPlayer(<PlayerPage />);
+              setIsLoading(false);
+              return;
+            } else {
+              logVerbose('[PlayerRouter] No accessible downloaded version found, using YouTube player');
+            }
+          } catch (error) {
+            logVerbose('[PlayerRouter] Error checking for downloaded version:', error);
+            // Continue with normal YouTube routing on error
+          }
+        }
+
         // Route to appropriate player based on video type and config
         logVerbose('[PlayerRouter] Routing decision:', { 
           videoType: video?.type, 

@@ -860,6 +860,35 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
   try {
     logVerbose('[Main] Loading video data for:', videoId);
 
+    // Check if this is a YouTube video that has been downloaded and should be played as local
+    // This supports the smart routing functionality
+    try {
+      const { SmartPlaybackRouter } = await import('./smartPlaybackRouter');
+      const downloadedCheck = await SmartPlaybackRouter.shouldUseDownloadedVersion(videoId);
+      
+      if (downloadedCheck.useDownloaded && downloadedCheck.downloadedVideo) {
+        logVerbose('[Main] Converting downloaded YouTube video to local format for playback:', videoId);
+        const localVideo = await SmartPlaybackRouter.createLocalVideoFromDownload(downloadedCheck.downloadedVideo);
+        
+        // Merge with watched data to populate resumeAt
+        const { mergeWatchedData } = await import('./fileUtils');
+        const videosWithWatchedData = await mergeWatchedData([localVideo]);
+        const videoWithResume = videosWithWatchedData[0];
+        
+        logVerbose('[Main] Returning downloaded video as local format:', {
+          id: videoWithResume.id,
+          type: videoWithResume.type,
+          title: videoWithResume.title,
+          filePath: videoWithResume.filePath
+        });
+        
+        return videoWithResume;
+      }
+    } catch (downloadError) {
+      logVerbose('[Main] Error checking for downloaded version, continuing with normal flow:', downloadError);
+      // Continue with normal video loading if download check fails
+    }
+
     // Parse the video ID to determine its type
     const { parseVideoId, extractPathFromVideoId } = await import('../shared/fileUtils');
     const parseResult = parseVideoId(videoId);
