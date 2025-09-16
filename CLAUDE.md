@@ -77,3 +77,4 @@ For detailed information, always reference the specific documentation files ment
 ## More rules to follow
 
 - Always write and run tests (or specify what to test if automated tests are impractical), and ensure you run `yarn build:all` before committing changes
+- Always auto commit sub-tasks big enough to be meaningful, and use a clear, but not overly verbose, commit message
