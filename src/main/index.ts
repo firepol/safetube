@@ -45,7 +45,7 @@ const thumbnailGenerationInProgress = new Set<string>();
 
 // Schedule thumbnail generation in background
 function scheduleBackgroundThumbnailGeneration(videoId: string, videoPath: string): void {
-  const key = `${videoId}:${videoPath}`;
+  const key = `${videoId}||${videoPath}`;
 
   // Don't queue if already queued or in progress
   if (thumbnailGenerationQueue.has(key) || thumbnailGenerationInProgress.has(key)) {
@@ -53,7 +53,7 @@ function scheduleBackgroundThumbnailGeneration(videoId: string, videoPath: strin
   }
 
   thumbnailGenerationQueue.add(key);
-  logVerbose('[Main] Scheduled background thumbnail generation for:', videoId);
+  logVerbose('[Main] Scheduled background thumbnail generation for:', videoId, videoPath);
 
   // Process queue asynchronously
   setImmediate(() => processNextThumbnailInQueue());
@@ -71,10 +71,10 @@ async function processNextThumbnailInQueue(): Promise<void> {
   thumbnailGenerationQueue.delete(next);
   thumbnailGenerationInProgress.add(next);
 
-  const [videoId, videoPath] = next.split(':', 2);
+  const [videoId, videoPath] = next.split('||', 2);
 
   try {
-    logVerbose('[Main] Starting background thumbnail generation for:', videoId);
+    logVerbose('[Main] Starting background thumbnail generation for:', videoId, 'at path:', videoPath);
     const { ThumbnailGenerator } = await import('./thumbnailGenerator');
     const generatedThumbnail = await ThumbnailGenerator.generateCachedThumbnail(videoId, videoPath);
 
@@ -420,7 +420,7 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
               thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
               logVerbose('[Main] ✅ Using existing cached thumbnail for folder contents video:', thumbnailUrl);
             } else {
-              logVerbose('[Main] ❌ No cached thumbnail found, scheduling generation for:', videoId, itemPath);
+              logVerbose('[Main] ❌ No cached thumbnail found, scheduling generation for:', videoId, 'at path:', itemPath);
               // Schedule thumbnail generation in background (non-blocking)
               scheduleBackgroundThumbnailGeneration(videoId, itemPath);
             }
