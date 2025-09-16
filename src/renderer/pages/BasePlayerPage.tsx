@@ -4,6 +4,7 @@ import { Video } from '../types';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
 import { CountdownOverlay } from '../components/video/CountdownOverlay';
 import { audioWarningService } from '../services/audioWarning';
+import { logVerbose } from '../lib/logging';
 
 export interface BasePlayerPageProps {
   video: Video | null;
@@ -77,10 +78,19 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
   }, []);
 
   const handleBackClick = () => {
-    const returnTo = (location.state as any)?.returnTo;
+    // First check if the video has preserved navigation context (for downloaded videos)
+    const videoNavigationContext = (video as any)?.navigationContext;
+    const locationState = location.state as any;
+    
+    // Use navigation context from video if available (for downloaded videos),
+    // otherwise use location state (for regular videos)
+    const returnTo = videoNavigationContext?.returnTo || locationState?.returnTo;
+    
     if (returnTo) {
+      logVerbose('[BasePlayerPage] Navigating back to preserved returnTo:', returnTo);
       navigate(returnTo);
     } else {
+      logVerbose('[BasePlayerPage] No returnTo found, using browser back');
       navigate(-1);
     }
   };

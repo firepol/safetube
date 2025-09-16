@@ -34,7 +34,8 @@ export const YouTubePlayerPage: React.FC = () => {
     isDownloading,
     checkDownloadStatus,
     handleStartDownload,
-    handleCancelDownload
+    handleCancelDownload,
+    handleResetDownload
   } = useDownload();
 
   // Load video data when component mounts
@@ -243,6 +244,12 @@ export const YouTubePlayerPage: React.FC = () => {
     }
   }, [video?.id, handleCancelDownload]);
 
+  const onResetDownload = useCallback(() => {
+    if (video?.id) {
+      handleResetDownload(video.id);
+    }
+  }, [video?.id, handleResetDownload]);
+
   // Initialize YouTube player
   useEffect(() => {
     let cleanup = () => {};
@@ -371,6 +378,8 @@ export const YouTubePlayerPage: React.FC = () => {
         isDownloading={isDownloading}
         onStartDownload={onStartDownload}
         onCancelDownload={onCancelDownload}
+        onResetDownload={onResetDownload}
+        showResetButton={downloadStatus.status === 'completed'}
       />
     </BasePlayerPage>
   );

@@ -13,6 +13,7 @@ export interface UseDownloadReturn {
   checkDownloadStatus: (videoId: string) => Promise<void>;
   handleStartDownload: (video: Video) => Promise<void>;
   handleCancelDownload: (videoId: string) => Promise<void>;
+  handleResetDownload: (videoId: string) => Promise<void>;
 }
 
 export function useDownload(): UseDownloadReturn {
@@ -113,11 +114,24 @@ export function useDownload(): UseDownloadReturn {
     }
   }, []);
 
+  const handleResetDownload = useCallback(async (videoId: string) => {
+    if (!videoId) return;
+    
+    try {
+      await window.electron.resetDownloadStatus(videoId);
+      setDownloadStatus({ status: 'idle' });
+      setIsDownloading(false);
+    } catch (error) {
+      console.error('[useDownload] Error resetting download:', error);
+    }
+  }, []);
+
   return {
     downloadStatus,
     isDownloading,
     checkDownloadStatus,
     handleStartDownload,
-    handleCancelDownload
+    handleCancelDownload,
+    handleResetDownload
   };
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { PlayerPage } from './PlayerPage';
 import { YouTubePlayerPage } from './YouTubePlayerPage';
 import { loadPlayerConfig } from '../services/playerConfig';
@@ -8,6 +8,7 @@ import { logVerbose } from '../lib/logging';
 
 export const PlayerRouter: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   // URL decode the video ID since it was encoded when creating navigation links
   const videoId = id ? decodeURIComponent(id) : id;
   const [, setPlayerType] = useState<YouTubePlayerType>('mediasource');
@@ -46,11 +47,14 @@ export const PlayerRouter: React.FC = () => {
         }
         let video = null;
         try {
-          video = await window.electron.getVideoData(videoId);
+          // Pass navigation context to preserve returnTo and other navigation state
+          const navigationContext = location.state;
+          video = await window.electron.getVideoData(videoId, navigationContext);
           logVerbose('[PlayerRouter] Video data loaded:', { 
             id: video?.id, 
             type: video?.type, 
-            title: video?.title 
+            title: video?.title,
+            hasNavigationContext: !!video?.navigationContext
           });
         } catch (error) {
           console.error('[PlayerRouter] Error getting video data:', error);

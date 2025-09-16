@@ -21,7 +21,7 @@ contextBridge.exposeInMainWorld(
     getTimeLimits: () => ipcRenderer.invoke('time-tracking:get-time-limits'),
     getWatchedVideos: () => ipcRenderer.invoke('get-watched-videos'),
     getPlayerConfig: () => ipcRenderer.invoke('get-player-config'),
-    getVideoData: (videoId: string) => ipcRenderer.invoke('get-video-data', videoId),
+    getVideoData: (videoId: string, navigationContext?: any) => ipcRenderer.invoke('get-video-data', videoId, navigationContext),
     testHandler: () => ipcRenderer.invoke('test-handler'),
     // New IPC handler for loading videos from sources
     loadAllVideosFromSources: () => ipcRenderer.invoke('load-all-videos-from-sources'),

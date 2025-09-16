@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Video } from '../../types';
 import { logVerbose } from '../../lib/logging';
 
@@ -25,6 +25,7 @@ export const LocalPlayerResetUI: React.FC<LocalPlayerResetUIProps> = ({
   onResetDownload
 }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [downloadedVideoInfo, setDownloadedVideoInfo] = useState<DownloadedVideoInfo | null>(null);
   const [isResetting, setIsResetting] = useState(false);
 
@@ -84,10 +85,24 @@ export const LocalPlayerResetUI: React.FC<LocalPlayerResetUIProps> = ({
         onResetDownload();
       }
 
-      // Navigate to YouTube player for this video
+      // Preserve navigation context when navigating to YouTube player
+      // Use video's preserved context if available, otherwise use current location state
+      const videoNavigationContext = (video as any)?.navigationContext;
+      const currentLocationState = location.state;
+      const navigationContext = videoNavigationContext || currentLocationState || {};
+      
       const youtubeUrl = `/youtube/${encodeURIComponent(downloadedVideoInfo.videoId)}`;
-      logVerbose('[LocalPlayerResetUI] Navigating to YouTube player:', youtubeUrl);
-      navigate(youtubeUrl);
+      
+      logVerbose('[LocalPlayerResetUI] Navigating to YouTube player with preserved context:', {
+        url: youtubeUrl,
+        hasVideoNavigationContext: !!videoNavigationContext,
+        hasLocationState: !!currentLocationState,
+        finalContext: navigationContext
+      });
+      
+      navigate(youtubeUrl, {
+        state: navigationContext
+      });
 
     } catch (error) {
       console.error('[LocalPlayerResetUI] Error resetting download:', error);

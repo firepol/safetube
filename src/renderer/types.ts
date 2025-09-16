@@ -45,7 +45,7 @@ export interface ElectronAPI {
   getTimeLimits: () => Promise<any>;
   getWatchedVideos: () => Promise<any[]>;
   getPlayerConfig: () => Promise<any>;
-  getVideoData: (videoId: string) => Promise<any>;
+  getVideoData: (videoId: string, navigationContext?: any) => Promise<any>;
   testHandler: () => Promise<any>;
   env: {
     ELECTRON_LOG_VERBOSE?: string;

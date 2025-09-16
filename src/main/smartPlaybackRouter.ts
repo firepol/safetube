@@ -67,9 +67,13 @@ export class SmartPlaybackRouter {
   /**
    * Convert downloaded video metadata to local video format for playback
    * @param downloadedVideo - The downloaded video metadata
+   * @param navigationContext - Optional navigation context to preserve (returnTo, etc.)
    * @returns Promise<Video> - Local video object ready for playback
    */
-  static async createLocalVideoFromDownload(downloadedVideo: DownloadedVideo): Promise<any> {
+  static async createLocalVideoFromDownload(
+    downloadedVideo: DownloadedVideo, 
+    navigationContext?: { returnTo?: string; [key: string]: any }
+  ): Promise<any> {
     try {
       logVerbose(`[SmartPlaybackRouter] Converting downloaded video to local format: ${downloadedVideo.videoId}`);
 
@@ -102,12 +106,18 @@ export class SmartPlaybackRouter {
         // Mark as downloaded for UI components
         downloadedAt: downloadedVideo.downloadedAt,
         
+        // Preserve navigation context for back button functionality
+        navigationContext: navigationContext,
+        
         // Additional metadata
         isAvailable: true,
         isFallback: false
       };
 
-      logVerbose(`[SmartPlaybackRouter] Successfully created local video object for ${downloadedVideo.videoId}`);
+      logVerbose(`[SmartPlaybackRouter] Successfully created local video object for ${downloadedVideo.videoId}`, {
+        hasNavigationContext: !!navigationContext,
+        returnTo: navigationContext?.returnTo
+      });
       return localVideo;
     } catch (error) {
       logVerbose(`[SmartPlaybackRouter] Error creating local video from download: ${error}`);

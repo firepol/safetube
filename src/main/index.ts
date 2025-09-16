@@ -856,9 +856,9 @@ ipcMain.handle('get-player-config', async () => {
 })
 
 // Handle video data loading - ONLY from new source system
-ipcMain.handle('get-video-data', async (_, videoId: string) => {
+ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: any) => {
   try {
-    logVerbose('[Main] Loading video data for:', videoId);
+    logVerbose('[Main] Loading video data for:', videoId, navigationContext ? 'with navigation context' : 'without navigation context');
 
     // Check if this is a YouTube video that has been downloaded and should be played as local
     // This supports the smart routing functionality
@@ -868,7 +868,10 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
       
       if (downloadedCheck.useDownloaded && downloadedCheck.downloadedVideo) {
         logVerbose('[Main] Converting downloaded YouTube video to local format for playback:', videoId);
-        const localVideo = await SmartPlaybackRouter.createLocalVideoFromDownload(downloadedCheck.downloadedVideo);
+        const localVideo = await SmartPlaybackRouter.createLocalVideoFromDownload(
+          downloadedCheck.downloadedVideo,
+          navigationContext
+        );
         
         // Merge with watched data to populate resumeAt
         const { mergeWatchedData } = await import('./fileUtils');
@@ -879,7 +882,8 @@ ipcMain.handle('get-video-data', async (_, videoId: string) => {
           id: videoWithResume.id,
           type: videoWithResume.type,
           title: videoWithResume.title,
-          filePath: videoWithResume.filePath
+          filePath: videoWithResume.filePath,
+          hasNavigationContext: !!videoWithResume.navigationContext
         });
         
         return videoWithResume;
