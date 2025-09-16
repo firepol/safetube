@@ -26,6 +26,14 @@ export const SourcePage: React.FC = () => {
   const folderParam = urlParams.get('folder');
   const initialFolderPath = folderParam ? `${source?.path}/${decodeURIComponent(folderParam)}` : undefined;
 
+  // Debug logging for breadcrumb navigation
+  logVerbose('[SourcePage] URL and folder path calculation:', {
+    locationSearch: location.search,
+    folderParam: folderParam,
+    sourcePath: source?.path,
+    initialFolderPath: initialFolderPath
+  });
+
   // Load watched videos data
   useEffect(() => {
     const loadWatchedVideos = async () => {

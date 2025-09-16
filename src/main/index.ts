@@ -131,7 +131,6 @@ function filterDuplicateVideos(videos: any[]): any[] {
     const isConverted = video.url.includes('.converted/') || video.url.includes('\\.converted\\') || video.url.includes('.converted\\');
     if (!isConverted) {
       originalVideos.add(video.url);
-      logVerbose('[Main] Found original video:', video.url);
     }
   }
 
@@ -155,32 +154,14 @@ function filterDuplicateVideos(videos: any[]): any[] {
         }
       }
 
-      logVerbose('[Main] Checking converted video:', {
-        converted: video.url,
-        originalPath,
-        hasOriginal,
-        allOriginals: Array.from(originalVideos)
-      });
-
       if (!hasOriginal) {
         filteredVideos.push(video); // Include converted only if no original
-        logVerbose('[Main] Including converted video (no original):', video.url);
-      } else {
-        logVerbose('[Main] Hiding converted video (original exists):', video.url, '->', originalPath);
       }
       // Skip converted videos that have originals
     } else {
       filteredVideos.push(video); // Always include original videos
-      logVerbose('[Main] Including original video:', video.url);
     }
   }
-
-  logVerbose('[Main] Video filtering result:', {
-    total: videos.length,
-    filtered: filteredVideos.length,
-    hidden: videos.length - filteredVideos.length,
-    originalCount: originalVideos.size
-  });
 
   return filteredVideos;
 }
@@ -255,7 +236,6 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
 
                 if (fs.existsSync(cachedThumbnailPath)) {
                   thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
-                  logVerbose('[Main] Using existing cached thumbnail:', thumbnailUrl);
                 } else {
                   // Schedule thumbnail generation in background (non-blocking)
                   scheduleBackgroundThumbnailGeneration(videoId, itemPath);
@@ -313,7 +293,6 @@ async function scanLocalFolder(folderPath: string, maxDepth: number): Promise<an
 
                 if (fs.existsSync(cachedThumbnailPath)) {
                   thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
-                  logVerbose('[Main] Using existing cached thumbnail for flattened video:', thumbnailUrl);
                 } else {
                   // Schedule thumbnail generation in background (non-blocking)
                   scheduleBackgroundThumbnailGeneration(videoId, itemPath);
@@ -425,7 +404,6 @@ async function getLocalFolderContents(folderPath: string, maxDepth: number, curr
 
             if (fs.existsSync(cachedThumbnailPath)) {
               thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
-              logVerbose('[Main] ✅ Using existing cached thumbnail for folder contents video:', thumbnailUrl);
             } else {
               logVerbose('[Main] ❌ No cached thumbnail found, scheduling generation for:', videoId, 'at path:', itemPath);
               // Schedule thumbnail generation in background (non-blocking)
@@ -505,13 +483,6 @@ async function countVideosInFolder(folderPath: string, maxDepth: number, current
     // Apply filtering to all collected videos
     const filteredVideos = filterDuplicateVideos(allVideos);
 
-    logVerbose('[Main] Video count filtering result:', {
-      folder: folderPath,
-      totalVideos: allVideos.length,
-      filteredVideos: filteredVideos.length,
-      hidden: allVideos.length - filteredVideos.length
-    });
-
     return filteredVideos.length;
 
   } catch (error) {
@@ -587,7 +558,6 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
         if (supportedExtensions.includes(ext)) {
           // Generate URI-style ID for local video
           const videoId = createLocalVideoId(itemPath);
-          logVerbose('[Main] Found flattened video at depth', depth, ':', itemPath);
 
           // Find thumbnail file with same name as video
           let thumbnailUrl = findThumbnailForVideo(itemPath);
@@ -600,7 +570,6 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
 
             if (fs.existsSync(cachedThumbnailPath)) {
               thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
-              logVerbose('[Main] Using existing cached thumbnail for getFlattenedContent video:', thumbnailUrl);
             } else {
               // Schedule thumbnail generation in background (non-blocking)
               scheduleBackgroundThumbnailGeneration(videoId, itemPath);
@@ -630,7 +599,6 @@ async function getFlattenedContent(folderPath: string, depth: number): Promise<a
 
   // Filter out converted videos when original exists
   const filteredVideos = filterDuplicateVideos(videos);
-  logVerbose('[Main] Filtered flattened videos:', { original: videos.length, filtered: filteredVideos.length });
 
   return filteredVideos;
 }
@@ -1374,14 +1342,12 @@ ipcMain.handle('video-sources:validate-local-path', async (_, path: string) => {
 // Handle getting local folder contents for navigation
 ipcMain.handle('get-local-folder-contents', async (event, folderPath: string, maxDepth: number, currentDepth: number = 1) => {
   try {
-    logVerbose('[Main] IPC: get-local-folder-contents called with:', { folderPath, maxDepth, currentDepth });
 
     if (!folderPath) {
       throw new Error('Folder path is required');
     }
 
     const contents = await getLocalFolderContents(folderPath, maxDepth, currentDepth);
-    logVerbose('[Main] IPC: get-local-folder-contents result:', contents);
 
     return contents;
   } catch (error) {
@@ -1401,8 +1367,6 @@ const DURATION_CACHE_DURATION = 30 * 60 * 1000; // 30 minutes (durations don't c
 // Handle getting video count for a local source (lazy counting with caching)
 ipcMain.handle('get-local-source-video-count', async (event, sourcePath: string, maxDepth: number) => {
   try {
-    logVerbose('[Main] IPC: get-local-source-video-count called with:', { sourcePath, maxDepth });
-
     if (!sourcePath) {
       throw new Error('Source path is required');
     }
@@ -1413,7 +1377,6 @@ ipcMain.handle('get-local-source-video-count', async (event, sourcePath: string,
     const now = Date.now();
 
     if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-      logVerbose('[Main] IPC: get-local-source-video-count cache hit:', cached.count);
       return cached.count;
     }
 
@@ -1422,8 +1385,6 @@ ipcMain.handle('get-local-source-video-count', async (event, sourcePath: string,
 
     // Cache the result
     videoCountCache.set(cacheKey, { count: videoCount, timestamp: now });
-
-    logVerbose('[Main] IPC: get-local-source-video-count result:', videoCount);
 
     return videoCount;
   } catch (error) {
@@ -1435,8 +1396,6 @@ ipcMain.handle('get-local-source-video-count', async (event, sourcePath: string,
 // Handle getting video count for a specific folder (for subfolder counts)
 ipcMain.handle('get-folder-video-count', async (event, folderPath: string, maxDepth: number) => {
   try {
-    logVerbose('[Main] IPC: get-folder-video-count called with:', { folderPath, maxDepth });
-
     if (!folderPath) {
       throw new Error('Folder path is required');
     }
@@ -1447,7 +1406,6 @@ ipcMain.handle('get-folder-video-count', async (event, folderPath: string, maxDe
     const now = Date.now();
 
     if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-      logVerbose('[Main] IPC: get-folder-video-count cache hit:', cached.count);
       return cached.count;
     }
 
@@ -1456,8 +1414,6 @@ ipcMain.handle('get-folder-video-count', async (event, folderPath: string, maxDe
 
     // Cache the result
     videoCountCache.set(cacheKey, { count: videoCount, timestamp: now });
-
-    logVerbose('[Main] IPC: get-folder-video-count result:', videoCount);
 
     return videoCount;
   } catch (error) {
@@ -1469,8 +1425,6 @@ ipcMain.handle('get-folder-video-count', async (event, folderPath: string, maxDe
 // Handle getting video duration for a local video (lazy duration extraction with caching)
 ipcMain.handle('get-local-video-duration', async (event, videoPath: string) => {
   try {
-    logVerbose('[Main] IPC: get-local-video-duration called with:', videoPath);
-
     if (!videoPath) {
       throw new Error('Video path is required');
     }
@@ -1480,7 +1434,6 @@ ipcMain.handle('get-local-video-duration', async (event, videoPath: string) => {
     const now = Date.now();
 
     if (cached && (now - cached.timestamp) < DURATION_CACHE_DURATION) {
-      logVerbose('[Main] IPC: get-local-video-duration cache hit:', cached.duration);
       return cached.duration;
     }
 
@@ -1491,13 +1444,10 @@ ipcMain.handle('get-local-video-duration', async (event, videoPath: string) => {
     // Cache the result
     videoDurationCache.set(videoPath, { duration, timestamp: now });
 
-    logVerbose('[Main] IPC: get-local-video-duration result:', duration);
-
     return duration;
   } catch (error) {
     // Don't log errors if they're due to cancellation
     if (error instanceof Error && error.name === 'AbortError') {
-      logVerbose('[Main] IPC: get-local-video-duration cancelled');
       throw error;
     }
     log.error('[Main] IPC: get-local-video-duration error:', error);
@@ -1829,7 +1779,6 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
     // Debug: Log some sample video IDs from global.currentVideos
     if (allVideos.length > 0) {
       const sampleVideos = allVideos.slice(0, 5);
-      logVerbose('[Main] Sample videos in global.currentVideos:', sampleVideos.map(v => ({ id: v.id, type: v.type, title: v.title, sourceId: v.sourceId })));
     }
 
     // Group videos by source for the UI
@@ -2758,7 +2707,6 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
 
   if (allVideos.length > 0) {
     const sampleVideos = allVideos.slice(0, 5);
-    logVerbose('[Main] Sample videos in global.currentVideos:', sampleVideos.map(v => ({ id: v.id, type: v.type, title: v.title, sourceId: v.sourceId })));
   }
 
   return { videosBySource, debug };

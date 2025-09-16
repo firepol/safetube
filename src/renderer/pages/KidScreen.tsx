@@ -75,9 +75,6 @@ export const KidScreen: React.FC = () => {
             }
             warningShownRef.current = true;
           }
-          
-          // Log the new structure for debugging
-          logVerbose('Loaded videos by source:', videosBySource);
         })
         .catch((err: unknown) => {
           setSources([]);

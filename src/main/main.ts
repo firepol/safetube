@@ -412,7 +412,6 @@ app.whenReady().then(async () => {
     
     if (allVideos.length > 0) {
       const sampleVideos = allVideos.slice(0, 5);
-      console.log('[Main] Sample videos in global.currentVideos:', sampleVideos.map(v => ({ id: v.id, type: v.type, title: v.title, sourceId: v.sourceId })));
     }
   } catch (error) {
     console.error('[Main] Error loading videos on startup:', error);
