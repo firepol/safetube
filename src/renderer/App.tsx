@@ -9,7 +9,8 @@ import { WatchedVideosPage } from './components/video/WatchedVideosPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ErrorFallbackPage } from './pages/ErrorFallbackPage';
 import { RateLimitWarning } from './components/layout/RateLimitWarning';
-import { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // Context for managing rate limit warning state
 interface RateLimitContextType {
@@ -56,11 +57,42 @@ const RateLimitProvider: React.FC<RateLimitProviderProps> = ({ children }) => {
   );
 };
 
+// Component to handle YouTube iframe navigation events
+const YouTubeNavigationHandler: React.FC = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!window.electron?.onNavigateToVideo) {
+      console.warn('[YouTubeNavigationHandler] Navigation events not available');
+      return;
+    }
+
+    const handleNavigateToVideo = (videoId: string) => {
+      console.log('[YouTubeNavigationHandler] Navigating to video:', videoId);
+      // Navigate to the video player with the extracted video ID
+      navigate(`/player/${encodeURIComponent(videoId)}`);
+    };
+
+    // Subscribe to navigation events
+    const wrappedCallback = window.electron.onNavigateToVideo(handleNavigateToVideo);
+
+    // Cleanup on unmount
+    return () => {
+      if (window.electron?.offNavigateToVideo && wrappedCallback) {
+        window.electron.offNavigateToVideo(wrappedCallback);
+      }
+    };
+  }, [navigate]);
+
+  return null; // This component doesn't render anything
+};
+
 function App() {
   return (
     <Tooltip.Provider>
       <RateLimitProvider>
         <HashRouter>
+          <YouTubeNavigationHandler />
           <div className="min-h-screen bg-background">
             <Routes>
               <Route path="/" element={<KidScreen />} />

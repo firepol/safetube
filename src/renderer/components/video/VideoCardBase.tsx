@@ -79,7 +79,6 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
             <div className="text-center">
               <div className="text-4xl mb-2">⚠️</div>
               <div className="text-sm text-gray-600">Video Unavailable</div>
-              <div className="text-xs text-gray-500 mt-1">Open in browser</div>
             </div>
           </div>
         ) : thumbnail ? (
@@ -178,8 +177,8 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
         </Tooltip.Root>
         
         {isFallback && (
-          <p className="text-xs text-yellow-600 mt-1">
-            Click to open in YouTube
+          <p className="text-xs text-gray-500 mt-1">
+            Video unavailable
           </p>
         )}
         
@@ -200,17 +199,14 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
     isFallback ? 'opacity-60 border-dashed border-yellow-400' : ''
   );
 
-  // For fallback videos, wrap in a link that opens externally
+  // For fallback videos, use a non-clickable div (no longer opens externally)
   if (isFallback) {
     return (
-      <a
-        href={`https://www.youtube.com/watch?v=${id}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className={cn(cardClasses, 'no-underline text-inherit')}
+      <div
+        className={cn(cardClasses, 'cursor-default')}
       >
         {cardContent}
-      </a>
+      </div>
     );
   }
 

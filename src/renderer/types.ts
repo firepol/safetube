@@ -197,6 +197,9 @@ export interface ElectronAPI {
   onThumbnailReady: (callback: (data: { videoId: string; thumbnailUrl: string }) => void) => any;
   offThumbnailReady: (wrappedCallback: any) => void;
   getBestThumbnail: (videoId: string) => Promise<string | null>;
+  // Navigation events for YouTube iframe links
+  onNavigateToVideo: (callback: (videoId: string) => void) => any;
+  offNavigateToVideo: (wrappedCallback: any) => void;
 }
 declare global {
   interface Window {

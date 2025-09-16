@@ -1039,9 +1039,71 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
       logVerbose('[Main] Video not found in global source system:', videoId);
       logVerbose('[Main] Available video IDs:', global.currentVideos.map((v: any) => v.id));
 
-      // For YouTube videos and other non-local videos, return null instead of throwing error
+      // For YouTube videos (11-character video IDs), try to fetch from YouTube API
+      if (videoId.length === 11 && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+        logVerbose('[Main] Attempting to fetch YouTube video from API:', videoId);
+        try {
+          // Get YouTube API key from main settings
+          const { readMainSettings } = await import('./fileUtils');
+          const settings = await readMainSettings();
+
+          if (!settings.youtubeApiKey) {
+            logVerbose('[Main] No YouTube API key configured, cannot fetch external video:', videoId);
+            return null;
+          }
+
+          // Fetch video details from YouTube API
+          const { YouTubeAPI } = await import('./youtube-api');
+          const youtubeApi = new YouTubeAPI(settings.youtubeApiKey);
+          const videoDetails = await youtubeApi.getVideoDetails(videoId);
+
+          if (!videoDetails) {
+            logVerbose('[Main] Video not found on YouTube API:', videoId);
+            return null;
+          }
+
+          // Convert duration from ISO 8601 to seconds
+          const { parseDuration } = await import('../shared/videoDurationUtils');
+          const duration = parseDuration(videoDetails.contentDetails.duration);
+
+          // Create video object from YouTube API data
+          const video = {
+            id: videoId,
+            type: 'youtube',
+            title: videoDetails.snippet.title || 'Unknown Title',
+            thumbnail: videoDetails.snippet.thumbnails?.medium?.url ||
+                      videoDetails.snippet.thumbnails?.default?.url || '',
+            duration,
+            url: `https://www.youtube.com/watch?v=${videoId}`,
+            sourceId: 'external-youtube',
+            sourceTitle: 'YouTube',
+            sourceType: 'youtube_channel' as 'youtube_channel',
+            sourceThumbnail: '',
+            resumeAt: undefined as number | undefined,
+          };
+
+          // Merge with watched data to populate resumeAt
+          const { mergeWatchedData } = await import('./fileUtils');
+          const videosWithWatchedData = await mergeWatchedData([video]);
+          const videoWithResume = videosWithWatchedData[0];
+
+          logVerbose('[Main] Successfully fetched external YouTube video:', {
+            id: videoWithResume.id,
+            title: videoWithResume.title,
+            duration: videoWithResume.duration
+          });
+
+          return videoWithResume;
+
+        } catch (apiError) {
+          logVerbose('[Main] Failed to fetch YouTube video from API:', apiError);
+          return null;
+        }
+      }
+
+      // For other video types, return null instead of throwing error
       // This prevents error spam in the console
-      if (videoId.length === 11 || videoId.startsWith('example-') || videoId.startsWith('local-')) {
+      if (videoId.startsWith('example-') || videoId.startsWith('local-')) {
         logVerbose('[Main] Returning null for non-local video:', videoId);
         return null;
       }
@@ -2657,6 +2719,30 @@ const createWindow = (): void => {
       preload: preloadPath,
       webSecurity: false, // Allow loading local files
     },
+  })
+
+  // Prevent external navigation from YouTube iframes and other sources
+  mainWindow.webContents.setWindowOpenHandler((details) => {
+    logVerbose('[Main] Window open attempted:', details.url);
+
+    // Check if it's a YouTube URL that should be played internally
+    if (details.url.startsWith('https://www.youtube.com/watch') || details.url.startsWith('https://www.youtu.be/')) {
+      // Extract video ID from YouTube URL
+      let videoId = '';
+      const match = details.url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/);
+      if (match) {
+        videoId = match[1];
+        logVerbose('[Main] Detected YouTube video ID:', videoId);
+
+        // Send event to renderer to handle internal navigation
+        mainWindow.webContents.send('navigate-to-video', videoId);
+        return { action: 'deny' }; // Prevent external window
+      }
+    }
+
+    // Block all other external navigation attempts
+    logVerbose('[Main] Blocking external navigation to:', details.url);
+    return { action: 'deny' };
   })
 
   const devUrl = 'http://localhost:5173'

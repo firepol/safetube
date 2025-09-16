@@ -113,6 +113,15 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.off('thumbnail-ready', wrappedCallback);
     },
     // Get best available thumbnail for a video ID
-    getBestThumbnail: (videoId: string) => ipcRenderer.invoke('get-best-thumbnail', videoId)
+    getBestThumbnail: (videoId: string) => ipcRenderer.invoke('get-best-thumbnail', videoId),
+    // Navigation events for YouTube iframe links
+    onNavigateToVideo: (callback: (videoId: string) => void) => {
+      const wrappedCallback = (_: any, videoId: string) => callback(videoId);
+      ipcRenderer.on('navigate-to-video', wrappedCallback);
+      return wrappedCallback; // Return wrapped callback for cleanup
+    },
+    offNavigateToVideo: (wrappedCallback: any) => {
+      ipcRenderer.off('navigate-to-video', wrappedCallback);
+    }
   }
 );
