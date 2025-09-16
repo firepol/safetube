@@ -29,6 +29,7 @@ const mockLocalVideo: Video = {
 describe('DownloadUI', () => {
   const mockOnStartDownload = vi.fn();
   const mockOnCancelDownload = vi.fn();
+  const mockOnResetDownload = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -209,5 +210,94 @@ describe('DownloadUI', () => {
     
     const downloadButton = screen.getByText('Downloading...');
     expect(downloadButton).toBeDisabled();
+  });
+
+  test('does not show reset button in completed state when showResetButton is false', () => {
+    render(
+      <DownloadUI
+        video={mockYouTubeVideo}
+        downloadStatus={{ status: 'completed' }}
+        isDownloading={false}
+        onStartDownload={mockOnStartDownload}
+        onCancelDownload={mockOnCancelDownload}
+        showResetButton={false}
+      />
+    );
+    
+    expect(screen.getByText('Video Downloaded')).toBeInTheDocument();
+    expect(screen.queryByText('Reset Download')).not.toBeInTheDocument();
+  });
+
+  test('does not show reset button in completed state when onResetDownload is not provided', () => {
+    render(
+      <DownloadUI
+        video={mockYouTubeVideo}
+        downloadStatus={{ status: 'completed' }}
+        isDownloading={false}
+        onStartDownload={mockOnStartDownload}
+        onCancelDownload={mockOnCancelDownload}
+        showResetButton={true}
+      />
+    );
+    
+    expect(screen.getByText('Video Downloaded')).toBeInTheDocument();
+    expect(screen.queryByText('Reset Download')).not.toBeInTheDocument();
+  });
+
+  test('shows reset button in completed state when showResetButton is true and onResetDownload is provided', () => {
+    render(
+      <DownloadUI
+        video={mockYouTubeVideo}
+        downloadStatus={{ status: 'completed' }}
+        isDownloading={false}
+        onStartDownload={mockOnStartDownload}
+        onCancelDownload={mockOnCancelDownload}
+        onResetDownload={mockOnResetDownload}
+        showResetButton={true}
+      />
+    );
+    
+    expect(screen.getByText('Video Downloaded')).toBeInTheDocument();
+    expect(screen.getByText('Reset Download')).toBeInTheDocument();
+  });
+
+  test('calls onResetDownload when reset button is clicked', () => {
+    render(
+      <DownloadUI
+        video={mockYouTubeVideo}
+        downloadStatus={{ status: 'completed' }}
+        isDownloading={false}
+        onStartDownload={mockOnStartDownload}
+        onCancelDownload={mockOnCancelDownload}
+        onResetDownload={mockOnResetDownload}
+        showResetButton={true}
+      />
+    );
+    
+    const resetButton = screen.getByText('Reset Download');
+    fireEvent.click(resetButton);
+    
+    expect(mockOnResetDownload).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not show reset button in non-completed states', () => {
+    const statuses = ['idle', 'downloading', 'failed'] as const;
+    
+    statuses.forEach(status => {
+      const { unmount } = render(
+        <DownloadUI
+          video={mockYouTubeVideo}
+          downloadStatus={{ status }}
+          isDownloading={false}
+          onStartDownload={mockOnStartDownload}
+          onCancelDownload={mockOnCancelDownload}
+          onResetDownload={mockOnResetDownload}
+          showResetButton={true}
+        />
+      );
+      
+      expect(screen.queryByText('Reset Download')).not.toBeInTheDocument();
+      unmount();
+    });
   });
 });

@@ -15,6 +15,8 @@ interface DownloadUIProps {
   isDownloading: boolean;
   onStartDownload: () => void;
   onCancelDownload: () => void;
+  onResetDownload?: () => void;
+  showResetButton?: boolean;
 }
 
 /**
@@ -27,6 +29,8 @@ export const DownloadUI: React.FC<DownloadUIProps> = ({
   isDownloading,
   onStartDownload,
   onCancelDownload,
+  onResetDownload,
+  showResetButton = false,
 }) => {
   // Only show download UI for YouTube videos
   if (!video || video.type !== 'youtube') {
@@ -90,6 +94,14 @@ export const DownloadUI: React.FC<DownloadUIProps> = ({
             <div className="text-sm text-green-600 mt-1">
               This video is available offline in your Downloaded folder
             </div>
+            {showResetButton && onResetDownload && (
+              <button
+                onClick={onResetDownload}
+                className="mt-3 bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors"
+              >
+                Reset Download
+              </button>
+            )}
           </div>
         </div>
       )}
