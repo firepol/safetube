@@ -7,6 +7,7 @@ import { BasePlayerPage } from './BasePlayerPage';
 import { logVerbose } from '../lib/logging';
 import { audioWarningService } from '../services/audioWarning';
 import { DownloadUI } from '../components/video/DownloadUI';
+import { LocalPlayerResetUI } from '../components/video/LocalPlayerResetUI';
 import { useDownload } from '../hooks/useDownload';
 
 
@@ -161,6 +162,13 @@ export const PlayerPage: React.FC = () => {
       cancelDownload(video.id);
     }
   }, [video?.id, cancelDownload]);
+
+  // Reset download handler for LocalPlayerResetUI
+  const handleResetDownload = useCallback(async () => {
+    // This will be handled by the LocalPlayerResetUI component itself
+    // We just need to provide this callback for consistency
+    logVerbose('[PlayerPage] Reset download callback triggered');
+  }, []);
 
   // Load video data when component mounts or ID changes
   useEffect(() => {
@@ -1158,6 +1166,12 @@ export const PlayerPage: React.FC = () => {
           </div>
         </div>
       )}
+      
+      {/* Reset UI for downloaded YouTube videos */}
+      <LocalPlayerResetUI
+        video={video}
+        onResetDownload={handleResetDownload}
+      />
       
       {/* Download UI using shared component */}
       <DownloadUI
