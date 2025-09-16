@@ -85,24 +85,25 @@ export const LocalPlayerResetUI: React.FC<LocalPlayerResetUIProps> = ({
         onResetDownload();
       }
 
-      // Preserve navigation context when navigating to YouTube player
-      // Use video's preserved context if available, otherwise use current location state
-      const videoNavigationContext = (video as any)?.navigationContext;
-      const currentLocationState = location.state;
-      const navigationContext = videoNavigationContext || currentLocationState || {};
-      
-      const youtubeUrl = `/youtube/${encodeURIComponent(downloadedVideoInfo.videoId)}`;
-      
-      logVerbose('[LocalPlayerResetUI] Navigating to YouTube player with preserved context:', {
-        url: youtubeUrl,
-        hasVideoNavigationContext: !!videoNavigationContext,
-        hasLocationState: !!currentLocationState,
-        finalContext: navigationContext
+      // After reset, navigate back to the source page
+      // Use the downloaded video's source information to construct the source URL
+      const sourceId = downloadedVideoInfo.sourceId;
+      const sourceType = downloadedVideoInfo.sourceType;
+
+      // Construct the source page URL based on the video's source
+      let sourceUrl = '/';
+      if (sourceId) {
+        sourceUrl = `/source/${sourceId}`;
+      }
+
+      logVerbose('[LocalPlayerResetUI] Navigating back to source after reset:', {
+        sourceId: sourceId,
+        sourceType: sourceType,
+        sourceUrl: sourceUrl
       });
-      
-      navigate(youtubeUrl, {
-        state: navigationContext
-      });
+
+      // Navigate back to the source page
+      navigate(sourceUrl, { replace: true });
 
     } catch (error) {
       console.error('[LocalPlayerResetUI] Error resetting download:', error);
