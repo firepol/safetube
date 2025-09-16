@@ -1,29 +1,21 @@
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { BrowserRouter } from 'react-router-dom';
-import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { LocalPlayerResetUI } from './LocalPlayerResetUI';
 import { Video } from '../../types';
 
-// Mock the navigate function
+// Mock react-router-dom
 const mockNavigate = vi.fn();
+const mockLocation = { state: { sourceId: 'test-source', sourceTitle: 'Test Source' } };
+
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
     useNavigate: () => mockNavigate,
+    useLocation: () => mockLocation,
   };
-});
-
-// Mock electron API
-const mockElectron = {
-  getDownloadedVideos: vi.fn(),
-  resetDownloadStatus: vi.fn(),
-};
-
-Object.defineProperty(window, 'electron', {
-  value: mockElectron,
-  writable: true,
 });
 
 // Mock logging
@@ -31,195 +23,442 @@ vi.mock('../../lib/logging', () => ({
   logVerbose: vi.fn(),
 }));
 
+// Mock video data for testing
+const mockLocalVideo: Video = {
+  id: 'test-local-id',
+  type: 'local',
+  title: 'Test Local Video',
+  thumbnail: 'file://thumbnail.jpg',
+  duration: 180,
+  url: 'file://downloaded-video.mp4',
+};
+
+const mockDownloadedYouTubeVideo: Video & { navigationContext?: any } = {
+  id: 'test-youtube-id',
+  type: 'local',
+  title: 'Downloaded YouTube Video',
+  thumbnail: 'file://thumbnail.jpg',
+  duration: 300,
+  url: 'file://downloaded-youtube-video.mp4',
+  navigationContext: {
+    sourceId: 'youtube-channel-123',
+    sourceTitle: 'Test YouTube Channel'
+  }
+};
+
+const mockYouTubeVideo: Video = {
+  id: 'test-video-id',
+  type: 'youtube',
+  title: 'Test YouTube Video',
+  thumbnail: 'https://example.com/thumbnail.jpg',
+  duration: 300,
+  url: 'https://youtube.com/watch?v=test-video-id',
+  sourceType: 'youtube_channel',
+  sourceId: 'test-channel',
+  sourceTitle: 'Test Channel',
+};
+
+const mockDownloadedVideoInfo = {
+  videoId: 'test-youtube-id',
+  title: 'Downloaded YouTube Video',
+  filePath: 'file://downloaded-youtube-video.mp4',
+  sourceType: 'youtube_channel',
+  sourceId: 'youtube-channel-123',
+  channelTitle: 'Test YouTube Channel',
+  downloadedAt: '2023-01-01T00:00:00Z',
+  duration: 300,
+  thumbnail: 'file://thumbnail.jpg'
+};
+
+// Wrapper component for router context
+const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <BrowserRouter>{children}</BrowserRouter>
+);
+
 describe('LocalPlayerResetUI', () => {
-  const mockLocalVideo: Video = {
-    id: 'local-video-1',
-    type: 'local',
-    title: 'Test Local Video',
-    url: '/path/to/downloaded/video.mp4',
-    thumbnail: '/path/to/thumbnail.jpg',
-    duration: 300,
-  };
-
-  const mockYouTubeVideo: Video = {
-    id: 'youtube-video-1',
-    type: 'youtube',
-    title: 'Test YouTube Video',
-    url: 'https://youtube.com/watch?v=test',
-    thumbnail: '/path/to/thumbnail.jpg',
-    duration: 300,
-  };
-
-  const mockDownloadedVideos = [
-    {
-      videoId: 'test-youtube-id',
-      title: 'Test Downloaded Video',
-      filePath: '/path/to/downloaded/video.mp4',
-      sourceType: 'youtube_channel',
-      sourceId: 'test-source',
-    },
-    {
-      videoId: 'another-video-id',
-      title: 'Another Downloaded Video',
-      filePath: '/path/to/another/video.mp4',
-      sourceType: 'youtube_playlist',
-      sourceId: 'test-playlist',
-    },
-  ];
+  const mockOnResetDownload = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    mockElectron.getDownloadedVideos.mockResolvedValue(mockDownloadedVideos);
-    mockElectron.resetDownloadStatus.mockResolvedValue(undefined);
-  });
-
-  const renderComponent = (video: Video | null, onResetDownload?: () => void) => {
-    return render(
-      <BrowserRouter>
-        <LocalPlayerResetUI video={video} onResetDownload={onResetDownload} />
-      </BrowserRouter>
-    );
-  };
-
-  it('should not render anything for non-local videos', async () => {
-    renderComponent(mockYouTubeVideo);
-
-    await waitFor(() => {
-      expect(screen.queryByText('Downloaded YouTube Video')).not.toBeInTheDocument();
-    });
-  });
-
-  it('should not render anything for null video', async () => {
-    renderComponent(null);
-
-    await waitFor(() => {
-      expect(screen.queryByText('Downloaded YouTube Video')).not.toBeInTheDocument();
-    });
-  });
-
-  it('should not render anything for local videos that are not downloaded YouTube videos', async () => {
-    const nonDownloadedVideo: Video = {
-      ...mockLocalVideo,
-      url: '/path/to/regular/local/video.mp4',
+    
+    // Setup default electron API mocks
+    window.electron = {
+      ...window.electron,
+      getDownloadedVideos: vi.fn().mockResolvedValue([]),
+      resetDownloadStatus: vi.fn().mockResolvedValue({ success: true }),
     };
+  });
 
-    renderComponent(nonDownloadedVideo);
-
+  test('renders nothing for non-local videos', async () => {
+    const { container } = render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={mockYouTubeVideo}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
     await waitFor(() => {
-      expect(mockElectron.getDownloadedVideos).toHaveBeenCalled();
-      expect(screen.queryByText('Downloaded YouTube Video')).not.toBeInTheDocument();
+      expect(container.firstChild).toBeNull();
     });
   });
 
-  it('should render reset UI for downloaded YouTube videos', async () => {
-    renderComponent(mockLocalVideo);
+  test('renders nothing when video is null', async () => {
+    const { container } = render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={null}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
+    await waitFor(() => {
+      expect(container.firstChild).toBeNull();
+    });
+  });
 
+  test('renders nothing for local videos that are not downloaded YouTube videos', async () => {
+    window.electron.getDownloadedVideos = vi.fn().mockResolvedValue([]);
+    
+    const { container } = render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={mockLocalVideo}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
+    await waitFor(() => {
+      expect(container.firstChild).toBeNull();
+    });
+    
+    expect(window.electron.getDownloadedVideos).toHaveBeenCalledTimes(1);
+  });
+
+  test('detects downloaded YouTube video correctly', async () => {
+    window.electron.getDownloadedVideos = vi.fn().mockResolvedValue([mockDownloadedVideoInfo]);
+    
+    render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={mockDownloadedYouTubeVideo}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
     await waitFor(() => {
       expect(screen.getByText('Downloaded YouTube Video')).toBeInTheDocument();
-      expect(screen.getByText('This is a downloaded version of a YouTube video. You can reset to play from YouTube instead.')).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: 'Reset Download' })).toBeInTheDocument();
     });
+    
+    expect(screen.getByText('This is a downloaded version of a YouTube video. You can reset to play from YouTube instead.')).toBeInTheDocument();
+    expect(screen.getByText('Reset Download')).toBeInTheDocument();
+    expect(window.electron.getDownloadedVideos).toHaveBeenCalledTimes(1);
   });
 
-  it('should call resetDownloadStatus and navigate when reset button is clicked', async () => {
-    const mockOnResetDownload = vi.fn();
-    renderComponent(mockLocalVideo, mockOnResetDownload);
-
-    await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Reset Download' })).toBeInTheDocument();
-    });
-
-    const resetButton = screen.getByRole('button', { name: 'Reset Download' });
-    fireEvent.click(resetButton);
-
-    await waitFor(() => {
-      expect(mockElectron.resetDownloadStatus).toHaveBeenCalledWith('test-youtube-id');
-      expect(mockOnResetDownload).toHaveBeenCalled();
-      expect(mockNavigate).toHaveBeenCalledWith('/youtube/test-youtube-id');
-    });
-  });
-
-  it('should show loading state while resetting', async () => {
-    // Make resetDownloadStatus take some time
-    mockElectron.resetDownloadStatus.mockImplementation(() => 
-      new Promise(resolve => setTimeout(resolve, 100))
+  test('shows reset button for downloaded YouTube videos', async () => {
+    window.electron.getDownloadedVideos = vi.fn().mockResolvedValue([mockDownloadedVideoInfo]);
+    
+    render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={mockDownloadedYouTubeVideo}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
     );
-
-    renderComponent(mockLocalVideo);
-
+    
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Reset Download' })).toBeInTheDocument();
+      expect(screen.getByText('Reset Download')).toBeInTheDocument();
     });
+    
+    const resetButton = screen.getByText('Reset Download');
+    expect(resetButton).not.toBeDisabled();
+    expect(resetButton).toHaveClass('bg-red-600', 'text-white');
+  });
 
-    const resetButton = screen.getByRole('button', { name: 'Reset Download' });
+  test('calls resetDownloadStatus and navigates when reset button is clicked', async () => {
+    window.electron.getDownloadedVideos = vi.fn().mockResolvedValue([mockDownloadedVideoInfo]);
+    window.electron.resetDownloadStatus = vi.fn().mockResolvedValue({ success: true });
+    
+    render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={mockDownloadedYouTubeVideo}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
+    await waitFor(() => {
+      expect(screen.getByText('Reset Download')).toBeInTheDocument();
+    });
+    
+    const resetButton = screen.getByText('Reset Download');
     fireEvent.click(resetButton);
+    
+    await waitFor(() => {
+      expect(window.electron.resetDownloadStatus).toHaveBeenCalledWith('test-youtube-id');
+    });
+    
+    expect(mockOnResetDownload).toHaveBeenCalledTimes(1);
+    expect(mockNavigate).toHaveBeenCalledWith(
+      '/youtube/test-youtube-id',
+      {
+        state: {
+          sourceId: 'youtube-channel-123',
+          sourceTitle: 'Test YouTube Channel'
+        }
+      }
+    );
+  });
 
+  test('preserves navigation context from video when available', async () => {
+    const videoWithNavigationContext = {
+      ...mockDownloadedYouTubeVideo,
+      navigationContext: {
+        sourceId: 'video-source-123',
+        sourceTitle: 'Video Source Title',
+        customData: 'test'
+      }
+    };
+    
+    window.electron.getDownloadedVideos = vi.fn().mockResolvedValue([mockDownloadedVideoInfo]);
+    window.electron.resetDownloadStatus = vi.fn().mockResolvedValue({ success: true });
+    
+    render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={videoWithNavigationContext}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
+    await waitFor(() => {
+      expect(screen.getByText('Reset Download')).toBeInTheDocument();
+    });
+    
+    const resetButton = screen.getByText('Reset Download');
+    fireEvent.click(resetButton);
+    
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/youtube/test-youtube-id',
+        {
+          state: {
+            sourceId: 'video-source-123',
+            sourceTitle: 'Video Source Title',
+            customData: 'test'
+          }
+        }
+      );
+    });
+  });
+
+  test('falls back to location state when video has no navigation context', async () => {
+    window.electron.getDownloadedVideos = vi.fn().mockResolvedValue([mockDownloadedVideoInfo]);
+    window.electron.resetDownloadStatus = vi.fn().mockResolvedValue({ success: true });
+    
+    const videoWithoutNavigationContext = {
+      ...mockDownloadedYouTubeVideo,
+      navigationContext: undefined
+    };
+    
+    render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={videoWithoutNavigationContext}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
+    await waitFor(() => {
+      expect(screen.getByText('Reset Download')).toBeInTheDocument();
+    });
+    
+    const resetButton = screen.getByText('Reset Download');
+    fireEvent.click(resetButton);
+    
+    await waitFor(() => {
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/youtube/test-youtube-id',
+        {
+          state: {
+            sourceId: 'test-source',
+            sourceTitle: 'Test Source'
+          }
+        }
+      );
+    });
+  });
+
+  test('shows loading state while resetting', async () => {
+    window.electron.getDownloadedVideos = vi.fn().mockResolvedValue([mockDownloadedVideoInfo]);
+    
+    // Mock a slow reset operation
+    let resolveReset: (value: any) => void;
+    const resetPromise = new Promise(resolve => {
+      resolveReset = resolve;
+    });
+    window.electron.resetDownloadStatus = vi.fn().mockReturnValue(resetPromise);
+    
+    render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={mockDownloadedYouTubeVideo}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
+    await waitFor(() => {
+      expect(screen.getByText('Reset Download')).toBeInTheDocument();
+    });
+    
+    const resetButton = screen.getByText('Reset Download');
+    fireEvent.click(resetButton);
+    
     // Should show loading state
-    expect(screen.getByRole('button', { name: 'Resetting...' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Resetting...' })).toBeDisabled();
-
-    // Wait for reset to complete
+    await waitFor(() => {
+      expect(screen.getByText('Resetting...')).toBeInTheDocument();
+    });
+    
+    const loadingButton = screen.getByText('Resetting...');
+    expect(loadingButton).toBeDisabled();
+    expect(loadingButton).toHaveClass('disabled:bg-gray-400', 'disabled:cursor-not-allowed');
+    
+    // Complete the reset
+    resolveReset!({ success: true });
+    
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalled();
     });
   });
 
-  it('should handle errors gracefully', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockElectron.resetDownloadStatus.mockRejectedValue(new Error('Reset failed'));
-
-    renderComponent(mockLocalVideo);
-
+  test('handles reset error gracefully', async () => {
+    window.electron.getDownloadedVideos = vi.fn().mockResolvedValue([mockDownloadedVideoInfo]);
+    window.electron.resetDownloadStatus = vi.fn().mockRejectedValue(new Error('Reset failed'));
+    
+    // Mock console.error to avoid test output noise
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    
+    render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={mockDownloadedYouTubeVideo}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Reset Download' })).toBeInTheDocument();
+      expect(screen.getByText('Reset Download')).toBeInTheDocument();
     });
-
-    const resetButton = screen.getByRole('button', { name: 'Reset Download' });
+    
+    const resetButton = screen.getByText('Reset Download');
     fireEvent.click(resetButton);
-
+    
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[LocalPlayerResetUI] Error resetting download:',
-        expect.any(Error)
-      );
+      expect(consoleSpy).toHaveBeenCalledWith('[LocalPlayerResetUI] Error resetting download:', expect.any(Error));
     });
-
+    
+    // Button should be enabled again after error
+    await waitFor(() => {
+      expect(screen.getByText('Reset Download')).not.toBeDisabled();
+    });
+    
     // Should not navigate on error
     expect(mockNavigate).not.toHaveBeenCalled();
-
-    consoleErrorSpy.mockRestore();
+    
+    consoleSpy.mockRestore();
   });
 
-  it('should handle getDownloadedVideos error gracefully', async () => {
-    const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    mockElectron.getDownloadedVideos.mockRejectedValue(new Error('Failed to get downloaded videos'));
-
-    renderComponent(mockLocalVideo);
-
+  test('handles getDownloadedVideos error gracefully', async () => {
+    window.electron.getDownloadedVideos = vi.fn().mockRejectedValue(new Error('API error'));
+    
+    // Mock console.error to avoid test output noise
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    
+    const { container } = render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={mockDownloadedYouTubeVideo}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
     await waitFor(() => {
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[LocalPlayerResetUI] Error checking downloaded videos:',
-        expect.any(Error)
-      );
-      expect(screen.queryByText('Downloaded YouTube Video')).not.toBeInTheDocument();
+      expect(consoleSpy).toHaveBeenCalledWith('[LocalPlayerResetUI] Error checking downloaded videos:', expect.any(Error));
     });
-
-    consoleErrorSpy.mockRestore();
+    
+    // Should render nothing when API fails
+    expect(container.firstChild).toBeNull();
+    
+    consoleSpy.mockRestore();
   });
 
-  it('should work without onResetDownload callback', async () => {
-    renderComponent(mockLocalVideo); // No callback provided
-
+  test('works without onResetDownload callback', async () => {
+    window.electron.getDownloadedVideos = vi.fn().mockResolvedValue([mockDownloadedVideoInfo]);
+    window.electron.resetDownloadStatus = vi.fn().mockResolvedValue({ success: true });
+    
+    render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={mockDownloadedYouTubeVideo}
+        />
+      </TestWrapper>
+    );
+    
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Reset Download' })).toBeInTheDocument();
+      expect(screen.getByText('Reset Download')).toBeInTheDocument();
     });
-
-    const resetButton = screen.getByRole('button', { name: 'Reset Download' });
+    
+    const resetButton = screen.getByText('Reset Download');
     fireEvent.click(resetButton);
-
+    
     await waitFor(() => {
-      expect(mockElectron.resetDownloadStatus).toHaveBeenCalledWith('test-youtube-id');
-      expect(mockNavigate).toHaveBeenCalledWith('/youtube/test-youtube-id');
+      expect(window.electron.resetDownloadStatus).toHaveBeenCalledWith('test-youtube-id');
+    });
+    
+    expect(mockNavigate).toHaveBeenCalled();
+  });
+
+  test('re-checks downloaded status when video URL changes', async () => {
+    window.electron.getDownloadedVideos = vi.fn().mockResolvedValue([]);
+    
+    const { rerender } = render(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={mockLocalVideo}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
+    await waitFor(() => {
+      expect(window.electron.getDownloadedVideos).toHaveBeenCalledTimes(1);
+    });
+    
+    // Change video URL
+    const updatedVideo = { ...mockLocalVideo, url: 'file://different-video.mp4' };
+    
+    rerender(
+      <TestWrapper>
+        <LocalPlayerResetUI
+          video={updatedVideo}
+          onResetDownload={mockOnResetDownload}
+        />
+      </TestWrapper>
+    );
+    
+    await waitFor(() => {
+      expect(window.electron.getDownloadedVideos).toHaveBeenCalledTimes(2);
     });
   });
 });

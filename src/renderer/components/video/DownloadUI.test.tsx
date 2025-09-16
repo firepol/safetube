@@ -300,4 +300,124 @@ describe('DownloadUI', () => {
       unmount();
     });
   });
+
+  test('reset button has correct styling and classes', () => {
+    render(
+      <DownloadUI
+        video={mockYouTubeVideo}
+        downloadStatus={{ status: 'completed' }}
+        isDownloading={false}
+        onStartDownload={mockOnStartDownload}
+        onCancelDownload={mockOnCancelDownload}
+        onResetDownload={mockOnResetDownload}
+        showResetButton={true}
+      />
+    );
+    
+    const resetButton = screen.getByText('Reset Download');
+    expect(resetButton).toHaveClass('bg-red-600', 'text-white', 'px-4', 'py-2', 'rounded', 'text-sm', 'hover:bg-red-700', 'transition-colors');
+  });
+
+  test('reset button appears in correct position within completed state UI', () => {
+    render(
+      <DownloadUI
+        video={mockYouTubeVideo}
+        downloadStatus={{ status: 'completed' }}
+        isDownloading={false}
+        onStartDownload={mockOnStartDownload}
+        onCancelDownload={mockOnCancelDownload}
+        onResetDownload={mockOnResetDownload}
+        showResetButton={true}
+      />
+    );
+    
+    // Check that reset button appears after the completion message
+    const completionMessage = screen.getByText('This video is available offline in your Downloaded folder');
+    const resetButton = screen.getByText('Reset Download');
+    
+    expect(completionMessage).toBeInTheDocument();
+    expect(resetButton).toBeInTheDocument();
+    
+    // Check that they're in the same container
+    const container = completionMessage.closest('.bg-green-50');
+    expect(container).toContainElement(resetButton);
+  });
+
+  test('multiple calls to onResetDownload are handled correctly', () => {
+    render(
+      <DownloadUI
+        video={mockYouTubeVideo}
+        downloadStatus={{ status: 'completed' }}
+        isDownloading={false}
+        onStartDownload={mockOnStartDownload}
+        onCancelDownload={mockOnCancelDownload}
+        onResetDownload={mockOnResetDownload}
+        showResetButton={true}
+      />
+    );
+    
+    const resetButton = screen.getByText('Reset Download');
+    
+    // Click multiple times rapidly
+    fireEvent.click(resetButton);
+    fireEvent.click(resetButton);
+    fireEvent.click(resetButton);
+    
+    // Should only be called once per click
+    expect(mockOnResetDownload).toHaveBeenCalledTimes(3);
+  });
+
+  test('reset functionality is independent of other download actions', () => {
+    render(
+      <DownloadUI
+        video={mockYouTubeVideo}
+        downloadStatus={{ status: 'completed' }}
+        isDownloading={false}
+        onStartDownload={mockOnStartDownload}
+        onCancelDownload={mockOnCancelDownload}
+        onResetDownload={mockOnResetDownload}
+        showResetButton={true}
+      />
+    );
+    
+    const resetButton = screen.getByText('Reset Download');
+    fireEvent.click(resetButton);
+    
+    // Only reset should be called, not other handlers
+    expect(mockOnResetDownload).toHaveBeenCalledTimes(1);
+    expect(mockOnStartDownload).not.toHaveBeenCalled();
+    expect(mockOnCancelDownload).not.toHaveBeenCalled();
+  });
+
+  test('reset button visibility respects both showResetButton and onResetDownload props', () => {
+    // Test all combinations
+    const testCases = [
+      { showResetButton: false, onResetDownload: undefined, shouldShow: false },
+      { showResetButton: false, onResetDownload: mockOnResetDownload, shouldShow: false },
+      { showResetButton: true, onResetDownload: undefined, shouldShow: false },
+      { showResetButton: true, onResetDownload: mockOnResetDownload, shouldShow: true },
+    ];
+
+    testCases.forEach(({ showResetButton, onResetDownload, shouldShow }, index) => {
+      const { unmount } = render(
+        <DownloadUI
+          video={mockYouTubeVideo}
+          downloadStatus={{ status: 'completed' }}
+          isDownloading={false}
+          onStartDownload={mockOnStartDownload}
+          onCancelDownload={mockOnCancelDownload}
+          onResetDownload={onResetDownload}
+          showResetButton={showResetButton}
+        />
+      );
+      
+      if (shouldShow) {
+        expect(screen.getByText('Reset Download')).toBeInTheDocument();
+      } else {
+        expect(screen.queryByText('Reset Download')).not.toBeInTheDocument();
+      }
+      
+      unmount();
+    });
+  });
 });
