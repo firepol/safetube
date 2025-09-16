@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
-import { VideoSourceFormData, VideoSourceType } from '@/shared/types';
-import { validateVideoSource, getDefaultSortOrder, isValidYouTubeChannelUrl, isValidYouTubePlaylistUrl } from '@/shared/videoSourceUtils';
+import { VideoSourceFormData, VideoSourceType, VideoSourceFormType } from '@/shared/types';
+import { validateVideoSource, getDefaultSortOrder, isValidYouTubeChannelUrl, isValidYouTubePlaylistUrl, detectYouTubeUrlType } from '@/shared/videoSourceUtils';
 
 interface VideoSourceFormProps {
   source: VideoSourceFormData;
@@ -36,7 +36,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
 
   // Auto-validate URL when it changes
   useEffect(() => {
-    if (formData.url && (formData.type === 'youtube_channel' || formData.type === 'youtube_playlist')) {
+    if (formData.url && (formData.type === 'youtube_channel' || formData.type === 'youtube_playlist' || formData.type === 'youtube')) {
       const timeoutId = setTimeout(() => {
         autoValidateUrl();
       }, 500); // Debounce for 500ms
@@ -45,16 +45,17 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
     }
   }, [formData.url, formData.type]);
 
-  const handleTypeChange = (type: VideoSourceType) => {
+  const handleTypeChange = (type: VideoSourceFormType) => {
     const newFormData = {
       ...formData,
       type,
       url: type === 'local' ? undefined : formData.url,
       path: type === 'local' ? formData.path : undefined,
-      sortOrder: getDefaultSortOrder(type)
+      sortOrder: type === 'local' ? getDefaultSortOrder('local') : 'newestFirst' // Default for YouTube
     };
     setFormData(newFormData);
     setValidation({ isValid: true, errors: [] });
+    setUrlValidated(false); // Reset validation when type changes
   };
 
   const handleInputChange = (field: keyof VideoSourceFormData, value: string | number) => {
@@ -73,7 +74,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
   };
 
   const autoValidateUrl = async () => {
-    if (!formData.url || (formData.type !== 'youtube_channel' && formData.type !== 'youtube_playlist')) {
+    if (!formData.url || (formData.type !== 'youtube_channel' && formData.type !== 'youtube_playlist' && formData.type !== 'youtube')) {
       return;
     }
 
@@ -81,16 +82,37 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
     setTitlePending(true);
 
     try {
+      // Auto-detect YouTube URL type if using generic "youtube" type
+      let detectedType: VideoSourceType | null = null;
+      if (formData.type === 'youtube') {
+        detectedType = detectYouTubeUrlType(formData.url);
+        if (!detectedType) {
+          setValidation({
+            isValid: false,
+            errors: ['Invalid YouTube URL. Please paste a valid YouTube channel or playlist URL.']
+          });
+          setIsValidating(false);
+          setTitlePending(false);
+          setUrlValidated(false);
+          return;
+        }
+        // Update the form data with the detected type
+        setFormData(prev => ({ ...prev, type: detectedType! }));
+      } else {
+        // Use the explicitly selected type
+        detectedType = formData.type as VideoSourceType;
+      }
+
       // Basic URL format validation only (without title requirement)
       let urlValidationErrors: string[] = [];
 
-      if (formData.type === 'youtube_channel') {
+      if (detectedType === 'youtube_channel') {
         if (!formData.url || formData.url.trim().length === 0) {
           urlValidationErrors.push('YouTube channel URL is required');
         } else if (!isValidYouTubeChannelUrl(formData.url)) {
           urlValidationErrors.push('Invalid YouTube channel URL format');
         }
-      } else if (formData.type === 'youtube_playlist') {
+      } else if (detectedType === 'youtube_playlist') {
         if (!formData.url || formData.url.trim().length === 0) {
           urlValidationErrors.push('YouTube playlist URL is required');
         } else if (!isValidYouTubePlaylistUrl(formData.url)) {
@@ -112,7 +134,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
       // Advanced validation with YouTube API to fetch metadata
       const result = await window.electron.videoSourcesValidateYouTubeUrl(
         formData.url,
-        formData.type
+        detectedType
       );
 
       if (!result.isValid) {
@@ -243,7 +265,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
     onSave(formData);
   };
 
-  const getSortOrderOptions = (type: VideoSourceType) => {
+  const getSortOrderOptions = (type: VideoSourceFormType) => {
     switch (type) {
       case 'youtube_channel':
         return [
@@ -255,6 +277,13 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
           { value: 'playlistOrder', label: 'Playlist Order' },
           { value: 'newestFirst', label: 'Newest First' },
           { value: 'oldestFirst', label: 'Oldest First' }
+        ];
+      case 'youtube':
+        // Generic YouTube options (will be resolved after URL detection)
+        return [
+          { value: 'newestFirst', label: 'Newest First' },
+          { value: 'oldestFirst', label: 'Oldest First' },
+          { value: 'playlistOrder', label: 'Playlist Order' }
         ];
       case 'local':
         return [
@@ -292,11 +321,10 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
           <select
             id="type"
             value={formData.type}
-            onChange={(e) => handleTypeChange(e.target.value as VideoSourceType)}
+            onChange={(e) => handleTypeChange(e.target.value as VideoSourceFormType)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
-            <option value="youtube_channel">YouTube Channel</option>
-            <option value="youtube_playlist">YouTube Playlist</option>
+            <option value="youtube">YouTube</option>
             <option value="local">Local Folder</option>
           </select>
         </div>
@@ -314,9 +342,9 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
             id="title"
             value={formData.title}
             onChange={(e) => handleInputChange('title', e.target.value)}
-            disabled={formData.type !== 'local' && !urlValidated}
+            disabled={(formData.type === 'youtube' || formData.type === 'youtube_channel' || formData.type === 'youtube_playlist') && !urlValidated}
             className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-              (formData.type !== 'local' && !urlValidated) || titlePending ? 'bg-gray-100 text-gray-500' : ''
+              ((formData.type === 'youtube' || formData.type === 'youtube_channel' || formData.type === 'youtube_playlist') && !urlValidated) || titlePending ? 'bg-gray-100 text-gray-500' : ''
             }`}
             placeholder={
               formData.type === 'local'
@@ -358,7 +386,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
         ) : (
           <div>
             <label htmlFor="url" className="block text-sm font-medium text-gray-700 mb-2">
-              {formData.type === 'youtube_channel' ? 'Channel URL' : 'Playlist URL'} *
+              YouTube URL *
             </label>
             <input
               type="url"
@@ -366,18 +394,11 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
               value={formData.url || ''}
               onChange={(e) => handleInputChange('url', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder={
-                formData.type === 'youtube_channel' 
-                  ? 'https://www.youtube.com/channel/UCxxxxx or https://www.youtube.com/@username'
-                  : 'https://www.youtube.com/playlist?list=PLxxxxxx'
-              }
+              placeholder="https://www.youtube.com/channel/UCxxxxx or https://www.youtube.com/playlist?list=PLxxxxxx"
               required
             />
             <p className="text-xs text-gray-500 mt-1">
-              {formData.type === 'youtube_channel' 
-                ? 'Enter the YouTube channel URL'
-                : 'Enter the YouTube playlist URL (watch URLs with playlist parameter are also supported)'
-              }
+              Paste any YouTube channel or playlist URL - we'll automatically detect the type
             </p>
           </div>
         )}

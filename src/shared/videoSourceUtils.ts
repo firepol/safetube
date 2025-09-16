@@ -78,8 +78,30 @@ export function isValidYouTubePlaylistUrl(url: string): boolean {
     /^https?:\/\/(www\.)?youtube\.com\/playlist\?list=[a-zA-Z0-9_-]+/,
     /^https?:\/\/(www\.)?youtube\.com\/watch\?.*list=[a-zA-Z0-9_-]+/ // Watch URL with playlist
   ];
-  
+
   return patterns.some(pattern => pattern.test(url));
+}
+
+/**
+ * Automatically detects if a YouTube URL is a channel or playlist
+ * Returns 'youtube_channel', 'youtube_playlist', or null if not a valid YouTube URL
+ */
+export function detectYouTubeUrlType(url: string): 'youtube_channel' | 'youtube_playlist' | null {
+  if (!url || url.trim().length === 0) {
+    return null;
+  }
+
+  // Check for playlist patterns first (more specific)
+  if (isValidYouTubePlaylistUrl(url)) {
+    return 'youtube_playlist';
+  }
+
+  // Check for channel patterns
+  if (isValidYouTubeChannelUrl(url)) {
+    return 'youtube_channel';
+  }
+
+  return null;
 }
 
 /**

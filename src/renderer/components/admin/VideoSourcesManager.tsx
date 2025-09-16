@@ -38,7 +38,7 @@ export const VideoSourcesManager: React.FC = () => {
       ...prev, 
       isAdding: true, 
       editingSource: {
-        type: 'youtube_channel',
+        type: 'youtube',
         title: '',
         url: '',
         sortOrder: 'newestFirst'
@@ -105,11 +105,11 @@ export const VideoSourcesManager: React.FC = () => {
   const handleSaveSource = async (formData: VideoSourceFormData) => {
     try {
       let updatedSources: VideoSource[];
-      
+
       if (state.isAdding) {
         // Add new source
         let newSource: VideoSource;
-        
+
         if (formData.type === 'local') {
           newSource = {
             id: `src_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -127,7 +127,7 @@ export const VideoSourcesManager: React.FC = () => {
             url: formData.url!,
             sortOrder: (formData.sortOrder as 'newestFirst' | 'oldestFirst') || 'newestFirst'
           };
-        } else {
+        } else if (formData.type === 'youtube_playlist') {
           newSource = {
             id: `src_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
             type: 'youtube_playlist',
@@ -135,6 +135,9 @@ export const VideoSourcesManager: React.FC = () => {
             url: formData.url!,
             sortOrder: (formData.sortOrder as 'playlistOrder' | 'newestFirst' | 'oldestFirst') || 'playlistOrder'
           };
+        } else {
+          // Handle the case where type is still 'youtube' (shouldn't happen with proper validation)
+          throw new Error('YouTube URL type was not properly detected. Please try again.');
         }
         updatedSources = [...state.sources, newSource];
       } else {

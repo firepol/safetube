@@ -44,6 +44,9 @@ export interface WatchedVideo {
 
 export type VideoSourceType = 'youtube_channel' | 'youtube_playlist' | 'local';
 
+// Form-specific type that includes the generic "youtube" option for auto-detection
+export type VideoSourceFormType = VideoSourceType | 'youtube';
+
 export interface YouTubeChannelSource {
   id: string;
   type: 'youtube_channel';
@@ -74,7 +77,7 @@ export type VideoSource = YouTubeChannelSource | YouTubePlaylistSource | LocalFo
 // Video source management interfaces
 export interface VideoSourceFormData {
   id?: string; // undefined for new sources
-  type: VideoSourceType;
+  type: VideoSourceFormType; // Allows 'youtube' for auto-detection
   url?: string;
   path?: string;
   title: string;
