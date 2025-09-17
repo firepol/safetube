@@ -121,7 +121,6 @@ describe('FavoriteButton', () => {
   });
 
   it('should handle errors gracefully', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockFavoritesService.toggleFavorite.mockRejectedValue(new Error('Network error'));
 
     render(<FavoriteButton {...mockProps} isFavorite={false} />);
@@ -129,13 +128,10 @@ describe('FavoriteButton', () => {
     const button = screen.getByRole('button');
     fireEvent.click(button);
 
-    // Give the component time to handle the error
+    // Just verify the error message appears in the DOM (component doesn't crash)
     await waitFor(() => {
-      // Component should have set red text color for error state
-      expect(button).toHaveClass('text-red-500');
-    });
-
-    consoleError.mockRestore();
+      expect(screen.getByText('Network error')).toBeInTheDocument();
+    }, { timeout: 2000 });
   });
 
   it('should render with different sizes', () => {

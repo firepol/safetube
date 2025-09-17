@@ -18,6 +18,7 @@ export interface FavoriteButtonProps {
   showLabel?: boolean;
   className?: string;
   disabled?: boolean;
+  'data-testid'?: string;
 }
 
 export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
@@ -33,7 +34,8 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
   size = 'medium',
   showLabel = false,
   className,
-  disabled = false
+  disabled = false,
+  'data-testid': testId
 }) => {
   // State for favorite status and loading
   const [isFavorite, setIsFavorite] = useState<boolean>(initialFavorite ?? false);
@@ -137,6 +139,7 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
       className={buttonClasses}
       aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
       title={error || (isFavorite ? 'Remove from favorites' : 'Add to favorites')}
+      data-testid={testId}
     >
       <span className="flex items-center justify-center">
         {starIcon}
