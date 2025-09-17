@@ -78,3 +78,4 @@ For detailed information, always reference the specific documentation files ment
 
 - Always write and run tests (or specify what to test if automated tests are impractical), and ensure you run `yarn build:all` before committing changes
 - Always auto commit sub-tasks big enough to be meaningful, and use a clear, but not overly verbose, commit message
+- Do NOT run `yarn lint:fix` unless specifically instructed to do so (you can run `yarn lint` to see lint errors and fix them in the new code you write)
