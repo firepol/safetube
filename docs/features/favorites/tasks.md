@@ -49,7 +49,7 @@ This document provides a comprehensive implementation plan for the Favorites fea
 **Dependencies**: Phase 1 complete
 **Goal**: Enable secure communication between renderer and main processes
 
-- [ ] 2.1 Create IPC channels for favorites operations
+- [x] 2.1 Create IPC channels for favorites operations
   - Add `favorites:add`, `favorites:remove`, `favorites:check`, `favorites:list` IPC channels
   - Implement handlers in main process using favorites management functions
   - Add proper input validation and error propagation
@@ -57,7 +57,7 @@ This document provides a comprehensive implementation plan for the Favorites fea
   - **Tests Required**: IPC communication tests, input validation tests, error propagation tests
   - **Code Review**: IPC architecture review, security validation review
 
-- [ ] 2.2 Create preload script favorites API
+- [x] 2.2 Create preload script favorites API
   - Expose secure favorites API in preload script
   - Implement `window.api.favorites` interface with all CRUD operations
   - Add TypeScript definitions for renderer process
@@ -66,7 +66,7 @@ This document provides a comprehensive implementation plan for the Favorites fea
   - **Tests Required**: Preload API tests, type safety tests, security boundary tests
   - **Code Review**: Preload security review, API design review
 
-- [ ] 2.3 Create renderer-side favorites service
+- [x] 2.3 Create renderer-side favorites service
   - Implement `FavoritesService` class in renderer process
   - Add caching layer for favorites status to minimize IPC calls
   - Implement optimistic UI updates with rollback capability

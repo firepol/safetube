@@ -126,7 +126,7 @@ contextBridge.exposeInMainWorld(
     // Favorites management
     favoritesGetAll: () => ipcRenderer.invoke('favorites:get-all'),
     favoritesAdd: (videoId: string, source: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail: string, duration: number, lastWatched?: string) =>
-      ipcRenderer.invoke('favorites:add', videoId, source, type, title, thumbnail, duration, lastWatched),
+      ipcRenderer.invoke('favorites:add', { id: videoId, type, title, thumbnail, duration }),
     favoritesRemove: (videoId: string) => ipcRenderer.invoke('favorites:remove', videoId),
     favoritesIsFavorite: (videoId: string) => ipcRenderer.invoke('favorites:is-favorite', videoId),
     favoritesToggle: (videoId: string, source: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail: string, duration: number, lastWatched?: string) =>

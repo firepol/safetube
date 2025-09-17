@@ -41,9 +41,13 @@ export class FavoritesService {
     try {
       await addFavorite(metadata);
 
+      // Return the created favorite for consistency with renderer expectations
+      const favorites = await getUtilFavorites();
+      const addedFavorite = favorites.find(f => f.videoId === metadata.id || f.videoId.includes(metadata.id));
+
       return {
         success: true,
-        data: true
+        data: addedFavorite || true
       };
     } catch (error) {
       return {
@@ -58,11 +62,15 @@ export class FavoritesService {
    */
   static async removeFavorite(videoId: string): Promise<FavoritesOperationResult> {
     try {
+      // Get the favorite before removing it
+      const favorites = await getUtilFavorites();
+      const removedFavorite = favorites.find(f => f.videoId === videoId);
+
       await removeFavorite(videoId);
 
       return {
         success: true,
-        data: true
+        data: removedFavorite || true
       };
     } catch (error) {
       return {
