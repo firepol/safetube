@@ -159,7 +159,7 @@ This document provides a comprehensive implementation plan for the Favorites fea
 **Dependencies**: Phase 4 complete
 **Goal**: Ensure favorites work across all video source types
 
-- [ ] 5.1 Implement YouTube video favorites support
+- [x] 5.1 Implement YouTube video favorites support
   - Add proper video ID handling for YouTube videos
   - Implement metadata preservation for YouTube favorites
   - Add integration with YouTube API for video details
@@ -168,7 +168,7 @@ This document provides a comprehensive implementation plan for the Favorites fea
   - **Tests Required**: YouTube integration tests, metadata tests, player compatibility tests
   - **Code Review**: YouTube API integration review, player compatibility review
 
-- [ ] 5.2 Implement local video favorites support
+- [x] 5.2 Implement local video favorites support
   - Add proper file path handling for local videos
   - Implement metadata extraction and preservation
   - Add proper encoding/decoding for file paths
@@ -177,7 +177,7 @@ This document provides a comprehensive implementation plan for the Favorites fea
   - **Tests Required**: Local video tests, file path tests, metadata extraction tests, security tests
   - **Code Review**: File system security review, path handling review
 
-- [ ] 5.3 Implement DLNA video favorites support
+- [x] 5.3 Implement DLNA video favorites support
   - Add proper DLNA URL handling and validation
   - Implement metadata preservation for DLNA videos
   - Add network availability checking for favorited DLNA videos
@@ -186,7 +186,7 @@ This document provides a comprehensive implementation plan for the Favorites fea
   - **Tests Required**: DLNA integration tests, network availability tests, offline scenario tests
   - **Code Review**: Network handling review, DLNA integration review
 
-- [ ] 5.4 Create cross-source video ID normalization
+- [x] 5.4 Create cross-source video ID normalization
   - Implement consistent video ID format across all sources
   - Add video ID encoding/decoding utilities
   - Ensure unique identification regardless of source type

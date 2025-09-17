@@ -2714,6 +2714,24 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
       const favoriteVideos = [];
 
       for (const favorite of favorites) {
+        // Generate appropriate URL based on video type
+        let videoUrl = '';
+        const videoId = favorite.videoId;
+
+        if (favorite.sourceType === 'youtube') {
+          // For YouTube videos, extract the actual video ID (remove any prefix)
+          const actualVideoId = videoId.startsWith('youtube:') ? videoId.substring(8) : videoId;
+          videoUrl = `https://www.youtube.com/watch?v=${actualVideoId}`;
+        } else if (favorite.sourceType === 'local') {
+          // For local videos, the videoId contains the file path after "local:" prefix
+          const filePath = videoId.startsWith('local:') ? videoId.substring(6) : videoId;
+          videoUrl = `file://${filePath}`;
+        } else if (favorite.sourceType === 'dlna') {
+          // For DLNA videos, the videoId contains the URL after "dlna:" prefix
+          const dlnaUrl = videoId.startsWith('dlna:') ? videoId.substring(5) : videoId;
+          videoUrl = dlnaUrl;
+        }
+
         // Create video object compatible with existing video structure
         const favoriteVideo = {
           id: favorite.videoId,
@@ -2721,7 +2739,7 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
           title: favorite.title,
           thumbnail: favorite.thumbnail,
           duration: favorite.duration,
-          url: `https://www.youtube.com/watch?v=${favorite.videoId}`, // Generate URL from videoId
+          url: videoUrl,
           sourceId: 'favorites',
           sourceTitle: 'Favorites',
           sourceType: 'favorites',
