@@ -10,6 +10,7 @@ A safe video player application for kids built with Electron, React, and TypeScr
 - DLNA/UPnP streaming support
 - Time tracking and parental controls
 - Video history and resume functionality
+- Favorites system with star/unstar functionality
 - Cross-platform desktop application
 
 ## Quick Start (Windows Users)

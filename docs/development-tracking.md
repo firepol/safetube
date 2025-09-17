@@ -255,19 +255,21 @@ Each feature PRD must include:
   - Proper Electron architecture with main/renderer process separation
 
 ### 11. Favorites (Simplified Star/Unstar)
-- **Status**: Not Started
+- **Status**: Completed
 - **PRD**: [Favorites PRD](prds/11-favorites.md)
-- **Progress**: 0%
-- **Remaining Items**:
+- **Progress**: 100%
+- **Completed Items**:
   - FavoriteVideo TypeScript interface and data management functions
-  - favorites.json configuration file with basic video ID storage
+  - favorites.json configuration file with cross-source video ID storage
   - Star hover and click functionality in VideoCardBase component
-  - Star icon overlay on favorited video thumbnails
+  - Star icon overlay on favorited video thumbnails in all video grids
   - Favorites source integration with existing video grid system
-  - Add/Remove favorites buttons on player page
-  - Cross-source compatibility (YouTube, local, DLNA videos)
-  - Comprehensive test suite for favorites functionality
-  - Integration with existing video playback and history systems
+  - Add/Remove favorites buttons on player page with keyboard shortcuts (F key)
+  - Cross-source compatibility (YouTube, local, DLNA videos) with proper URL generation
+  - Comprehensive test suite for favorites functionality (32 tests total)
+  - Integration with existing video playback, history, and time tracking systems
+  - IPC communication layer with optimistic UI updates and caching
+  - Real-time favorites status updates across all UI components
 
 ### 12. KidLists System (Watch Later & Custom Playlists)
 - **Status**: Not Started
