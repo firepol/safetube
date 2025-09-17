@@ -1,0 +1,21 @@
+{
+  "favorites": [
+    {
+      "videoId": "dQw4w9WgXcQ",
+      "dateAdded": "2025-09-17T14:30:00.000Z",
+      "sourceType": "youtube",
+      "title": "Never Gonna Give You Up",
+      "thumbnail": "https://i.ytimg.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "duration": 212
+    },
+    {
+      "videoId": "local:/path/to/video.mp4",
+      "dateAdded": "2025-09-17T16:20:00.000Z",
+      "sourceType": "local",
+      "title": "Family Vacation 2024",
+      "thumbnail": "/thumbnails/local-video.jpg",
+      "duration": 1800
+    }
+  ],
+  "lastModified": "2025-09-17T16:20:00.000Z"
+}

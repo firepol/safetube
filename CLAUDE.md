@@ -8,12 +8,13 @@ SafeTube is a kid-friendly video player built with Electron, React, and TypeScri
 
 ## Essential References
 
-- **@README.md** - Main project overview and setup instructions
-- **@package.json** - Available npm/yarn commands
-- **@docs/development-tracking.md** - Current project status and feature progress
-- **@docs/specifications.md** - Complete technical specifications and architecture
-- **@docs/prds/** - Feature-specific Product Requirements Documents
-- **@.cursor/rules/** - Development workflow and code quality guidelines
+- **README.md** - Main project overview and setup instructions
+- **package.json** - Available npm/yarn commands
+- **docs/development-tracking.md** - Current project status and feature progress
+- **docs/specifications.md** - Complete technical specifications and architecture
+- **docs/prds/** - Feature-specific Product Requirements Documents
+- **.cursor/rules/** - Development workflow and code quality guidelines
+- **docs/features/** - Feature-specific documentation structured with **requirements.md**, **design.md**, and **tasks.md** details
 
 ## Quick Reference
 

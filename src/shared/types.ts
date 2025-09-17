@@ -197,4 +197,43 @@ export interface VideoIdUtilityResult {
   success: boolean;
   parsed?: ParsedVideoId;
   error?: string;
+}
+
+// Favorites System Types
+
+export interface FavoriteVideo {
+  videoId: string;                                   // Unique video identifier (cross-source compatible)
+  dateAdded: string;                                // ISO date string when favorited
+  sourceType: 'youtube' | 'local' | 'dlna';        // Video type for proper handling
+  title: string;                                    // Video title for display
+  thumbnail?: string;                               // Optional thumbnail URL/path
+  duration?: number;                                // Optional duration in seconds
+}
+
+export interface FavoritesConfig {
+  favorites: FavoriteVideo[];
+  lastModified: string;                            // ISO date string for sync/cache purposes
+}
+
+// Video metadata interface for adding favorites
+export interface VideoMetadata {
+  id: string;
+  type: 'youtube' | 'local' | 'dlna';
+  title: string;
+  thumbnail?: string;
+  duration?: number;
+  url?: string;
+}
+
+// Favorites validation and utility types
+export interface FavoriteValidationResult {
+  isValid: boolean;
+  errors: string[];
+  sanitized?: FavoriteVideo;
+}
+
+export interface FavoritesOperationResult {
+  success: boolean;
+  error?: string;
+  data?: FavoriteVideo | FavoriteVideo[] | FavoritesConfig | boolean;
 } 

@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { AppPaths } from './appPaths';
-import { TimeLimits, UsageLog, WatchedVideo, VideoSource, TimeExtra, MainSettings, DownloadStatus, DownloadedVideo } from '../shared/types';
+import { TimeLimits, UsageLog, WatchedVideo, VideoSource, TimeExtra, MainSettings, DownloadStatus, DownloadedVideo, FavoritesConfig, FavoriteVideo, VideoMetadata } from '../shared/types';
 
 const CONFIG_DIR = AppPaths.getConfigDir();
 
@@ -175,7 +175,7 @@ export async function mergeWatchedData(videos: any[]): Promise<any[]> {
   try {
     const watchedData = await readWatchedVideos();
     const watchedMap = new Map(watchedData.map(w => [w.videoId, w]));
-    
+
     return videos.map(video => {
       const watchedEntry = watchedMap.get(video.id);
       if (watchedEntry) {
@@ -190,5 +190,98 @@ export async function mergeWatchedData(videos: any[]): Promise<any[]> {
     console.warn('[FileUtils] Error merging watched data:', error);
     return videos;
   }
+}
+
+// Favorites Configuration Functions
+export async function readFavoritesConfig(): Promise<FavoritesConfig> {
+  try {
+    const data = await readJsonFile<any>('favorites.json');
+
+    // Handle both old and new format
+    if (data.settings) {
+      // Old format - migrate to new format
+      return {
+        favorites: data.favorites || [],
+        lastModified: new Date().toISOString(),
+      };
+    }
+
+    // New format - validate structure
+    return {
+      favorites: data.favorites || [],
+      lastModified: data.lastModified || new Date().toISOString(),
+    };
+  } catch (error) {
+    // Return default config if file doesn't exist or is corrupted
+    console.warn('[FileUtils] Error reading favorites config, using defaults:', error);
+    return {
+      favorites: [],
+      lastModified: new Date().toISOString(),
+    };
+  }
+}
+
+export async function writeFavoritesConfig(config: FavoritesConfig): Promise<void> {
+  // Create backup before writing
+  try {
+    const existing = await readFavoritesConfig();
+    const backupFilename = `favorites.backup.${Date.now()}.json`;
+    await writeJsonFile(backupFilename, existing);
+  } catch (error) {
+    console.warn('[FileUtils] Could not create backup for favorites config:', error);
+  }
+
+  // Write the new config with updated timestamp
+  const configToWrite: FavoritesConfig = {
+    ...config,
+    lastModified: new Date().toISOString(),
+  };
+
+  return writeJsonFile('favorites.json', configToWrite);
+}
+
+// Core Favorites Management Functions
+export async function addFavorite(metadata: VideoMetadata): Promise<void> {
+  const config = await readFavoritesConfig();
+
+  // Import utility functions
+  const { addToFavorites } = await import('../shared/favoritesUtils');
+  const result = addToFavorites(config, metadata);
+
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to add favorite');
+  }
+
+  await writeFavoritesConfig(result.data as FavoritesConfig);
+}
+
+export async function removeFavorite(videoId: string): Promise<void> {
+  const config = await readFavoritesConfig();
+
+  // Import utility functions
+  const { removeFromFavorites } = await import('../shared/favoritesUtils');
+  const result = removeFromFavorites(config, videoId);
+
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to remove favorite');
+  }
+
+  await writeFavoritesConfig(result.data as FavoritesConfig);
+}
+
+export async function isFavorite(videoId: string): Promise<boolean> {
+  const config = await readFavoritesConfig();
+
+  // Import utility functions
+  const { isFavorited } = await import('../shared/favoritesUtils');
+  return isFavorited(config, videoId);
+}
+
+export async function getFavorites(): Promise<FavoriteVideo[]> {
+  const config = await readFavoritesConfig();
+
+  // Import utility functions
+  const { getFavorites: getFavoritesFromConfig } = await import('../shared/favoritesUtils');
+  return getFavoritesFromConfig(config, 'dateAdded', 'desc');
 }
 

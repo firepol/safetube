@@ -3206,6 +3206,194 @@ ipcMain.handle('download:check-downloaded', async (_, videoId: string) => {
   }
 });
 
+// Favorites IPC Handlers
+ipcMain.handle('favorites:get-all', async () => {
+  try {
+    logVerbose('[Main] favorites:get-all called');
+    const { FavoritesService } = await import('./favoritesService');
+    const result = await FavoritesService.getFavorites();
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    logVerbose('[Main] favorites:get-all error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('favorites:add', async (_, metadata: { id: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail?: string, duration?: number, url?: string }) => {
+  try {
+    logVerbose('[Main] favorites:add called with:', metadata);
+    const { FavoritesService } = await import('./favoritesService');
+    const result = await FavoritesService.addFavorite(metadata);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    logVerbose('[Main] favorites:add error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('favorites:remove', async (_, videoId: string) => {
+  try {
+    logVerbose('[Main] favorites:remove called with:', videoId);
+    const { FavoritesService } = await import('./favoritesService');
+    const result = await FavoritesService.removeFavorite(videoId);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    logVerbose('[Main] favorites:remove error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('favorites:is-favorite', async (_, videoId: string) => {
+  try {
+    logVerbose('[Main] favorites:is-favorite called with:', videoId);
+    const { FavoritesService } = await import('./favoritesService');
+    const result = await FavoritesService.isFavorite(videoId);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    logVerbose('[Main] favorites:is-favorite error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('favorites:toggle', async (_, videoId: string, source: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail: string, duration: number, lastWatched?: string) => {
+  try {
+    logVerbose('[Main] favorites:toggle called with:', { videoId, source, type, title, thumbnail, duration, lastWatched });
+    const { FavoritesService } = await import('./favoritesService');
+    const result = await FavoritesService.toggleFavorite(videoId, source, type, title, thumbnail, duration, lastWatched);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    logVerbose('[Main] favorites:toggle error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('favorites:update-metadata', async (_, videoId: string, metadata: any) => {
+  try {
+    logVerbose('[Main] favorites:update-metadata called with:', { videoId, metadata });
+    const { FavoritesService } = await import('./favoritesService');
+    const result = await FavoritesService.updateFavoriteMetadata(videoId, metadata);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    logVerbose('[Main] favorites:update-metadata error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('favorites:get-by-source', async (_, sourceId: string) => {
+  try {
+    logVerbose('[Main] favorites:get-by-source called with:', sourceId);
+    const { FavoritesService } = await import('./favoritesService');
+    const result = await FavoritesService.getFavoritesBySource(sourceId);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    logVerbose('[Main] favorites:get-by-source error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('favorites:get-config', async () => {
+  try {
+    logVerbose('[Main] favorites:get-config called');
+    const { FavoritesService } = await import('./favoritesService');
+    const result = await FavoritesService.getFavoritesConfig();
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    logVerbose('[Main] favorites:get-config error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('favorites:update-config', async (_, config: any) => {
+  try {
+    logVerbose('[Main] favorites:update-config called with:', config);
+    const { FavoritesService } = await import('./favoritesService');
+    const result = await FavoritesService.updateFavoritesConfig(config);
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    logVerbose('[Main] favorites:update-config error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('favorites:cleanup-orphaned', async () => {
+  try {
+    logVerbose('[Main] favorites:cleanup-orphaned called');
+    const { FavoritesService } = await import('./favoritesService');
+    const result = await FavoritesService.cleanupOrphanedFavorites();
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    logVerbose('[Main] favorites:cleanup-orphaned error:', error);
+    throw error;
+  }
+});
+
+ipcMain.handle('favorites:sync-watch-history', async () => {
+  try {
+    logVerbose('[Main] favorites:sync-watch-history called');
+    const { FavoritesService } = await import('./favoritesService');
+    const result = await FavoritesService.syncWithWatchHistory();
+
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+
+    return result.data;
+  } catch (error) {
+    logVerbose('[Main] favorites:sync-watch-history error:', error);
+    throw error;
+  }
+});
+
 
 // Log uncaught exceptions
 process.on('uncaughtException', (error) => {

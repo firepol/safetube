@@ -4,6 +4,7 @@ import { formatDuration } from '../../lib/utils';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { useNavigate } from 'react-router-dom';
 import { VideoLoadError } from '../../../shared/videoErrorHandling';
+import { FavoriteButton } from './FavoriteButton';
 
 export interface VideoCardBaseProps {
   id: string;
@@ -21,6 +22,12 @@ export interface VideoCardBaseProps {
   errorInfo?: VideoLoadError;
   // Optional custom click handler
   onVideoClick?: (video: VideoCardBaseProps) => void;
+  // Favorites functionality
+  isFavorite?: boolean;
+  showFavoriteIcon?: boolean;
+  source?: string;
+  lastWatched?: string;
+  onFavoriteToggle?: (videoId: string, isFavorite: boolean) => void;
 }
 
 export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
@@ -37,6 +44,11 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   isFallback = false,
   errorInfo,
   onVideoClick,
+  isFavorite,
+  showFavoriteIcon = false,
+  source,
+  lastWatched,
+  onFavoriteToggle,
 }) => {
   const progressPercentage = Math.min(100, Math.max(0, progress ?? 0));
   const isLongTitle = title.length > 32;
@@ -148,6 +160,25 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
             <div className="rounded-full bg-white/90 px-4 py-2 text-sm font-medium text-black">
               Resume at {formatDuration(resumeAt)}
             </div>
+          </div>
+        )}
+
+        {/* Favorite Button Overlay */}
+        {showFavoriteIcon && !isFallback && (
+          <div className="absolute top-2 left-2 z-30">
+            <FavoriteButton
+              videoId={id}
+              source={source || 'unknown'}
+              type={type}
+              title={title}
+              thumbnail={thumbnail}
+              duration={duration}
+              lastWatched={lastWatched}
+              isFavorite={isFavorite}
+              onToggle={onFavoriteToggle}
+              size="small"
+              className="bg-black/60 hover:bg-black/80 rounded-full p-1 transition-all"
+            />
           </div>
         )}
       </div>

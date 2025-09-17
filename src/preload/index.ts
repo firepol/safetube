@@ -122,6 +122,20 @@ contextBridge.exposeInMainWorld(
     },
     offNavigateToVideo: (wrappedCallback: any) => {
       ipcRenderer.off('navigate-to-video', wrappedCallback);
-    }
+    },
+    // Favorites management
+    favoritesGetAll: () => ipcRenderer.invoke('favorites:get-all'),
+    favoritesAdd: (videoId: string, source: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail: string, duration: number, lastWatched?: string) =>
+      ipcRenderer.invoke('favorites:add', videoId, source, type, title, thumbnail, duration, lastWatched),
+    favoritesRemove: (videoId: string) => ipcRenderer.invoke('favorites:remove', videoId),
+    favoritesIsFavorite: (videoId: string) => ipcRenderer.invoke('favorites:is-favorite', videoId),
+    favoritesToggle: (videoId: string, source: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail: string, duration: number, lastWatched?: string) =>
+      ipcRenderer.invoke('favorites:toggle', videoId, source, type, title, thumbnail, duration, lastWatched),
+    favoritesUpdateMetadata: (videoId: string, metadata: any) => ipcRenderer.invoke('favorites:update-metadata', videoId, metadata),
+    favoritesGetBySource: (sourceId: string) => ipcRenderer.invoke('favorites:get-by-source', sourceId),
+    favoritesGetConfig: () => ipcRenderer.invoke('favorites:get-config'),
+    favoritesUpdateConfig: (config: any) => ipcRenderer.invoke('favorites:update-config', config),
+    favoritesCleanupOrphaned: () => ipcRenderer.invoke('favorites:cleanup-orphaned'),
+    favoritesSyncWatchHistory: () => ipcRenderer.invoke('favorites:sync-watch-history')
   }
 );
