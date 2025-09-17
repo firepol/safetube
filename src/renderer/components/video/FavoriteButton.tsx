@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { FavoritesService } from '../../services/favoritesService';
-import { logVerboseRenderer } from '@/shared/logging';
+import { logVerbose } from '../../lib/logging';
 
 export interface FavoriteButtonProps {
   videoId: string;
@@ -53,9 +53,9 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
     try {
       const status = await FavoritesService.isFavorite(videoId);
       setIsFavorite(status);
-      logVerboseRenderer('[FavoriteButton] Loaded initial status for', videoId, ':', status);
+      logVerbose('[FavoriteButton] Loaded initial status for', videoId, ':', status);
     } catch (error) {
-      logVerboseRenderer('[FavoriteButton] Error loading favorite status:', error);
+      logVerbose('[FavoriteButton] Error loading favorite status:', error);
       setError('Failed to load favorite status');
     }
   };
@@ -67,7 +67,7 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
     setError(null);
 
     try {
-      logVerboseRenderer('[FavoriteButton] Toggling favorite for:', { videoId, isFavorite });
+      logVerbose('[FavoriteButton] Toggling favorite for:', { videoId, isFavorite });
 
       const result = await FavoritesService.toggleFavorite(
         videoId,
@@ -86,9 +86,9 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
         onToggle(videoId, result.isFavorite);
       }
 
-      logVerboseRenderer('[FavoriteButton] Successfully toggled favorite:', videoId, 'now', result.isFavorite);
+      logVerbose('[FavoriteButton] Successfully toggled favorite:', videoId, 'now', result.isFavorite);
     } catch (error) {
-      logVerboseRenderer('[FavoriteButton] Error toggling favorite:', error);
+      logVerbose('[FavoriteButton] Error toggling favorite:', error);
       setError(error instanceof Error ? error.message : 'Failed to toggle favorite');
 
       // Keep the previous state on error
