@@ -639,7 +639,7 @@ export const AdminPage: React.FC = () => {
                       YouTube API Key
                     </label>
                     <input
-                      type="password"
+                      type="text"
                       id="youtubeApiKey"
                       value={mainSettings.youtubeApiKey || ''}
                       onChange={(e) => setMainSettings(prev => ({ ...prev, youtubeApiKey: e.target.value }))}
