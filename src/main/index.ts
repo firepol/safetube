@@ -2704,6 +2704,92 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
     debug.push(`[Main] ERROR loading downloaded videos: ${err}`);
   }
 
+  // Add favorites as a special source
+  try {
+    const { getFavorites } = await import('./fileUtils');
+    const favorites = await getFavorites();
+
+    if (favorites.length > 0) {
+      // Convert favorites to video objects with proper metadata
+      const favoriteVideos = [];
+
+      for (const favorite of favorites) {
+        // Create video object compatible with existing video structure
+        const favoriteVideo = {
+          id: favorite.videoId,
+          type: favorite.sourceType || 'youtube', // Use sourceType from FavoriteVideo interface
+          title: favorite.title,
+          thumbnail: favorite.thumbnail,
+          duration: favorite.duration,
+          url: `https://www.youtube.com/watch?v=${favorite.videoId}`, // Generate URL from videoId
+          sourceId: 'favorites',
+          sourceTitle: 'Favorites',
+          sourceType: 'favorites',
+          sourceThumbnail: '⭐',
+          favoriteId: favorite.videoId,
+          addedAt: favorite.dateAdded // Use dateAdded from FavoriteVideo interface
+        };
+
+        favoriteVideos.push(favoriteVideo);
+      }
+
+      // Create favorites source entry
+      videosBySource.push({
+        id: 'favorites',
+        type: 'favorites',
+        title: 'Favorites',
+        thumbnail: '⭐', // Star emoji as thumbnail
+        videoCount: favorites.length,
+        videos: favoriteVideos,
+        paginationState: {
+          currentPage: 1,
+          totalPages: Math.ceil(favorites.length / 50),
+          totalVideos: favorites.length,
+          pageSize: 50
+        }
+      });
+
+      debug.push(`[Main] Added favorites source with ${favorites.length} videos`);
+    } else {
+      // Always show favorites source even if empty
+      videosBySource.push({
+        id: 'favorites',
+        type: 'favorites',
+        title: 'Favorites',
+        thumbnail: '⭐',
+        videoCount: 0,
+        videos: [],
+        paginationState: {
+          currentPage: 1,
+          totalPages: 1,
+          totalVideos: 0,
+          pageSize: 50
+        }
+      });
+
+      debug.push(`[Main] Added empty favorites source`);
+    }
+  } catch (err) {
+    log.error('[Main] ERROR loading favorites:', err);
+    debug.push(`[Main] ERROR loading favorites: ${err}`);
+
+    // Still add empty favorites source on error
+    videosBySource.push({
+      id: 'favorites',
+      type: 'favorites',
+      title: 'Favorites',
+      thumbnail: '⭐',
+      videoCount: 0,
+      videos: [],
+      paginationState: {
+        currentPage: 1,
+        totalPages: 1,
+        totalVideos: 0,
+        pageSize: 50
+      }
+    });
+  }
+
   // Collect all videos for global access (needed for video playback)
   const allVideos: any[] = [];
   for (const source of videosBySource) {
