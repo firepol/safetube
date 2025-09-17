@@ -10,7 +10,13 @@ export function logVerbose(...args: any[]) {
 }
 
 export const logVerboseRenderer = (...args: any[]) => {
-  if (process.env.ELECTRON_LOG_VERBOSE === 'true') {
+  let isVerbose = false;
+  if (typeof window !== 'undefined' && window.electron?.env?.ELECTRON_LOG_VERBOSE === 'true') {
+    isVerbose = true;
+  } else if (typeof process !== 'undefined' && process.env.ELECTRON_LOG_VERBOSE === 'true') {
+    isVerbose = true;
+  }
+  if (isVerbose) {
     // eslint-disable-next-line no-console
     console.log('[Renderer][Verbose]', ...args);
   }

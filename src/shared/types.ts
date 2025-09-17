@@ -1,3 +1,24 @@
+export interface ElectronEnv {
+  ELECTRON_LOG_VERBOSE: string;
+}
+
+export interface ElectronAPI {
+  env: ElectronEnv;
+  // Add other exposed methods as needed for shared code
+  getVerboseLogging: () => Promise<{ verbose: boolean }>;
+  log: (level: string, ...args: any[]) => Promise<void>;
+  favoritesGetAll: () => Promise<FavoriteVideo[]>;
+  favoritesIsFavorite: (videoId: string) => Promise<boolean>;
+  favoritesToggle: (videoId: string, source: string, type: string, title: string, thumbnail: string, duration: number, lastWatched?: string) => Promise<{ favorite: FavoriteVideo | null; isFavorite: boolean }>;
+  // Include more if needed for shared types
+}
+
+declare global {
+  interface Window {
+    electron: ElectronAPI;
+  }
+}
+
 export interface TimeLimits {
   Monday: number;
   Tuesday: number;
