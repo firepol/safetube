@@ -13,16 +13,12 @@ import { useDownload } from '../hooks/useDownload';
 
 
 function getSrc(val: unknown): string {
-  logVerbose('[PlayerPage] getSrc called with:', val);
   if (typeof val === 'string') {
-    logVerbose('[PlayerPage] getSrc returning string:', val);
     return val;
   }
   if (val && typeof val === 'object' && 'url' in val && typeof (val as any).url === 'string') {
-    logVerbose('[PlayerPage] getSrc returning object url:', (val as any).url);
     return (val as any).url;
   }
-  logVerbose('[PlayerPage] getSrc returning empty string');
   return '';
 }
 

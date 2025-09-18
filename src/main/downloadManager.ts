@@ -52,11 +52,9 @@ export class DownloadManager {
     }
   ): Promise<void> {
     try {
-      logVerbose('[DownloadManager] Starting download for:', { videoId, videoTitle, sourceInfo });
 
       // Check if already downloading
       const existingStatus = await getDownloadStatus(videoId);
-      logVerbose('[DownloadManager] Existing status:', existingStatus);
 
       if (existingStatus && (existingStatus.status === 'downloading' || existingStatus.status === 'pending')) {
         throw new Error('Video is already being downloaded');
@@ -70,7 +68,6 @@ export class DownloadManager {
       // Also check the downloaded videos list to prevent duplicates
       const { readDownloadedVideos } = await import('./fileUtils');
       const downloadedVideos = await readDownloadedVideos();
-      logVerbose('[DownloadManager] Downloaded videos count:', downloadedVideos.length);
 
       const alreadyDownloaded = downloadedVideos.find(dv => dv.videoId === videoId);
       if (alreadyDownloaded) {
@@ -80,21 +77,16 @@ export class DownloadManager {
       // Get download path from settings
       const settings = await readMainSettings();
       const downloadPath = settings.downloadPath || await getDefaultDownloadPath();
-      logVerbose('[DownloadManager] Download path:', downloadPath);
 
       // Create folder structure
       const folderName = this.getFolderName(sourceInfo);
       const fullDownloadPath = path.join(downloadPath, folderName);
-      logVerbose('[DownloadManager] Full download path:', fullDownloadPath);
 
       // Ensure directory exists
       try {
         if (!fs.existsSync(fullDownloadPath)) {
-          logVerbose('[DownloadManager] Creating directory:', fullDownloadPath);
           fs.mkdirSync(fullDownloadPath, { recursive: true });
-          logVerbose('[DownloadManager] Directory created successfully');
         } else {
-          logVerbose('[DownloadManager] Directory already exists');
         }
       } catch (dirError) {
         logVerbose('[DownloadManager] Error creating directory:', dirError);
@@ -102,14 +94,12 @@ export class DownloadManager {
       }
 
       // Update status to downloading
-      logVerbose('[DownloadManager] Updating download status to downloading');
       await updateDownloadStatus(videoId, {
         status: 'downloading',
         progress: 0,
         startTime: Date.now(),
         sourceInfo
       });
-      logVerbose('[DownloadManager] Download status updated successfully');
 
       // Ensure yt-dlp is available
       await YtDlpManager.ensureYtDlpAvailable();
@@ -120,8 +110,6 @@ export class DownloadManager {
       const sanitizedTitle = this.sanitizeFileName(videoTitle);
       const outputTemplate = path.join(fullDownloadPath, `${sanitizedTitle}.%(ext)s`);
 
-      logVerbose('[DownloadManager] Original title:', videoTitle);
-      logVerbose('[DownloadManager] Sanitized title:', sanitizedTitle);
 
       const args = [
         '--output', outputTemplate,
@@ -131,8 +119,6 @@ export class DownloadManager {
         videoUrl
       ];
 
-      logVerbose(`[DownloadManager] Starting download: ${videoUrl}`);
-      logVerbose(`[DownloadManager] Command: ${ytDlpCommand} ${args.join(' ')}`);
 
       // Start yt-dlp process
       const ytDlpProcess = spawn(ytDlpCommand, args);
@@ -144,13 +130,11 @@ export class DownloadManager {
       // Handle stdout
       ytDlpProcess.stdout?.on('data', (data) => {
         const output = data.toString();
-        logVerbose(`[DownloadManager] yt-dlp stdout: ${output}`);
       });
 
       // Handle stderr for progress tracking
       ytDlpProcess.stderr?.on('data', (data) => {
         const output = data.toString();
-        logVerbose(`[DownloadManager] yt-dlp stderr: ${output}`);
 
         // Parse progress from yt-dlp output
         const progressMatch = output.match(/(\d+\.?\d*)%/);
@@ -163,7 +147,6 @@ export class DownloadManager {
         const filenameMatch = output.match(/Destination: (.+)/);
         if (filenameMatch) {
           downloadedFilePath = filenameMatch[1].trim();
-          logVerbose(`[DownloadManager] Extracted downloadedFilePath: ${downloadedFilePath}`);
         }
       });
 
@@ -173,11 +156,9 @@ export class DownloadManager {
 
         if (code === 0) {
           // Download completed successfully
-          logVerbose(`[DownloadManager] Download completed successfully for ${videoId}, downloadedFilePath: ${downloadedFilePath}`);
 
           // If downloadedFilePath is empty, use the output template as fallback
           const finalFilePath = downloadedFilePath || outputTemplate;
-          logVerbose(`[DownloadManager] Using final file path: ${finalFilePath}`);
 
           await this.handleDownloadComplete(videoId, videoTitle, finalFilePath, sourceInfo);
         } else {
@@ -263,16 +244,9 @@ export class DownloadManager {
     sourceInfo: any
   ): Promise<void> {
     try {
-      logVerbose(`[DownloadManager] handleDownloadComplete called with:`, {
-        videoId,
-        videoTitle,
-        filePath,
-        sourceInfo
-      });
 
       // Find the actual video file (yt-dlp might have added extension)
       const videoFile = this.findVideoFile(filePath);
-      logVerbose(`[DownloadManager] Video file found: ${videoFile}`);
 
       // Find thumbnail file
       const thumbnailFile = this.findThumbnailFile(videoFile);
@@ -285,16 +259,13 @@ export class DownloadManager {
         try {
           const info = JSON.parse(fs.readFileSync(infoFile, 'utf-8'));
           duration = info.duration || 0;
-          logVerbose(`[DownloadManager] Duration from info file: ${duration} (${infoFile})`);
 
           // Clean up info.json file after extracting needed metadata
           fs.unlinkSync(infoFile);
-          logVerbose(`[DownloadManager] Cleaned up info.json file: ${infoFile}`);
         } catch (error) {
           logVerbose(`[DownloadManager] Failed to read or cleanup info file: ${error}`);
         }
       } else {
-        logVerbose(`[DownloadManager] No info.json file found for: ${videoFile}`);
       }
 
       // Clean up any remaining temporary files, keeping only essential video and thumbnail files
@@ -333,7 +304,6 @@ export class DownloadManager {
         filePath: videoFile
       });
 
-      logVerbose(`[DownloadManager] Download completed: ${videoId} -> ${videoFile}`);
 
     } catch (error) {
       logVerbose(`[DownloadManager] Error handling download completion: ${error}`);

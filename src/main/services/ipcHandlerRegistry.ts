@@ -33,7 +33,6 @@ export function registerVideoDataHandlers() {
         decodedPath = decodedPath.replace(/\\/g, '/');
       }
 
-      logVerbose('[IPC] Accessing local file:', decodedPath);
 
       // Check if file exists (use original path for filesystem operations)
       const originalPath = filePath.replace('file://', '');
@@ -44,7 +43,6 @@ export function registerVideoDataHandlers() {
 
       // Return the file:// URL for the video element with normalized path
       const fileUrl = `file://${decodedPath}`;
-      logVerbose('[IPC] Returning file URL:', fileUrl);
       return fileUrl;
     } catch (error) {
       log.error('[IPC] Error accessing local file:', error);
@@ -59,7 +57,6 @@ export function registerVideoDataHandlers() {
 
   // Test handler
   ipcMain.handle('test-handler', async () => {
-    logVerbose('[IPC] Test handler called');
     return { message: 'Hello from main process!' };
   });
 
@@ -156,7 +153,6 @@ export function registerAdminHandlers() {
       const isValid = await bcrypt.compare(password, passwordHash);
 
       if (isValid) {
-        logVerbose('[IPC] Admin authentication successful');
         return { success: true };
       } else {
         log.warn('[IPC] Admin authentication failed');
@@ -186,7 +182,6 @@ export function registerAdminHandlers() {
       (usageLog as any)[today].extraTime = ((usageLog as any)[today].extraTime || 0) + (minutes * 60 * 1000);
       fs.writeFileSync(usageLogPath, JSON.stringify(usageLog, null, 2));
 
-      logVerbose('[IPC] Added extra time:', minutes, 'minutes');
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error adding extra time:', error);
@@ -218,7 +213,6 @@ export function registerAdminHandlers() {
     try {
       const timeLimitsPath = AppPaths.getConfigPath('timeLimits.json');
       fs.writeFileSync(timeLimitsPath, JSON.stringify(timeLimits, null, 2));
-      logVerbose('[IPC] Time limits updated');
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error writing time limits:', error);
@@ -275,7 +269,6 @@ export function registerVideoSourceHandlers() {
     try {
       const sourcesPath = AppPaths.getConfigPath('videoSources.json');
       fs.writeFileSync(sourcesPath, JSON.stringify(sources, null, 2));
-      logVerbose('[IPC] Video sources saved');
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error saving video sources:', error);
@@ -519,7 +512,6 @@ export function registerVideoProcessingHandlers() {
     try {
       // This would start actual video conversion
       // For now, just log and return success
-      logVerbose('[IPC] Video conversion requested for:', filePath);
       return { success: true, message: 'Conversion started' };
     } catch (error) {
       log.error('[IPC] Error starting video conversion:', error);
@@ -595,7 +587,6 @@ export function registerSystemHandlers() {
           log.info('[Renderer]', ...args);
           break;
         case 'verbose':
-          logVerbose('[Renderer]', ...args);
           break;
         default:
           log.info('[Renderer]', ...args);
@@ -611,7 +602,6 @@ export function registerSystemHandlers() {
   ipcMain.handle('clear-source-cache', async (_, sourceId: string) => {
     try {
       // This would clear cached data for a specific source
-      logVerbose('[IPC] Clearing cache for source:', sourceId);
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error clearing source cache:', error);
@@ -625,7 +615,6 @@ export function registerDownloadHandlers() {
   // Start download
   ipcMain.handle('download:start', async (_, videoId: string, videoTitle: string, sourceInfo: any) => {
     try {
-      logVerbose('[IPC] Download start requested:', { videoId, videoTitle });
       // This would integrate with download management system
       return { success: true, message: 'Download started' };
     } catch (error) {
@@ -648,7 +637,6 @@ export function registerDownloadHandlers() {
   // Cancel download
   ipcMain.handle('download:cancel', async (_, videoId: string) => {
     try {
-      logVerbose('[IPC] Download cancel requested:', videoId);
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error cancelling download:', error);
@@ -669,7 +657,6 @@ export function registerDownloadHandlers() {
   // Reset download status
   ipcMain.handle('download:reset-status', async (_, videoId: string) => {
     try {
-      logVerbose('[IPC] Download status reset:', videoId);
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error resetting download status:', error);
@@ -717,7 +704,6 @@ export function registerSettingsHandlers() {
     try {
       const settingsPath = AppPaths.getConfigPath('mainSettings.json');
       fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
-      logVerbose('[IPC] Main settings saved');
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error writing main settings:', error);
@@ -804,7 +790,6 @@ export function registerYouTubeCacheHandlers() {
       }
 
       fs.writeFileSync(cachePath, JSON.stringify(cleanedCache, null, 2));
-      logVerbose('[IPC] Expired YouTube cache entries cleared');
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error clearing expired cache:', error);
