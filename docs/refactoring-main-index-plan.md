@@ -83,30 +83,53 @@ The main index file has grown to 3,405 lines with 250 logVerbose statements, mak
 - Added `getThumbnailQueueStatus()` helper for debugging
 - Type checking and builds pass successfully
 
-#### 1.3 Network Services (`src/main/networkServices.ts`)
+#### 1.3 Network Services (`src/main/networkServices.ts`) ✅ **COMPLETED**
 **Extract functions:**
-- DLNA discovery logic
-- Network video streaming handlers
-- SSDP client management
+- DLNA discovery logic ✅
+- Network video streaming handlers ✅
+- SSDP client management ✅
 
 **Logging reduction:**
-- Keep: Connection errors and network failures
-- Remove: Routine DLNA discovery logs
-- Keep: Server connection success/failure
+- Keep: Connection errors and network failures ✅
+- Remove: Routine DLNA discovery logs ✅
+- Keep: Server connection success/failure ✅
 
-#### 1.4 IPC Handler Registry (`src/main/ipcHandlers.ts`)
+**Results:**
+- Created `src/main/services/networkService.ts` with DLNA/SSDP functions
+- Updated `src/main/index.ts` to import from new service
+- Applied logging reduction - removed verbose discovery logs, kept error and success logs
+- All functions now use `[NetworkService]` prefix instead of `[Main]` in logs
+- IPC handler simplified to single line delegation: `return getDlnaFile(server, port, path);`
+- Type checking and builds pass successfully
+
+#### 1.4 IPC Handler Registry (`src/main/services/ipcHandlerRegistry.ts`) ✅ **COMPLETED**
 **Extract all IPC handlers grouped by domain:**
-- Video data handlers
-- Time tracking handlers
-- Admin handlers
-- Video source handlers
-- Favorites handlers
-- Download handlers
+- Video data handlers ✅
+- Time tracking handlers ✅
+- Admin handlers ✅
+- Video source handlers ✅
+- Local video handlers ✅
+- Video processing handlers ✅
+- System handlers ✅
+- Download handlers ✅
+- Settings handlers ✅
+- YouTube cache handlers ✅
+- Favorites handlers ✅
 
 **Logging reduction:**
-- Keep: Error logging for IPC failures
-- Remove: "Handler called successfully" type logs
-- Keep: Authentication failures and validation errors
+- Keep: Error logging for IPC failures ✅
+- Remove: "Handler called successfully" type logs ✅
+- Keep: Authentication failures and validation errors ✅
+
+**Results:**
+- Created `src/main/services/ipcHandlerRegistry.ts` with 50+ IPC handlers organized into 11 domain groups
+- Updated `src/main/index.ts` to import and register all handlers from registry
+- Applied logging reduction - removed verbose operation logs, kept error and authentication logs
+- All handlers now use domain-specific prefixes like `[IPC]` instead of `[Main]` in logs
+- Organized handlers into logical groups: Video Data, Time Tracking, Admin, Video Source, Local Video, Video Processing, System, Download, Settings, YouTube Cache, and Favorites
+- Added comprehensive error handling and type safety with TypeScript
+- Maintained backward compatibility - all existing IPC channels continue to work exactly as before
+- Type checking and builds pass successfully
 
 ### Phase 2: Extract Utilities
 

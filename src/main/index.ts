@@ -3,7 +3,6 @@ import path from 'path'
 
 import dotenv from 'dotenv'
 import { app, BrowserWindow, ipcMain, protocol } from 'electron'
-import { Client } from 'node-ssdp'
 
 
 import { createLocalVideoId } from '../shared/fileUtils'
@@ -34,6 +33,8 @@ import {
   notifyThumbnailReady,
   findThumbnailForVideo
 } from './services/thumbnailService'
+import { getDlnaFile } from './services/networkService'
+import { registerAllHandlers } from './services/ipcHandlerRegistry'
 
 // Load .env file from multiple possible locations
 const possibleEnvPaths = [
@@ -211,84 +212,12 @@ if (process.platform === 'win32') {
 
 const isDev = process.env.NODE_ENV === 'development'
 
-// Initialize SSDP client
-const ssdpClient = new Client()
-
-// Handle local file access
-ipcMain.handle('get-local-file', async (event, filePath: string) => {
-  try {
-    // Convert file:// URL to actual file path
-    let decodedPath = decodeURIComponent(filePath.replace('file://', ''))
-
-    // Normalize Windows paths - convert backslashes to forward slashes for file:// URLs
-    if (process.platform === 'win32') {
-      decodedPath = decodedPath.replace(/\\/g, '/')
-    }
-
-    logVerbose('Accessing local file:', decodedPath)
-
-    // Check if file exists (use original path for filesystem operations)
-    const originalPath = filePath.replace('file://', '')
-    if (!fs.existsSync(originalPath)) {
-      log.error('File not found:', originalPath)
-      throw new Error('File not found')
-    }
-
-    // Return the file:// URL for the video element with normalized path
-    const fileUrl = `file://${decodedPath}`
-    logVerbose('Returning file URL:', fileUrl)
-    return fileUrl
-  } catch (error) {
-    log.error('Error accessing local file:', error)
-    throw error
-  }
-})
+// All IPC handlers are now registered in the ipcHandlerRegistry service
+// See registerAllHandlers() call in the app.on('ready') event below
 
 // Handle DLNA file access
 ipcMain.handle('get-dlna-file', async (event, server: string, port: number, path: string) => {
-  try {
-    logVerbose('Searching for DLNA server:', server)
-
-    // Search for DLNA servers
-    const devices = await new Promise<any[]>((resolve) => {
-      const foundDevices: any[] = []
-
-      ssdpClient.on('response', (headers: any) => {
-        if (headers.ST === 'urn:schemas-upnp-org:service:ContentDirectory:1') {
-          foundDevices.push(headers)
-        }
-      })
-
-      ssdpClient.search('urn:schemas-upnp-org:service:ContentDirectory:1')
-
-      // Wait for 5 seconds to collect responses
-      setTimeout(() => {
-        resolve(foundDevices)
-      }, 5000)
-    })
-
-    // Find our target server
-    const targetDevice = devices.find(device => device.LOCATION.includes(server))
-    if (!targetDevice) {
-      throw new Error(`DLNA server ${server} not found`)
-    }
-
-    logVerbose('Found DLNA server:', targetDevice.LOCATION)
-
-    // For now, just return the direct URL since we know the server and path
-    // In a real implementation, we would:
-    // 1. Parse the device description XML from LOCATION
-    // 2. Find the ContentDirectory service
-    // 3. Browse the content directory to find the video
-    // 4. Get the direct media URL
-    const url = `http://${server}:${port}${path}`
-    logVerbose('Using media URL:', url)
-
-    return url
-  } catch (error) {
-    log.error('Error accessing DLNA file:', error)
-    throw error
-  }
+  return getDlnaFile(server, port, path);
 })
 
 // Test handler to verify IPC is working
@@ -2677,6 +2606,15 @@ app.on('ready', async () => {
     }
   } catch (error) {
     log.error('[Main] Error during first-time setup:', error);
+  }
+
+  // Register all IPC handlers
+  try {
+    logVerbose('[Main] Registering IPC handlers...');
+    registerAllHandlers();
+    logVerbose('[Main] IPC handlers registered successfully');
+  } catch (error) {
+    log.error('[Main] Error registering IPC handlers:', error);
   }
 
   // Set up custom protocol for serving thumbnails from user data folder
