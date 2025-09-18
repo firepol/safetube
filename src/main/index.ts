@@ -27,6 +27,13 @@ import {
   filterDuplicateVideos,
   setThumbnailScheduler
 } from './services/localVideoService'
+import {
+  scheduleBackgroundThumbnailGeneration,
+  processNextThumbnailInQueue,
+  getThumbnailUrl,
+  notifyThumbnailReady,
+  findThumbnailForVideo
+} from './services/thumbnailService'
 
 // Load .env file from multiple possible locations
 const possibleEnvPaths = [
@@ -64,103 +71,11 @@ declare global {
   var currentVideos: any[];
 }
 
-// Background thumbnail generation queue
-const thumbnailGenerationQueue = new Set<string>();
-const thumbnailGenerationInProgress = new Set<string>();
-
 // Set up the thumbnail scheduler in the local video service
 setThumbnailScheduler(scheduleBackgroundThumbnailGeneration);
 
-// Schedule thumbnail generation in background
-function scheduleBackgroundThumbnailGeneration(videoId: string, videoPath: string): void {
-  const key = `${videoId}||${videoPath}`;
-
-  // Don't queue if already queued or in progress
-  if (thumbnailGenerationQueue.has(key) || thumbnailGenerationInProgress.has(key)) {
-    return;
-  }
-
-  thumbnailGenerationQueue.add(key);
-  logVerbose('[Main] Scheduled background thumbnail generation for:', videoId, videoPath);
-
-  // Process queue asynchronously
-  setImmediate(() => processNextThumbnailInQueue());
-}
-
-// Process thumbnail generation queue
-async function processNextThumbnailInQueue(): Promise<void> {
-  if (thumbnailGenerationQueue.size === 0 || thumbnailGenerationInProgress.size >= 2) {
-    return; // Limit concurrent generation to 2
-  }
-
-  const next = thumbnailGenerationQueue.values().next().value;
-  if (!next) return;
-
-  thumbnailGenerationQueue.delete(next);
-  thumbnailGenerationInProgress.add(next);
-
-  const [videoId, videoPath] = next.split('||', 2);
-
-  try {
-    logVerbose('[Main] Starting background thumbnail generation for:', videoId, 'at path:', videoPath);
-    const { ThumbnailGenerator } = await import('./thumbnailGenerator');
-    const generatedThumbnail = await ThumbnailGenerator.generateCachedThumbnail(videoId, videoPath);
-
-    if (generatedThumbnail) {
-      const thumbnailUrl = getThumbnailUrl(generatedThumbnail);
-      logVerbose('[Main] Background thumbnail generated:', videoId, '->', thumbnailUrl);
-
-      // Notify renderer about thumbnail update
-      notifyThumbnailReady(videoId, thumbnailUrl);
-    }
-  } catch (error) {
-    logVerbose('[Main] Background thumbnail generation failed for:', videoId, error);
-  } finally {
-    thumbnailGenerationInProgress.delete(next);
-    // Process next item in queue
-    setImmediate(() => processNextThumbnailInQueue());
-  }
-}
-
-// Helper function to get thumbnail URL for custom protocol
-function getThumbnailUrl(thumbnailPath: string): string {
-  const filename = path.basename(thumbnailPath);
-  // Encode filename to handle spaces, emojis, and special characters
-  const encodedFilename = encodeURIComponent(filename);
-  return `safetube-thumbnails://${encodedFilename}`;
-}
-
-// Notify renderer that thumbnail is ready
-function notifyThumbnailReady(videoId: string, thumbnailUrl: string): void {
-  // Find all browser windows and send thumbnail update
-  const { BrowserWindow } = require('electron');
-  const windows = BrowserWindow.getAllWindows();
-
-  for (const window of windows) {
-    if (!window.isDestroyed()) {
-      window.webContents.send('thumbnail-ready', { videoId, thumbnailUrl });
-      logVerbose('[Main] Sent thumbnail-ready event for:', videoId);
-    }
-  }
-}
 
 
-// Helper function to find thumbnail file for a video
-function findThumbnailForVideo(videoFilePath: string): string {
-  const videoDir = path.dirname(videoFilePath);
-  const baseName = path.basename(videoFilePath, path.extname(videoFilePath));
-  const thumbnailExtensions = ['.webp', '.jpg', '.jpeg', '.png'];
-  
-  for (const ext of thumbnailExtensions) {
-    const thumbnailPath = path.join(videoDir, baseName + ext);
-    if (fs.existsSync(thumbnailPath)) {
-      logVerbose('[Main] Found thumbnail for video:', thumbnailPath);
-      return `file://${thumbnailPath}`;
-    }
-  }
-  
-  return ''; // No thumbnail found
-}
 
 
 

@@ -61,18 +61,27 @@ The main index file has grown to 3,405 lines with 250 logVerbose statements, mak
 - All functions now use `[LocalVideoService]` prefix instead of `[Main]` in logs
 - Type checking and builds pass successfully
 
-#### 1.2 Thumbnail Service (`src/main/thumbnailService.ts`)
+#### 1.2 Thumbnail Service (`src/main/thumbnailService.ts`) ✅ **COMPLETED**
 **Extract functions:**
-- `scheduleBackgroundThumbnailGeneration()`
-- `processNextThumbnailInQueue()`
-- `getThumbnailUrl()`
-- `notifyThumbnailReady()`
-- `findThumbnailForVideo()`
+- `scheduleBackgroundThumbnailGeneration()` ✅
+- `processNextThumbnailInQueue()` ✅
+- `getThumbnailUrl()` ✅
+- `notifyThumbnailReady()` ✅
+- `findThumbnailForVideo()` ✅
 
 **Logging reduction:**
-- Keep: Error logging for thumbnail generation failures
-- Remove: "Scheduled background thumbnail generation" logs
-- Keep: Summary logs when thumbnail ready
+- Keep: Error logging for thumbnail generation failures ✅
+- Remove: "Scheduled background thumbnail generation" logs ✅
+- Keep: Summary logs when thumbnail ready ✅
+
+**Results:**
+- Created `src/main/services/thumbnailService.ts` with all thumbnail functions
+- Updated `src/main/index.ts` to import from new service
+- Applied logging reduction - removed verbose scheduling/processing logs, kept errors and success logs
+- All functions now use `[ThumbnailService]` prefix instead of `[Main]` in logs
+- Moved thumbnail generation queue management to service
+- Added `getThumbnailQueueStatus()` helper for debugging
+- Type checking and builds pass successfully
 
 #### 1.3 Network Services (`src/main/networkServices.ts`)
 **Extract functions:**
