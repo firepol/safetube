@@ -40,19 +40,26 @@ The main index file has grown to 3,405 lines with 250 logVerbose statements, mak
 
 ### Phase 1: Extract Major Modules
 
-#### 1.1 Local Video Service (`src/main/localVideoService.ts`)
+#### 1.1 Local Video Service (`src/main/localVideoService.ts`) ✅ **COMPLETED**
 **Extract functions:**
-- `scanLocalFolder()`
-- `getLocalFolderContents()`
-- `countVideosInFolder()`
-- `countVideosRecursively()`
-- `getFlattenedContent()`
-- `filterDuplicateVideos()`
+- `scanLocalFolder()` ✅
+- `getLocalFolderContents()` ✅
+- `countVideosInFolder()` ✅
+- `countVideosRecursively()` ✅
+- `getFlattenedContent()` ✅
+- `filterDuplicateVideos()` ✅
 
 **Logging reduction:**
-- Keep: Error logging for file access issues
-- Remove: Verbose folder scanning logs (lines like "Found video at depth X")
-- Keep: Summary logs (total videos found)
+- Keep: Error logging for file access issues ✅
+- Remove: Verbose folder scanning logs (lines like "Found video at depth X") ✅
+- Keep: Summary logs (total videos found) ✅
+
+**Results:**
+- Created `src/main/services/localVideoService.ts` with all local video functions
+- Updated `src/main/index.ts` to import from new service
+- Applied logging reduction - removed verbose scanning logs, kept error and summary logs
+- All functions now use `[LocalVideoService]` prefix instead of `[Main]` in logs
+- Type checking and builds pass successfully
 
 #### 1.2 Thumbnail Service (`src/main/thumbnailService.ts`)
 **Extract functions:**
