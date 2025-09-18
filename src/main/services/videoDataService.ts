@@ -1,0 +1,355 @@
+import fs from 'fs';
+
+import { logVerbose } from '../../shared/logging';
+import { AppPaths } from '../appPaths';
+import log from '../logger';
+import { getThumbnailUrl } from './thumbnailService';
+
+// Main video data loading function - extracted from main index.ts
+export async function loadAllVideosFromSources(configPath = AppPaths.getConfigPath('videoSources.json'), apiKey?: string | null) {
+  const debug: string[] = [
+    '[VideoDataService] IPC handler working correctly',
+    '[VideoDataService] Successfully loaded videoSources.json',
+    '[VideoDataService] Found 0 video sources' // Will be updated after loading
+  ];
+  let sources: any[] = [];
+
+  try {
+    logVerbose('[VideoDataService] Loading video sources from:', configPath);
+    logVerbose('[VideoDataService] API key provided:', apiKey ? '***configured***' : 'NOT configured');
+    sources = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+    logVerbose('[VideoDataService] Loaded sources:', sources.length);
+    logVerbose('[VideoDataService] Source IDs:', sources.map(s => s.id));
+    debug[2] = '[VideoDataService] Found ' + sources.length + ' video sources'; // Update with actual count
+  } catch (err) {
+    log.error('[VideoDataService] ERROR loading videoSources.json:', err);
+    return { videosBySource: [], debug };
+  }
+
+  const videosBySource: any[] = [];
+
+  for (const source of sources) {
+    if (!source.id || !source.type || !source.title) {
+      log.warn('[VideoDataService] WARNING: Skipping invalid source entry:', source);
+      continue;
+    }
+
+    logVerbose('[VideoDataService] Processing source:', source.id, '(', source.type, ')');
+    debug.push(`[VideoDataService] Processing source: ${source.id} (${source.type})`);
+
+    if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
+      // For YouTube sources, use the cached version directly in main process
+      try {
+        const { CachedYouTubeSources } = await import('../../preload/cached-youtube-sources');
+
+        // Set up YouTube API using the preload context (matching the expected pattern)
+        logVerbose('[VideoDataService] Loading YouTube source:', source.id, source.title);
+
+        let cache;
+        if (apiKey) {
+          const { YouTubeAPI } = await import('../../preload/youtube');
+          YouTubeAPI.setApiKey(apiKey);
+          await YouTubeAPI.loadCacheConfig();
+          logVerbose('[VideoDataService] YouTube API configured for source:', source.id);
+          cache = await CachedYouTubeSources.loadSourceVideos(source);
+        } else {
+          log.warn('[VideoDataService] No API key provided for YouTube source:', source.id);
+          // Try to load from cache without API key (cache-only mode)
+          cache = await CachedYouTubeSources.loadSourceVideos(source);
+        }
+
+        logVerbose('[VideoDataService] Cache loaded for source:', source.id, 'videos:', cache.videos?.length || 0, 'cached:', cache.usingCachedData);
+
+        // Add source metadata to each video for global.currentVideos compatibility
+        const videosWithMetadata = cache.videos.map((video: any) => ({
+          ...video,
+          type: 'youtube',  // PlayerRouter expects this for YouTube videos
+          sourceId: source.id,
+          sourceType: source.type,  // Use original type (youtube_channel/youtube_playlist)
+          sourceTitle: source.title
+        }));
+
+        videosBySource.push({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          thumbnail: cache.thumbnail || '',
+          videoCount: cache.totalVideos || cache.videos.length,
+          videos: videosWithMetadata,  // Use videos with added metadata
+          paginationState: {
+            currentPage: 1,
+            totalPages: Math.ceil((cache.totalVideos || cache.videos.length) / 50),
+            totalVideos: cache.totalVideos || cache.videos.length,
+            pageSize: 50
+          },
+          usingCachedData: cache.usingCachedData
+        });
+
+        debug.push(`[VideoDataService] Successfully loaded YouTube source: ${source.id} with ${cache.videos?.length || 0} videos (cached: ${cache.usingCachedData})`);
+      } catch (err) {
+        log.error('[VideoDataService] ERROR loading YouTube source:', source.id, err);
+        debug.push(`[VideoDataService] ERROR loading YouTube source: ${source.id} - ${err}`);
+        videosBySource.push({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          thumbnail: '',
+          videoCount: 0,
+          videos: [],
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
+          maxDepth: source.maxDepth,
+          path: source.path
+        });
+      }
+    } else if (source.type === 'local') {
+      try {
+        // For local sources, don't scan videos upfront - let the LocalFolderNavigator handle it dynamically
+        // This allows proper folder structure navigation instead of flattening
+        debug.push(`[VideoDataService] Local source ${source.id}: Using folder navigation (not scanning videos upfront).`);
+        logVerbose(`[VideoDataService] Local source ${source.id}: Using folder navigation (not scanning videos upfront).`);
+
+        // For local sources, don't count videos upfront to avoid performance issues
+        // Video count will be calculated lazily when needed
+        videosBySource.push({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          thumbnail: '',
+          videoCount: 0, // Will be calculated lazily
+          videos: [], // Empty - LocalFolderNavigator will load videos dynamically
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
+          maxDepth: source.maxDepth, // Pass through maxDepth for navigation
+          path: source.path // Pass through path for navigation
+        });
+      } catch (err) {
+        log.error('[VideoDataService] ERROR scanning local source:', source.id, err);
+        debug.push(`[VideoDataService] ERROR scanning local source: ${source.id} - ${err}`);
+        videosBySource.push({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          thumbnail: '',
+          videoCount: 0,
+          videos: [],
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 }, // Will be updated with actual config
+          maxDepth: source.maxDepth, // Pass through maxDepth for navigation
+          path: source.path // Pass through path for navigation
+        });
+      }
+    } else {
+      debug.push(`[VideoDataService] WARNING: Unsupported source type: ${source.type}`);
+    }
+  }
+
+  // Add downloaded videos as a special source
+  try {
+    const { readDownloadedVideos } = await import('../fileUtils');
+    const downloadedVideos = await readDownloadedVideos();
+
+    if (downloadedVideos.length > 0) {
+      // Group downloaded videos by source
+      const downloadedVideosBySource = new Map<string, any[]>();
+
+      for (const downloadedVideo of downloadedVideos) {
+        const key = downloadedVideo.sourceId;
+        if (!downloadedVideosBySource.has(key)) {
+          downloadedVideosBySource.set(key, []);
+        }
+        downloadedVideosBySource.get(key)!.push(downloadedVideo);
+      }
+
+      // Create a source entry for downloaded videos
+      videosBySource.push({
+        id: 'downloaded',
+        type: 'downloaded',
+        title: 'Downloaded Videos',
+        thumbnail: '', // Could add a download icon
+        videoCount: downloadedVideos.length,
+        videos: downloadedVideos.map(dv => ({
+          id: dv.videoId,
+          type: 'downloaded' as const,
+          title: dv.title,
+          thumbnail: dv.thumbnail,
+          duration: dv.duration,
+          url: `file://${dv.filePath}`,
+          sourceId: dv.sourceId,
+          sourceTitle: dv.channelTitle || dv.playlistTitle || 'Unknown Source',
+          sourceType: dv.sourceType,
+          sourceThumbnail: '',
+          downloadedAt: dv.downloadedAt,
+          filePath: dv.filePath
+        })),
+        paginationState: { currentPage: 1, totalPages: 1, totalVideos: downloadedVideos.length, pageSize: 50 },
+        downloadedVideosBySource: Object.fromEntries(downloadedVideosBySource)
+      });
+
+      debug.push(`[VideoDataService] Added downloaded videos source with ${downloadedVideos.length} videos`);
+    }
+  } catch (err) {
+    log.error('[VideoDataService] ERROR loading downloaded videos:', err);
+    debug.push(`[VideoDataService] ERROR loading downloaded videos: ${err}`);
+  }
+
+  // Add favorites as a special source
+  try {
+    const { getFavorites } = await import('../fileUtils');
+    const favorites = await getFavorites();
+
+    if (favorites.length > 0) {
+      // Convert favorites to video objects with proper metadata
+      const favoriteVideos = [];
+
+      for (const favorite of favorites) {
+        logVerbose('[VideoDataService] Processing favorite:', {
+          videoId: favorite.videoId,
+          sourceType: favorite.sourceType,
+          title: favorite.title,
+          thumbnail: favorite.thumbnail,
+          duration: favorite.duration
+        });
+
+        // Generate appropriate URL based on video type
+        let videoUrl = '';
+        const videoId = favorite.videoId;
+
+        if (favorite.sourceType === 'youtube') {
+          // For YouTube videos, extract the actual video ID (remove any prefix)
+          const actualVideoId = videoId.startsWith('youtube:') ? videoId.substring(8) : videoId;
+          videoUrl = `https://www.youtube.com/watch?v=${actualVideoId}`;
+          logVerbose('[VideoDataService] YouTube favorite - videoId:', videoId, 'actualVideoId:', actualVideoId);
+        } else if (favorite.sourceType === 'local') {
+          // For local videos, the videoId contains the file path after "local:" prefix
+          const filePath = videoId.startsWith('local:') ? videoId.substring(6) : videoId;
+          videoUrl = `file://${filePath}`;
+          logVerbose('[VideoDataService] Local favorite - videoId:', videoId, 'filePath:', filePath);
+        } else if (favorite.sourceType === 'dlna') {
+          // For DLNA videos, the videoId contains the URL after "dlna:" prefix
+          const dlnaUrl = videoId.startsWith('dlna:') ? videoId.substring(5) : videoId;
+          videoUrl = dlnaUrl;
+          logVerbose('[VideoDataService] DLNA favorite - videoId:', videoId, 'dlnaUrl:', dlnaUrl);
+        }
+
+        // Check for best available thumbnail if original is empty (like History page does)
+        let bestThumbnail = favorite.thumbnail;
+        if (!bestThumbnail || bestThumbnail.trim() === '') {
+          try {
+            const { parseVideoId } = await import('../../shared/fileUtils');
+            const { getThumbnailCacheKey } = await import('../../shared/thumbnailUtils');
+            const parsed = parseVideoId(favorite.videoId);
+
+            if (parsed.success && parsed.parsed?.type === 'local') {
+              const cacheKey = getThumbnailCacheKey(favorite.videoId, 'local');
+              const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
+
+              if (fs.existsSync(cachedThumbnailPath)) {
+                const thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
+                bestThumbnail = thumbnailUrl;
+                logVerbose('[VideoDataService] Using cached thumbnail for favorite:', favorite.videoId, '->', thumbnailUrl);
+              }
+            }
+          } catch (error) {
+            logVerbose('[VideoDataService] Error getting best thumbnail for favorite:', favorite.videoId, error);
+          }
+        }
+
+        // Create video object compatible with existing video structure
+        const favoriteVideo = {
+          id: favorite.videoId,
+          type: favorite.sourceType || 'youtube', // Use sourceType from FavoriteVideo interface
+          title: favorite.title,
+          thumbnail: bestThumbnail,
+          duration: favorite.duration,
+          url: videoUrl,
+          sourceId: 'favorites',
+          sourceTitle: 'Favorites',
+          sourceType: 'favorites',
+          sourceThumbnail: '⭐',
+          favoriteId: favorite.videoId,
+          addedAt: favorite.dateAdded, // Use dateAdded from FavoriteVideo interface
+          isAvailable: true, // Favorites should always be available
+          isFallback: false // Never show fallback UI for favorites
+        };
+
+        logVerbose('[VideoDataService] Created favoriteVideo object:', {
+          id: favoriteVideo.id,
+          type: favoriteVideo.type,
+          title: favoriteVideo.title,
+          thumbnail: favoriteVideo.thumbnail,
+          isAvailable: favoriteVideo.isAvailable,
+          isFallback: favoriteVideo.isFallback
+        });
+
+        favoriteVideos.push(favoriteVideo);
+      }
+
+      // Create favorites source entry
+      videosBySource.push({
+        id: 'favorites',
+        type: 'favorites',
+        title: 'Favorites',
+        thumbnail: '⭐', // Star emoji as thumbnail
+        videoCount: favorites.length,
+        videos: favoriteVideos,
+        paginationState: {
+          currentPage: 1,
+          totalPages: Math.ceil(favorites.length / 50),
+          totalVideos: favorites.length,
+          pageSize: 50
+        }
+      });
+
+      debug.push(`[VideoDataService] Added favorites source with ${favorites.length} videos`);
+    } else {
+      // Always show favorites source even if empty
+      videosBySource.push({
+        id: 'favorites',
+        type: 'favorites',
+        title: 'Favorites',
+        thumbnail: '⭐',
+        videoCount: 0,
+        videos: [],
+        paginationState: {
+          currentPage: 1,
+          totalPages: 1,
+          totalVideos: 0,
+          pageSize: 50
+        }
+      });
+
+      debug.push(`[VideoDataService] Added empty favorites source`);
+    }
+  } catch (err) {
+    log.error('[VideoDataService] ERROR loading favorites:', err);
+    debug.push(`[VideoDataService] ERROR loading favorites: ${err}`);
+
+    // Still add empty favorites source on error
+    videosBySource.push({
+      id: 'favorites',
+      type: 'favorites',
+      title: 'Favorites',
+      thumbnail: '⭐',
+      videoCount: 0,
+      videos: [],
+      paginationState: {
+        currentPage: 1,
+        totalPages: 1,
+        totalVideos: 0,
+        pageSize: 50
+      }
+    });
+  }
+
+  // Collect all videos for global access (needed for video playback)
+  const allVideos: any[] = [];
+  for (const source of videosBySource) {
+    if (source.videos && source.videos.length > 0) {
+      allVideos.push(...source.videos);
+    }
+  }
+
+  // Store videos globally so the player can access them
+  global.currentVideos = allVideos;
+  logVerbose('[VideoDataService] Set global.currentVideos with', allVideos.length, 'videos');
+
+  return { videosBySource, debug };
+}

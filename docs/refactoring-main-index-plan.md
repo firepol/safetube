@@ -133,11 +133,19 @@ The main index file has grown to 3,405 lines with 250 logVerbose statements, mak
 
 ### Phase 2: Extract Utilities
 
-#### 2.1 URL Utilities (`src/main/urlUtils.ts`)
+#### 2.1 URL Utilities (`src/main/utils/urlUtils.ts`) ✅ **COMPLETED**
 **Extract functions:**
-- `extractChannelId()`
-- `extractPlaylistId()`
-- `resolveUsernameToChannelId()`
+- `extractChannelId()` ✅
+- `extractPlaylistId()` ✅
+- `resolveUsernameToChannelId()` ✅
+
+**Results:**
+- Created `src/main/utils/urlUtils.ts` with all URL parsing functions
+- Updated `src/main/index.ts` to import from new utilities module
+- Applied logging reduction with `[URLUtils]` prefix instead of `[Main]`
+- Removed duplicate function definitions from main index
+- Maintained backward compatibility and functionality
+- Type checking and builds pass successfully
 
 #### 2.2 Video Data Service (`src/main/videoDataService.ts`)
 **Extract video loading logic:**
