@@ -1935,6 +1935,174 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       }
     }
 
+    // Handle special "favorites" source like History page does
+    if (sourceId === 'favorites') {
+      logVerbose('[Main] Favorites source requested');
+
+      try {
+        const { getFavorites } = await import('./fileUtils');
+        const favorites = await getFavorites();
+
+        logVerbose('[Main] Loaded favorites for pagination:', favorites.length);
+
+        // Convert favorites to video objects using getVideoData like History page
+        const videosWithMetadata = [];
+        for (const favorite of favorites) {
+          try {
+            // Use getVideoData to get proper video data with sourceId and thumbnail like History page
+            const videoData = await (async (videoId: string) => {
+              // This is the same logic from the get-video-data handler
+              try {
+                // Parse the video ID to determine its type
+                const { parseVideoId, extractPathFromVideoId } = await import('../shared/fileUtils');
+                const parseResult = parseVideoId(videoId);
+
+                // Handle local videos
+                let localFilePath: string | null = null;
+
+                if (parseResult.success && parseResult.parsed?.type === 'local') {
+                  localFilePath = extractPathFromVideoId(videoId);
+                } else if (videoId.includes('/') && favorite.sourceType === 'local') {
+                  // For favorites, videoId might be the raw path like History page
+                  localFilePath = videoId.startsWith('local:') ? videoId.substring(6) : videoId;
+                }
+
+                // If we have a local file path, process it
+                if (localFilePath && fs.existsSync(localFilePath)) {
+                  const { extractVideoDuration } = await import('../shared/videoDurationUtils');
+                  const duration = await extractVideoDuration(localFilePath);
+
+                  const video = {
+                    id: videoId,
+                    type: 'local',
+                    title: path.basename(localFilePath, path.extname(localFilePath)),
+                    thumbnail: '',
+                    duration,
+                    url: localFilePath,
+                    video: localFilePath,
+                    audio: undefined,
+                    preferredLanguages: ['en'],
+                    sourceId: favorite.sourceType, // Use sourceType instead of 'favorites'
+                    sourceTitle: 'Local Video',
+                    sourceThumbnail: '',
+                    resumeAt: undefined as number | undefined,
+                  };
+
+                  // Merge with watched data
+                  const { mergeWatchedData } = await import('./fileUtils');
+                  const videosWithWatchedData = await mergeWatchedData([video]);
+                  return videosWithWatchedData[0];
+                }
+
+                // For non-local videos, check global.currentVideos
+                if (global.currentVideos) {
+                  const video = global.currentVideos.find((v: any) => v.id === videoId);
+                  if (video) {
+                    const { mergeWatchedData } = await import('./fileUtils');
+                    const videosWithWatchedData = await mergeWatchedData([video]);
+                    return videosWithWatchedData[0];
+                  }
+                }
+
+                // Fallback: create video from favorite data
+                return {
+                  id: favorite.videoId,
+                  title: favorite.title,
+                  thumbnail: favorite.thumbnail || '',
+                  type: favorite.sourceType,
+                  duration: favorite.duration || 0,
+                  sourceId: favorite.sourceType,
+                  sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
+                };
+              } catch (error) {
+                logVerbose('[Main] Error in getVideoData for favorite:', videoId, error);
+                return null;
+              }
+            })(favorite.videoId);
+
+            if (videoData) {
+              videosWithMetadata.push(videoData);
+            } else {
+              // Fallback video object for videos that can't be loaded like History page does
+              videosWithMetadata.push({
+                id: favorite.videoId,
+                title: favorite.title,
+                thumbnail: favorite.thumbnail || '',
+                duration: favorite.duration || 0,
+                type: favorite.sourceType,
+                sourceId: favorite.sourceType, // Use original source type as sourceId
+                sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
+              });
+            }
+          } catch (error) {
+            logVerbose('[Main] Error loading video data for favorite:', favorite.videoId, error);
+            // Create fallback entry like History page does
+            videosWithMetadata.push({
+              id: favorite.videoId,
+              title: favorite.title,
+              thumbnail: favorite.thumbnail || '',
+              duration: favorite.duration || 0,
+              type: favorite.sourceType,
+              sourceId: favorite.sourceType,
+              sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
+            });
+          }
+        }
+
+        // Store videos in global.currentVideos so the player can access them
+        if (!global.currentVideos) {
+          global.currentVideos = [];
+        }
+
+        // Add favorites videos to global.currentVideos
+        videosWithMetadata.forEach(video => {
+          const existingIndex = global.currentVideos.findIndex((v: any) => v.id === video.id);
+          if (existingIndex >= 0) {
+            global.currentVideos[existingIndex] = video;
+          } else {
+            global.currentVideos.push(video);
+          }
+        });
+
+        // Apply pagination
+        const totalVideos = videosWithMetadata.length;
+        const totalPages = Math.ceil(totalVideos / pageSize);
+        const startIndex = (pageNumber - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        const paginatedVideos = videosWithMetadata.slice(startIndex, endIndex);
+
+        logVerbose('[Main] Favorites videos paginated:', {
+          totalVideos,
+          totalPages,
+          currentPage: pageNumber,
+          pageSize,
+          returnedVideos: paginatedVideos.length
+        });
+
+        return {
+          videos: paginatedVideos,
+          pagination: {
+            currentPage: pageNumber,
+            totalPages: totalPages,
+            totalVideos: totalVideos,
+            pageSize: pageSize
+          }
+        };
+      } catch (error) {
+        log.error('[Main] Error loading favorites for pagination:', error);
+        // Return empty result instead of throwing
+        return {
+          videos: [],
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            totalVideos: 0,
+            pageSize: pageSize
+          }
+        };
+      }
+    }
+
     // Find the specific source
     const source = sources.find((s: any) => s.id === sourceId);
     if (!source) {
@@ -2714,6 +2882,14 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
       const favoriteVideos = [];
 
       for (const favorite of favorites) {
+        logVerbose('[Main] Processing favorite:', {
+          videoId: favorite.videoId,
+          sourceType: favorite.sourceType,
+          title: favorite.title,
+          thumbnail: favorite.thumbnail,
+          duration: favorite.duration
+        });
+
         // Generate appropriate URL based on video type
         let videoUrl = '';
         const videoId = favorite.videoId;
@@ -2722,14 +2898,17 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
           // For YouTube videos, extract the actual video ID (remove any prefix)
           const actualVideoId = videoId.startsWith('youtube:') ? videoId.substring(8) : videoId;
           videoUrl = `https://www.youtube.com/watch?v=${actualVideoId}`;
+          logVerbose('[Main] YouTube favorite - videoId:', videoId, 'actualVideoId:', actualVideoId);
         } else if (favorite.sourceType === 'local') {
           // For local videos, the videoId contains the file path after "local:" prefix
           const filePath = videoId.startsWith('local:') ? videoId.substring(6) : videoId;
           videoUrl = `file://${filePath}`;
+          logVerbose('[Main] Local favorite - videoId:', videoId, 'filePath:', filePath);
         } else if (favorite.sourceType === 'dlna') {
           // For DLNA videos, the videoId contains the URL after "dlna:" prefix
           const dlnaUrl = videoId.startsWith('dlna:') ? videoId.substring(5) : videoId;
           videoUrl = dlnaUrl;
+          logVerbose('[Main] DLNA favorite - videoId:', videoId, 'dlnaUrl:', dlnaUrl);
         }
 
         // Create video object compatible with existing video structure
@@ -2745,8 +2924,19 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
           sourceType: 'favorites',
           sourceThumbnail: '⭐',
           favoriteId: favorite.videoId,
-          addedAt: favorite.dateAdded // Use dateAdded from FavoriteVideo interface
+          addedAt: favorite.dateAdded, // Use dateAdded from FavoriteVideo interface
+          isAvailable: true, // Favorites should always be available
+          isFallback: false // Never show fallback UI for favorites
         };
+
+        logVerbose('[Main] Created favoriteVideo object:', {
+          id: favoriteVideo.id,
+          type: favoriteVideo.type,
+          title: favoriteVideo.title,
+          thumbnail: favoriteVideo.thumbnail,
+          isAvailable: favoriteVideo.isAvailable,
+          isFallback: favoriteVideo.isFallback
+        });
 
         favoriteVideos.push(favoriteVideo);
       }
@@ -3384,12 +3574,7 @@ ipcMain.handle('favorites:toggle', async (_, videoId: string, source: string, ty
     logVerbose('[Main] favorites:toggle called with:', { videoId, source, type, title, thumbnail, duration, lastWatched });
     const { FavoritesService } = await import('./favoritesService');
     const result = await FavoritesService.toggleFavorite(videoId, source, type, title, thumbnail, duration, lastWatched);
-
-    if (!result.success) {
-      throw new Error(result.error);
-    }
-
-    return result.data;
+    return result;
   } catch (error) {
     logVerbose('[Main] favorites:toggle error:', error);
     throw error;

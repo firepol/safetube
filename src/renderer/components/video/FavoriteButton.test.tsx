@@ -54,7 +54,7 @@ describe('FavoriteButton', () => {
     render(<FavoriteButton {...mockProps} />);
 
     await waitFor(() => {
-      expect(mockFavoritesService.isFavorite).toHaveBeenCalledWith('test-video');
+      expect(mockFavoritesService.isFavorite).toHaveBeenCalledWith('test-video', 'youtube');
     });
 
     await waitFor(() => {

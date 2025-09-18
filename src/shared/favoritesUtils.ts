@@ -15,6 +15,11 @@ export function generateVideoId(sourceType: 'youtube' | 'local' | 'dlna', origin
     return originalId;
   }
 
+  // Check if ID is already normalized with the correct prefix
+  if (originalId.startsWith(`${sourceType}:`)) {
+    return originalId; // Already normalized, return as-is
+  }
+
   // For local and DLNA videos, prefix with source type to avoid conflicts
   return `${sourceType}:${originalId}`;
 }
@@ -58,10 +63,10 @@ export function videoToMetadata(video: {
  * Create a FavoriteVideo from VideoMetadata
  */
 export function createFavoriteVideo(metadata: VideoMetadata): FavoriteVideo {
-  const normalizedId = generateVideoId(metadata.type, metadata.id);
-
+  // Store video ID in the same format as watched.json (original ID, not normalized)
+  // This allows subfolders and proper video loading like History page
   return {
-    videoId: normalizedId,
+    videoId: metadata.id,
     dateAdded: new Date().toISOString(),
     sourceType: metadata.type,
     title: metadata.title,
@@ -85,10 +90,11 @@ export function createDefaultFavoritesConfig(): FavoritesConfig {
  */
 export function addToFavorites(config: FavoritesConfig, metadata: VideoMetadata): FavoritesOperationResult {
   try {
-    const normalizedId = generateVideoId(metadata.type, metadata.id);
+    // Use original video ID like watched.json does (no normalization)
+    const videoId = metadata.id;
 
     // Check if already favorited
-    const existing = config.favorites.find(fav => fav.videoId === normalizedId);
+    const existing = config.favorites.find(fav => fav.videoId === videoId);
     if (existing) {
       return {
         success: false,
@@ -155,7 +161,26 @@ export function removeFromFavorites(config: FavoritesConfig, videoId: string): F
  * Check if a video is favorited (in-memory operation)
  */
 export function isFavorited(config: FavoritesConfig, videoId: string): boolean {
-  return config.favorites.some(fav => fav.videoId === videoId);
+  // Check for exact match first (new format)
+  if (config.favorites.some(fav => fav.videoId === videoId)) {
+    return true;
+  }
+
+  // For backward compatibility, also check normalized versions
+  // This handles cases where favorites may have been stored with different encoding
+  return config.favorites.some(fav => {
+    // Check if the favorite's videoId matches any reasonable variation of the input videoId
+    if (fav.videoId === videoId) return true;
+
+    // Handle local video paths - check if they represent the same file
+    if (videoId.includes('/') || videoId.startsWith('local:')) {
+      const cleanVideoId = videoId.replace(/^local:/, '');
+      const cleanFavId = fav.videoId.replace(/^local:/, '');
+      return cleanVideoId === cleanFavId;
+    }
+
+    return false;
+  });
 }
 
 /**

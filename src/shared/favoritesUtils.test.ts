@@ -22,6 +22,13 @@ describe('Favorites Utilities', () => {
       expect(generateVideoId('dlna', 'server:8200/video.mp4')).toBe('dlna:server:8200/video.mp4');
     });
 
+    it('should not double-encode already normalized video IDs', () => {
+      // Test that already normalized IDs don't get encoded again
+      expect(generateVideoId('local', 'local:/path/to/video.mp4')).toBe('local:/path/to/video.mp4');
+      expect(generateVideoId('dlna', 'dlna:server:8200/video.mp4')).toBe('dlna:server:8200/video.mp4');
+      expect(generateVideoId('youtube', 'dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ'); // YouTube doesn't get prefixed anyway
+    });
+
     it('should parse video IDs correctly', () => {
       expect(parseVideoId('dQw4w9WgXcQ')).toEqual({
         sourceType: 'youtube',
@@ -66,7 +73,7 @@ describe('Favorites Utilities', () => {
       };
 
       const favorite = createFavoriteVideo(metadata);
-      expect(favorite.videoId).toBe('local:/path/to/local/video.mp4');
+      expect(favorite.videoId).toBe('/path/to/local/video.mp4'); // Store original ID like watched.json
       expect(favorite.sourceType).toBe('local');
     });
   });
@@ -193,7 +200,7 @@ describe('Favorites Utilities', () => {
       expect(result.success).toBe(true);
       const updatedConfig = result.data as FavoritesConfig;
       expect(updatedConfig.favorites).toHaveLength(1);
-      expect(updatedConfig.favorites[0].videoId).toBe('new-video');
+      expect(updatedConfig.favorites[0].videoId).toBe('new-video'); // Store original ID like watched.json
       expect(updatedConfig.favorites[0].title).toBe('New Video');
     });
 

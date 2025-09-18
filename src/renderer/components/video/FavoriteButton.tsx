@@ -51,7 +51,7 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
 
   const loadFavoriteStatus = async () => {
     try {
-      const status = await FavoritesService.isFavorite(videoId);
+      const status = await FavoritesService.isFavorite(videoId, type);
       setIsFavorite(status);
       logVerbose('[FavoriteButton] Loaded initial status for', videoId, ':', status);
     } catch (error) {

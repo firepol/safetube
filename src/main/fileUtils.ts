@@ -222,15 +222,6 @@ export async function readFavoritesConfig(): Promise<FavoritesConfig> {
 }
 
 export async function writeFavoritesConfig(config: FavoritesConfig): Promise<void> {
-  // Create backup before writing
-  try {
-    const existing = await readFavoritesConfig();
-    const backupFilename = `favorites.backup.${Date.now()}.json`;
-    await writeJsonFile(backupFilename, existing);
-  } catch (error) {
-    console.warn('[FileUtils] Could not create backup for favorites config:', error);
-  }
-
   // Write the new config with updated timestamp
   const configToWrite: FavoritesConfig = {
     ...config,

@@ -150,23 +150,33 @@ export class FavoritesService {
     thumbnail: string,
     duration: number,
     lastWatched?: string
-  ): Promise<FavoritesOperationResult> {
+  ): Promise<{ favorite: FavoriteVideo | null; isFavorite: boolean }> {
     try {
-      const isCurrentlyFavorite = await isFavorite(videoId);
+      // Use original video ID like watched.json format (no normalization)
+      const originalVideoId = videoId;
 
-      if (isCurrentlyFavorite) {
-        await removeFavorite(videoId);
-        return { success: true, data: { isFavorite: false } as any };
-      } else {
+      const isCurrentlyFavorite = await isFavorite(originalVideoId);
+
+      let favorite: FavoriteVideo | null = null;
+      const newState = !isCurrentlyFavorite;
+
+      if (newState) {
+        // Add favorite
         const metadata: VideoMetadata = { id: videoId, type, title, thumbnail, duration };
         await addFavorite(metadata);
-        return { success: true, data: { isFavorite: true } as any };
+        // Fetch the added favorite
+        const favorites = await getUtilFavorites();
+        favorite = favorites.find(f => f.videoId === originalVideoId) || null;
+      } else {
+        // Remove favorite
+        const favorites = await getUtilFavorites();
+        favorite = favorites.find(f => f.videoId === originalVideoId) || null;
+        await removeFavorite(originalVideoId);
       }
+
+      return { favorite, isFavorite: newState };
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to toggle favorite: ${error instanceof Error ? error.message : 'Unknown error'}`
-      };
+      throw new Error(`Failed to toggle favorite: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

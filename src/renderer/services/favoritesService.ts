@@ -1,6 +1,6 @@
 import { FavoriteVideo, FavoritesConfig } from '@/shared/types';
 import { VideoCardBaseProps } from '../components/video/VideoCardBase';
-import { logVerboseRenderer } from '@/shared/logging';
+import { logVerbose } from '../lib/logging';
 
 
 /**
@@ -23,11 +23,11 @@ export class FavoritesService {
           this.favoritesCache &&
           this.cacheExpiry &&
           now < this.cacheExpiry) {
-        logVerboseRenderer('[FavoritesService] Returning cached favorites');
+        logVerbose('[FavoritesService] Returning cached favorites');
         return this.favoritesCache;
       }
 
-      logVerboseRenderer('[FavoritesService] Fetching favorites from main process');
+      logVerbose('[FavoritesService] Fetching favorites from main process');
       const favorites = await window.electron.favoritesGetAll();
 
       // Update cache
@@ -43,10 +43,10 @@ export class FavoritesService {
       // Note: We don't cache false values here to avoid cache bloat
       // False values are determined by absence from the favorites list
 
-      logVerboseRenderer('[FavoritesService] Cached', favorites.length, 'favorites');
+      logVerbose('[FavoritesService] Cached', favorites.length, 'favorites');
       return favorites;
     } catch (error) {
-      logVerboseRenderer('[FavoritesService] Error getting favorites:', error);
+      logVerbose('[FavoritesService] Error getting favorites:', error);
       throw error;
     }
   }
@@ -64,7 +64,7 @@ export class FavoritesService {
     lastWatched?: string
   ): Promise<FavoriteVideo> {
     try {
-      logVerboseRenderer('[FavoritesService] Adding favorite:', { videoId, source, type, title });
+      logVerbose('[FavoritesService] Adding favorite:', { videoId, source, type, title });
 
       // Optimistic update
       this.favoriteStatusCache.set(videoId, true);
@@ -83,12 +83,12 @@ export class FavoritesService {
         }
       }
 
-      logVerboseRenderer('[FavoritesService] Successfully added favorite:', favorite.videoId);
+      logVerbose('[FavoritesService] Successfully added favorite:', favorite.videoId);
       return favorite;
     } catch (error) {
       // Rollback optimistic update
       this.favoriteStatusCache.delete(videoId);
-      logVerboseRenderer('[FavoritesService] Error adding favorite:', error);
+      logVerbose('[FavoritesService] Error adding favorite:', error);
       throw error;
     }
   }
@@ -98,7 +98,7 @@ export class FavoritesService {
    */
   static async removeFavorite(videoId: string): Promise<FavoriteVideo> {
     try {
-      logVerboseRenderer('[FavoritesService] Removing favorite:', videoId);
+      logVerbose('[FavoritesService] Removing favorite:', videoId);
 
       // Store previous state for rollback
       const wasFavorite = this.favoriteStatusCache.get(videoId) || false;
@@ -113,12 +113,12 @@ export class FavoritesService {
         this.favoritesCache = this.favoritesCache.filter(f => f.videoId !== videoId);
       }
 
-      logVerboseRenderer('[FavoritesService] Successfully removed favorite:', videoId);
+      logVerbose('[FavoritesService] Successfully removed favorite:', videoId);
       return removedFavorite;
     } catch (error) {
       // Rollback optimistic update
       this.favoriteStatusCache.set(videoId, true);
-      logVerboseRenderer('[FavoritesService] Error removing favorite:', error);
+      logVerbose('[FavoritesService] Error removing favorite:', error);
       throw error;
     }
   }
@@ -126,33 +126,36 @@ export class FavoritesService {
   /**
    * Check if a video is favorited with caching
    */
-  static async isFavorite(videoId: string): Promise<boolean> {
+  static async isFavorite(videoId: string, type?: 'youtube' | 'local' | 'dlna'): Promise<boolean> {
     try {
+      // Use original video ID like watched.json format (no normalization)
+      const originalVideoId = videoId;
+
       // Check cache first
-      if (this.favoriteStatusCache.has(videoId)) {
-        const cached = this.favoriteStatusCache.get(videoId)!;
-        logVerboseRenderer('[FavoritesService] Returning cached favorite status for', videoId, ':', cached);
+      if (this.favoriteStatusCache.has(originalVideoId)) {
+        const cached = this.favoriteStatusCache.get(originalVideoId)!;
+        logVerbose('[FavoritesService] Returning cached favorite status for', originalVideoId, ':', cached);
         return cached;
       }
 
       // If we have a favorites cache, check if the video is in the list
       if (this.favoritesCache && this.cacheExpiry && Date.now() < this.cacheExpiry) {
-        const isFav = this.favoritesCache.some(f => f.videoId === videoId);
-        this.favoriteStatusCache.set(videoId, isFav);
-        logVerboseRenderer('[FavoritesService] Returning cached favorite status from list for', videoId, ':', isFav);
+        const isFav = this.favoritesCache.some(f => f.videoId === originalVideoId);
+        this.favoriteStatusCache.set(originalVideoId, isFav);
+        logVerbose('[FavoritesService] Returning cached favorite status from list for', originalVideoId, ':', isFav);
         return isFav;
       }
 
-      logVerboseRenderer('[FavoritesService] Checking favorite status for:', videoId);
-      const isFav = await window.electron.favoritesIsFavorite(videoId);
+      logVerbose('[FavoritesService] Checking favorite status for:', originalVideoId);
+      const isFav = await window.electron.favoritesIsFavorite(originalVideoId);
 
       // Update cache
-      this.favoriteStatusCache.set(videoId, isFav);
+      this.favoriteStatusCache.set(originalVideoId, isFav);
 
-      logVerboseRenderer('[FavoritesService] Favorite status for', videoId, ':', isFav);
+      logVerbose('[FavoritesService] Favorite status for', originalVideoId, ':', isFav);
       return isFav;
     } catch (error) {
-      logVerboseRenderer('[FavoritesService] Error checking favorite status:', error);
+      logVerbose('[FavoritesService] Error checking favorite status:', error);
       return false; // Default to false on error
     }
   }
@@ -170,13 +173,16 @@ export class FavoritesService {
     lastWatched?: string
   ): Promise<{ favorite: FavoriteVideo | null; isFavorite: boolean }> {
     try {
-      logVerboseRenderer('[FavoritesService] Toggling favorite:', { videoId, source, type, title });
+      logVerbose('[FavoritesService] Toggling favorite:', { videoId, source, type, title });
 
-      // Get current state
-      const currentState = await this.isFavorite(videoId);
+      // Use original video ID like watched.json format (no normalization)
+      const originalVideoId = videoId;
 
-      // Optimistic update
-      this.favoriteStatusCache.set(videoId, !currentState);
+      // Get current state using original ID
+      const currentState = await this.isFavorite(videoId, type);
+
+      // Optimistic update using original ID
+      this.favoriteStatusCache.set(originalVideoId, !currentState);
 
       const favorite = await window.electron.favoritesToggle(
         videoId, source, type, title, thumbnail, duration, lastWatched
@@ -184,11 +190,11 @@ export class FavoritesService {
 
       const newState = !currentState;
 
-      // Update cache based on new state
+      // Update cache based on new state using original ID
       if (this.favoritesCache) {
         if (newState) {
           // Added to favorites
-          const existingIndex = this.favoritesCache.findIndex(f => f.videoId === videoId);
+          const existingIndex = this.favoritesCache.findIndex(f => f.videoId === originalVideoId);
           if (existingIndex >= 0) {
             this.favoritesCache[existingIndex] = favorite;
           } else {
@@ -196,22 +202,23 @@ export class FavoritesService {
           }
         } else {
           // Removed from favorites
-          this.favoritesCache = this.favoritesCache.filter(f => f.videoId !== videoId);
+          this.favoritesCache = this.favoritesCache.filter(f => f.videoId !== originalVideoId);
         }
       }
 
-      logVerboseRenderer('[FavoritesService] Successfully toggled favorite:', videoId, 'now', newState);
+      logVerbose('[FavoritesService] Successfully toggled favorite:', originalVideoId, 'now', newState);
       return {
         favorite: newState ? favorite : null,
         isFavorite: newState
       };
     } catch (error) {
-      // Rollback optimistic update
-      const currentState = this.favoriteStatusCache.get(videoId);
+      // Rollback optimistic update using original ID
+      const originalVideoId = videoId;
+      const currentState = this.favoriteStatusCache.get(originalVideoId);
       if (currentState !== undefined) {
-        this.favoriteStatusCache.set(videoId, !currentState);
+        this.favoriteStatusCache.set(originalVideoId, !currentState);
       }
-      logVerboseRenderer('[FavoritesService] Error toggling favorite:', error);
+      logVerbose('[FavoritesService] Error toggling favorite:', error);
       throw error;
     }
   }
@@ -224,7 +231,7 @@ export class FavoritesService {
     metadata: Partial<FavoriteVideo>
   ): Promise<FavoriteVideo> {
     try {
-      logVerboseRenderer('[FavoritesService] Updating favorite metadata:', { videoId, metadata });
+      logVerbose('[FavoritesService] Updating favorite metadata:', { videoId, metadata });
 
       const updatedFavorite = await window.electron.favoritesUpdateMetadata(videoId, metadata);
 
@@ -236,10 +243,10 @@ export class FavoritesService {
         }
       }
 
-      logVerboseRenderer('[FavoritesService] Successfully updated favorite metadata:', videoId);
+      logVerbose('[FavoritesService] Successfully updated favorite metadata:', videoId);
       return updatedFavorite;
     } catch (error) {
-      logVerboseRenderer('[FavoritesService] Error updating favorite metadata:', error);
+      logVerbose('[FavoritesService] Error updating favorite metadata:', error);
       throw error;
     }
   }
@@ -249,10 +256,10 @@ export class FavoritesService {
    */
   static async getFavoritesBySource(sourceId: string): Promise<FavoriteVideo[]> {
     try {
-      logVerboseRenderer('[FavoritesService] Getting favorites by source:', sourceId);
+      logVerbose('[FavoritesService] Getting favorites by source:', sourceId);
       return await window.electron.favoritesGetBySource(sourceId);
     } catch (error) {
-      logVerboseRenderer('[FavoritesService] Error getting favorites by source:', error);
+      logVerbose('[FavoritesService] Error getting favorites by source:', error);
       throw error;
     }
   }
@@ -262,10 +269,10 @@ export class FavoritesService {
    */
   static async getFavoritesConfig(): Promise<FavoritesConfig> {
     try {
-      logVerboseRenderer('[FavoritesService] Getting favorites config');
+      logVerbose('[FavoritesService] Getting favorites config');
       return await window.electron.favoritesGetConfig();
     } catch (error) {
-      logVerboseRenderer('[FavoritesService] Error getting favorites config:', error);
+      logVerbose('[FavoritesService] Error getting favorites config:', error);
       throw error;
     }
   }
@@ -275,10 +282,10 @@ export class FavoritesService {
    */
   static async updateFavoritesConfig(config: Partial<FavoritesConfig>): Promise<FavoritesConfig> {
     try {
-      logVerboseRenderer('[FavoritesService] Updating favorites config:', config);
+      logVerbose('[FavoritesService] Updating favorites config:', config);
       return await window.electron.favoritesUpdateConfig(config);
     } catch (error) {
-      logVerboseRenderer('[FavoritesService] Error updating favorites config:', error);
+      logVerbose('[FavoritesService] Error updating favorites config:', error);
       throw error;
     }
   }
@@ -288,7 +295,7 @@ export class FavoritesService {
    */
   static async cleanupOrphanedFavorites(): Promise<FavoriteVideo[]> {
     try {
-      logVerboseRenderer('[FavoritesService] Cleaning up orphaned favorites');
+      logVerbose('[FavoritesService] Cleaning up orphaned favorites');
       const result = await window.electron.favoritesCleanupOrphaned();
 
       // Clear cache to force refresh
@@ -296,7 +303,7 @@ export class FavoritesService {
 
       return result;
     } catch (error) {
-      logVerboseRenderer('[FavoritesService] Error cleaning up orphaned favorites:', error);
+      logVerbose('[FavoritesService] Error cleaning up orphaned favorites:', error);
       throw error;
     }
   }
@@ -306,7 +313,7 @@ export class FavoritesService {
    */
   static async syncWithWatchHistory(): Promise<FavoriteVideo[]> {
     try {
-      logVerboseRenderer('[FavoritesService] Syncing with watch history');
+      logVerbose('[FavoritesService] Syncing with watch history');
       const result = await window.electron.favoritesSyncWatchHistory();
 
       // Clear cache to force refresh
@@ -314,7 +321,7 @@ export class FavoritesService {
 
       return result;
     } catch (error) {
-      logVerboseRenderer('[FavoritesService] Error syncing with watch history:', error);
+      logVerbose('[FavoritesService] Error syncing with watch history:', error);
       throw error;
     }
   }
@@ -330,21 +337,40 @@ export class FavoritesService {
     count: number;
   }> {
     try {
-      logVerboseRenderer('[FavoritesService] Creating favorites source');
+      logVerbose('[FavoritesService] Creating favorites source');
       const favorites = await this.getFavorites();
 
-      // Convert favorites to VideoCardBaseProps format
-      const videos: VideoCardBaseProps[] = favorites.map(favorite => ({
-        id: favorite.videoId,
-        title: favorite.title,
-        thumbnail: favorite.thumbnail || '', // Provide empty string fallback
-        duration: favorite.duration || 0, // Provide 0 fallback for duration
-        type: favorite.sourceType,
-        watched: false, // Will be populated by mergeWatchedData
-        isClicked: false, // Will be populated by UI
-        isFavorite: true, // Always true for favorites source
-        showFavoriteIcon: true // Show the star icon
-      }));
+      // Convert favorites to VideoCardBaseProps format with thumbnail processing
+      const videos: VideoCardBaseProps[] = [];
+      for (const favorite of favorites) {
+        // Check for best available thumbnail if original is empty (like History page does)
+        let bestThumbnail = favorite.thumbnail;
+        if (!bestThumbnail || bestThumbnail.trim() === '') {
+          try {
+            const generatedThumbnail = await window.electron.getBestThumbnail(favorite.videoId);
+            if (generatedThumbnail) {
+              bestThumbnail = generatedThumbnail;
+              logVerbose('[FavoritesService] Using generated thumbnail for:', favorite.videoId, '->', generatedThumbnail);
+            }
+          } catch (error) {
+            logVerbose('[FavoritesService] Error getting best thumbnail for:', favorite.videoId, error);
+          }
+        }
+
+        videos.push({
+          id: favorite.videoId,
+          title: favorite.title,
+          thumbnail: bestThumbnail || '', // Use generated thumbnail or empty string
+          duration: favorite.duration || 0, // Provide 0 fallback for duration
+          type: favorite.sourceType,
+          watched: false, // Will be populated by mergeWatchedData
+          isClicked: false, // Will be populated by UI
+          isFavorite: true, // Always true for favorites source
+          showFavoriteIcon: true, // Show the star icon
+          isAvailable: true, // Favorites should always be available
+          isFallback: false // Never show fallback UI for favorites
+        });
+      }
 
       return {
         id: 'favorites',
@@ -354,7 +380,7 @@ export class FavoritesService {
         count: favorites.length
       };
     } catch (error) {
-      logVerboseRenderer('[FavoritesService] Error creating favorites source:', error);
+      logVerbose('[FavoritesService] Error creating favorites source:', error);
       return {
         id: 'favorites',
         title: 'Favorites',
@@ -384,7 +410,7 @@ export class FavoritesService {
 
       // If all are cached, return immediately
       if (uncachedIds.length === 0) {
-        logVerboseRenderer('[FavoritesService] All favorite statuses found in cache');
+        logVerbose('[FavoritesService] All favorite statuses found in cache');
         return statusMap;
       }
 
@@ -399,10 +425,10 @@ export class FavoritesService {
         this.favoriteStatusCache.set(videoId, isFav);
       });
 
-      logVerboseRenderer('[FavoritesService] Retrieved bulk favorite statuses for', videoIds.length, 'videos');
+      logVerbose('[FavoritesService] Retrieved bulk favorite statuses for', videoIds.length, 'videos');
       return statusMap;
     } catch (error) {
-      logVerboseRenderer('[FavoritesService] Error getting bulk favorite statuses:', error);
+      logVerbose('[FavoritesService] Error getting bulk favorite statuses:', error);
 
       // Return all as false on error
       videoIds.forEach(videoId => {
@@ -416,7 +442,7 @@ export class FavoritesService {
    * Clear the favorites cache
    */
   static clearCache(): void {
-    logVerboseRenderer('[FavoritesService] Clearing cache');
+    logVerbose('[FavoritesService] Clearing cache');
     this.favoritesCache = null;
     this.favoriteStatusCache.clear();
     this.cacheExpiry = null;
@@ -427,10 +453,10 @@ export class FavoritesService {
    */
   static async preloadFavoritesStatus(): Promise<void> {
     try {
-      logVerboseRenderer('[FavoritesService] Preloading favorites status');
+      logVerbose('[FavoritesService] Preloading favorites status');
       await this.getFavorites();
     } catch (error) {
-      logVerboseRenderer('[FavoritesService] Error preloading favorites status:', error);
+      logVerbose('[FavoritesService] Error preloading favorites status:', error);
     }
   }
 }
