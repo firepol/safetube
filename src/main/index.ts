@@ -2911,12 +2911,35 @@ async function loadAllVideosFromSourcesMain(configPath = AppPaths.getConfigPath(
           logVerbose('[Main] DLNA favorite - videoId:', videoId, 'dlnaUrl:', dlnaUrl);
         }
 
+        // Check for best available thumbnail if original is empty (like History page does)
+        let bestThumbnail = favorite.thumbnail;
+        if (!bestThumbnail || bestThumbnail.trim() === '') {
+          try {
+            const { parseVideoId } = await import('../shared/fileUtils');
+            const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
+            const parsed = parseVideoId(favorite.videoId);
+
+            if (parsed.success && parsed.parsed?.type === 'local') {
+              const cacheKey = getThumbnailCacheKey(favorite.videoId, 'local');
+              const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
+
+              if (fs.existsSync(cachedThumbnailPath)) {
+                const thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
+                bestThumbnail = thumbnailUrl;
+                logVerbose('[Main] Using cached thumbnail for favorite:', favorite.videoId, '->', thumbnailUrl);
+              }
+            }
+          } catch (error) {
+            logVerbose('[Main] Error getting best thumbnail for favorite:', favorite.videoId, error);
+          }
+        }
+
         // Create video object compatible with existing video structure
         const favoriteVideo = {
           id: favorite.videoId,
           type: favorite.sourceType || 'youtube', // Use sourceType from FavoriteVideo interface
           title: favorite.title,
-          thumbnail: favorite.thumbnail,
+          thumbnail: bestThumbnail,
           duration: favorite.duration,
           url: videoUrl,
           sourceId: 'favorites',
