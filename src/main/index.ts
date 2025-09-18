@@ -51,21 +51,6 @@ for (const envPath of possibleEnvPaths) {
   }
 }
 
-// Debug: Log environment variables
-logVerbose('[Main] Environment variables loaded');
-logVerbose('[Main] ADMIN_PASSWORD:', process.env.ADMIN_PASSWORD ? '***configured***' : 'NOT configured');
-logVerbose('[Main] NODE_ENV:', process.env.NODE_ENV);
-
-// Debug: Log all directory paths for troubleshooting
-logVerbose('\n🗂️  SafeTube Directory Paths:');
-logVerbose(`   User Data: ${AppPaths.getUserDataDir()}`);
-logVerbose(`   Config:    ${AppPaths.getConfigDir()}`);
-logVerbose(`   Cache:     ${AppPaths.getCacheDir()}`);
-logVerbose(`   Logs:      ${AppPaths.getLogsDir()}`);
-logVerbose(`   Thumbnails: ${AppPaths.getThumbnailsDir()}`);
-logVerbose(`   Environment: ${AppPaths.isDev() ? 'Development' : 'Production'}`);
-logVerbose(`   Platform:  ${process.platform}`);
-logVerbose('─'.repeat(60));
 
 // Global type declaration for current videos
 declare global {
@@ -433,11 +418,6 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
           const videosWithWatchedData = await mergeWatchedData([video]);
           const videoWithResume = videosWithWatchedData[0];
 
-          logVerbose('[Main] Successfully fetched external YouTube video:', {
-            id: videoWithResume.id,
-            title: videoWithResume.title,
-            duration: videoWithResume.duration
-          });
 
           return videoWithResume;
 
@@ -2051,14 +2031,8 @@ function parseISODuration(iso: string): number {
 
 // Helper functions for parsing YouTube URLs
 const createWindow = (): void => {
-  logVerbose('[Main] Creating main window...');
-
   const preloadPath = path.join(__dirname, '../../preload/preload/index.js');
-  logVerbose('[Main] Preload path:', preloadPath);
-  logVerbose('[Main] Preload path exists:', fs.existsSync(preloadPath));
-  logVerbose('[Main] __dirname:', __dirname);
 
-  logVerbose('[Main] Creating main window...')
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     height: 600,
