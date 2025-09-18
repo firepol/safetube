@@ -75,6 +75,7 @@ test-videos/
 .kiro
 
 .vscode
+.serena
 
 # yt-dlp executable (should use system version)
 yt-dlp
