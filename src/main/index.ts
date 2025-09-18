@@ -47,14 +47,12 @@ const possibleEnvPaths = [
 for (const envPath of possibleEnvPaths) {
   const result = dotenv.config({ path: envPath });
   if (result.parsed && Object.keys(result.parsed).length > 0) {
-    logVerbose(`[Main] Loaded environment variables from: ${envPath}`);
     break;
   }
 }
 
 // Debug: Log environment variables
 logVerbose('[Main] Environment variables loaded');
-logVerbose('[Main] YouTube API key will be loaded from mainSettings.json');
 logVerbose('[Main] ADMIN_PASSWORD:', process.env.ADMIN_PASSWORD ? '***configured***' : 'NOT configured');
 logVerbose('[Main] NODE_ENV:', process.env.NODE_ENV);
 

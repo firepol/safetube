@@ -147,11 +147,20 @@ The main index file has grown to 3,405 lines with 250 logVerbose statements, mak
 - Maintained backward compatibility and functionality
 - Type checking and builds pass successfully
 
-#### 2.2 Video Data Service (`src/main/videoDataService.ts`)
+#### 2.2 Video Data Service (`src/main/services/videoDataService.ts`) ✅ **COMPLETED**
 **Extract video loading logic:**
-- Video data resolution by ID
-- Cross-source video lookup
-- Video metadata enrichment
+- Video data resolution by ID ✅
+- Cross-source video lookup ✅
+- Video metadata enrichment ✅
+
+**Results:**
+- Created `src/main/services/videoDataService.ts` with comprehensive video loading logic
+- Extracted massive `loadAllVideosFromSourcesMain` function (350+ lines) from main index
+- Handles all video source types: YouTube, local, downloaded, and favorites
+- Applied logging reduction with `[VideoDataService]` prefix instead of `[Main]`
+- Maintains global video access and all existing functionality
+- Proper TypeScript types and error handling
+- Type checking and builds pass successfully
 
 ### Phase 3: Logging Optimization
 
