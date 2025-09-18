@@ -17,6 +17,7 @@ import log from './logger'
 import { recordVideoWatching, getTimeTrackingState } from './timeTracking'
 import { setupYouTubeHandlers } from './youtube'
 import { YouTubeAPI } from './youtube-api'
+import { extractChannelId, extractPlaylistId, resolveUsernameToChannelId } from './utils/urlUtils'
 import {
   scanLocalFolder,
   getLocalFolderContents,
@@ -158,45 +159,10 @@ async function fixDownloadedVideosPaths(downloadedVideos: any[]): Promise<any[]>
   return fixedVideos;
 }
 
-// Helper function to resolve username to channel ID
-async function resolveUsernameToChannelId(username: string, apiKey: string): Promise<string | null> {
-  try {
-    const youtubeAPI = new YouTubeAPI(apiKey);
-    const channelDetails = await youtubeAPI.searchChannelByUsername(username);
-    return channelDetails.channelId;
-  } catch (error) {
-    log.warn('[Main] Could not resolve username to channel ID:', username, error);
-    return null;
-  }
-}
 
 // Force TypeScript to include these functions by exporting them (even if not used elsewhere)
-export { resolveUsernameToChannelId, loadAllVideosFromSourcesMain, getLocalFolderContents };
+export { loadAllVideosFromSourcesMain, getLocalFolderContents };
 
-// Helper functions for parsing YouTube URLs
-function extractChannelId(url: string): string | null {
-  try {
-    if (url.includes('/@')) {
-      const match = url.match(/\/@([^\/\?]+)/);
-      return match ? `@${match[1]}` : null; // Return with @ prefix for usernames
-    } else if (url.includes('/channel/')) {
-      const match = url.match(/\/channel\/([^\/\?]+)/);
-      return match ? match[1] : null;
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-function extractPlaylistId(url: string): string | null {
-  try {
-    const match = url.match(/[?&]list=([^&]+)/);
-    return match ? match[1] : null;
-  } catch {
-    return null;
-  }
-}
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (process.platform === 'win32') {
