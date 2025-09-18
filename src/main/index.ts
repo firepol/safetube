@@ -200,7 +200,6 @@ ipcMain.handle('get-player-config', async () => {
 // Handle video data loading - ONLY from new source system
 ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: any) => {
   try {
-    logVerbose('[Main] Loading video data for:', videoId, navigationContext ? 'with navigation context' : 'without navigation context');
 
     // Check if this is a YouTube video that has been downloaded and should be played as local
     // This supports the smart routing functionality
@@ -209,7 +208,6 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
       const downloadedCheck = await SmartPlaybackRouter.shouldUseDownloadedVersion(videoId);
       
       if (downloadedCheck.useDownloaded && downloadedCheck.downloadedVideo) {
-        logVerbose('[Main] Converting downloaded YouTube video to local format for playback:', videoId);
         const localVideo = await SmartPlaybackRouter.createLocalVideoFromDownload(
           downloadedCheck.downloadedVideo,
           navigationContext
