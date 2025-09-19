@@ -948,6 +948,15 @@ export function registerFavoritesHandlers() {
         favorites.videos.splice(existingIndex, 1);
         fs.writeFileSync(favoritesPath, JSON.stringify(favorites, null, 2));
         logVerbose('[IPC] Removed from favorites:', videoId);
+
+        // Trigger video sources refresh to update favorites source
+        setTimeout(() => {
+          const { loadVideosFromSources } = require('../services/videoDataService');
+          loadVideosFromSources().catch((error: any) => {
+            log.error('[IPC] Error refreshing video sources after favorite removal:', error);
+          });
+        }, 100);
+
         return { isFavorite: false };
       } else {
         // Add to favorites
@@ -964,6 +973,15 @@ export function registerFavoritesHandlers() {
 
         fs.writeFileSync(favoritesPath, JSON.stringify(favorites, null, 2));
         logVerbose('[IPC] Added to favorites:', videoId);
+
+        // Trigger video sources refresh to update favorites source
+        setTimeout(() => {
+          const { loadVideosFromSources } = require('../services/videoDataService');
+          loadVideosFromSources().catch((error: any) => {
+            log.error('[IPC] Error refreshing video sources after favorite addition:', error);
+          });
+        }, 100);
+
         return { isFavorite: true };
       }
     } catch (error) {
