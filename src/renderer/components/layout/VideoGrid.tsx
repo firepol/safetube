@@ -40,6 +40,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
 
   // Use the favorite updates hook for real-time synchronization
   const {
+    favoriteUpdates,
     loadFavoriteStatusesWithSync,
     updateFavoriteStatus,
     getFavoriteStatus,
@@ -108,6 +109,13 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
 
     const timeoutId = setTimeout(() => {
       const videoIds = videos.map(v => v.id);
+      const youtubeVideoIds = videos.filter(v => v.type === 'youtube').map(v => v.id);
+
+      // Debug logging for YouTube videos
+      if (youtubeVideoIds.length > 0) {
+        logVerbose('[VideoGrid] Loading favorite statuses for YouTube videos:', youtubeVideoIds);
+      }
+
       if (videoIds.length > 0) {
         loadFavoriteStatusesWithSync(videoIds);
       }
@@ -118,14 +126,33 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
 
   // Update local state when videos prop changes
   useEffect(() => {
-    setUpdatedVideos(videos.map(video => ({
-      ...video,
-      showFavoriteIcon: showFavoriteIcons,
-      onFavoriteToggle: showFavoriteIcons ? handleFavoriteToggle : undefined,
-      // Use cached favorite status if available, with proper fallback
-      isFavorite: hasFavoriteStatus(video.id) ? getFavoriteStatus(video.id) : (video.isFavorite || false)
-    })));
-  }, [videos, showFavoriteIcons, hasFavoriteStatus, getFavoriteStatus]);
+    setUpdatedVideos(videos.map(video => {
+      const hasStatus = hasFavoriteStatus(video.id);
+      const cachedStatus = hasStatus ? getFavoriteStatus(video.id) : null;
+      const finalFavorite = hasStatus ? cachedStatus : (video.isFavorite || false);
+
+      // Debug logging for YouTube videos to understand favorite status resolution
+      if (video.type === 'youtube') {
+        logVerbose('[VideoGrid] YouTube video favorite status resolution:', {
+          videoId: video.id,
+          title: video.title,
+          hasStatus,
+          cachedStatus,
+          originalIsFavorite: video.isFavorite,
+          finalFavorite,
+          showFavoriteIcons
+        });
+      }
+
+      return {
+        ...video,
+        showFavoriteIcon: showFavoriteIcons,
+        onFavoriteToggle: showFavoriteIcons ? handleFavoriteToggle : undefined,
+        // Use cached favorite status if available, with proper fallback
+        isFavorite: finalFavorite
+      };
+    }));
+  }, [videos, showFavoriteIcons, hasFavoriteStatus, getFavoriteStatus, favoriteUpdates]);
 
   const groupedVideos = groupByType
     ? updatedVideos.reduce((acc, video) => {
