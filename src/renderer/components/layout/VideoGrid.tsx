@@ -100,12 +100,16 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
     }
   };
 
-  // Load favorite statuses when videos change (bulk operation for efficiency with sync)
+  // Load favorite statuses when videos change (debounced to prevent rapid calls)
   useEffect(() => {
-    if (enableFavoriteSync && videos.length > 0) {
+    if (!enableFavoriteSync || videos.length === 0) return;
+
+    const timeoutId = setTimeout(() => {
       const videoIds = videos.map(v => v.id);
       loadFavoriteStatusesWithSync(videoIds);
-    }
+    }, 100); // Small debounce to prevent rapid successive calls
+
+    return () => clearTimeout(timeoutId);
   }, [videos, enableFavoriteSync, loadFavoriteStatusesWithSync]);
 
   // Update local state when videos prop changes

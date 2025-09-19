@@ -23,6 +23,7 @@ export function useFavoriteUpdates(options: UseFavoriteUpdatesOptions = {}) {
   const [favoriteUpdates, setFavoriteUpdates] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [syncEnabled] = useState(options.enableRealTimeSync !== false);
+  const [isLoadingStatuses, setIsLoadingStatuses] = useState(false);
 
   // Bulk load favorite statuses for multiple videos
   const loadFavoriteStatuses = useCallback(async (videoIds: string[]) => {
@@ -106,17 +107,20 @@ export function useFavoriteUpdates(options: UseFavoriteUpdatesOptions = {}) {
     }
   }, []);
 
-  // Handle real-time sync events
+  // Handle real-time sync events (only set up once per component)
   useEffect(() => {
     if (!syncEnabled) return;
 
     logVerbose('[useFavoriteUpdates] Setting up real-time sync listener');
 
     const unsubscribe = FavoritesSyncService.subscribe((event: FavoriteSyncEvent) => {
-      logVerbose('[useFavoriteUpdates] Received sync event:', {
-        videoId: event.videoId,
-        isFavorite: event.isFavorite
-      });
+      // Only log for actual user actions, not bulk loads
+      if (event.source !== 'bulk-load') {
+        logVerbose('[useFavoriteUpdates] Received sync event:', {
+          videoId: event.videoId,
+          isFavorite: event.isFavorite
+        });
+      }
 
       // Update local state
       setFavoriteUpdates(prev => ({
@@ -124,8 +128,8 @@ export function useFavoriteUpdates(options: UseFavoriteUpdatesOptions = {}) {
         [event.videoId]: event.isFavorite
       }));
 
-      // Call callback if provided
-      if (options.onFavoriteUpdate) {
+      // Call callback if provided (but not for bulk loads to prevent loops)
+      if (options.onFavoriteUpdate && event.source !== 'bulk-load') {
         options.onFavoriteUpdate(event.videoId, event.isFavorite);
       }
     });
@@ -134,7 +138,7 @@ export function useFavoriteUpdates(options: UseFavoriteUpdatesOptions = {}) {
       logVerbose('[useFavoriteUpdates] Cleaning up real-time sync listener');
       unsubscribe();
     };
-  }, [syncEnabled, options.onFavoriteUpdate]);
+  }, [syncEnabled]); // Remove onFavoriteUpdate from deps to prevent re-setup
 
   // Auto-sync on mount if enabled
   useEffect(() => {
@@ -160,24 +164,32 @@ export function useFavoriteUpdates(options: UseFavoriteUpdatesOptions = {}) {
 
   // Load statuses with synchronization (but without broadcasting to prevent loops)
   const loadFavoriteStatusesWithSync = useCallback(async (videoIds: string[]) => {
-    if (syncEnabled) {
-      // Use the sync service for loading but don't broadcast to prevent infinite loops
-      const statusMap = await FavoritesSyncService.loadAndSyncStatuses(videoIds);
+    if (videoIds.length === 0 || isLoadingStatuses) return new Map();
 
-      // Update local state without triggering callbacks
-      setFavoriteUpdates(prev => {
-        const newUpdates = { ...prev };
-        statusMap.forEach((isFavorite, videoId) => {
-          newUpdates[videoId] = isFavorite;
+    try {
+      setIsLoadingStatuses(true);
+
+      if (syncEnabled) {
+        // Use the sync service for loading but don't broadcast to prevent infinite loops
+        const statusMap = await FavoritesSyncService.loadAndSyncStatuses(videoIds);
+
+        // Update local state without triggering callbacks
+        setFavoriteUpdates(prev => {
+          const newUpdates = { ...prev };
+          statusMap.forEach((isFavorite, videoId) => {
+            newUpdates[videoId] = isFavorite;
+          });
+          return newUpdates;
         });
-        return newUpdates;
-      });
 
-      return statusMap;
-    } else {
-      return loadFavoriteStatuses(videoIds);
+        return statusMap;
+      } else {
+        return loadFavoriteStatuses(videoIds);
+      }
+    } finally {
+      setIsLoadingStatuses(false);
     }
-  }, [syncEnabled, loadFavoriteStatuses]);
+  }, [syncEnabled, loadFavoriteStatuses, isLoadingStatuses]);
 
   return {
     favoriteUpdates,
