@@ -401,6 +401,18 @@ export const SourcePage: React.FC = () => {
           const { isWatched, isClicked } = getVideoStatus(video.id);
           const isFavorite = favoriteVideos.has(video.id);
 
+          // Debug logging for favorites to understand data transformation
+          if (sourceId === 'favorites') {
+            logVerbose('[SourcePage] Processing favorite video for display:', {
+              id: video.id,
+              title: video.title,
+              thumbnail: video.thumbnail,
+              isAvailable: video.isAvailable,
+              isFallback: video.isFallback,
+              type: video.type
+            });
+          }
+
           return {
             id: video.id,
             thumbnail: video.thumbnail || '/placeholder-thumbnail.svg',

@@ -769,15 +769,42 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
                   }
                 }
 
-                // Fallback: create video from favorite data
+                // Fallback: create video from favorite data with proper thumbnail processing
+                let bestThumbnail = favorite.thumbnail || '';
+
+                // Check for cached thumbnail for local videos (same logic as videoDataService.ts)
+                if ((!bestThumbnail || bestThumbnail.trim() === '') && favorite.sourceType === 'local') {
+                  try {
+                    const { parseVideoId } = await import('../shared/fileUtils');
+                    const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
+                    const { getThumbnailUrl } = await import('./services/thumbnailService');
+                    const parsed = parseVideoId(favorite.videoId);
+
+                    if (parsed.success && parsed.parsed?.type === 'local') {
+                      const cacheKey = getThumbnailCacheKey(favorite.videoId, 'local');
+                      const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
+
+                      if (fs.existsSync(cachedThumbnailPath)) {
+                        const thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
+                        bestThumbnail = thumbnailUrl;
+                        logVerbose('[Main] Using cached thumbnail for getPaginatedVideos favorite:', favorite.videoId, '->', thumbnailUrl);
+                      }
+                    }
+                  } catch (error) {
+                    logVerbose('[Main] Error getting cached thumbnail for getPaginatedVideos favorite:', favorite.videoId, error);
+                  }
+                }
+
                 return {
                   id: favorite.videoId,
                   title: favorite.title,
-                  thumbnail: favorite.thumbnail || '',
+                  thumbnail: bestThumbnail,
                   type: favorite.sourceType,
                   duration: favorite.duration || 0,
                   sourceId: favorite.sourceType,
                   sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
+                  isAvailable: true, // Favorites should always be available
+                  isFallback: false // Never show fallback UI for favorites
                 };
               } catch (error) {
                 logVerbose('[Main] Error in getVideoData for favorite:', videoId, error);
@@ -789,27 +816,81 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
               videosWithMetadata.push(videoData);
             } else {
               // Fallback video object for videos that can't be loaded like History page does
+              let bestThumbnail = favorite.thumbnail || '';
+
+              // Check for cached thumbnail for local videos (same logic as videoDataService.ts)
+              if ((!bestThumbnail || bestThumbnail.trim() === '') && favorite.sourceType === 'local') {
+                try {
+                  const { parseVideoId } = await import('../shared/fileUtils');
+                  const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
+                  const { getThumbnailUrl } = await import('./services/thumbnailService');
+                  const parsed = parseVideoId(favorite.videoId);
+
+                  if (parsed.success && parsed.parsed?.type === 'local') {
+                    const cacheKey = getThumbnailCacheKey(favorite.videoId, 'local');
+                    const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
+
+                    if (fs.existsSync(cachedThumbnailPath)) {
+                      const thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
+                      bestThumbnail = thumbnailUrl;
+                      logVerbose('[Main] Using cached thumbnail for getPaginatedVideos fallback favorite:', favorite.videoId, '->', thumbnailUrl);
+                    }
+                  }
+                } catch (error) {
+                  logVerbose('[Main] Error getting cached thumbnail for getPaginatedVideos fallback favorite:', favorite.videoId, error);
+                }
+              }
+
               videosWithMetadata.push({
                 id: favorite.videoId,
                 title: favorite.title,
-                thumbnail: favorite.thumbnail || '',
+                thumbnail: bestThumbnail,
                 duration: favorite.duration || 0,
                 type: favorite.sourceType,
                 sourceId: favorite.sourceType, // Use original source type as sourceId
                 sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
+                isAvailable: true, // Favorites should always be available
+                isFallback: false // Never show fallback UI for favorites
               });
             }
           } catch (error) {
             logVerbose('[Main] Error loading video data for favorite:', favorite.videoId, error);
             // Create fallback entry like History page does
+            let bestThumbnail = favorite.thumbnail || '';
+
+            // Check for cached thumbnail for local videos (same logic as videoDataService.ts)
+            if ((!bestThumbnail || bestThumbnail.trim() === '') && favorite.sourceType === 'local') {
+              try {
+                const { parseVideoId } = await import('../shared/fileUtils');
+                const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
+                const { getThumbnailUrl } = await import('./services/thumbnailService');
+                const parsed = parseVideoId(favorite.videoId);
+
+                if (parsed.success && parsed.parsed?.type === 'local') {
+                  const cacheKey = getThumbnailCacheKey(favorite.videoId, 'local');
+                  const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
+
+                  if (fs.existsSync(cachedThumbnailPath)) {
+                    const thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
+                    bestThumbnail = thumbnailUrl;
+                    logVerbose('[Main] Using cached thumbnail for getPaginatedVideos error fallback favorite:', favorite.videoId, '->', thumbnailUrl);
+                  }
+                }
+              } catch (thumbnailError) {
+                logVerbose('[Main] Error getting cached thumbnail for getPaginatedVideos error fallback favorite:', favorite.videoId, thumbnailError);
+              }
+            }
+
             videosWithMetadata.push({
               id: favorite.videoId,
               title: favorite.title,
-              thumbnail: favorite.thumbnail || '',
+              thumbnail: bestThumbnail,
               duration: favorite.duration || 0,
               type: favorite.sourceType,
               sourceId: favorite.sourceType,
               sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
+              isAvailable: true, // Favorites should always be available
+              isFallback: false // Never show fallback UI for favorites
             });
           }
         }
