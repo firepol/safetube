@@ -7,6 +7,8 @@ import { logVerbose } from '../lib/logging';
 import { audioWarningService } from '../services/audioWarning';
 import { useDownload } from '../hooks/useDownload';
 import { DownloadUI } from '../components/video/DownloadUI';
+import { FavoriteButton } from '../components/video/FavoriteButton';
+import { FavoritesService } from '../services/favoritesService';
 
 
 const PLAYER_CONTAINER_ID = 'youtube-player-container';
@@ -27,6 +29,9 @@ export const YouTubePlayerPage: React.FC = () => {
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
+
+  // Favorite state management
+  const [isFavorite, setIsFavorite] = useState<boolean>(false);
 
   // Download state management using shared hook
   const {
@@ -169,6 +174,23 @@ export const YouTubePlayerPage: React.FC = () => {
     }
   }, [video?.id, video?.type, checkDownloadStatus]);
 
+  // Load initial favorite status when video loads
+  useEffect(() => {
+    const loadFavoriteStatus = async () => {
+      if (video?.id) {
+        try {
+          const status = await FavoritesService.isFavorite(video.id, 'youtube');
+          setIsFavorite(status);
+          logVerbose('[YouTubePlayerPage] Loaded favorite status for', video.id, ':', status);
+        } catch (error) {
+          logVerbose('[YouTubePlayerPage] Error loading favorite status:', error);
+        }
+      }
+    };
+
+    loadFavoriteStatus();
+  }, [video?.id]);
+
     // Time tracking state
   const timeTrackingRef = useRef<{
     startTime: number;
@@ -245,6 +267,12 @@ export const YouTubePlayerPage: React.FC = () => {
       handleResetDownload(video.id);
     }
   }, [video?.id, handleResetDownload]);
+
+  // Favorite handlers
+  const handleFavoriteToggle = useCallback(async (videoId: string, newFavoriteStatus: boolean) => {
+    setIsFavorite(newFavoriteStatus);
+    logVerbose('[YouTubePlayerPage] Favorite toggled for video:', videoId, 'new status:', newFavoriteStatus);
+  }, []);
 
   // Initialize YouTube player
   useEffect(() => {
@@ -345,6 +373,31 @@ export const YouTubePlayerPage: React.FC = () => {
     };
   }, [isVideoPlaying, video, updateTimeTracking]);
 
+  // Keyboard shortcuts for favorites (F key)
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle F key when not typing in an input field
+      if (event.key === 'f' || event.key === 'F') {
+        const target = event.target as HTMLElement;
+        if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+          return;
+        }
+
+        event.preventDefault();
+        // Trigger favorite toggle by simulating click on the favorite button
+        const favoriteButton = document.querySelector('[data-testid="favorite-button"]') as HTMLButtonElement;
+        if (favoriteButton) {
+          favoriteButton.click();
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
+
 
 
   return (
@@ -370,6 +423,33 @@ export const YouTubePlayerPage: React.FC = () => {
         onResetDownload={onResetDownload}
         showResetButton={downloadStatus.status === 'completed'}
       />
+
+      {/* Favorites UI */}
+      {video && (
+        <div className="p-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <FavoriteButton
+                videoId={video.id}
+                source={video.url || 'youtube'}
+                type="youtube"
+                title={video.title}
+                thumbnail={video.thumbnail || ''}
+                duration={video.duration || 0}
+                lastWatched={new Date().toISOString()}
+                isFavorite={isFavorite}
+                onToggle={handleFavoriteToggle}
+                size="large"
+                showLabel={true}
+                data-testid="favorite-button"
+              />
+              <div className="text-sm text-gray-600">
+                Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">F</kbd> to toggle favorite
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </BasePlayerPage>
   );
 }; 

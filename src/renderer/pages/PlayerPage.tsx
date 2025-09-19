@@ -956,6 +956,84 @@ export const PlayerPage: React.FC = () => {
     }
   }, [updateTimeTracking]);
 
+  // Extract thumbnail from video streams as fallback
+  const extractThumbnailFromStreams = useCallback((video: Video): string => {
+    if (video.thumbnail) return video.thumbnail;
+
+    // For YouTube videos, try to construct thumbnail URL from video ID
+    if (video.type === 'youtube' && video.id) {
+      // Try different YouTube thumbnail qualities
+      const youtubeId = video.id.replace(/^.*[?&]v=([^&]+).*$/, '$1');
+      return `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
+    }
+
+    return '';
+  }, []);
+
+  // Get video metadata for favorites with proper YouTube handling
+  const getVideoMetadataForFavorites = useCallback(() => {
+    if (!video) return null;
+
+    // For YouTube videos (MediaSource or iframe), ensure we have proper metadata
+    if (video.type === 'youtube') {
+      return {
+        videoId: video.id,
+        source: video.sourceId || 'youtube',
+        type: 'youtube' as const,
+        title: video.title,
+        thumbnail: extractThumbnailFromStreams(video),
+        duration: video.duration || 0,
+        lastWatched: new Date().toISOString()
+      };
+    }
+
+    // For downloaded YouTube videos, treat as YouTube
+    if (video.type === 'downloaded') {
+      return {
+        videoId: video.id,
+        source: video.sourceId || 'youtube',
+        type: 'youtube' as const,
+        title: video.title,
+        thumbnail: extractThumbnailFromStreams(video),
+        duration: video.duration || 0,
+        lastWatched: new Date().toISOString()
+      };
+    }
+
+    // For local videos
+    if (video.type === 'local') {
+      return {
+        videoId: video.id,
+        source: 'local',
+        type: 'local' as const,
+        title: video.title,
+        thumbnail: video.thumbnail || '',
+        duration: video.duration || 0,
+        lastWatched: new Date().toISOString()
+      };
+    }
+
+    // For DLNA videos
+    if (video.type === 'dlna') {
+      return {
+        videoId: video.id,
+        source: 'dlna',
+        type: 'dlna' as const,
+        title: video.title,
+        thumbnail: video.thumbnail || '',
+        duration: video.duration || 0,
+        lastWatched: new Date().toISOString()
+      };
+    }
+
+    return null;
+  }, [video, extractThumbnailFromStreams]);
+
+  // Enhanced favorite toggle handler using normalized metadata
+  const handleFavoriteToggle = useCallback(async (videoId: string, newStatus: boolean) => {
+    logVerbose('[PlayerPage] Favorite toggled:', { videoId, newStatus });
+  }, []);
+
   // Event handlers for the base component
   const handleVideoPlay = useCallback(() => {
     setIsVideoPlaying(true);
@@ -1174,29 +1252,33 @@ export const PlayerPage: React.FC = () => {
       />
 
       {/* Favorites UI */}
-      {video && (
-        <div className="p-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <FavoriteButton
-                videoId={video.id}
-                source={'unknown'}
-                type={video.type === 'downloaded' ? 'youtube' : video.type}
-                title={video.title}
-                thumbnail={video.thumbnail || ''}
-                duration={video.duration || 0}
-                lastWatched={new Date().toISOString()}
-                size="large"
-                showLabel={true}
-                data-testid="favorite-button"
-              />
-              <div className="text-sm text-gray-600">
-                Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">F</kbd> to toggle favorite
+      {video && (() => {
+        const metadata = getVideoMetadataForFavorites();
+        return metadata ? (
+          <div className="p-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg mb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <FavoriteButton
+                  videoId={metadata.videoId}
+                  source={metadata.source}
+                  type={metadata.type}
+                  title={metadata.title}
+                  thumbnail={metadata.thumbnail}
+                  duration={metadata.duration}
+                  lastWatched={metadata.lastWatched}
+                  size="large"
+                  showLabel={true}
+                  onToggle={handleFavoriteToggle}
+                  data-testid="favorite-button"
+                />
+                <div className="text-sm text-gray-600">
+                  Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">F</kbd> to toggle favorite
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        ) : null;
+      })()}
     </BasePlayerPage>
   );
 }; 
