@@ -56,6 +56,8 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
             : video
         )
       );
+
+      logVerbose('[VideoGrid] Updated favorite status for video:', { videoId, isFavorite });
     },
     autoSync: false, // Disable auto-sync to prevent infinite loops
     enableRealTimeSync: enableFavoriteSync
@@ -106,8 +108,10 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
 
     const timeoutId = setTimeout(() => {
       const videoIds = videos.map(v => v.id);
-      loadFavoriteStatusesWithSync(videoIds);
-    }, 100); // Small debounce to prevent rapid successive calls
+      if (videoIds.length > 0) {
+        loadFavoriteStatusesWithSync(videoIds);
+      }
+    }, 50); // Reduced debounce for better responsiveness
 
     return () => clearTimeout(timeoutId);
   }, [videos, enableFavoriteSync, loadFavoriteStatusesWithSync]);
@@ -118,8 +122,8 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
       ...video,
       showFavoriteIcon: showFavoriteIcons,
       onFavoriteToggle: showFavoriteIcons ? handleFavoriteToggle : undefined,
-      // Use cached favorite status if available
-      isFavorite: hasFavoriteStatus(video.id) ? getFavoriteStatus(video.id) : video.isFavorite
+      // Use cached favorite status if available, with proper fallback
+      isFavorite: hasFavoriteStatus(video.id) ? getFavoriteStatus(video.id) : (video.isFavorite || false)
     })));
   }, [videos, showFavoriteIcons, hasFavoriteStatus, getFavoriteStatus]);
 

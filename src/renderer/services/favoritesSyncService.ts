@@ -103,6 +103,9 @@ export class FavoritesSyncService {
         lastWatched
       );
 
+      // Clear favorites cache to ensure fresh data on next load
+      FavoritesService.clearCache();
+
       // Broadcast the change to all listeners
       this.broadcast({
         videoId: normalizedSource.id,
@@ -134,11 +137,11 @@ export class FavoritesSyncService {
    */
   static async loadAndSyncStatuses(videoIds: string[]): Promise<Map<string, boolean>> {
     try {
-      logVerbose('[FavoritesSyncService] Loading statuses for', videoIds.length, 'videos');
+      // logVerbose('[FavoritesSyncService] Loading statuses for', videoIds.length, 'videos');
 
       const statusMap = await FavoritesService.getFavoritesStatus(videoIds);
 
-      logVerbose('[FavoritesSyncService] Loaded statuses for', statusMap.size, 'videos');
+      // logVerbose('[FavoritesSyncService] Loaded statuses for', statusMap.size, 'videos');
       return statusMap;
     } catch (error) {
       logVerbose('[FavoritesSyncService] Error loading statuses:', error);

@@ -410,7 +410,10 @@ export class FavoritesService {
 
       // If all are cached, return immediately
       if (uncachedIds.length === 0) {
-        logVerbose('[FavoritesService] All favorite statuses found in cache');
+        // Only log this occasionally to avoid spam
+        if (Math.random() < 0.01) { // Log only 1% of the time
+          logVerbose('[FavoritesService] All favorite statuses found in cache');
+        }
         return statusMap;
       }
 

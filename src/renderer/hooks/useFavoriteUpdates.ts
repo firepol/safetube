@@ -138,7 +138,7 @@ export function useFavoriteUpdates(options: UseFavoriteUpdatesOptions = {}) {
       logVerbose('[useFavoriteUpdates] Cleaning up real-time sync listener');
       unsubscribe();
     };
-  }, [syncEnabled]); // Remove onFavoriteUpdate from deps to prevent re-setup
+  }, [syncEnabled, options.onFavoriteUpdate]); // Keep callback in deps for proper updates
 
   // Auto-sync on mount if enabled
   useEffect(() => {
