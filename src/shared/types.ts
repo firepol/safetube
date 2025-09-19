@@ -257,4 +257,27 @@ export interface FavoritesOperationResult {
   success: boolean;
   error?: string;
   data?: FavoriteVideo | FavoriteVideo[] | FavoritesConfig | boolean;
+}
+
+// YouTube metadata normalization types
+export interface NormalizedVideoSource {
+  id: string;                           // Normalized video ID
+  originalId: string;                   // Original ID as provided
+  type: 'youtube' | 'local' | 'dlna';  // Source type
+  title: string;                        // Video title
+  thumbnail?: string;                   // Thumbnail URL/path
+  duration?: number;                    // Duration in seconds
+  url?: string;                         // Original URL if available
+  metadata: {                           // Additional metadata
+    isValidId: boolean;                 // Whether ID passed validation
+    thumbnailGenerated: boolean;        // Whether thumbnail was generated vs provided
+    normalizedAt: string;               // ISO timestamp of normalization
+  };
+}
+
+export interface VideoMetadataValidationResult {
+  isValid: boolean;
+  errors: string[];
+  warnings: string[];
+  normalized?: NormalizedVideoSource;
 } 

@@ -11,6 +11,13 @@ import {
   validateFavoritesConfig,
   sanitizeFavoritesConfig,
   videoToMetadata,
+  extractYouTubeVideoId,
+  isValidYouTubeVideoId,
+  generateYouTubeThumbnailUrls,
+  getBestYouTubeThumbnail,
+  normalizeVideoSource,
+  validateAndNormalizeVideoMetadata,
+  normalizedSourceToVideoMetadata,
 } from './favoritesUtils';
 import { VideoMetadata, FavoritesConfig } from './types';
 
@@ -305,6 +312,449 @@ describe('Favorites Utilities', () => {
       const byTitleDesc = getFavorites(configWithFavorites, 'title', 'desc');
       expect(byTitleDesc[0].title).toBe('B Video');
       expect(byTitleDesc[1].title).toBe('A Video');
+    });
+  });
+
+  describe('YouTube Video ID Extraction and Validation', () => {
+    describe('extractYouTubeVideoId', () => {
+      it('should extract video ID from standard YouTube URLs', () => {
+        const testCases = [
+          ['https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'dQw4w9WgXcQ'],
+          ['https://youtube.com/watch?v=dQw4w9WgXcQ', 'dQw4w9WgXcQ'],
+          ['https://m.youtube.com/watch?v=dQw4w9WgXcQ', 'dQw4w9WgXcQ'],
+          ['https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s', 'dQw4w9WgXcQ'],
+          ['https://www.youtube.com/watch?list=PLxxxxxx&v=dQw4w9WgXcQ', 'dQw4w9WgXcQ'],
+        ];
+
+        testCases.forEach(([url, expectedId]) => {
+          expect(extractYouTubeVideoId(url)).toBe(expectedId);
+        });
+      });
+
+      it('should extract video ID from short YouTube URLs', () => {
+        expect(extractYouTubeVideoId('https://youtu.be/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
+        expect(extractYouTubeVideoId('https://youtu.be/dQw4w9WgXcQ?t=30')).toBe('dQw4w9WgXcQ');
+      });
+
+      it('should extract video ID from plain video ID string', () => {
+        expect(extractYouTubeVideoId('dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
+      });
+
+      it('should return null for invalid URLs', () => {
+        const invalidUrls = [
+          '',
+          'not-a-url',
+          'https://example.com',
+          'https://www.youtube.com/channel/UCxxxxxx',
+          'https://www.youtube.com/playlist?list=PLxxxxxx',
+          null as any,
+          undefined as any,
+          123 as any,
+        ];
+
+        invalidUrls.forEach((url) => {
+          expect(extractYouTubeVideoId(url)).toBeNull();
+        });
+      });
+    });
+
+    describe('isValidYouTubeVideoId', () => {
+      it('should validate correct YouTube video IDs', () => {
+        const validIds = [
+          'dQw4w9WgXcQ',
+          'aBcDeFgHiJk',
+          '123456789-_',
+          '_-123456789',
+          'a1B2c3D4e5F',
+        ];
+
+        validIds.forEach((id) => {
+          expect(isValidYouTubeVideoId(id)).toBe(true);
+        });
+      });
+
+      it('should reject invalid YouTube video IDs', () => {
+        const invalidIds = [
+          '',
+          'short',
+          'toolongvideoid123',
+          'invalid chars!',
+          'dQw4w9WgXcQ@',
+          'dQw4w9WgXc',  // too short
+          'dQw4w9WgXcQQ', // too long
+          null as any,
+          undefined as any,
+          123 as any,
+        ];
+
+        invalidIds.forEach((id) => {
+          expect(isValidYouTubeVideoId(id)).toBe(false);
+        });
+      });
+    });
+  });
+
+  describe('YouTube Thumbnail URL Generation', () => {
+    describe('generateYouTubeThumbnailUrls', () => {
+      it('should generate all thumbnail URLs for valid video ID', () => {
+        const thumbnails = generateYouTubeThumbnailUrls('dQw4w9WgXcQ');
+
+        expect(thumbnails.maxres).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg');
+        expect(thumbnails.high).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+        expect(thumbnails.medium).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg');
+        expect(thumbnails.default).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg');
+        expect(thumbnails.fallback).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+      });
+
+      it('should throw error for invalid video ID', () => {
+        expect(() => generateYouTubeThumbnailUrls('invalid')).toThrow('Invalid YouTube video ID: invalid');
+        expect(() => generateYouTubeThumbnailUrls('')).toThrow('Invalid YouTube video ID: ');
+      });
+    });
+
+    describe('getBestYouTubeThumbnail', () => {
+      it('should return high quality thumbnail by default', () => {
+        const thumbnail = getBestYouTubeThumbnail('dQw4w9WgXcQ');
+        expect(thumbnail).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+      });
+
+      it('should return preferred quality when specified', () => {
+        expect(getBestYouTubeThumbnail('dQw4w9WgXcQ', 'maxres')).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg');
+        expect(getBestYouTubeThumbnail('dQw4w9WgXcQ', 'medium')).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/mqdefault.jpg');
+        expect(getBestYouTubeThumbnail('dQw4w9WgXcQ', 'default')).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/default.jpg');
+      });
+
+      it('should fallback to high quality for invalid preferred quality', () => {
+        const thumbnail = getBestYouTubeThumbnail('dQw4w9WgXcQ', 'invalid' as any);
+        expect(thumbnail).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+      });
+    });
+  });
+
+  describe('Video Source Normalization', () => {
+    describe('normalizeVideoSource', () => {
+      it('should normalize YouTube videos correctly', () => {
+        const source = {
+          id: 'dQw4w9WgXcQ',
+          type: 'youtube' as const,
+          title: 'Test YouTube Video',
+          duration: 212,
+        };
+
+        const normalized = normalizeVideoSource(source);
+
+        expect(normalized.id).toBe('dQw4w9WgXcQ');
+        expect(normalized.originalId).toBe('dQw4w9WgXcQ');
+        expect(normalized.type).toBe('youtube');
+        expect(normalized.title).toBe('Test YouTube Video');
+        expect(normalized.duration).toBe(212);
+        expect(normalized.thumbnail).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+        expect(normalized.metadata.isValidId).toBe(true);
+        expect(normalized.metadata.thumbnailGenerated).toBe(true);
+        expect(normalized.metadata.normalizedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+      });
+
+      it('should auto-detect YouTube videos by ID format', () => {
+        const source = {
+          id: 'dQw4w9WgXcQ',
+          title: 'Auto-detected YouTube Video',
+        };
+
+        const normalized = normalizeVideoSource(source);
+
+        expect(normalized.type).toBe('youtube');
+        expect(normalized.metadata.isValidId).toBe(true);
+      });
+
+      it('should preserve provided thumbnail for YouTube videos', () => {
+        const customThumbnail = 'https://custom.example.com/thumb.jpg';
+        const source = {
+          id: 'dQw4w9WgXcQ',
+          type: 'youtube' as const,
+          title: 'YouTube Video with Custom Thumbnail',
+          thumbnail: customThumbnail,
+        };
+
+        const normalized = normalizeVideoSource(source);
+
+        expect(normalized.thumbnail).toBe(customThumbnail);
+        expect(normalized.metadata.thumbnailGenerated).toBe(false);
+      });
+
+      it('should generate fallback thumbnail for invalid YouTube thumbnails', () => {
+        const source = {
+          id: 'dQw4w9WgXcQ',
+          type: 'youtube' as const,
+          title: 'YouTube Video with Placeholder',
+          thumbnail: '/placeholder-thumbnail.svg',
+        };
+
+        const normalized = normalizeVideoSource(source);
+
+        expect(normalized.thumbnail).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+        expect(normalized.metadata.thumbnailGenerated).toBe(true);
+      });
+
+      it('should normalize local videos correctly', () => {
+        const source = {
+          id: '/path/to/video.mp4',
+          type: 'local' as const,
+          title: 'Local Video',
+          thumbnail: '/path/to/thumb.jpg',
+          duration: 300,
+        };
+
+        const normalized = normalizeVideoSource(source);
+
+        expect(normalized.id).toBe('local:/path/to/video.mp4');
+        expect(normalized.originalId).toBe('/path/to/video.mp4');
+        expect(normalized.type).toBe('local');
+        expect(normalized.title).toBe('Local Video');
+        expect(normalized.thumbnail).toBe('/path/to/thumb.jpg');
+        expect(normalized.metadata.isValidId).toBe(true);
+        expect(normalized.metadata.thumbnailGenerated).toBe(false);
+      });
+
+      it('should auto-detect local videos by path format', () => {
+        const source = {
+          id: '/home/user/videos/movie.mkv',
+          title: 'Auto-detected Local Video',
+        };
+
+        const normalized = normalizeVideoSource(source);
+
+        expect(normalized.type).toBe('local');
+        expect(normalized.id).toBe('local:/home/user/videos/movie.mkv');
+      });
+
+      it('should normalize DLNA videos correctly', () => {
+        const source = {
+          id: 'server:8200/video.mp4',
+          type: 'dlna' as const,
+          title: 'DLNA Video',
+          url: 'http://192.168.1.100:8200/video.mp4',
+        };
+
+        const normalized = normalizeVideoSource(source);
+
+        expect(normalized.id).toBe('dlna:server:8200/video.mp4');
+        expect(normalized.originalId).toBe('server:8200/video.mp4');
+        expect(normalized.type).toBe('dlna');
+        expect(normalized.title).toBe('DLNA Video');
+        expect(normalized.url).toBe('http://192.168.1.100:8200/video.mp4');
+        expect(normalized.metadata.isValidId).toBe(true);
+        expect(normalized.metadata.thumbnailGenerated).toBe(false);
+      });
+
+      it('should auto-detect DLNA videos by colon format', () => {
+        const source = {
+          id: '192.168.1.100:8200/stream.mkv',
+          title: 'Auto-detected DLNA Video',
+        };
+
+        const normalized = normalizeVideoSource(source);
+
+        expect(normalized.type).toBe('dlna');
+        expect(normalized.id).toBe('dlna:192.168.1.100:8200/stream.mkv');
+      });
+
+      it('should handle missing titles with defaults', () => {
+        const sources = [
+          { id: 'dQw4w9WgXcQ', title: '', type: 'youtube' as const },
+          { id: '/path/video.mp4', title: '', type: 'local' as const },
+          { id: 'server:8200/video.mp4', title: '', type: 'dlna' as const },
+        ];
+
+        const results = sources.map(normalizeVideoSource);
+
+        expect(results[0].title).toBe('Unknown Video');
+        expect(results[1].title).toBe('Local Video');
+        expect(results[2].title).toBe('DLNA Video');
+      });
+    });
+  });
+
+  describe('Metadata Validation and Error Handling', () => {
+    describe('validateAndNormalizeVideoMetadata', () => {
+      it('should validate and normalize valid YouTube metadata', () => {
+        const metadata: VideoMetadata = {
+          id: 'dQw4w9WgXcQ',
+          type: 'youtube',
+          title: 'Valid YouTube Video',
+          duration: 212,
+        };
+
+        const result = validateAndNormalizeVideoMetadata(metadata);
+
+        expect(result.isValid).toBe(true);
+        expect(result.errors).toHaveLength(0);
+        expect(result.warnings).toHaveLength(0);
+        expect(result.normalized).toBeDefined();
+        expect(result.normalized!.type).toBe('youtube');
+        expect(result.normalized!.metadata.isValidId).toBe(true);
+      });
+
+      it('should detect invalid metadata objects', () => {
+        const invalidInputs = [
+          null,
+          undefined,
+          'not an object',
+          123,
+        ];
+
+        invalidInputs.forEach((input) => {
+          const result = validateAndNormalizeVideoMetadata(input as any);
+          expect(result.isValid).toBe(false);
+          expect(result.errors).toContain('Video metadata must be an object');
+        });
+
+        // Arrays need separate handling since they're objects but not valid metadata
+        const result = validateAndNormalizeVideoMetadata([] as any);
+        expect(result.isValid).toBe(false);
+        expect(result.errors.length).toBeGreaterThan(0);
+      });
+
+      it('should detect missing required fields', () => {
+        const invalidMetadata = [
+          { title: 'Missing ID' },
+          { id: 'test-id' }, // Missing title
+          { id: '', title: 'Empty ID' },
+          { id: 'test-id', title: '' }, // Empty title
+        ];
+
+        invalidMetadata.forEach((metadata) => {
+          const result = validateAndNormalizeVideoMetadata(metadata as any);
+          expect(result.isValid).toBe(false);
+          expect(result.errors.length).toBeGreaterThan(0);
+        });
+      });
+
+      it('should detect invalid video types', () => {
+        const metadata = {
+          id: 'test-id',
+          type: 'invalid-type',
+          title: 'Test Video',
+        };
+
+        const result = validateAndNormalizeVideoMetadata(metadata as any);
+        expect(result.isValid).toBe(false);
+        expect(result.errors).toContain('Video type must be one of: youtube, local, dlna');
+      });
+
+      it('should generate warnings for invalid duration', () => {
+        const metadata: VideoMetadata = {
+          id: 'dQw4w9WgXcQ',
+          type: 'youtube',
+          title: 'Video with Invalid Duration',
+          duration: -10,
+        };
+
+        const result = validateAndNormalizeVideoMetadata(metadata);
+        expect(result.isValid).toBe(true); // Still valid overall
+        expect(result.warnings).toContain('Video duration should be a positive number in seconds');
+      });
+
+      it('should generate warnings for missing optional fields', () => {
+        const metadata: VideoMetadata = {
+          id: 'invalid-id',
+          type: 'youtube',
+          title: 'Video with Warnings',
+        };
+
+        const result = validateAndNormalizeVideoMetadata(metadata);
+        expect(result.isValid).toBe(true);
+        expect(result.warnings).toContain('YouTube video ID format appears invalid');
+        expect(result.warnings).toContain('No duration information available for video');
+      });
+
+      it('should handle edge cases gracefully', () => {
+        // Test with metadata that passes basic validation but has edge case values
+        const metadata: VideoMetadata = {
+          id: 'short',  // Invalid YouTube ID length
+          type: 'youtube',
+          title: 'Edge Case Video',
+        };
+
+        const result = validateAndNormalizeVideoMetadata(metadata);
+
+        // Should still normalize successfully even with warnings
+        expect(result.isValid).toBe(true);
+        expect(result.warnings.some(warning => warning.includes('YouTube video ID format appears invalid'))).toBe(true);
+        expect(result.normalized).toBeDefined();
+        expect(result.normalized!.metadata.isValidId).toBe(false);
+      });
+    });
+
+    describe('normalizedSourceToVideoMetadata', () => {
+      it('should convert normalized source back to VideoMetadata', () => {
+        const normalized = normalizeVideoSource({
+          id: 'dQw4w9WgXcQ',
+          type: 'youtube',
+          title: 'Test Video',
+          thumbnail: 'custom-thumb.jpg',
+          duration: 212,
+          url: 'https://youtube.com/watch?v=dQw4w9WgXcQ',
+        });
+
+        const metadata = normalizedSourceToVideoMetadata(normalized);
+
+        expect(metadata.id).toBe('dQw4w9WgXcQ');
+        expect(metadata.type).toBe('youtube');
+        expect(metadata.title).toBe('Test Video');
+        expect(metadata.thumbnail).toBe('custom-thumb.jpg');
+        expect(metadata.duration).toBe(212);
+        expect(metadata.url).toBe('https://youtube.com/watch?v=dQw4w9WgXcQ');
+      });
+    });
+  });
+
+  describe('Integration Tests', () => {
+    it('should handle complete YouTube video favoriting workflow', () => {
+      // Simulate getting video metadata from YouTube player
+      const playerMetadata = {
+        id: 'dQw4w9WgXcQ',
+        title: 'Never Gonna Give You Up',
+        thumbnail: '', // Empty thumbnail to test fallback
+        duration: 212,
+      };
+
+      // Normalize the metadata
+      const normalized = normalizeVideoSource(playerMetadata);
+
+      // Validate and convert to VideoMetadata
+      const validation = validateAndNormalizeVideoMetadata(normalizedSourceToVideoMetadata(normalized));
+      expect(validation.isValid).toBe(true);
+
+      // Create favorite from normalized metadata
+      const favoriteMetadata = normalizedSourceToVideoMetadata(normalized);
+      const favorite = createFavoriteVideo(favoriteMetadata);
+
+      expect(favorite.videoId).toBe('dQw4w9WgXcQ');
+      expect(favorite.sourceType).toBe('youtube');
+      expect(favorite.title).toBe('Never Gonna Give You Up');
+      expect(favorite.thumbnail).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
+      expect(favorite.duration).toBe(212);
+    });
+
+    it('should handle URL extraction and normalization workflow', () => {
+      const youtubeUrl = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=30s';
+
+      // Extract video ID from URL
+      const videoId = extractYouTubeVideoId(youtubeUrl);
+      expect(videoId).toBe('dQw4w9WgXcQ');
+
+      // Validate the extracted ID
+      expect(isValidYouTubeVideoId(videoId!)).toBe(true);
+
+      // Normalize with extracted ID
+      const normalized = normalizeVideoSource({
+        id: videoId!,
+        title: 'Video from URL',
+      });
+
+      expect(normalized.type).toBe('youtube');
+      expect(normalized.metadata.isValidId).toBe(true);
+      expect(normalized.thumbnail).toBe('https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg');
     });
   });
 });
