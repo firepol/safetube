@@ -183,14 +183,6 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
         const videosWithWatchedData = await mergeWatchedData([localVideo]);
         const videoWithResume = videosWithWatchedData[0];
         
-        logVerbose('[Main] Returning downloaded video as local format:', {
-          id: videoWithResume.id,
-          type: videoWithResume.type,
-          title: videoWithResume.title,
-          filePath: videoWithResume.filePath,
-          hasNavigationContext: !!videoWithResume.navigationContext
-        });
-        
         return videoWithResume;
       }
     } catch (downloadError) {
@@ -245,7 +237,7 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
         const { mergeWatchedData } = await import('./fileUtils');
         const videosWithWatchedData = await mergeWatchedData([video]);
         const videoWithResume = videosWithWatchedData[0];
-
+        
         return videoWithResume;
       } catch (error) {
         log.error('[Main] Error handling local video:', error);
@@ -267,7 +259,6 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
       const { mergeWatchedData } = await import('./fileUtils');
       const videosWithWatchedData = await mergeWatchedData([video]);
       const videoWithResume = videosWithWatchedData[0];
-
 
       return videoWithResume;
     } else {
@@ -294,7 +285,6 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
           const { mergeWatchedData } = await import('./fileUtils');
           const videosWithWatchedData = await mergeWatchedData([videoByPath]);
           const videoWithResume = videosWithWatchedData[0];
-
 
           return videoWithResume;
         }
@@ -347,7 +337,6 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
           const { mergeWatchedData } = await import('./fileUtils');
           const videosWithWatchedData = await mergeWatchedData([video]);
           const videoWithResume = videosWithWatchedData[0];
-
 
           return videoWithResume;
 
@@ -1455,4 +1444,4 @@ process.on('uncaughtException', (error) => {
 // Log unhandled promise rejections
 process.on('unhandledRejection', (reason) => {
   log.error('Unhandled promise rejection:', reason)
-}) 
+})

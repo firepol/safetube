@@ -40,15 +40,12 @@ export class FirstRunSetup {
       // Run setup in both development and production modes
       // In development, it will create config files in the project root
       // In production, it will create config files in user data directory
-      logVerbose('[FirstRunSetup] Checking setup...');
 
       // Create necessary directories
       await this.createDirectories(result);
 
     // Copy default config files if they don't exist
-    logVerbose('[FirstRunSetup] About to call copyDefaultConfigs...');
     await this.copyDefaultConfigs(result);
-    logVerbose('[FirstRunSetup] copyDefaultConfigs completed');
 
     } catch (error) {
       logVerbose('[FirstRunSetup] Error during setup:', error);
@@ -56,7 +53,6 @@ export class FirstRunSetup {
       result.success = false;
     }
 
-    logVerbose('[FirstRunSetup] Setup completed:', result);
     return result;
   }
 
@@ -84,7 +80,6 @@ export class FirstRunSetup {
         result.createdDirs.push(logsDir);
       }
 
-      logVerbose('[FirstRunSetup] Directory creation completed');
     } catch (error) {
       logVerbose('[FirstRunSetup] Error creating directories:', error);
       result.errors.push(`Directory creation failed: ${error}`);
@@ -119,7 +114,6 @@ export class FirstRunSetup {
         try {
           // Check if target file already exists
           await fs.access(targetPath);
-          logVerbose(`[FirstRunSetup] Config file already exists: ${filename}`);
           continue; // File already exists, skip
         } catch {
           // Target file doesn't exist, try to copy from example
@@ -127,12 +121,10 @@ export class FirstRunSetup {
             await fs.access(examplePath);
             await fs.copyFile(examplePath, targetPath);
             result.copiedFiles.push(filename);
-            logVerbose(`[FirstRunSetup] Copied config file: ${filename}`);
           } catch {
             // Example file doesn't exist either, create a minimal default
             await this.createDefaultConfigFile(targetPath, filename);
             result.copiedFiles.push(filename);
-            logVerbose(`[FirstRunSetup] Created default config file: ${filename}`);
           }
         }
       }

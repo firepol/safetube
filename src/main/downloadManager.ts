@@ -163,7 +163,6 @@ export class DownloadManager {
           await this.handleDownloadComplete(videoId, videoTitle, finalFilePath, sourceInfo);
         } else {
           // Download failed
-          logVerbose(`[DownloadManager] Download failed for ${videoId} with exit code: ${code}`);
           await updateDownloadStatus(videoId, {
             status: 'failed',
             progress: 0,
@@ -350,7 +349,6 @@ export class DownloadManager {
     for (const ext of thumbnailExtensions) {
       const thumbnailFile = path.join(dir, baseName + ext);
       if (fs.existsSync(thumbnailFile)) {
-        logVerbose(`[DownloadManager] Found thumbnail: ${thumbnailFile}`);
         return thumbnailFile;
       }
     }
@@ -366,34 +364,26 @@ export class DownloadManager {
     const dir = path.dirname(videoFilePath);
     const baseName = path.basename(videoFilePath, path.extname(videoFilePath));
 
-    logVerbose(`[DownloadManager] Looking for info.json file in: ${dir}, baseName: ${baseName}`);
-
     // Try the exact base name first
     const infoFile = path.join(dir, baseName + '.info.json');
-    logVerbose(`[DownloadManager] Checking for info.json at: ${infoFile}`);
     if (fs.existsSync(infoFile)) {
-      logVerbose(`[DownloadManager] Found exact match info.json: ${infoFile}`);
       return infoFile;
     }
 
     // If not found, scan the directory for any .info.json files
     try {
       const files = fs.readdirSync(dir);
-      logVerbose(`[DownloadManager] Scanning directory for .info.json files. Found ${files.length} files total.`);
 
       const infoJsonFiles = files.filter(file => file.endsWith('.info.json'));
-      logVerbose(`[DownloadManager] Found ${infoJsonFiles.length} .info.json files: ${infoJsonFiles.join(', ')}`);
 
       if (infoJsonFiles.length > 0) {
         const fullPath = path.join(dir, infoJsonFiles[0]);
-        logVerbose(`[DownloadManager] Using first info.json file found: ${fullPath}`);
         return fullPath;
       }
     } catch (error) {
       logVerbose(`[DownloadManager] Error scanning directory for info.json: ${error}`);
     }
 
-    logVerbose(`[DownloadManager] No info.json file found for: ${baseName} in directory: ${dir}`);
     return null;
   }
 
@@ -422,7 +412,6 @@ export class DownloadManager {
         if (fs.existsSync(tempFile)) {
           try {
             fs.unlinkSync(tempFile);
-            logVerbose(`[DownloadManager] Cleaned up temporary file: ${tempFile}`);
           } catch (error) {
             logVerbose(`[DownloadManager] Failed to cleanup temporary file ${tempFile}: ${error}`);
           }
@@ -437,7 +426,6 @@ export class DownloadManager {
             const infoFile = path.join(dir, file);
             try {
               fs.unlinkSync(infoFile);
-              logVerbose(`[DownloadManager] Cleaned up remaining info.json file: ${infoFile}`);
             } catch (error) {
               logVerbose(`[DownloadManager] Failed to cleanup info.json file ${infoFile}: ${error}`);
             }
