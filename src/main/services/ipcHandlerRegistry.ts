@@ -847,7 +847,7 @@ export function registerFavoritesHandlers() {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
       if (fs.existsSync(favoritesPath)) {
         const favorites = JSON.parse(fs.readFileSync(favoritesPath, 'utf8'));
-        return favorites.videos || [];
+        return favorites.favorites || [];
       }
       return [];
     } catch (error) {
@@ -860,24 +860,30 @@ export function registerFavoritesHandlers() {
   ipcMain.handle('favorites:add', async (_, metadata: { id: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail?: string, duration?: number, url?: string }) => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
-      let favorites = { videos: [] };
+      let favorites = { favorites: [], lastModified: new Date().toISOString() };
 
       if (fs.existsSync(favoritesPath)) {
         favorites = JSON.parse(fs.readFileSync(favoritesPath, 'utf8'));
       }
 
-      if (!favorites.videos) {
-        favorites.videos = [];
+      if (!favorites.favorites) {
+        favorites.favorites = [];
       }
 
       // Check if already exists
-      const existingIndex = favorites.videos.findIndex((fav: any) => fav.id === metadata.id);
+      const existingIndex = favorites.favorites.findIndex((fav: any) => fav.videoId === metadata.id);
       if (existingIndex === -1) {
-        (favorites.videos as any[]).push({
-          ...metadata,
-          addedAt: new Date().toISOString()
+        // Use correct FavoriteVideo structure
+        (favorites.favorites as any[]).push({
+          videoId: metadata.id,
+          sourceType: metadata.type,
+          title: metadata.title,
+          thumbnail: metadata.thumbnail || '',
+          duration: metadata.duration || 0,
+          dateAdded: new Date().toISOString()
         });
 
+        favorites.lastModified = new Date().toISOString();
         fs.writeFileSync(favoritesPath, JSON.stringify(favorites, null, 2));
         logVerbose('[IPC] Added to favorites:', metadata.id);
       }
@@ -898,7 +904,8 @@ export function registerFavoritesHandlers() {
       }
 
       const favorites = JSON.parse(fs.readFileSync(favoritesPath, 'utf8'));
-      favorites.videos = favorites.videos.filter((fav: any) => fav.id !== videoId);
+      favorites.favorites = (favorites.favorites || []).filter((fav: any) => fav.videoId !== videoId);
+      favorites.lastModified = new Date().toISOString();
 
       fs.writeFileSync(favoritesPath, JSON.stringify(favorites, null, 2));
       logVerbose('[IPC] Removed from favorites:', videoId);
@@ -918,7 +925,7 @@ export function registerFavoritesHandlers() {
       }
 
       const favorites = JSON.parse(fs.readFileSync(favoritesPath, 'utf8'));
-      const isFavorite = favorites.videos.some((fav: any) => fav.id === videoId);
+      const isFavorite = (favorites.favorites || []).some((fav: any) => fav.videoId === videoId);
 
       return { isFavorite };
     } catch (error) {
@@ -931,21 +938,22 @@ export function registerFavoritesHandlers() {
   ipcMain.handle('favorites:toggle', async (_, videoId: string, source: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail: string, duration: number, lastWatched?: string) => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
-      let favorites = { videos: [] };
+      let favorites = { favorites: [], lastModified: new Date().toISOString() };
 
       if (fs.existsSync(favoritesPath)) {
         favorites = JSON.parse(fs.readFileSync(favoritesPath, 'utf8'));
       }
 
-      if (!favorites.videos) {
-        favorites.videos = [];
+      if (!favorites.favorites) {
+        favorites.favorites = [];
       }
 
-      const existingIndex = favorites.videos.findIndex((fav: any) => fav.id === videoId);
+      const existingIndex = favorites.favorites.findIndex((fav: any) => fav.videoId === videoId);
 
       if (existingIndex >= 0) {
         // Remove from favorites
-        favorites.videos.splice(existingIndex, 1);
+        favorites.favorites.splice(existingIndex, 1);
+        favorites.lastModified = new Date().toISOString();
         fs.writeFileSync(favoritesPath, JSON.stringify(favorites, null, 2));
         logVerbose('[IPC] Removed from favorites:', videoId);
 
@@ -957,19 +965,18 @@ export function registerFavoritesHandlers() {
           });
         }, 100);
 
-        return { isFavorite: false };
+        return { favorite: null, isFavorite: false };
       } else {
-        // Add to favorites
-        (favorites.videos as any[]).push({
-          id: videoId,
-          source,
-          type,
-          title,
-          thumbnail,
-          duration,
-          lastWatched,
-          addedAt: new Date().toISOString()
+        // Add to favorites using correct FavoriteVideo structure
+        (favorites.favorites as any[]).push({
+          videoId: videoId,
+          sourceType: type,
+          title: title,
+          thumbnail: thumbnail || '',
+          duration: duration || 0,
+          dateAdded: new Date().toISOString()
         });
+        favorites.lastModified = new Date().toISOString();
 
         fs.writeFileSync(favoritesPath, JSON.stringify(favorites, null, 2));
         logVerbose('[IPC] Added to favorites:', videoId);
@@ -982,7 +989,17 @@ export function registerFavoritesHandlers() {
           });
         }, 100);
 
-        return { isFavorite: true };
+        // Return the newly created favorite object
+        const newFavorite = {
+          videoId: videoId,
+          sourceType: type,
+          title: title,
+          thumbnail: thumbnail || '',
+          duration: duration || 0,
+          dateAdded: new Date().toISOString()
+        };
+
+        return { favorite: newFavorite, isFavorite: true };
       }
     } catch (error) {
       log.error('[IPC] Error toggling favorite:', error);
@@ -999,10 +1016,11 @@ export function registerFavoritesHandlers() {
       }
 
       const favorites = JSON.parse(fs.readFileSync(favoritesPath, 'utf8'));
-      const favoriteIndex = favorites.videos.findIndex((fav: any) => fav.id === videoId);
+      const favoriteIndex = (favorites.favorites || []).findIndex((fav: any) => fav.videoId === videoId);
 
       if (favoriteIndex >= 0) {
-        favorites.videos[favoriteIndex] = { ...favorites.videos[favoriteIndex], ...metadata };
+        favorites.favorites[favoriteIndex] = { ...favorites.favorites[favoriteIndex], ...metadata };
+        favorites.lastModified = new Date().toISOString();
         fs.writeFileSync(favoritesPath, JSON.stringify(favorites, null, 2));
         logVerbose('[IPC] Updated favorite metadata:', videoId);
         return { success: true };
@@ -1024,7 +1042,7 @@ export function registerFavoritesHandlers() {
       }
 
       const favorites = JSON.parse(fs.readFileSync(favoritesPath, 'utf8'));
-      return favorites.videos.filter((fav: any) => fav.source === sourceId);
+      return (favorites.favorites || []).filter((fav: any) => fav.sourceType === sourceId);
     } catch (error) {
       log.error('[IPC] Error getting favorites by source:', error);
       return [];
