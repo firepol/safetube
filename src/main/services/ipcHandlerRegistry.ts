@@ -813,6 +813,32 @@ export function registerYouTubeCacheHandlers() {
   });
 }
 
+// Downloaded Videos Handlers
+export function registerDownloadedVideosHandlers() {
+  // Get all downloaded videos
+  ipcMain.handle('downloaded-videos:get-all', async () => {
+    try {
+      const { readDownloadedVideos } = await import('../fileUtils');
+      return await readDownloadedVideos();
+    } catch (error) {
+      log.error('[IPC] Error reading downloaded videos:', error);
+      return [];
+    }
+  });
+
+  // Get downloaded videos by source
+  ipcMain.handle('downloaded-videos:get-by-source', async (_, sourceId: string) => {
+    try {
+      const { readDownloadedVideos } = await import('../fileUtils');
+      const allDownloaded = await readDownloadedVideos();
+      return allDownloaded.filter(video => video.sourceId === sourceId);
+    } catch (error) {
+      log.error('[IPC] Error reading downloaded videos by source:', error);
+      return [];
+    }
+  });
+}
+
 // Favorites Handlers
 export function registerFavoritesHandlers() {
   // Get all favorites
@@ -1051,5 +1077,6 @@ export function registerAllHandlers() {
   registerDownloadHandlers();
   registerSettingsHandlers();
   registerYouTubeCacheHandlers();
+  registerDownloadedVideosHandlers();
   registerFavoritesHandlers();
 }
