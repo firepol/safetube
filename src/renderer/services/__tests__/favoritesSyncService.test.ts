@@ -154,7 +154,7 @@ describe('FavoritesSyncService', () => {
   });
 
   describe('loadAndSyncStatuses', () => {
-    it('should load statuses and broadcast each one', async () => {
+    it('should load statuses without broadcasting to prevent loops', async () => {
       const statusMap = new Map([
         ['video1', true],
         ['video2', false],
@@ -171,17 +171,8 @@ describe('FavoritesSyncService', () => {
       expect(result).toEqual(statusMap);
       expect(FavoritesService.getFavoritesStatus).toHaveBeenCalledWith(['video1', 'video2', 'video3']);
 
-      // Should broadcast for each video
-      expect(callback).toHaveBeenCalledTimes(3);
-      expect(callback).toHaveBeenCalledWith(
-        expect.objectContaining({ videoId: 'video1', isFavorite: true })
-      );
-      expect(callback).toHaveBeenCalledWith(
-        expect.objectContaining({ videoId: 'video2', isFavorite: false })
-      );
-      expect(callback).toHaveBeenCalledWith(
-        expect.objectContaining({ videoId: 'video3', isFavorite: true })
-      );
+      // Should NOT broadcast during bulk load to prevent infinite loops
+      expect(callback).not.toHaveBeenCalled();
     });
 
     it('should handle errors in status loading', async () => {

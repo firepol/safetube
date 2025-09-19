@@ -57,7 +57,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
         )
       );
     },
-    autoSync: enableFavoriteSync,
+    autoSync: false, // Disable auto-sync to prevent infinite loops
     enableRealTimeSync: enableFavoriteSync
   });
 

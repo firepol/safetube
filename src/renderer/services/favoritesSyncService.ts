@@ -130,33 +130,18 @@ export class FavoritesSyncService {
   }
 
   /**
-   * Load and sync favorite statuses for multiple videos
+   * Load favorite statuses for multiple videos (without broadcasting to prevent loops)
    */
   static async loadAndSyncStatuses(videoIds: string[]): Promise<Map<string, boolean>> {
     try {
-      logVerbose('[FavoritesSyncService] Loading and syncing statuses for', videoIds.length, 'videos');
+      logVerbose('[FavoritesSyncService] Loading statuses for', videoIds.length, 'videos');
 
       const statusMap = await FavoritesService.getFavoritesStatus(videoIds);
 
-      // Broadcast each status for synchronization
-      statusMap.forEach((isFavorite, videoId) => {
-        this.broadcast({
-          videoId,
-          isFavorite,
-          timestamp: Date.now(),
-          source: 'bulk-load',
-          type: 'youtube', // Default for bulk loads, will be corrected by individual components
-          metadata: {
-            title: '',
-            thumbnail: '',
-            duration: 0
-          }
-        });
-      });
-
+      logVerbose('[FavoritesSyncService] Loaded statuses for', statusMap.size, 'videos');
       return statusMap;
     } catch (error) {
-      logVerbose('[FavoritesSyncService] Error loading and syncing statuses:', error);
+      logVerbose('[FavoritesSyncService] Error loading statuses:', error);
       throw error;
     }
   }

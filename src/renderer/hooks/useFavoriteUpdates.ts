@@ -158,10 +158,22 @@ export function useFavoriteUpdates(options: UseFavoriteUpdatesOptions = {}) {
     );
   }, []);
 
-  // Load statuses with synchronization
+  // Load statuses with synchronization (but without broadcasting to prevent loops)
   const loadFavoriteStatusesWithSync = useCallback(async (videoIds: string[]) => {
     if (syncEnabled) {
-      return FavoritesSyncService.loadAndSyncStatuses(videoIds);
+      // Use the sync service for loading but don't broadcast to prevent infinite loops
+      const statusMap = await FavoritesSyncService.loadAndSyncStatuses(videoIds);
+
+      // Update local state without triggering callbacks
+      setFavoriteUpdates(prev => {
+        const newUpdates = { ...prev };
+        statusMap.forEach((isFavorite, videoId) => {
+          newUpdates[videoId] = isFavorite;
+        });
+        return newUpdates;
+      });
+
+      return statusMap;
     } else {
       return loadFavoriteStatuses(videoIds);
     }
