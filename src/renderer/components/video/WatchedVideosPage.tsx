@@ -296,11 +296,15 @@ export const WatchedVideosPage: React.FC = () => {
                 type: video.type,
                 watched: isWatched,
                 isClicked: isClicked,
-                onVideoClick: () => handleVideoClick(video)
+                onVideoClick: () => handleVideoClick(video),
+                source: 'watched'
               };
             })}
             groupByType={false}
             className="mb-6"
+            // Enable favorite icons for YouTube videos in watched videos
+            showFavoriteIcons={true}
+            enableFavoriteSync={true}
           />
 
           {/* Pagination */}

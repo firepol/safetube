@@ -289,10 +289,14 @@ export const HistoryPage: React.FC = () => {
               type: video.type,
               watched: video.watchedData.watched === true,
               isClicked: true, // All videos in history have been clicked
-              onVideoClick: () => handleVideoClick(video)
+              onVideoClick: () => handleVideoClick(video),
+              source: 'history'
             }))}
             groupByType={false}
             className="mb-6"
+            // Enable favorite icons for YouTube videos in history
+            showFavoriteIcons={true}
+            enableFavoriteSync={true}
           />
 
           {/* Pagination */}

@@ -426,16 +426,18 @@ export const SourcePage: React.FC = () => {
             errorInfo: video.errorInfo,
             resumeAt: video.resumeAt,
             onVideoClick: () => handleVideoClick(video),
-            // Favorites functionality
+            // Favorites functionality - will be overridden by VideoGrid
             isFavorite: isFavorite,
-            showFavoriteIcon: true,
             source: source?.id || 'unknown',
-            lastWatched: video.lastWatched,
-            onFavoriteToggle: handleFavoriteToggle
+            lastWatched: video.lastWatched
           };
         })}
         groupByType={false}
         className="mb-6"
+        // Enable favorite icons for YouTube sources and favorites page
+        showFavoriteIcons={source?.type === 'youtube' || source?.type === 'youtube_channel' || source?.type === 'youtube_playlist' || sourceId === 'favorites'}
+        // Enable real-time favorite synchronization for all sources
+        enableFavoriteSync={true}
       />
       
       {/* Bottom pagination */}
