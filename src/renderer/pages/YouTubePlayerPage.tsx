@@ -186,7 +186,6 @@ export const YouTubePlayerPage: React.FC = () => {
 
   // Time tracking functions
   const startTimeTracking = useCallback(() => {
-    logVerbose('[YouTubePlayerPage] startTimeTracking called');
     if (!timeTrackingRef.current.isTracking) {
       timeTrackingRef.current = {
         startTime: Date.now(),
@@ -195,30 +194,27 @@ export const YouTubePlayerPage: React.FC = () => {
         lastUpdateTime: Date.now(),
         lastVideoTime: ytPlayerInstance.current?.getCurrentTime?.() || 0
       };
-      logVerbose('[YouTubePlayerPage] Time tracking started:', timeTrackingRef.current);
     }
   }, []);
 
       const updateTimeTracking = useCallback(async () => {
-      logVerbose('[YouTubePlayerPage] updateTimeTracking called, isTracking:', timeTrackingRef.current.isTracking, 'video:', !!video, 'player:', !!ytPlayerInstance.current);
     if (timeTrackingRef.current.isTracking && video && ytPlayerInstance.current) {
       const currentTime = Date.now();
       const timeWatched = (currentTime - timeTrackingRef.current.lastUpdateTime) / 1000;
-      
+
       if (timeWatched >= 1) {
         timeTrackingRef.current.totalWatched += timeWatched;
         timeTrackingRef.current.lastUpdateTime = currentTime;
 
         // Record the time watched
         const videoCurrentTime = ytPlayerInstance.current.getCurrentTime();
-        logVerbose('[YouTubePlayerPage] Recording time:', { videoId: video.id, currentTime: videoCurrentTime, timeWatched });
         await window.electron.recordVideoWatching(
           video.id,
           videoCurrentTime,
           timeWatched,
           video.duration
         );
-        
+
         timeTrackingRef.current.lastVideoTime = videoCurrentTime;
       }
     }
@@ -275,7 +271,6 @@ export const YouTubePlayerPage: React.FC = () => {
             
             // If we have a resume time, seek to it after the player is ready
             if (video?.resumeAt && video.resumeAt > 0) {
-              logVerbose('[YouTubePlayerPage] Seeking to resume time:', video.resumeAt);
               // Small delay to ensure player is fully ready
               setTimeout(() => {
                 if (ytPlayerInstance.current && typeof ytPlayerInstance.current.seekTo === 'function') {
@@ -285,11 +280,9 @@ export const YouTubePlayerPage: React.FC = () => {
             }
           },
           onStateChange: (event: any) => {
-            logVerbose('[YouTubePlayerPage] YouTube player state changed:', event.data);
             // 1 = playing, 2 = paused, 0 = ended
             if (event.data === 1) {
               // Playing
-              logVerbose('[YouTubePlayerPage] Video started playing');
               setIsVideoPlaying(true);
               // Re-initialize and reset warnings on play start to apply latest config
               (async () => {
@@ -310,7 +303,6 @@ export const YouTubePlayerPage: React.FC = () => {
               startTimeTracking();
             } else if (event.data === 2 || event.data === 0) {
               // Paused or ended
-              logVerbose('[YouTubePlayerPage] Video paused/ended');
               setIsVideoPlaying(false);
               // Call the time tracking function directly
               stopTimeTracking();
@@ -342,16 +334,13 @@ export const YouTubePlayerPage: React.FC = () => {
 
   // Polling-based time tracking for YouTube iframe player
   useEffect(() => {
-    logVerbose('[YouTubePlayerPage] Time tracking effect triggered, isVideoPlaying:', isVideoPlaying, 'video:', !!video);
     if (!isVideoPlaying || !video) return;
 
-    logVerbose('[YouTubePlayerPage] Starting time tracking interval');
     const intervalId = setInterval(() => {
       updateTimeTracking();
     }, 1000); // Update every second
 
     return () => {
-      logVerbose('[YouTubePlayerPage] Clearing time tracking interval');
       clearInterval(intervalId);
     };
   }, [isVideoPlaying, video, updateTimeTracking]);

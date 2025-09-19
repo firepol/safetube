@@ -83,9 +83,6 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
     const locationState = location.state as any;
     const breadcrumbData = videoNavigationContext?.breadcrumb || locationState?.breadcrumb;
 
-    logVerbose('[BasePlayerPage] getBreadcrumbItems - video navigation context:', videoNavigationContext);
-    logVerbose('[BasePlayerPage] getBreadcrumbItems - location state:', locationState);
-    logVerbose('[BasePlayerPage] getBreadcrumbItems - breadcrumb data:', breadcrumbData);
 
     const items: BreadcrumbItem[] = [
       { label: 'Home', path: '/' }
@@ -109,13 +106,10 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
     }
 
     if (breadcrumbData?.folderPath && breadcrumbData.folderPath.length > 0) {
-      logVerbose('[BasePlayerPage] Processing folderPath:', breadcrumbData.folderPath);
       breadcrumbData.folderPath.forEach((folder: { name: string; path?: string }, index: number) => {
-        logVerbose('[BasePlayerPage] Processing folder:', folder);
         if (folder.path && breadcrumbData.sourceId && breadcrumbData.basePath) {
           // Create relative path by removing base path
           let relativePath = folder.path;
-          logVerbose('[BasePlayerPage] Original relativePath:', relativePath);
           if (relativePath.startsWith(breadcrumbData.basePath)) {
             relativePath = relativePath.substring(breadcrumbData.basePath.length);
             // Remove leading slash if present
@@ -123,22 +117,17 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
               relativePath = relativePath.substring(1);
             }
           }
-          logVerbose('[BasePlayerPage] Final relativePath:', relativePath);
 
           const generatedPath = `/source/${breadcrumbData.sourceId}?folder=${encodeURIComponent(relativePath)}`;
-          logVerbose('[BasePlayerPage] Generated breadcrumb path:', generatedPath);
 
           items.push({
             label: folder.name,
             path: generatedPath
           });
         } else {
-          logVerbose('[BasePlayerPage] Adding non-clickable folder:', folder.name);
           items.push({ label: folder.name });
         }
       });
-    } else {
-      logVerbose('[BasePlayerPage] No folderPath found or empty folderPath');
     }
 
     // Add "Watched Videos" breadcrumb if this is from WatchedVideos page
@@ -153,11 +142,7 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
       items.push({ label: video.title, isActive: true });
     }
 
-    logVerbose('[BasePlayerPage] Generated breadcrumb items:', items);
-
-    // Also log the returnTo logic for comparison
     const returnTo = videoNavigationContext?.returnTo || locationState?.returnTo;
-    logVerbose('[BasePlayerPage] returnTo value (what old Back button used):', returnTo);
 
     return items;
   };
@@ -167,18 +152,14 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
     const videoNavigationContext = (video as any)?.navigationContext;
     const locationState = location.state as any;
 
-    logVerbose('[BasePlayerPage] handleBackClick - videoNavigationContext:', videoNavigationContext);
-    logVerbose('[BasePlayerPage] handleBackClick - locationState:', locationState);
 
     // Use navigation context from video if available (for downloaded videos),
     // otherwise use location state (for regular videos)
     const returnTo = videoNavigationContext?.returnTo || locationState?.returnTo;
 
     if (returnTo) {
-      logVerbose('[BasePlayerPage] Navigating back to preserved returnTo:', returnTo);
       navigate(returnTo);
     } else {
-      logVerbose('[BasePlayerPage] No returnTo found, using browser back');
       navigate(-1);
     }
   };

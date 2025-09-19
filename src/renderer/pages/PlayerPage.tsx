@@ -291,10 +291,8 @@ export const PlayerPage: React.FC = () => {
               });
 
               videoRef.current.addEventListener('canplay', () => {
-                logVerbose('[PlayerPage] Video can play event fired for separate streams');
                 // Set resume time if available - use a small delay to ensure video is ready
                 if (video.resumeAt && video.resumeAt > 0 && videoRef.current && !resumeAttemptedRef.current) {
-                  logVerbose('[PlayerPage] Attempting to resume at:', video.resumeAt);
                   resumeAttemptedRef.current = true; // Prevent infinite loop
                   setTimeout(() => {
                     try {
@@ -302,20 +300,13 @@ export const PlayerPage: React.FC = () => {
                         // Only resume if the position is within the video duration
                         if (video.resumeAt < videoRef.current.duration) {
                           videoRef.current.currentTime = video.resumeAt;
-                          logVerbose('[PlayerPage] Successfully set resume time for local video with separate streams:', video.resumeAt);
-                        } else {
-                          logVerbose('[PlayerPage] Resume time exceeds video duration, starting from beginning');
                         }
-                      } else {
-                        logVerbose('[PlayerPage] Video not ready for resume - duration:', videoRef.current?.duration, 'resumeAt:', video.resumeAt);
                       }
                     } catch (error) {
                       console.warn('[PlayerPage] Failed to set resume time for separate streams:', error);
                       // Continue with normal playback even if resume fails
                     }
                   }, 100);
-                } else {
-                  logVerbose('[PlayerPage] No resume time or video not ready - resumeAt:', video.resumeAt, 'videoRef:', !!videoRef.current, 'already attempted:', resumeAttemptedRef.current);
                 }
                 setIsLoading(false);
               });
@@ -327,9 +318,7 @@ export const PlayerPage: React.FC = () => {
             }
           } else if (video.url) {
             // Handle single file
-            logVerbose('[PlayerPage] Loading single local file:', video.url);
             const path = await window.electron.getLocalFile(video.url);
-            logVerbose('[PlayerPage] Local file path resolved:', path);
             
             if (videoRef.current) {
               try {
@@ -337,8 +326,6 @@ export const PlayerPage: React.FC = () => {
                 const needsConversion = await window.electron.needsVideoConversion(video.url);
                 
                 if (needsConversion) {
-                  logVerbose('[PlayerPage] Video needs conversion for browser compatibility');
-                  
                   // Check if converted video already exists
                   const hasConverted = await window.electron.hasConvertedVideo(video.url);
                   
@@ -348,27 +335,22 @@ export const PlayerPage: React.FC = () => {
                     if (convertedPath) {
                       const convertedFileUrl = await window.electron.getLocalFile(convertedPath);
                       videoRef.current.src = getSrc(convertedFileUrl);
-                      logVerbose('[PlayerPage] Using existing converted video:', getSrc(convertedFileUrl));
                     } else {
                       // Fallback to original (shouldn't happen)
                       videoRef.current.src = getSrc(path);
-                      logVerbose('[PlayerPage] Fallback to original file:', getSrc(path));
                     }
                   } else {
                     // Try to load original file - it will likely fail and show error UI
                     videoRef.current.src = getSrc(path);
-                    logVerbose('[PlayerPage] Attempting to load original file (will likely fail):', getSrc(path));
                   }
                 } else {
                   // Use original file
                   videoRef.current.src = getSrc(path);
-                  logVerbose('[PlayerPage] Set video src to original file:', getSrc(path));
                 }
               } catch (conversionError) {
                 console.error('[PlayerPage] Error during codec detection:', conversionError);
                 // Fallback to original file
                 videoRef.current.src = getSrc(path);
-                logVerbose('[PlayerPage] Fallback to original file after codec detection error:', getSrc(path));
               }
               // Add event listeners for debugging
               videoRef.current.addEventListener('error', (e) => {
@@ -386,10 +368,8 @@ export const PlayerPage: React.FC = () => {
                 // console.log('Video data loaded');
               });
               videoRef.current.addEventListener('canplay', () => {
-                logVerbose('[PlayerPage] Video can play event fired for single local file');
                 // Set resume time if available - use a small delay to ensure video is ready
                 if (video.resumeAt && video.resumeAt > 0 && videoRef.current && !resumeAttemptedRef.current) {
-                  logVerbose('[PlayerPage] Attempting to resume single file at:', video.resumeAt);
                   resumeAttemptedRef.current = true; // Prevent infinite loop
                   setTimeout(() => {
                     try {
@@ -397,20 +377,13 @@ export const PlayerPage: React.FC = () => {
                         // Only resume if the position is within the video duration
                         if (video.resumeAt < videoRef.current.duration) {
                           videoRef.current.currentTime = video.resumeAt;
-                          logVerbose('[PlayerPage] Successfully set resume time for single local file:', video.resumeAt);
-                        } else {
-                          logVerbose('[PlayerPage] Resume time exceeds video duration, starting from beginning');
                         }
-                      } else {
-                        logVerbose('[PlayerPage] Single file video not ready for resume - duration:', videoRef.current?.duration, 'resumeAt:', video.resumeAt);
                       }
                     } catch (error) {
                       console.warn('[PlayerPage] Failed to set resume time for single file:', error);
                       // Continue with normal playback even if resume fails
                     }
                   }, 100);
-                } else {
-                  logVerbose('[PlayerPage] No resume time for single file - resumeAt:', video.resumeAt, 'videoRef:', !!videoRef.current, 'already attempted:', resumeAttemptedRef.current);
                 }
                 setIsLoading(false);
               });
@@ -446,7 +419,6 @@ export const PlayerPage: React.FC = () => {
                   try {
                     if (videoRef.current && video.resumeAt) {
                       videoRef.current.currentTime = video.resumeAt;
-                      logVerbose('[PlayerPage] Set resume time for DLNA video:', video.resumeAt);
                     }
                   } catch (error) {
                     console.warn('[PlayerPage] Failed to set resume time for DLNA video:', error);
@@ -538,7 +510,6 @@ export const PlayerPage: React.FC = () => {
               quality: highestQuality.quality,
               mimeType: highestQuality.videoUrl.includes('webm') ? 'video/webm' : 'video/mp4'
             };
-            logVerbose('[PlayerPage] chosen stream quality:', videoStream.quality);
 
             if (highestQuality.audioUrl) {
               audioTrack = {
@@ -564,7 +535,6 @@ export const PlayerPage: React.FC = () => {
                       try {
                         if (videoRef.current && video.resumeAt) {
                           videoRef.current.currentTime = video.resumeAt;
-                          logVerbose('[PlayerPage] Set resume time for YouTube video-only:', video.resumeAt);
                         }
                       } catch (error) {
                         console.warn('[PlayerPage] Failed to set resume time for YouTube video-only:', error);
@@ -617,7 +587,6 @@ export const PlayerPage: React.FC = () => {
                     try {
                       if (video.resumeAt) {
                         videoElement.currentTime = video.resumeAt;
-                        logVerbose('[PlayerPage] Set resume time for YouTube media source:', video.resumeAt);
                       }
                     } catch (error) {
                       console.warn('[PlayerPage] Failed to set resume time for YouTube media source:', error);
