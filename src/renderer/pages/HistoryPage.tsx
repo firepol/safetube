@@ -290,7 +290,10 @@ export const HistoryPage: React.FC = () => {
               watched: video.watchedData.watched === true,
               isClicked: true, // All videos in history have been clicked
               onVideoClick: () => handleVideoClick(video),
-              source: 'history'
+              source: video.sourceId || 'history',
+              lastWatched: video.watchedData.lastWatched,
+              // The VideoGrid will automatically load favorite status with enableFavoriteSync
+              isFavorite: false // Will be updated by VideoGrid's favorite sync
             }))}
             groupByType={false}
             className="mb-6"
