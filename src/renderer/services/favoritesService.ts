@@ -23,11 +23,9 @@ export class FavoritesService {
           this.favoritesCache &&
           this.cacheExpiry &&
           now < this.cacheExpiry) {
-        logVerbose('[FavoritesService] Returning cached favorites');
         return this.favoritesCache;
       }
 
-      logVerbose('[FavoritesService] Fetching favorites from main process');
       const favorites = await window.electron.favoritesGetAll();
 
       // Update cache
@@ -43,7 +41,6 @@ export class FavoritesService {
       // Note: We don't cache false values here to avoid cache bloat
       // False values are determined by absence from the favorites list
 
-      logVerbose('[FavoritesService] Cached', favorites.length, 'favorites');
       return favorites;
     } catch (error) {
       logVerbose('[FavoritesService] Error getting favorites:', error);
@@ -134,7 +131,6 @@ export class FavoritesService {
       // Check cache first
       if (this.favoriteStatusCache.has(originalVideoId)) {
         const cached = this.favoriteStatusCache.get(originalVideoId)!;
-        logVerbose('[FavoritesService] Returning cached favorite status for', originalVideoId, ':', cached);
         return cached;
       }
 
@@ -142,7 +138,6 @@ export class FavoritesService {
       if (this.favoritesCache && this.cacheExpiry && Date.now() < this.cacheExpiry) {
         const isFav = this.favoritesCache.some(f => f.videoId === originalVideoId);
         this.favoriteStatusCache.set(originalVideoId, isFav);
-        logVerbose('[FavoritesService] Returning cached favorite status from list for', originalVideoId, ':', isFav);
         return isFav;
       }
 
@@ -410,10 +405,6 @@ export class FavoritesService {
 
       // If all are cached, return immediately
       if (uncachedIds.length === 0) {
-        // Only log this occasionally to avoid spam
-        if (Math.random() < 0.01) { // Log only 1% of the time
-          logVerbose('[FavoritesService] All favorite statuses found in cache');
-        }
         return statusMap;
       }
 
@@ -428,7 +419,6 @@ export class FavoritesService {
         this.favoriteStatusCache.set(videoId, isFav);
       });
 
-      logVerbose('[FavoritesService] Retrieved bulk favorite statuses for', videoIds.length, 'videos');
       return statusMap;
     } catch (error) {
       logVerbose('[FavoritesService] Error getting bulk favorite statuses:', error);

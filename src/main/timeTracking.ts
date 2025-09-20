@@ -175,8 +175,6 @@ export async function recordVideoWatching(
 
     // Also record in usage log
     await recordUsageTime(timeWatched);
-
-    logVerbose(`[TimeTracking] Recorded watching: ${videoId} (${videoMetadata.title}), position: ${position}, time: ${timeWatched}s`);
   } catch (error) {
     logVerbose(`[TimeTracking] Error recording video watching: ${error}`);
     throw error;
@@ -198,8 +196,6 @@ async function recordUsageTime(timeWatchedSeconds: number): Promise<void> {
     usageLog[today] += timeWatchedSeconds;
     
     await writeUsageLog(usageLog);
-    
-    logVerbose(`[TimeTracking] Recorded ${timeWatchedSeconds}s usage for ${today}`);
   } catch (error) {
     logVerbose(`[TimeTracking] Error recording usage time: ${error}`);
     throw error;

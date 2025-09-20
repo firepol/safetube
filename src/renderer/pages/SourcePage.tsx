@@ -29,14 +29,6 @@ export const SourcePage: React.FC = () => {
   const folderParam = urlParams.get('folder');
   const initialFolderPath = folderParam ? `${source?.path}/${decodeURIComponent(folderParam)}` : undefined;
 
-  // Debug logging for breadcrumb navigation
-  logVerbose('[SourcePage] URL and folder path calculation:', {
-    locationSearch: location.search,
-    folderParam: folderParam,
-    sourcePath: source?.path,
-    initialFolderPath: initialFolderPath
-  });
-
   // Load watched videos data
   useEffect(() => {
     const loadWatchedVideos = async () => {
@@ -126,21 +118,11 @@ export const SourcePage: React.FC = () => {
 
         setSource(foundSource);
 
-        // Debug logging for source data
-        logVerbose('[SourcePage] Found source:', foundSource);
-        logVerbose('[SourcePage] Source videos count:', foundSource.videos?.length);
-        logVerbose('[SourcePage] Current page:', currentPage);
-
         // Load videos for the current page
         if (window.electron.getPaginatedVideos) {
           const pageResult = await window.electron.getPaginatedVideos(sourceId, currentPage);
           setCurrentPageVideos(pageResult.videos || []);
           setPaginationState(pageResult.paginationState || null);
-
-          // Debug logging
-          logVerbose('[SourcePage] Pagination result:', pageResult);
-          logVerbose('[SourcePage] Pagination state:', pageResult.paginationState);
-          logVerbose('[SourcePage] Videos count:', pageResult.videos?.length);
         } else {
           // Fallback: use all videos from source
           setCurrentPageVideos(foundSource.videos || []);
@@ -235,10 +217,7 @@ export const SourcePage: React.FC = () => {
     }
 
     try {
-      logVerbose('[SourcePage] Clearing cache for source:', sourceId);
       const result = await window.electron.clearSourceCache(sourceId);
-
-      logVerbose('[SourcePage] Cache clear result:', result);
 
       if (result.success) {
         // Success - show success message and navigate to page 1
@@ -302,14 +281,6 @@ export const SourcePage: React.FC = () => {
   // Check if this is a local source that should use the navigator
   const isLocalSource = source?.type === 'local';
 
-  // Debug logging to help diagnose navigation issues
-  logVerbose('[SourcePage] Source type check:', {
-    sourceId,
-    sourceType: source?.type,
-    isLocalSource,
-    sourceTitle: source?.title
-  });
-
   // For local sources, get maxDepth from the source data
   // The backend should provide this information when loading the source
   const maxDepth = source?.maxDepth || 2;
@@ -332,12 +303,6 @@ export const SourcePage: React.FC = () => {
       />
     );
   }
-
-  // For other sources (YouTube, DLNA), use the regular video grid
-  logVerbose('[SourcePage] Rendering PageHeader for non-local source:', {
-    sourceType: source?.type,
-    sourceTitle: source?.title
-  });
 
   return (
     <div className="p-4">
@@ -379,18 +344,6 @@ export const SourcePage: React.FC = () => {
         videos={currentPageVideos.map((video: any) => {
           const { isWatched, isClicked } = getVideoStatus(video.id);
           const isFavorite = favoriteVideos.has(video.id);
-
-          // Debug logging for favorites to understand data transformation
-          if (sourceId === 'favorites') {
-            logVerbose('[SourcePage] Processing favorite video for display:', {
-              id: video.id,
-              title: video.title,
-              thumbnail: video.thumbnail,
-              isAvailable: video.isAvailable,
-              isFallback: video.isFallback,
-              type: video.type
-            });
-          }
 
           return {
             id: video.id,

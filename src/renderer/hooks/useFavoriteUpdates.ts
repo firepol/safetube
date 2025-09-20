@@ -111,8 +111,6 @@ export function useFavoriteUpdates(options: UseFavoriteUpdatesOptions = {}) {
   useEffect(() => {
     if (!syncEnabled) return;
 
-    logVerbose('[useFavoriteUpdates] Setting up real-time sync listener');
-
     const unsubscribe = FavoritesSyncService.subscribe((event: FavoriteSyncEvent) => {
       // Only log for actual user actions, not bulk loads
       if (event.source !== 'bulk-load') {
@@ -135,7 +133,6 @@ export function useFavoriteUpdates(options: UseFavoriteUpdatesOptions = {}) {
     });
 
     return () => {
-      logVerbose('[useFavoriteUpdates] Cleaning up real-time sync listener');
       unsubscribe();
     };
   }, [syncEnabled, options.onFavoriteUpdate]); // Keep callback in deps for proper updates
@@ -169,23 +166,9 @@ export function useFavoriteUpdates(options: UseFavoriteUpdatesOptions = {}) {
     try {
       setIsLoadingStatuses(true);
 
-      // Debug logging for YouTube video IDs
-      const youtubeIds = videoIds.filter(id => !id.startsWith('local:'));
-      if (youtubeIds.length > 0) {
-        logVerbose('[useFavoriteUpdates] Loading favorite statuses for YouTube videos:', youtubeIds);
-      }
-
       if (syncEnabled) {
         // Use the sync service for loading but don't broadcast to prevent infinite loops
         const statusMap = await FavoritesSyncService.loadAndSyncStatuses(videoIds);
-
-        // Debug logging for YouTube video status results
-        if (youtubeIds.length > 0) {
-          const youtubeStatuses = Object.fromEntries(
-            youtubeIds.map(id => [id, statusMap.get(id) || false])
-          );
-          logVerbose('[useFavoriteUpdates] YouTube video favorite statuses loaded:', youtubeStatuses);
-        }
 
         // Update local state without triggering callbacks
         setFavoriteUpdates(prev => {

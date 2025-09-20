@@ -16,8 +16,6 @@ export const PlayerRouter: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [selectedPlayer, setSelectedPlayer] = useState<React.ReactNode | null>(null);
   
-  logVerbose('[PlayerRouter] Component rendered with id:', id, 'videoId:', videoId);
-
   useEffect(() => {
     const determinePlayerType = async () => {
       try {
@@ -82,7 +80,6 @@ export const PlayerRouter: React.FC = () => {
             if (downloadedCheck.isDownloaded && downloadedCheck.filePath) {
               // Downloaded version exists and is accessible - route to local player
               console.log(`[PlayerRouter] Playing downloaded version instead of YouTube for video: ${videoId}`);
-              logVerbose('[PlayerRouter] Using PlayerPage for downloaded YouTube video:', downloadedCheck.filePath);
               setSelectedPlayer(<PlayerPage />);
               setIsLoading(false);
               return;
@@ -114,8 +111,6 @@ export const PlayerRouter: React.FC = () => {
           setSelectedPlayer(<PlayerPage />);
         }
         
-        logVerbose('[PlayerRouter] Final selected player:', selectedPlayer ? 'set' : 'not set');
-
         setIsLoading(false);
       } catch (err) {
         console.error('Failed to load player config or video data:', err);

@@ -28,11 +28,9 @@ export class FavoritesSyncService {
    * Subscribe to favorite status changes
    */
   static subscribe(callback: (event: FavoriteSyncEvent) => void): () => void {
-    logVerbose('[FavoritesSyncService] Adding listener');
     this.listeners.add(callback);
 
     return () => {
-      logVerbose('[FavoritesSyncService] Removing listener');
       this.listeners.delete(callback);
     };
   }

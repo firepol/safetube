@@ -111,11 +111,6 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
       const videoIds = videos.map(v => v.id);
       const youtubeVideoIds = videos.filter(v => v.type === 'youtube').map(v => v.id);
 
-      // Debug logging for YouTube videos
-      if (youtubeVideoIds.length > 0) {
-        logVerbose('[VideoGrid] Loading favorite statuses for YouTube videos:', youtubeVideoIds);
-      }
-
       if (videoIds.length > 0) {
         loadFavoriteStatusesWithSync(videoIds);
       }
@@ -130,19 +125,6 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
       const hasStatus = hasFavoriteStatus(video.id);
       const cachedStatus = hasStatus ? getFavoriteStatus(video.id) : null;
       const finalFavorite = hasStatus ? (cachedStatus || false) : (video.isFavorite || false);
-
-      // Debug logging for YouTube videos to understand favorite status resolution
-      if (video.type === 'youtube') {
-        logVerbose('[VideoGrid] YouTube video favorite status resolution:', {
-          videoId: video.id,
-          title: video.title,
-          hasStatus,
-          cachedStatus,
-          originalIsFavorite: video.isFavorite,
-          finalFavorite,
-          showFavoriteIcons
-        });
-      }
 
       return {
         ...video,
