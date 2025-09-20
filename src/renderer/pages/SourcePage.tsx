@@ -20,7 +20,6 @@ export const SourcePage: React.FC = () => {
   const [paginationState, setPaginationState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
-  const [favoriteVideos, setFavoriteVideos] = useState<Set<string>>(new Set());
 
   const currentPage = page ? parseInt(page) : 1;
   
@@ -51,41 +50,6 @@ export const SourcePage: React.FC = () => {
     loadWatchedVideos();
   }, []);
 
-  // Load favorites data
-  useEffect(() => {
-    const loadFavorites = async () => {
-      try {
-        const favorites = await FavoritesService.getFavorites();
-        const favoriteIds = new Set(favorites.map(f => f.videoId));
-        setFavoriteVideos(favoriteIds);
-      } catch (error) {
-        console.error('Error loading favorites:', error);
-        setFavoriteVideos(new Set());
-      }
-    };
-    loadFavorites();
-  }, []);
-
-  // Handle favorites toggle
-  const handleFavoriteToggle = async (videoId: string, isFavorite: boolean) => {
-    try {
-      // Update local state optimistically
-      const newFavorites = new Set(favoriteVideos);
-      if (isFavorite) {
-        newFavorites.add(videoId);
-      } else {
-        newFavorites.delete(videoId);
-      }
-      setFavoriteVideos(newFavorites);
-
-      // Note: The actual toggle is handled by the FavoriteButton component
-      // This is just for UI state management
-    } catch (error) {
-      console.error('Error updating favorite status:', error);
-      // Revert optimistic update on error
-      setFavoriteVideos(favoriteVideos);
-    }
-  };
 
   // Function to check video status
   const getVideoStatus = (videoId: string) => {
@@ -399,7 +363,6 @@ export const SourcePage: React.FC = () => {
       <VideoGrid
         videos={currentPageVideos.map((video: any) => {
           const { isWatched, isClicked } = getVideoStatus(video.id);
-          const isFavorite = favoriteVideos.has(video.id);
 
           // Debug logging for favorites to understand data transformation
           if (sourceId === 'favorites') {
@@ -426,8 +389,7 @@ export const SourcePage: React.FC = () => {
             errorInfo: video.errorInfo,
             resumeAt: video.resumeAt,
             onVideoClick: () => handleVideoClick(video),
-            // Favorites functionality - will be overridden by VideoGrid
-            isFavorite: isFavorite,
+            // VideoGrid will handle favorite status via enableFavoriteSync
             source: source?.id || 'unknown',
             lastWatched: video.lastWatched
           };
