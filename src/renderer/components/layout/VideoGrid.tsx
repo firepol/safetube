@@ -152,7 +152,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
         isFavorite: finalFavorite
       };
     }));
-  }, [videos, showFavoriteIcons, hasFavoriteStatus, getFavoriteStatus, favoriteUpdates]);
+  }, [videos, showFavoriteIcons, hasFavoriteStatus, getFavoriteStatus]);
 
   const groupedVideos = groupByType
     ? updatedVideos.reduce((acc, video) => {
