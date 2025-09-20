@@ -434,8 +434,8 @@ export const SourcePage: React.FC = () => {
         })}
         groupByType={false}
         className="mb-6"
-        // Enable favorite icons for YouTube sources and favorites page
-        showFavoriteIcons={source?.type === 'youtube' || source?.type === 'youtube_channel' || source?.type === 'youtube_playlist' || sourceId === 'favorites'}
+        // Enable favorite icons for all sources including local, YouTube, and favorites page
+        showFavoriteIcons={true}
         // Enable real-time favorite synchronization for all sources
         enableFavoriteSync={true}
       />
