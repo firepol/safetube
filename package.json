@@ -64,7 +64,9 @@
   "dependencies": {
     "@radix-ui/react-tooltip": "^1.2.7",
     "@shadcn/ui": "^0.0.4",
+    "@types/bcrypt": "^6.0.0",
     "@types/video.js": "^7.3.58",
+    "bcrypt": "^6.0.0",
     "clsx": "^2.1.1",
     "dotenv": "^17.0.0",
     "electron-log": "^5.4.0",

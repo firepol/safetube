@@ -6,7 +6,7 @@ import { ipcMain } from 'electron';
 import { createLocalVideoId } from '../../shared/fileUtils';
 import { logVerbose } from '../../shared/logging';
 import { AppPaths } from '../appPaths';
-import { readTimeLimits } from '../fileUtils';
+import { readTimeLimits, readMainSettings, writeMainSettings } from '../fileUtils';
 import log from '../logger';
 import { recordVideoWatching, getTimeTrackingState } from '../timeTracking';
 import { YouTubeAPI } from '../youtube-api';
@@ -141,18 +141,20 @@ export function registerAdminHandlers() {
   // Admin authentication
   ipcMain.handle('admin:authenticate', async (_, password: string) => {
     try {
-      // Read password hash from config
-      const configPath = AppPaths.getConfigPath('adminPassword.json');
-      if (!fs.existsSync(configPath)) {
-        log.error('[IPC] Admin password file not found');
+      // Read password hash from mainSettings
+      const mainSettings = await readMainSettings();
+      const passwordHash = mainSettings.adminPassword;
+
+      if (!passwordHash) {
+        log.error('[IPC] Admin password not configured in mainSettings');
         return { success: false, error: 'Admin password not configured' };
       }
 
-      const { passwordHash } = JSON.parse(fs.readFileSync(configPath, 'utf8'));
       const bcrypt = require('bcrypt');
       const isValid = await bcrypt.compare(password, passwordHash);
 
       if (isValid) {
+        log.info('[IPC] Admin authentication successful');
         return { success: true };
       } else {
         log.warn('[IPC] Admin authentication failed');
@@ -161,6 +163,45 @@ export function registerAdminHandlers() {
     } catch (error) {
       log.error('[IPC] Error during admin authentication:', error);
       return { success: false, error: 'Authentication error' };
+    }
+  });
+
+  // Change admin password
+  ipcMain.handle('admin:change-password', async (_, currentPassword: string, newPassword: string) => {
+    try {
+      // First authenticate with current password
+      const mainSettings = await readMainSettings();
+      const currentPasswordHash = mainSettings.adminPassword;
+
+      if (!currentPasswordHash) {
+        log.error('[IPC] Admin password not configured in mainSettings');
+        return { success: false, error: 'Admin password not configured' };
+      }
+
+      const bcrypt = require('bcrypt');
+      const isCurrentValid = await bcrypt.compare(currentPassword, currentPasswordHash);
+
+      if (!isCurrentValid) {
+        log.warn('[IPC] Admin password change failed - invalid current password');
+        return { success: false, error: 'Current password is incorrect' };
+      }
+
+      // Hash the new password
+      const newPasswordHash = await bcrypt.hash(newPassword, 10);
+
+      // Update mainSettings with new password hash
+      const updatedSettings = {
+        ...mainSettings,
+        adminPassword: newPasswordHash
+      };
+
+      await writeMainSettings(updatedSettings);
+
+      log.info('[IPC] Admin password changed successfully');
+      return { success: true };
+    } catch (error) {
+      log.error('[IPC] Error changing admin password:', error);
+      return { success: false, error: 'Failed to change password' };
     }
   });
 

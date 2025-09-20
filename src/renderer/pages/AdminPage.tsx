@@ -32,17 +32,8 @@ export const AdminPage: React.FC = () => {
   const [mainSettingsSaveMessage, setMainSettingsSaveMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if already authenticated
-    const checkAuth = async () => {
-      try {
-        const auth = await window.electron.adminAuthenticate('');
-        setIsAuthenticated(auth.isAuthenticated);
-      } catch (error) {
-        // Not authenticated, show login form
-        setIsAuthenticated(false);
-      }
-    };
-    checkAuth();
+    // Always start unauthenticated - no need to check
+    setIsAuthenticated(false);
   }, []);
 
   useEffect(() => {
@@ -118,7 +109,7 @@ export const AdminPage: React.FC = () => {
 
     try {
       const auth = await window.electron.adminAuthenticate(password);
-      if (auth.isAuthenticated) {
+      if (auth.success) {
         setIsAuthenticated(true);
         setPassword('');
       } else {

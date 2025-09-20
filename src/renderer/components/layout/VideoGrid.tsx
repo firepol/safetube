@@ -129,7 +129,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
     setUpdatedVideos(videos.map(video => {
       const hasStatus = hasFavoriteStatus(video.id);
       const cachedStatus = hasStatus ? getFavoriteStatus(video.id) : null;
-      const finalFavorite = hasStatus ? cachedStatus : (video.isFavorite || false);
+      const finalFavorite = hasStatus ? (cachedStatus || false) : (video.isFavorite || false);
 
       // Debug logging for YouTube videos to understand favorite status resolution
       if (video.type === 'youtube') {

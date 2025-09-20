@@ -59,7 +59,7 @@ export interface ElectronAPI {
   getFolderVideoCount: (folderPath: string, maxDepth: number) => Promise<number>;
   getLocalVideoDuration: (videoPath: string) => Promise<number>;
   // Admin functions
-  adminAuthenticate: (password: string) => Promise<{ isAuthenticated: boolean }>;
+  adminAuthenticate: (password: string) => Promise<{ success: boolean }>;
   adminAddExtraTime: (minutes: number) => Promise<{ success: boolean }>;
   adminGetTimeExtra: () => Promise<any>;
   adminWriteTimeLimits: (timeLimits: any) => Promise<{ success: boolean }>;
