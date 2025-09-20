@@ -187,7 +187,7 @@ export class FirstRunSetup {
         defaultContent = {
           downloadPath: "",
           youtubeApiKey: "",
-          adminPassword: "",
+          adminPassword: "$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy",
           enableVerboseLogging: false
         };
         break;

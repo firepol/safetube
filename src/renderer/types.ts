@@ -60,6 +60,8 @@ export interface ElectronAPI {
   getLocalVideoDuration: (videoPath: string) => Promise<number>;
   // Admin functions
   adminAuthenticate: (password: string) => Promise<{ success: boolean }>;
+  adminChangePassword: (currentPassword: string, newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  adminHashPassword: (password: string) => Promise<{ success: boolean; hashedPassword?: string; error?: string }>;
   adminAddExtraTime: (minutes: number) => Promise<{ success: boolean }>;
   adminGetTimeExtra: () => Promise<any>;
   adminWriteTimeLimits: (timeLimits: any) => Promise<{ success: boolean }>;

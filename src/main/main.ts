@@ -150,23 +150,7 @@ ipcMain.handle('time-tracking:get-time-limits', async () => {
   }
 });
 
-// Admin IPC handlers
-ipcMain.handle('admin:authenticate', async (_, password: string) => {
-  try {
-    const adminPassword = process.env.ADMIN_PASSWORD;
-    if (!adminPassword) {
-      throw new Error('Admin password not configured');
-    }
-    
-    const isAuthenticated = password === adminPassword;
-    logVerbose('[Admin] Authentication attempt:', { success: isAuthenticated });
-    
-    return { isAuthenticated };
-  } catch (error) {
-    console.error('Error during admin authentication:', error);
-    throw error;
-  }
-});
+// Admin IPC handlers (note: main admin handlers moved to ipcHandlerRegistry.ts)
 
 ipcMain.handle('admin:add-extra-time', async (_, minutes: number) => {
   try {

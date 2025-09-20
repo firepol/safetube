@@ -47,6 +47,7 @@ contextBridge.exposeInMainWorld(
     // Admin IPC handlers
     adminAuthenticate: (password: string) => ipcRenderer.invoke('admin:authenticate', password),
     adminChangePassword: (currentPassword: string, newPassword: string) => ipcRenderer.invoke('admin:change-password', currentPassword, newPassword),
+    adminHashPassword: (password: string) => ipcRenderer.invoke('admin:hash-password', password),
     adminAddExtraTime: (minutes: number) => ipcRenderer.invoke('admin:add-extra-time', minutes),
     adminGetTimeExtra: () => ipcRenderer.invoke('admin:get-time-extra'),
     adminWriteTimeLimits: (timeLimits: any) => ipcRenderer.invoke('admin:write-time-limits', timeLimits),

@@ -9,8 +9,7 @@ The admin area provides password-protected access to parental controls, allowing
 ## Authentication
 
 ### Password Protection
-- Admin access is protected by a password stored in the `.env` file
-- Environment variable: `ADMIN_PASSWORD=your_secure_password`
+- Admin access is protected by a password stored (encrypted) in the `mainSettings.json` file
 - Password is required for all admin functions
 - No session persistence - password must be entered each time
 
@@ -224,14 +223,14 @@ The smart navigation system works by:
 
 ## Configuration Examples
 
-### Environment Variables
-```bash
-# Admin password (required)
-ADMIN_PASSWORD=your_secure_password_here
-
-# Optional: Admin session timeout (minutes)
-ADMIN_SESSION_TIMEOUT=30
+### Password in mainSettings.json
+```json
+{
+  "adminPassword": "$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy"
+}
 ```
+
+Note: the password above is a bcrypt hash of the password `paren234`. Use a bcrypt tool to generate your own secure hash.
 
 ### Time Extension Limits
 ```json
@@ -245,7 +244,7 @@ ADMIN_SESSION_TIMEOUT=30
 ## Troubleshooting
 
 ### Common Issues
-- **Password not working**: Check `.env` file and restart app
+- **Password not working**: Check `mainSettings.json`, if you forgot it, reset it to the value that you see above and use `paren234` as the password to log in, then change it immediately
 - **Changes not taking effect**: Verify file permissions and app restart
 - **Time not updating**: Check time tracking service and refresh UI
 - **Configuration errors**: Validate JSON syntax and required fields

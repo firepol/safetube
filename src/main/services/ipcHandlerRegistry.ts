@@ -205,6 +205,18 @@ export function registerAdminHandlers() {
     }
   });
 
+  // Hash password utility for main settings
+  ipcMain.handle('admin:hash-password', async (_, password: string) => {
+    try {
+      const bcrypt = require('bcrypt');
+      const hashedPassword = await bcrypt.hash(password, 10);
+      return { success: true, hashedPassword };
+    } catch (error) {
+      log.error('[IPC] Error hashing password:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
+
   // Add extra time
   ipcMain.handle('admin:add-extra-time', async (_, minutes: number) => {
     try {

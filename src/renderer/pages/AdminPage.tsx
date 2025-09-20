@@ -28,6 +28,7 @@ export const AdminPage: React.FC = () => {
     adminPassword?: string;
     enableVerboseLogging?: boolean;
   }>({});
+  const [originalAdminPasswordHash, setOriginalAdminPasswordHash] = useState<string>('');
   const [isLoadingMainSettings, setIsLoadingMainSettings] = useState(false);
   const [mainSettingsSaveMessage, setMainSettingsSaveMessage] = useState<string | null>(null);
 
@@ -231,7 +232,15 @@ export const AdminPage: React.FC = () => {
     try {
       setIsLoadingMainSettings(true);
       const settings = await window.electron.readMainSettings();
-      setMainSettings(settings);
+
+      // Store the original password hash for comparison
+      setOriginalAdminPasswordHash(settings.adminPassword || '');
+
+      // Clear the password field for display (don't show the hash)
+      setMainSettings({
+        ...settings,
+        adminPassword: ''
+      });
     } catch (error) {
       console.error('Error loading main settings:', error);
       setError('Failed to load main settings');
@@ -246,10 +255,37 @@ export const AdminPage: React.FC = () => {
       setMainSettingsSaveMessage(null);
       setError(null);
 
-      const result = await window.electron.writeMainSettings(mainSettings);
-      
+      // Prepare settings to save
+      let settingsToSave = { ...mainSettings };
+
+      // Check if the password has been changed
+      if (mainSettings.adminPassword && mainSettings.adminPassword.trim() !== '') {
+        // Password field has content, need to hash it
+        const hashResult = await window.electron.adminHashPassword(mainSettings.adminPassword);
+
+        if (hashResult.success) {
+          settingsToSave.adminPassword = hashResult.hashedPassword;
+        } else {
+          setError('Failed to hash password: ' + hashResult.error);
+          return;
+        }
+      } else {
+        // No password entered, keep the original hash
+        settingsToSave.adminPassword = originalAdminPasswordHash;
+      }
+
+      const result = await window.electron.writeMainSettings(settingsToSave);
+
       if (result.success) {
         setMainSettingsSaveMessage('Settings saved successfully!');
+
+        // Update the original hash if password was changed
+        if (mainSettings.adminPassword && mainSettings.adminPassword.trim() !== '') {
+          setOriginalAdminPasswordHash(settingsToSave.adminPassword || '');
+          // Clear the password field after successful save
+          setMainSettings(prev => ({ ...prev, adminPassword: '' }));
+        }
+
         // Clear message after 3 seconds
         setTimeout(() => setMainSettingsSaveMessage(null), 3000);
       } else {
@@ -653,10 +689,10 @@ export const AdminPage: React.FC = () => {
                       value={mainSettings.adminPassword || ''}
                       onChange={(e) => setMainSettings(prev => ({ ...prev, adminPassword: e.target.value }))}
                       className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="Enter admin password..."
+                      placeholder="Enter new password to change, or leave empty to keep current"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Password required to access admin controls.
+                      Only enter a new password if you want to change it. Leave empty to keep the current password.
                     </p>
                   </div>
 
