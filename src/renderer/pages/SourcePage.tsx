@@ -20,6 +20,7 @@ export const SourcePage: React.FC = () => {
   const [paginationState, setPaginationState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
+  const [favoriteVideos, setFavoriteVideos] = useState<Set<string>>(new Set());
 
   const currentPage = page ? parseInt(page) : 1;
   
@@ -50,6 +51,20 @@ export const SourcePage: React.FC = () => {
     loadWatchedVideos();
   }, []);
 
+  // Load favorites data (only for initial state, sync system will take over)
+  useEffect(() => {
+    const loadFavorites = async () => {
+      try {
+        const favorites = await FavoritesService.getFavorites();
+        const favoriteIds = new Set(favorites.map(f => f.videoId));
+        setFavoriteVideos(favoriteIds);
+      } catch (error) {
+        console.error('Error loading favorites:', error);
+        setFavoriteVideos(new Set());
+      }
+    };
+    loadFavorites();
+  }, []);
 
   // Function to check video status
   const getVideoStatus = (videoId: string) => {
@@ -363,6 +378,7 @@ export const SourcePage: React.FC = () => {
       <VideoGrid
         videos={currentPageVideos.map((video: any) => {
           const { isWatched, isClicked } = getVideoStatus(video.id);
+          const isFavorite = favoriteVideos.has(video.id);
 
           // Debug logging for favorites to understand data transformation
           if (sourceId === 'favorites') {
@@ -389,7 +405,8 @@ export const SourcePage: React.FC = () => {
             errorInfo: video.errorInfo,
             resumeAt: video.resumeAt,
             onVideoClick: () => handleVideoClick(video),
-            // VideoGrid will handle favorite status via enableFavoriteSync
+            // Provide initial favorite status - VideoGrid sync will override this
+            isFavorite: isFavorite,
             source: source?.id || 'unknown',
             lastWatched: video.lastWatched
           };
