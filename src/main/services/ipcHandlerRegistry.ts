@@ -456,8 +456,8 @@ export function registerVideoProcessingHandlers() {
   ipcMain.handle('get-existing-converted-video-path', async (_, originalPath: string, cacheDir?: string) => {
     try {
       const actualCacheDir = cacheDir || path.join(path.dirname(originalPath), '.converted');
-      const fileName = path.basename(originalPath, path.extname(originalPath));
-      const convertedPath = path.join(actualCacheDir, `${fileName}.mp4`);
+      const originalName = path.basename(originalPath);
+      const convertedPath = path.join(actualCacheDir, `${originalName}.mp4`);
 
       if (fs.existsSync(convertedPath)) {
         return convertedPath;
@@ -485,8 +485,8 @@ export function registerVideoProcessingHandlers() {
   ipcMain.handle('has-converted-video', async (_, filePath: string, cacheDir?: string) => {
     try {
       const actualCacheDir = cacheDir || path.join(path.dirname(filePath), '.converted');
-      const fileName = path.basename(filePath, path.extname(filePath));
-      const convertedPath = path.join(actualCacheDir, `${fileName}.mp4`);
+      const originalName = path.basename(filePath);
+      const convertedPath = path.join(actualCacheDir, `${originalName}.mp4`);
 
       return fs.existsSync(convertedPath);
     } catch (error) {
