@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import { YouTubePlayerPage } from './YouTubePlayerPage';
 import { FavoritesService } from '../services/favoritesService';
 
@@ -116,12 +117,18 @@ describe('YouTubePlayerPage', () => {
 
 
   const renderComponent = () => {
-    return render(<YouTubePlayerPage />);
+    return render(
+      <Tooltip.Provider>
+        <MemoryRouter>
+          <YouTubePlayerPage />
+        </MemoryRouter>
+      </Tooltip.Provider>
+    );
   };
 
   const waitForVideoToLoad = async () => {
     await waitFor(() => {
-      expect(screen.getByText('Test Video')).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'Test Video' })).toBeInTheDocument();
     }, { timeout: 5000 });
   };
 
@@ -184,8 +191,8 @@ describe('YouTubePlayerPage', () => {
     // Check that the button has the correct aria-label
     expect(favoriteButton).toHaveAttribute('aria-label', 'Add to favorites');
 
-    // Check that the label is shown
-    expect(screen.getByText('Add')).toBeInTheDocument();
+    // Check that the star icon is displayed (no text label in compact mode)
+    expect(favoriteButton).toHaveTextContent('☆');
   });
 
   it('should handle keyboard shortcut (F key) to toggle favorite', async () => {
@@ -255,10 +262,11 @@ describe('YouTubePlayerPage', () => {
       expect(screen.getByTestId('favorite-button')).toBeInTheDocument();
     });
 
-    // Button should show "Remove" when already favorited
+    // Button should show filled star when already favorited (wait for async state to load)
     await waitFor(() => {
-      expect(screen.getByText('Remove')).toBeInTheDocument();
-    });
+      const favoriteButton = screen.getByTestId('favorite-button');
+      expect(favoriteButton).toHaveTextContent('⭐');
+    }, { timeout: 3000 });
 
     const favoriteButton = screen.getByTestId('favorite-button');
     expect(favoriteButton).toHaveAttribute('aria-label', 'Remove from favorites');

@@ -6,8 +6,7 @@ import { Video } from '../types';
 import { logVerbose } from '../lib/logging';
 import { audioWarningService } from '../services/audioWarning';
 import { useDownload } from '../hooks/useDownload';
-import { DownloadUI } from '../components/video/DownloadUI';
-import { FavoriteButton } from '../components/video/FavoriteButton';
+import { CompactControlsRow } from '../components/video/CompactControlsRow';
 import { FavoritesService } from '../services/favoritesService';
 
 
@@ -413,39 +412,26 @@ export const YouTubePlayerPage: React.FC = () => {
         {/* YouTube player will be mounted here */}
       </div>
       
-      {/* Download UI using shared component */}
-      <DownloadUI
-        video={video}
-        downloadStatus={downloadStatus}
-        isDownloading={isDownloading}
-        onStartDownload={onStartDownload}
-        onCancelDownload={onCancelDownload}
-        onResetDownload={onResetDownload}
-        showResetButton={downloadStatus.status === 'completed'}
-      />
-
-      {/* Favorites UI */}
+      {/* Compact Controls Row - combines download and favorite functionality */}
       {video && (
-        <div className="p-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <FavoriteButton
-                videoId={video.id}
-                source={video.url || 'youtube'}
-                type="youtube"
-                title={video.title}
-                thumbnail={video.thumbnail || ''}
-                duration={video.duration || 0}
-                lastWatched={new Date().toISOString()}
-                isFavorite={isFavorite}
-                onToggle={handleFavoriteToggle}
-                size="large"
-                showLabel={true}
-                data-testid="favorite-button"
-              />
-              <div className="text-sm text-gray-600">
-                Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">F</kbd> to toggle favorite
-              </div>
+        <div className="mt-4">
+          <CompactControlsRow
+            video={video}
+            isFavorite={isFavorite}
+            onFavoriteToggle={handleFavoriteToggle}
+            downloadStatus={downloadStatus}
+            isDownloading={isDownloading}
+            onStartDownload={onStartDownload}
+            onCancelDownload={onCancelDownload}
+            onResetDownload={onResetDownload}
+            showResetButton={downloadStatus.status === 'completed'}
+            size="large"
+          />
+
+          {/* Keyboard shortcut hint */}
+          <div className="mt-2 text-center">
+            <div className="text-xs text-gray-500">
+              Press <kbd className="px-1.5 py-0.5 text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded">F</kbd> to toggle favorite
             </div>
           </div>
         </div>
