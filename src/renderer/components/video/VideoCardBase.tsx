@@ -84,8 +84,14 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   // Common card content
   const cardContent = (
     <>
-      {/* Thumbnail */}
-      <div className="relative aspect-[16/9] w-full overflow-hidden rounded-t-xl">
+      {/* Thumbnail - Now clickable for video opening */}
+      <div
+        className={cn(
+          "relative aspect-[16/9] w-full overflow-hidden rounded-t-xl",
+          !isFallback && "cursor-pointer"
+        )}
+        onClick={!isFallback ? handleClick : undefined}
+      >
         {isFallback ? (
           <div className="h-full w-full bg-gray-200 flex items-center justify-center">
             <div className="text-center">
@@ -170,24 +176,6 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
           </div>
         )}
 
-        {/* Favorite Button Overlay */}
-        {showFavoriteIcon && !isFallback && (
-          <div className="absolute top-2 left-2 z-30">
-            <FavoriteButton
-              videoId={id}
-              source={source || 'unknown'}
-              type={type}
-              title={title}
-              thumbnail={thumbnail}
-              duration={duration}
-              lastWatched={lastWatched}
-              isFavorite={isFavorite}
-              onToggle={onFavoriteToggle}
-              size="small"
-              className="bg-black/60 hover:bg-black/80 rounded-full p-1 transition-all"
-            />
-          </div>
-        )}
       </div>
       {/* Title and Type */}
       <div className="flex-1 flex flex-col justify-between p-3">
@@ -195,7 +183,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
           <Tooltip.Trigger asChild>
             <h3
               className={cn(
-                'text-base font-semibold truncate',
+                'text-base font-semibold truncate select-text',
                 isFallback ? 'text-gray-500 italic' : 'text-foreground',
                 isLongTitle && 'cursor-help'
               )}
@@ -220,41 +208,44 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
           </p>
         )}
         
-        <p className={cn(
-          "mt-1 text-xs capitalize",
-          isClicked ? "bg-violet-500 text-white px-2 py-1 rounded" : "text-muted-foreground"
-        )}>
-          {type}
-        </p>
+        <div className="flex items-center justify-between mt-1">
+          <p className={cn(
+            "text-xs capitalize",
+            isClicked ? "bg-violet-500 text-white px-2 py-1 rounded" : "text-muted-foreground"
+          )}>
+            {type}
+          </p>
+          {/* Favorite Button in Top Bar */}
+          {showFavoriteIcon && !isFallback && (
+            <FavoriteButton
+              videoId={id}
+              source={source || 'unknown'}
+              type={type}
+              title={title}
+              thumbnail={thumbnail}
+              duration={duration}
+              lastWatched={lastWatched}
+              isFavorite={isFavorite}
+              onToggle={onFavoriteToggle}
+              size="small"
+              className="transition-all"
+            />
+          )}
+        </div>
       </div>
     </>
   );
 
   const cardClasses = cn(
-    'bg-card rounded-xl border shadow-md flex flex-col w-full cursor-pointer',
+    'bg-card rounded-xl border shadow-md flex flex-col w-full',
     'max-w-[280px] sm:max-w-[320px] lg:max-w-[380px] xl:max-w-[420px] 2xl:max-w-[500px]',
     'transition-transform hover:scale-[1.03]',
     isFallback ? 'opacity-60 border-dashed border-yellow-400' : ''
   );
 
-  // For fallback videos, use a non-clickable div (no longer opens externally)
-  if (isFallback) {
-    return (
-      <div
-        className={cn(cardClasses, 'cursor-default')}
-      >
-        {cardContent}
-      </div>
-    );
-  }
-
-  // For available videos, use the regular div with click handler
+  // For all videos, use non-clickable card (thumbnail handles clicks)
   return (
-    <div
-      className={cardClasses}
-      tabIndex={0}
-      onClick={handleClick}
-    >
+    <div className={cardClasses}>
       {cardContent}
     </div>
   );

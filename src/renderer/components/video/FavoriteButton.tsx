@@ -141,7 +141,7 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
       title={error || (isFavorite ? 'Remove from favorites' : 'Add to favorites')}
       data-testid={testId}
     >
-      <span className="flex items-center justify-center">
+      <span className="flex items-center justify-center leading-none">
         {starIcon}
         {showLabel && (
           <span className="ml-1 text-xs">

@@ -39,7 +39,7 @@ describe('VideoCardBase External Link Opening', () => {
     vi.clearAllMocks();
   });
 
-  test('should render fallback video as external link', () => {
+  test('should render fallback video as non-interactive card', () => {
     const props = {
       id: 'dQw4w9WgXcQ',
       thumbnail: 'test-thumbnail.jpg',
@@ -61,18 +61,19 @@ describe('VideoCardBase External Link Opening', () => {
       </TestWrapper>
     );
 
-    // Find the link element
-    const linkElement = screen.getByRole('link');
-    expect(linkElement).toBeInTheDocument();
-    expect(linkElement).toHaveAttribute('href', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-    expect(linkElement).toHaveAttribute('target', '_blank');
-    expect(linkElement).toHaveAttribute('rel', 'noopener noreferrer');
+    // Should show fallback UI without being clickable
+    expect(screen.getByText('Video dQw4w9WgXcQ')).toBeInTheDocument();
+    expect(screen.getByText('Video unavailable')).toBeInTheDocument();
+    expect(screen.getByText('Deleted')).toBeInTheDocument();
 
-    // Verify that navigate is not called (since it's a standard link)
+    // Should not have any link elements
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+
+    // Verify that navigate is not called
     expect(mockNavigate).not.toHaveBeenCalled();
   });
 
-  test('should navigate normally when clicking available video', () => {
+  test('should navigate when clicking thumbnail of available video', () => {
     const props = {
       id: 'dQw4w9WgXcQ',
       thumbnail: 'test-thumbnail.jpg',
@@ -89,10 +90,10 @@ describe('VideoCardBase External Link Opening', () => {
       </TestWrapper>
     );
 
-    // Find the video card by its title and click it
-    const videoCard = screen.getByText('Test Video').closest('div[tabindex="0"]');
-    expect(videoCard).toBeTruthy();
-    fireEvent.click(videoCard!);
+    // Find the thumbnail area and click it
+    const thumbnailArea = screen.getByAltText('Test Video').closest('div');
+    expect(thumbnailArea).toBeTruthy();
+    fireEvent.click(thumbnailArea!);
 
     // Verify that navigate was called
     expect(mockNavigate).toHaveBeenCalledWith('/player/dQw4w9WgXcQ');
@@ -122,9 +123,9 @@ describe('VideoCardBase External Link Opening', () => {
 
     // Check for fallback UI elements
     expect(screen.getByText('Video Unavailable')).toBeInTheDocument();
-    expect(screen.getByText('Open in browser')).toBeInTheDocument();
     expect(screen.getByText('Private')).toBeInTheDocument();
-    expect(screen.getByText('Click to open in YouTube')).toBeInTheDocument();
+    expect(screen.getByText('Video dQw4w9WgXcQ')).toBeInTheDocument();
+    expect(screen.getByText('Video unavailable')).toBeInTheDocument();
   });
 
   test('should display correct error type indicators', () => {
@@ -163,25 +164,13 @@ describe('VideoCardBase External Link Opening', () => {
     });
   });
 
-  test('should work without electron API since fallback uses standard links', () => {
-    // Temporarily set electron to undefined
-    const originalElectron = window.electron;
-    // @ts-ignore
-    window.electron = undefined;
-
+  test('should allow text selection on video titles', () => {
     const props = {
       id: 'dQw4w9WgXcQ',
       thumbnail: 'test-thumbnail.jpg',
-      title: 'Test Video',
+      title: 'Test Video with Selectable Text',
       duration: 180,
-      type: 'youtube' as const,
-      isAvailable: false,
-      isFallback: true,
-      errorInfo: {
-        type: VideoErrorType.DELETED,
-        message: 'Video has been deleted',
-        retryable: false
-      }
+      type: 'youtube' as const
     };
 
     render(
@@ -190,13 +179,10 @@ describe('VideoCardBase External Link Opening', () => {
       </TestWrapper>
     );
 
-    // Should still render the link correctly even without electron API
-    const linkElement = screen.getByRole('link');
-    expect(linkElement).toBeInTheDocument();
-    expect(linkElement).toHaveAttribute('href', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-
-    // Restore electron
-    window.electron = originalElectron;
+    // Should render title with selectable text class
+    const titleElement = screen.getByText('Test Video with Selectable Text');
+    expect(titleElement).toBeInTheDocument();
+    expect(titleElement).toHaveClass('select-text');
   });
 
   test('should show watched checkmark overlay for watched videos', () => {
