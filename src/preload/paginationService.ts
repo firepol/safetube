@@ -9,9 +9,29 @@ export class PaginationService {
   private cacheFile: string;
 
   private constructor() {
-    this.cacheFile = '.cache/pageCache.json';
+    this.cacheFile = '.cache/pageCache.json'; // Will be updated in init()
     this.config = this.loadConfig();
+    this.initializeAsync();
+  }
+
+  private async initializeAsync() {
+    await this.updateCacheFilePath();
     this.loadPageCache();
+  }
+
+  private async updateCacheFilePath() {
+    try {
+      // Get cache directory from main process using AppPaths
+      if (typeof window !== 'undefined' && (window as any).electron?.getCachePath) {
+        this.cacheFile = await (window as any).electron.getCachePath('pageCache.json');
+      } else {
+        // Fallback for environments where window.electron is not available
+        this.cacheFile = '.cache/pageCache.json';
+      }
+    } catch (error) {
+      console.warn('[PaginationService] Failed to get cache path from main process, using fallback:', error);
+      this.cacheFile = '.cache/pageCache.json';
+    }
   }
 
   public static getInstance(): PaginationService {

@@ -4,10 +4,37 @@ import fs from 'fs';
 import path from 'path';
 import { logVerbose } from './logging';
 
-const CACHE_DIR = path.join('.', '.cache');
+// Cache directory will be retrieved from main process via IPC, with fallback
+let CACHE_DIR: string | null = null;
+let CACHE_DIR_INITIALIZED = false;
 
-function getCacheFilePath(sourceId: string) {
-  return path.join(CACHE_DIR, `youtube-${sourceId}.json`);
+function getCacheDir(): string {
+  if (!CACHE_DIR_INITIALIZED) {
+    try {
+      // Use fallback initially, will be updated if IPC is available
+      CACHE_DIR = path.join('.', '.cache');
+      CACHE_DIR_INITIALIZED = true;
+
+      // Try to get proper cache directory from main process asynchronously
+      if (typeof window !== 'undefined' && (window as any).electron?.getCacheDir) {
+        (window as any).electron.getCacheDir().then((cacheDir: string) => {
+          CACHE_DIR = cacheDir;
+          logVerbose(`[CachedYouTubeSources] Updated cache directory to: ${cacheDir}`);
+        }).catch((error: any) => {
+          console.warn('[CachedYouTubeSources] Failed to get cache directory from main process:', error);
+        });
+      }
+    } catch (error) {
+      console.warn('[CachedYouTubeSources] Failed to initialize cache directory:', error);
+      CACHE_DIR = path.join('.', '.cache');
+    }
+  }
+  return CACHE_DIR!;
+}
+
+function getCacheFilePath(sourceId: string): string {
+  const cacheDir = getCacheDir();
+  return path.join(cacheDir, `youtube-${sourceId}.json`);
 }
 
 export class CachedYouTubeSources {
@@ -15,7 +42,8 @@ export class CachedYouTubeSources {
     if (source.type !== 'youtube_channel' && source.type !== 'youtube_playlist') {
       throw new Error('Invalid source type for YouTube cache');
     }
-    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+    const cacheDir = getCacheDir();
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
     const cacheFile = getCacheFilePath(source.id);
     let cache: YouTubeSourceCache | null = null;
     if (fs.existsSync(cacheFile)) {
@@ -120,7 +148,8 @@ export class CachedYouTubeSources {
     if (source.type !== 'youtube_channel' && source.type !== 'youtube_playlist') {
       throw new Error('Invalid source type for YouTube cache');
     }
-    if (!fs.existsSync(CACHE_DIR)) fs.mkdirSync(CACHE_DIR, { recursive: true });
+    const cacheDir = getCacheDir();
+    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
     const cacheFile = getCacheFilePath(source.id);
     let cache: YouTubeSourceCache | null = null;
     if (fs.existsSync(cacheFile)) {

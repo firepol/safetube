@@ -24,7 +24,33 @@ interface LocalVideoItem {
   relativePath: string;
 }
 
-const CACHE_DIR = path.join('.', '.cache');
+// Cache directory will be retrieved from main process via IPC, with fallback
+let CACHE_DIR: string | null = null;
+let CACHE_DIR_INITIALIZED = false;
+
+function getCacheDir(): string {
+  if (!CACHE_DIR_INITIALIZED) {
+    try {
+      // Use fallback initially, will be updated if IPC is available
+      CACHE_DIR = path.join('.', '.cache');
+      CACHE_DIR_INITIALIZED = true;
+
+      // Try to get proper cache directory from main process asynchronously
+      if (typeof window !== 'undefined' && (window as any).electron?.getCacheDir) {
+        (window as any).electron.getCacheDir().then((cacheDir: string) => {
+          CACHE_DIR = cacheDir;
+          logVerbose(`[LocalVideoScanner] Updated cache directory to: ${cacheDir}`);
+        }).catch((error: any) => {
+          console.warn('[LocalVideoScanner] Failed to get cache directory from main process:', error);
+        });
+      }
+    } catch (error) {
+      console.warn('[LocalVideoScanner] Failed to initialize cache directory:', error);
+      CACHE_DIR = path.join('.', '.cache');
+    }
+  }
+  return CACHE_DIR!;
+}
 const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
 const THUMBNAIL_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 
@@ -33,7 +59,8 @@ export class LocalVideoScanner {
    * Get cache file path for a local source
    */
   static getCacheFilePath(sourceId: string): string {
-    return path.join(CACHE_DIR, `local-videos-${sourceId}.json`);
+    const cacheDir = getCacheDir();
+    return path.join(cacheDir, `local-videos-${sourceId}.json`);
   }
 
   /**
@@ -249,8 +276,9 @@ export class LocalVideoScanner {
   private static cacheScanResult(result: LocalVideoScanResult): void {
     try {
       // Ensure cache directory exists
-      if (!fs.existsSync(CACHE_DIR)) {
-        fs.mkdirSync(CACHE_DIR, { recursive: true });
+      const cacheDir = getCacheDir();
+      if (!fs.existsSync(cacheDir)) {
+        fs.mkdirSync(cacheDir, { recursive: true });
       }
 
       const cacheFile = this.getCacheFilePath(result.sourceId);

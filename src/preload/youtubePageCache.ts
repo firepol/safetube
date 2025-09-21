@@ -11,14 +11,41 @@ interface CachedYouTubePage {
   sourceType: 'youtube_channel' | 'youtube_playlist';
 }
 
-const CACHE_DIR = path.join('.', '.cache');
+// Cache directory will be retrieved from main process via IPC, with fallback
+let CACHE_DIR: string | null = null;
+let CACHE_DIR_INITIALIZED = false;
+
+function getCacheDir(): string {
+  if (!CACHE_DIR_INITIALIZED) {
+    try {
+      // Use fallback initially, will be updated if IPC is available
+      CACHE_DIR = path.join('.', '.cache');
+      CACHE_DIR_INITIALIZED = true;
+
+      // Try to get proper cache directory from main process asynchronously
+      if (typeof window !== 'undefined' && (window as any).electron?.getCacheDir) {
+        (window as any).electron.getCacheDir().then((cacheDir: string) => {
+          CACHE_DIR = cacheDir;
+          logVerbose(`[YouTubePageCache] Updated cache directory to: ${cacheDir}`);
+        }).catch((error: any) => {
+          console.warn('[YouTubePageCache] Failed to get cache directory from main process:', error);
+        });
+      }
+    } catch (error) {
+      console.warn('[YouTubePageCache] Failed to initialize cache directory:', error);
+      CACHE_DIR = path.join('.', '.cache');
+    }
+  }
+  return CACHE_DIR!;
+}
 
 export class YouTubePageCache {
   /**
    * Get cache file path for a specific source page
    */
   static getCacheFilePath(sourceId: string, pageNumber: number): string {
-    return path.join(CACHE_DIR, `youtube-pages-${sourceId}-page-${pageNumber}.json`);
+    const cacheDir = getCacheDir();
+    return path.join(cacheDir, `youtube-pages-${sourceId}-page-${pageNumber}.json`);
   }
 
   /**
@@ -88,8 +115,9 @@ export class YouTubePageCache {
   static cachePage(sourceId: string, pageNumber: number, videos: any[], totalResults: number, sourceType: 'youtube_channel' | 'youtube_playlist'): void {
     try {
       // Ensure cache directory exists
-      if (!fs.existsSync(CACHE_DIR)) {
-        fs.mkdirSync(CACHE_DIR, { recursive: true });
+      const cacheDir = getCacheDir();
+      if (!fs.existsSync(cacheDir)) {
+        fs.mkdirSync(cacheDir, { recursive: true });
       }
 
       const cacheFile = this.getCacheFilePath(sourceId, pageNumber);
@@ -114,15 +142,16 @@ export class YouTubePageCache {
    */
   static clearSourcePages(sourceId: string): void {
     try {
-      if (!fs.existsSync(CACHE_DIR)) return;
+      const cacheDir = getCacheDir();
+      if (!fs.existsSync(cacheDir)) return;
 
-      const files = fs.readdirSync(CACHE_DIR);
+      const files = fs.readdirSync(cacheDir);
       let clearedCount = 0;
 
       for (const file of files) {
         // Match pattern: youtube-pages-{sourceId}-page-*.json
         if (file.startsWith(`youtube-pages-${sourceId}-page-`) && file.endsWith('.json')) {
-          const filePath = path.join(CACHE_DIR, file);
+          const filePath = path.join(cacheDir, file);
           fs.unlinkSync(filePath);
           clearedCount++;
           logVerbose(`[YouTubePageCache] Cleared page cache file: ${file}`);
@@ -142,15 +171,16 @@ export class YouTubePageCache {
    */
   static clearExpiredPages(): void {
     try {
-      if (!fs.existsSync(CACHE_DIR)) return;
+      const cacheDir = getCacheDir();
+      if (!fs.existsSync(cacheDir)) return;
 
-      const files = fs.readdirSync(CACHE_DIR);
+      const files = fs.readdirSync(cacheDir);
       let clearedCount = 0;
 
       for (const file of files) {
         if (file.startsWith('youtube-pages-') && file.endsWith('.json')) {
           try {
-            const filePath = path.join(CACHE_DIR, file);
+            const filePath = path.join(cacheDir, file);
             const cacheData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
 
             if (!this.isCacheValid(cacheData)) {
@@ -161,7 +191,7 @@ export class YouTubePageCache {
           } catch (e) {
             // Remove corrupted cache files
             try {
-              fs.unlinkSync(path.join(CACHE_DIR, file));
+              fs.unlinkSync(path.join(cacheDir, file));
               clearedCount++;
               logVerbose(`[YouTubePageCache] Removed corrupted page cache file: ${file}`);
             } catch (unlinkError) {

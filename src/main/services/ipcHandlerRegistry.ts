@@ -661,6 +661,25 @@ export function registerSystemHandlers() {
       return { success: false };
     }
   });
+
+  // App paths handlers
+  ipcMain.handle('app-paths:get-cache-dir', async () => {
+    try {
+      return AppPaths.getCacheDir();
+    } catch (error) {
+      log.error('[IPC] Error getting cache directory:', error);
+      throw error;
+    }
+  });
+
+  ipcMain.handle('app-paths:get-cache-path', async (_, filename: string) => {
+    try {
+      return AppPaths.getCachePath(filename);
+    } catch (error) {
+      log.error('[IPC] Error getting cache path:', error);
+      throw error;
+    }
+  });
 }
 
 // Download Handlers
