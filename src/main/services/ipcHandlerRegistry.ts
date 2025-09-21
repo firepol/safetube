@@ -687,39 +687,46 @@ export function registerDownloadHandlers() {
   // Start download
   ipcMain.handle('download:start', async (_, videoId: string, videoTitle: string, sourceInfo: any) => {
     try {
-      // This would integrate with download management system
+      const { DownloadManager } = await import('../downloadManager');
+      await DownloadManager.startDownload(videoId, videoTitle, sourceInfo);
       return { success: true, message: 'Download started' };
     } catch (error) {
       log.error('[IPC] Error starting download:', error);
-      return { success: false, error: 'Download failed to start' };
+      return { success: false, error: error instanceof Error ? error.message : 'Download failed to start' };
     }
   });
 
   // Get download status
   ipcMain.handle('download:get-status', async (_, videoId: string) => {
     try {
-      // This would check actual download status
-      return { status: 'idle', progress: 0 };
+      const { getDownloadStatus } = await import('../fileUtils');
+      const status = await getDownloadStatus(videoId);
+      return status || { status: 'idle', progress: 0 };
     } catch (error) {
       log.error('[IPC] Error getting download status:', error);
-      return { status: 'error', progress: 0 };
+      return { status: 'idle', progress: 0 };
     }
   });
 
   // Cancel download
   ipcMain.handle('download:cancel', async (_, videoId: string) => {
     try {
+      const { DownloadManager } = await import('../downloadManager');
+      await DownloadManager.cancelDownload(videoId);
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error cancelling download:', error);
-      return { success: false };
+      return { success: false, error: error instanceof Error ? error.message : 'Cancel failed' };
     }
   });
 
   // Check if downloading
   ipcMain.handle('download:is-downloading', async (_, videoId: string) => {
     try {
-      return { isDownloading: false };
+      const { getDownloadStatus } = await import('../fileUtils');
+      const status = await getDownloadStatus(videoId);
+      const isDownloading = status?.status === 'downloading' || status?.status === 'pending';
+      return { isDownloading };
     } catch (error) {
       log.error('[IPC] Error checking download status:', error);
       return { isDownloading: false };
@@ -729,10 +736,15 @@ export function registerDownloadHandlers() {
   // Reset download status
   ipcMain.handle('download:reset-status', async (_, videoId: string) => {
     try {
+      // Remove the download status entry completely to reset to "idle" state
+      const { readDownloadStatus, writeDownloadStatus } = await import('../fileUtils');
+      const statuses = await readDownloadStatus();
+      const filteredStatuses = statuses.filter(s => s.videoId !== videoId);
+      await writeDownloadStatus(filteredStatuses);
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error resetting download status:', error);
-      return { success: false };
+      return { success: false, error: error instanceof Error ? error.message : 'Reset failed' };
     }
   });
 
