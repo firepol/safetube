@@ -309,7 +309,9 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
 
     // Navigate using URL instead of state updates
     if (sourceId) {
-      const relativePath = folder.path.replace(`${sourcePath}/`, '');
+      // Use platform-appropriate separator for path replacement
+      const separator = sourcePath.includes('\\') ? '\\' : '/';
+      const relativePath = folder.path.replace(`${sourcePath}${separator}`, '');
       navigate(`/source/${sourceId}?folder=${encodeURIComponent(relativePath)}`);
     }
   };
@@ -328,7 +330,8 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
         navigate(`/source/${sourceId}`);
       } else {
         // Going back to parent folder
-        const relativePath = parentPath.replace(`${sourcePath}/`, '');
+        const separator = sourcePath.includes('\\') ? '\\' : '/';
+        const relativePath = parentPath.replace(`${sourcePath}${separator}`, '');
         navigate(`/source/${sourceId}?folder=${encodeURIComponent(relativePath)}`);
       }
     } else {
