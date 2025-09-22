@@ -343,7 +343,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     if (currentFolderPath === sourcePath) {
       return sourceTitle;
     }
-    return currentFolderPath.split('/').pop() || 'Unknown';
+    return currentFolderPath.split(/[/\\]/).pop() || 'Unknown';
   };
 
   const getBreadcrumbItems = (): BreadcrumbItem[] => {
