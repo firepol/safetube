@@ -141,6 +141,8 @@ contextBridge.exposeInMainWorld(
     favoritesSyncWatchHistory: () => ipcRenderer.invoke('favorites:sync-watch-history'),
     // App paths
     getCacheDir: () => ipcRenderer.invoke('app-paths:get-cache-dir'),
-    getCachePath: (filename: string) => ipcRenderer.invoke('app-paths:get-cache-path', filename)
+    getCacheDirSync: () => ipcRenderer.sendSync('app-paths:get-cache-dir-sync'),
+    getCachePath: (filename: string) => ipcRenderer.invoke('app-paths:get-cache-path', filename),
+    getCachePathSync: (filename: string) => ipcRenderer.sendSync('app-paths:get-cache-path-sync', filename)
   }
 );

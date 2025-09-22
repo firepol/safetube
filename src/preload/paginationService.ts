@@ -11,25 +11,42 @@ export class PaginationService {
   private constructor() {
     this.cacheFile = '.cache/pageCache.json'; // Will be updated in init()
     this.config = this.loadConfig();
-    this.initializeAsync();
-  }
-
-  private async initializeAsync() {
-    await this.updateCacheFilePath();
+    this.initializeCacheFile();
     this.loadPageCache();
   }
 
-  private async updateCacheFilePath() {
+  private initializeCacheFile() {
     try {
-      // Get cache directory from main process using AppPaths
+      // Try to get cache path synchronously first
+      if (typeof window !== 'undefined' && (window as any).electron?.getCachePathSync) {
+        try {
+          const syncCachePath = (window as any).electron.getCachePathSync('pageCache.json');
+          if (syncCachePath) {
+            this.cacheFile = syncCachePath;
+            console.log(`[PaginationService] Got cache path synchronously: ${syncCachePath}`);
+            return;
+          }
+        } catch (error) {
+          console.warn('[PaginationService] Failed to get cache path synchronously:', error);
+        }
+      }
+
+      // If sync didn't work, try async as fallback
       if (typeof window !== 'undefined' && (window as any).electron?.getCachePath) {
-        this.cacheFile = await (window as any).electron.getCachePath('pageCache.json');
-      } else {
-        // Fallback for environments where window.electron is not available
-        this.cacheFile = '.cache/pageCache.json';
+        (window as any).electron.getCachePath('pageCache.json').then((cachePath: string) => {
+          this.cacheFile = cachePath;
+          console.log(`[PaginationService] Updated cache path asynchronously: ${cachePath}`);
+        }).catch((error: any) => {
+          console.warn('[PaginationService] Failed to get cache path asynchronously:', error);
+        });
+      }
+
+      // Keep fallback if both failed
+      if (this.cacheFile === '.cache/pageCache.json') {
+        console.log(`[PaginationService] Using fallback cache path: ${this.cacheFile}`);
       }
     } catch (error) {
-      console.warn('[PaginationService] Failed to get cache path from main process, using fallback:', error);
+      console.warn('[PaginationService] Failed to initialize cache file path:', error);
       this.cacheFile = '.cache/pageCache.json';
     }
   }

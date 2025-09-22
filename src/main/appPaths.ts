@@ -7,12 +7,15 @@ export class AppPaths {
    * Get the appropriate config directory based on environment
    */
   static getConfigDir(): string {
-    if (this.isDev()) {
+    const isDev = this.isDev();
+    const userDataPath = app.getPath('userData');
+
+    if (isDev) {
       // In development, use project root config folder
       return path.join(process.cwd(), 'config');
     } else {
       // In production, use user data directory
-      return path.join(app.getPath('userData'), 'config');
+      return path.join(userDataPath, 'config');
     }
   }
 
@@ -21,18 +24,23 @@ export class AppPaths {
    * Windows uses .cache subdirectory to avoid conflicts with Electron's built-in Cache folder
    */
   static getCacheDir(): string {
-    if (this.isDev()) {
+    const isDev = this.isDev();
+    const platform = os.platform();
+    const userDataPath = app.getPath('userData');
+
+    if (isDev) {
       // In development, use project root cache folder
       return path.join(process.cwd(), 'cache');
     } else {
       // In production, use user data directory
-      const isWindows = os.platform() === 'win32';
+      const isWindows = platform === 'win32';
+
       if (isWindows) {
         // On Windows, use .cache to avoid conflicts with Electron's Cache folder
-        return path.join(app.getPath('userData'), '.cache');
+        return path.join(userDataPath, '.cache');
       } else {
         // On Linux/macOS, use cache as before
-        return path.join(app.getPath('userData'), 'cache');
+        return path.join(userDataPath, 'cache');
       }
     }
   }

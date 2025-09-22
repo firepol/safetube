@@ -31,19 +31,40 @@ let CACHE_DIR_INITIALIZED = false;
 function getCacheDir(): string {
   if (!CACHE_DIR_INITIALIZED) {
     try {
-      // Use fallback initially, will be updated if IPC is available
-      CACHE_DIR = path.join('.', '.cache');
-      CACHE_DIR_INITIALIZED = true;
-
-      // Try to get proper cache directory from main process asynchronously
-      if (typeof window !== 'undefined' && (window as any).electron?.getCacheDir) {
-        (window as any).electron.getCacheDir().then((cacheDir: string) => {
-          CACHE_DIR = cacheDir;
-          logVerbose(`[LocalVideoScanner] Updated cache directory to: ${cacheDir}`);
-        }).catch((error: any) => {
-          console.warn('[LocalVideoScanner] Failed to get cache directory from main process:', error);
-        });
+      // Try to get proper cache directory from main process synchronously first
+      if (typeof window !== 'undefined' && (window as any).electron?.getCacheDirSync) {
+        try {
+          const syncCacheDir = (window as any).electron.getCacheDirSync();
+          if (syncCacheDir) {
+            CACHE_DIR = syncCacheDir;
+            logVerbose(`[LocalVideoScanner] Got cache directory synchronously: ${syncCacheDir}`);
+          }
+        } catch (error) {
+          console.warn('[LocalVideoScanner] Failed to get cache directory synchronously:', error);
+        }
       }
+
+      // If sync didn't work, try async as fallback
+      if (!CACHE_DIR && typeof window !== 'undefined' && (window as any).electron?.getCacheDir) {
+        try {
+          (window as any).electron.getCacheDir().then((cacheDir: string) => {
+            CACHE_DIR = cacheDir;
+            logVerbose(`[LocalVideoScanner] Updated cache directory asynchronously: ${cacheDir}`);
+          }).catch((error: any) => {
+            console.warn('[LocalVideoScanner] Failed to get cache directory asynchronously:', error);
+          });
+        } catch (error) {
+          console.warn('[LocalVideoScanner] Failed to call getCacheDir IPC:', error);
+        }
+      }
+
+      // Use fallback only if both sync and async failed
+      if (!CACHE_DIR) {
+        CACHE_DIR = path.join('.', '.cache');
+        logVerbose(`[LocalVideoScanner] Using fallback cache directory: ${CACHE_DIR}`);
+      }
+
+      CACHE_DIR_INITIALIZED = true;
     } catch (error) {
       console.warn('[LocalVideoScanner] Failed to initialize cache directory:', error);
       CACHE_DIR = path.join('.', '.cache');
