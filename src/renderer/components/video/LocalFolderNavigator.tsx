@@ -365,13 +365,14 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
 
     // Add folder path items (skip the source path at index 0)
     navigationStack.slice(1).forEach((path, index) => {
-      const folderName = path.split('/').pop() || 'Unknown';
+      const folderName = path.split(/[/\\]/).pop() || 'Unknown';
       const actualIndex = index + 1; // Adjust for slice(1)
       const isCurrentLocation = actualIndex === currentStackIndex;
 
       if (sourceId && !isCurrentLocation) {
         // Make intermediate folders clickable
-        const relativePath = path.replace(`${sourcePath}/`, '');
+        const separator = sourcePath.includes('\\') ? '\\' : '/';
+        const relativePath = path.replace(`${sourcePath}${separator}`, '');
         items.push({
           label: folderName,
           path: `/source/${sourceId}?folder=${encodeURIComponent(relativePath)}`

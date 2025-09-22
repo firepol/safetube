@@ -27,7 +27,13 @@ export const SourcePage: React.FC = () => {
   // Extract folder parameter from URL query string
   const urlParams = new URLSearchParams(location.search);
   const folderParam = urlParams.get('folder');
-  const initialFolderPath = folderParam ? `${source?.path}/${decodeURIComponent(folderParam)}` : undefined;
+  const initialFolderPath = folderParam && source?.path ?
+    (() => {
+      const decodedFolder = decodeURIComponent(folderParam);
+      // Detect platform and use appropriate separator
+      const separator = source.path.includes('\\') ? '\\' : '/';
+      return `${source.path}${separator}${decodedFolder}`;
+    })() : undefined;
 
   // Load watched videos data
   useEffect(() => {
