@@ -179,11 +179,35 @@ export const SourcePage: React.FC = () => {
   const handleVideoClick = (video: any, currentFolderPath?: string) => {
     // Check if video already has navigation context (from LocalFolderNavigator)
     // If so, use that breadcrumb data instead of creating new one
-    const breadcrumbData = video.navigationContext?.breadcrumb || {
+    let breadcrumbData = video.navigationContext?.breadcrumb || {
       sourceName: source?.title,
       sourceId: sourceId,
       basePath: source?.path
     };
+
+    // If we have a current folder path, add folder information to breadcrumb
+    if (currentFolderPath && source?.path && currentFolderPath !== source.path) {
+      const folderPath = [];
+
+      // Build the folder hierarchy for breadcrumbs
+      const separator = source.path.includes('\\') ? '\\' : '/';
+      const relativePath = currentFolderPath.replace(source.path, '').replace(/^[/\\]/, '');
+      const folderParts = relativePath.split(/[/\\]/).filter(Boolean);
+
+      let buildPath = source.path;
+      for (const part of folderParts) {
+        buildPath = `${buildPath}${separator}${part}`;
+        folderPath.push({
+          name: part,
+          path: buildPath
+        });
+      }
+
+      breadcrumbData = {
+        ...breadcrumbData,
+        folderPath: folderPath
+      };
+    }
 
     if (video.type === 'youtube') {
       navigate(`/player/${encodeURIComponent(video.id)}`, {
@@ -201,7 +225,7 @@ export const SourcePage: React.FC = () => {
       // we need to include folder context in the return URL
       if (currentFolderPath && source?.path && currentFolderPath !== source.path) {
         // Encode the folder path as a query parameter
-        const relativePath = currentFolderPath.replace(source.path, '').replace(/^\//, '');
+        const relativePath = currentFolderPath.replace(source.path, '').replace(/^[/\\]/, '');
         returnTo += `?folder=${encodeURIComponent(relativePath)}`;
       }
 

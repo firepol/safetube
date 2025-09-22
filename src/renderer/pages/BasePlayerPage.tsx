@@ -112,8 +112,8 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
           let relativePath = folder.path;
           if (relativePath.startsWith(breadcrumbData.basePath)) {
             relativePath = relativePath.substring(breadcrumbData.basePath.length);
-            // Remove leading slash if present
-            if (relativePath.startsWith('/')) {
+            // Remove leading slash or backslash if present
+            if (relativePath.startsWith('/') || relativePath.startsWith('\\')) {
               relativePath = relativePath.substring(1);
             }
           }
