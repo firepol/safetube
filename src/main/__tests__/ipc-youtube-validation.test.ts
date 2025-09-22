@@ -68,6 +68,19 @@ describe('YouTube URL Validation Logic', () => {
       expect(result.cleanedUrl).toBe('https://www.youtube.com/playlist?list=PL4O65MiW7LRlXm035tmfqrR4MU4u2Xp1N');
     });
 
+    it('should handle various playlist ID formats', () => {
+      const urls = [
+        'https://www.youtube.com/playlist?list=PLrm5sF3xBUPF7_1-nCJU_VxlhXgwKTBm6',
+        'https://www.youtube.com/watch?v=abc123&list=PLrm5sF3xBUPF7_1-nCJU_VxlhXgwKTBm6',
+        'https://www.youtube.com/watch?list=PLrm5sF3xBUPF7_1-nCJU_VxlhXgwKTBm6&v=def456'
+      ];
+
+      urls.forEach(url => {
+        const result = validateYouTubeUrl(url, 'youtube_playlist');
+        expect(result.isValid).toBe(true);
+      });
+    });
+
     it('should reject URLs without list parameter', () => {
       const url = 'https://www.youtube.com/watch?v=U5P5rEzuKy0';
       const result = validateYouTubeUrl(url, 'youtube_playlist');

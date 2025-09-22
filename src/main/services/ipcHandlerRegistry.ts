@@ -10,6 +10,7 @@ import { readTimeLimits, readMainSettings, writeMainSettings } from '../fileUtil
 import log from '../logger';
 import { recordVideoWatching, getTimeTrackingState } from '../timeTracking';
 import { YouTubeAPI } from '../youtube-api';
+import { extractChannelId, extractPlaylistId } from '../../shared/videoSourceUtils';
 import {
   scanLocalFolder,
   getLocalFolderContents,
@@ -333,17 +334,62 @@ export function registerVideoSourceHandlers() {
   ipcMain.handle('video-sources:validate-youtube-url', async (_, url: string, type: 'youtube_channel' | 'youtube_playlist') => {
     try {
       if (type === 'youtube_channel') {
-        // Validate YouTube channel URL
+        // Validate YouTube channel URL format
         const channelMatch = url.match(/(?:youtube\.com\/(?:c\/|channel\/|user\/|@))([\w-]+)/);
         if (!channelMatch) {
           return { isValid: false, errors: ['Invalid YouTube channel URL format'] };
         }
 
-        // For channel validation, we could check if it exists via API
-        // For now, just check format
+        // Try to fetch channel details with API if available
+        let apiKey: string | null = null;
+        try {
+          // First check environment variable
+          const envApiKey = process.env.YOUTUBE_API_KEY;
+          if (envApiKey) {
+            apiKey = envApiKey;
+          } else {
+            // Then check mainSettings.json
+            const mainSettings = await readMainSettings();
+            if (mainSettings.youtubeApiKey) {
+              apiKey = mainSettings.youtubeApiKey;
+            }
+          }
+        } catch (error) {
+          log.warn('[IPC] Error getting YouTube API key:', error);
+        }
+        if (apiKey) {
+          try {
+            const channelId = extractChannelId(url);
+            if (channelId) {
+              const youtubeApi = new YouTubeAPI(apiKey);
+              const channelDetails = await youtubeApi.getChannelDetails(channelId);
+              return {
+                isValid: true,
+                title: channelDetails.title
+              };
+            } else {
+              // If we can't extract channel ID, try searching by username for @ URLs
+              const usernameMatch = url.match(/@([^/]+)/);
+              if (usernameMatch) {
+                const youtubeApi = new YouTubeAPI(apiKey);
+                const searchResult = await youtubeApi.searchChannelByUsername(usernameMatch[1]);
+                return {
+                  isValid: true,
+                  title: searchResult.title
+                };
+              }
+            }
+          } catch (apiError) {
+            log.warn('[IPC] YouTube API error for channel, falling back to format validation:', apiError);
+            // Fall back to format validation if API fails
+          }
+        }
+
+        // Fallback: just validate format without fetching title
         return { isValid: true };
+
       } else if (type === 'youtube_playlist') {
-        // Validate YouTube playlist URL - check for both direct playlist URLs and watch URLs with list parameter
+        // Validate YouTube playlist URL format
         const playlistMatch = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
         if (!playlistMatch) {
           return { isValid: false, errors: ['Invalid YouTube playlist URL format'] };
@@ -358,6 +404,42 @@ export function registerVideoSourceHandlers() {
           cleanedUrl = `https://www.youtube.com/playlist?list=${listId}`;
         }
 
+        // Try to fetch playlist details with API if available
+        let apiKey: string | null = null;
+        try {
+          // First check environment variable
+          const envApiKey = process.env.YOUTUBE_API_KEY;
+          if (envApiKey) {
+            apiKey = envApiKey;
+          } else {
+            // Then check mainSettings.json
+            const mainSettings = await readMainSettings();
+            if (mainSettings.youtubeApiKey) {
+              apiKey = mainSettings.youtubeApiKey;
+            }
+          }
+        } catch (error) {
+          log.warn('[IPC] Error getting YouTube API key:', error);
+        }
+        if (apiKey) {
+          try {
+            const playlistId = extractPlaylistId(url);
+            if (playlistId) {
+              const youtubeApi = new YouTubeAPI(apiKey);
+              const playlistDetails = await youtubeApi.getPlaylistDetails(playlistId);
+              return {
+                isValid: true,
+                title: playlistDetails.title,
+                cleanedUrl
+              };
+            }
+          } catch (apiError) {
+            log.warn('[IPC] YouTube API error for playlist, falling back to format validation:', apiError);
+            // Fall back to format validation if API fails
+          }
+        }
+
+        // Fallback: just validate format without fetching title
         return {
           isValid: true,
           cleanedUrl
@@ -596,11 +678,10 @@ export function registerSystemHandlers() {
         return envApiKey;
       }
 
-      // Then check config file
-      const configPath = AppPaths.getConfigPath('youtubeApiKey.json');
-      if (fs.existsSync(configPath)) {
-        const { apiKey } = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        return apiKey;
+      // Then check mainSettings.json
+      const mainSettings = await readMainSettings();
+      if (mainSettings.youtubeApiKey) {
+        return mainSettings.youtubeApiKey;
       }
 
       return null;
