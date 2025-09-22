@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import path from 'path';
 
 // Debug: Log what environment variables are available (only when verbose logging is enabled)
 // Note: We'll get the verbose setting from the main process via IPC instead
@@ -143,6 +144,9 @@ contextBridge.exposeInMainWorld(
     getCacheDir: () => ipcRenderer.invoke('app-paths:get-cache-dir'),
     getCacheDirSync: () => ipcRenderer.sendSync('app-paths:get-cache-dir-sync'),
     getCachePath: (filename: string) => ipcRenderer.invoke('app-paths:get-cache-path', filename),
-    getCachePathSync: (filename: string) => ipcRenderer.sendSync('app-paths:get-cache-path-sync', filename)
+    getCachePathSync: (filename: string) => ipcRenderer.sendSync('app-paths:get-cache-path-sync', filename),
+
+    // Path utilities for cross-platform compatibility
+    pathJoin: (...paths: string[]) => path.join(...paths)
   }
 );

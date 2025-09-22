@@ -64,12 +64,12 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   const currentFolderPath = initialFolderPath || sourcePath;
   const navigationStack = (() => {
     if (initialFolderPath) {
-      const pathParts = initialFolderPath.replace(sourcePath, '').split('/').filter(Boolean);
+      const pathParts = initialFolderPath.replace(sourcePath, '').split(/[/\\]/).filter(Boolean);
       const stack = [sourcePath];
       let currentPath = sourcePath;
 
       for (const part of pathParts) {
-        currentPath = `${currentPath}/${part}`;
+        currentPath = window.electron?.pathJoin(currentPath, part) || `${currentPath}/${part}`;
         stack.push(currentPath);
       }
 

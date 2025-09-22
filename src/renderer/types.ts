@@ -215,6 +215,9 @@ export interface ElectronAPI {
   favoritesUpdateConfig: (config: any) => Promise<any>;
   favoritesCleanupOrphaned: () => Promise<any[]>;
   favoritesSyncWatchHistory: () => Promise<any[]>;
+
+  // Path utilities for cross-platform compatibility
+  pathJoin: (...paths: string[]) => string;
 }
 declare global {
   interface Window {
