@@ -755,6 +755,17 @@ export function registerSystemHandlers() {
     }
   });
 
+  // Path utilities for cross-platform compatibility
+  ipcMain.handle('path-join', async (_, ...paths: string[]) => {
+    try {
+      const path = require('path');
+      return path.join(...paths);
+    } catch (error) {
+      log.error('[IPC] Error joining paths:', error);
+      throw error;
+    }
+  });
+
   // App paths handlers
   ipcMain.handle('app-paths:get-cache-dir', async () => {
     try {

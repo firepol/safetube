@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { VideoGrid } from '../layout/VideoGrid';
 import { PageHeader } from '../layout/PageHeader';
@@ -62,21 +62,24 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   const [loadingFolderCounts, setLoadingFolderCounts] = useState<Record<string, boolean>>({});
   // NUCLEAR APPROACH: Always derive state from props, never use useState for navigation
   const currentFolderPath = initialFolderPath || sourcePath;
-  const navigationStack = (() => {
+  const navigationStack = useMemo(() => {
     if (initialFolderPath) {
       const pathParts = initialFolderPath.replace(sourcePath, '').split(/[/\\]/).filter(Boolean);
       const stack = [sourcePath];
       let currentPath = sourcePath;
 
       for (const part of pathParts) {
-        currentPath = window.electron?.pathJoin(currentPath, part) || `${currentPath}/${part}`;
+        // Use simple string concatenation with platform-appropriate separator
+        // Since we can't use async in useMemo, we'll detect platform and use appropriate separator
+        const separator = sourcePath.includes('\\') ? '\\' : '/';
+        currentPath = `${currentPath}${separator}${part}`;
         stack.push(currentPath);
       }
 
       return stack;
     }
     return [sourcePath];
-  })();
+  }, [initialFolderPath, sourcePath]);
   const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
   const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
 

@@ -217,7 +217,7 @@ export interface ElectronAPI {
   favoritesSyncWatchHistory: () => Promise<any[]>;
 
   // Path utilities for cross-platform compatibility
-  pathJoin: (...paths: string[]) => string;
+  pathJoin: (...paths: string[]) => Promise<string>;
 }
 declare global {
   interface Window {
