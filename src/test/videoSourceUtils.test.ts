@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cleanYouTubePlaylistUrl, validateVideoSource, getDefaultSortOrder } from '../shared/videoSourceUtils';
+import { cleanYouTubePlaylistUrl, validateVideoSource, getDefaultSortOrder, isValidYouTubePlaylistUrl, detectYouTubeUrlType } from '../shared/videoSourceUtils';
 
 describe('videoSourceUtils', () => {
   describe('cleanYouTubePlaylistUrl', () => {
@@ -17,6 +17,12 @@ describe('videoSourceUtils', () => {
     it('should handle URLs without playlist parameter', () => {
       const input = 'https://www.youtube.com/watch?v=U5P5rEzuKy0';
       expect(cleanYouTubePlaylistUrl(input)).toBe(input);
+    });
+
+    it('should clean the user-reported URL with numeric playlist ID', () => {
+      const input = 'https://www.youtube.com/watch?v=xWghJEgmovU&list=PL4O65MiW7LRlXm035tmfqrR4MU4u2Xp1N';
+      const expected = 'https://www.youtube.com/playlist?list=PL4O65MiW7LRlXm035tmfqrR4MU4u2Xp1N';
+      expect(cleanYouTubePlaylistUrl(input)).toBe(expected);
     });
   });
 
@@ -82,6 +88,48 @@ describe('videoSourceUtils', () => {
       expect(getDefaultSortOrder('youtube_channel')).toBe('newestFirst');
       expect(getDefaultSortOrder('youtube_playlist')).toBe('playlistOrder');
       expect(getDefaultSortOrder('local')).toBe('alphabetical');
+    });
+  });
+
+  describe('isValidYouTubePlaylistUrl', () => {
+    it('should validate standard playlist URLs', () => {
+      expect(isValidYouTubePlaylistUrl('https://www.youtube.com/playlist?list=PLIbdwDXxccgQpVd37Auo634lvDV_lskA7')).toBe(true);
+    });
+
+    it('should validate watch URLs with playlist parameter', () => {
+      expect(isValidYouTubePlaylistUrl('https://www.youtube.com/watch?v=U5P5rEzuKy0&list=PLIbdwDXxccgQpVd37Auo634lvDV_lskA7')).toBe(true);
+    });
+
+    it('should validate the user-reported URL', () => {
+      const url = 'https://www.youtube.com/watch?v=xWghJEgmovU&list=PL4O65MiW7LRlXm035tmfqrR4MU4u2Xp1N';
+      expect(isValidYouTubePlaylistUrl(url)).toBe(true);
+    });
+
+    it('should reject invalid URLs', () => {
+      expect(isValidYouTubePlaylistUrl('https://example.com')).toBe(false);
+      expect(isValidYouTubePlaylistUrl('https://www.youtube.com/watch?v=U5P5rEzuKy0')).toBe(false);
+    });
+  });
+
+  describe('detectYouTubeUrlType', () => {
+    it('should detect playlist URLs correctly', () => {
+      expect(detectYouTubeUrlType('https://www.youtube.com/playlist?list=PLIbdwDXxccgQpVd37Auo634lvDV_lskA7')).toBe('youtube_playlist');
+      expect(detectYouTubeUrlType('https://www.youtube.com/watch?v=U5P5rEzuKy0&list=PLIbdwDXxccgQpVd37Auo634lvDV_lskA7')).toBe('youtube_playlist');
+    });
+
+    it('should detect the user-reported URL as playlist', () => {
+      const url = 'https://www.youtube.com/watch?v=xWghJEgmovU&list=PL4O65MiW7LRlXm035tmfqrR4MU4u2Xp1N';
+      expect(detectYouTubeUrlType(url)).toBe('youtube_playlist');
+    });
+
+    it('should detect channel URLs correctly', () => {
+      expect(detectYouTubeUrlType('https://www.youtube.com/channel/UCxxxxxxxxxxxxxxxxxxxxxx')).toBe('youtube_channel');
+      expect(detectYouTubeUrlType('https://www.youtube.com/@username')).toBe('youtube_channel');
+    });
+
+    it('should return null for invalid URLs', () => {
+      expect(detectYouTubeUrlType('https://example.com')).toBe(null);
+      expect(detectYouTubeUrlType('')).toBe(null);
     });
   });
 });

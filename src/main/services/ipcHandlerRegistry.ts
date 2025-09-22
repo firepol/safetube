@@ -336,26 +336,38 @@ export function registerVideoSourceHandlers() {
         // Validate YouTube channel URL
         const channelMatch = url.match(/(?:youtube\.com\/(?:c\/|channel\/|user\/|@))([\w-]+)/);
         if (!channelMatch) {
-          return { valid: false, error: 'Invalid YouTube channel URL format' };
+          return { isValid: false, errors: ['Invalid YouTube channel URL format'] };
         }
 
         // For channel validation, we could check if it exists via API
         // For now, just check format
-        return { valid: true };
+        return { isValid: true };
       } else if (type === 'youtube_playlist') {
-        // Validate YouTube playlist URL
+        // Validate YouTube playlist URL - check for both direct playlist URLs and watch URLs with list parameter
         const playlistMatch = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
         if (!playlistMatch) {
-          return { valid: false, error: 'Invalid YouTube playlist URL format' };
+          return { isValid: false, errors: ['Invalid YouTube playlist URL format'] };
         }
 
-        return { valid: true };
+        // Check if it's a watch URL that should be cleaned to a proper playlist URL
+        const isWatchUrl = url.includes('/watch?') && url.includes('list=');
+        let cleanedUrl: string | undefined;
+
+        if (isWatchUrl) {
+          const listId = playlistMatch[1];
+          cleanedUrl = `https://www.youtube.com/playlist?list=${listId}`;
+        }
+
+        return {
+          isValid: true,
+          cleanedUrl
+        };
       }
 
-      return { valid: false, error: 'Unknown URL type' };
+      return { isValid: false, errors: ['Unknown URL type'] };
     } catch (error) {
       log.error('[IPC] Error validating YouTube URL:', error);
-      return { valid: false, error: 'Validation error' };
+      return { isValid: false, errors: ['Validation error'] };
     }
   });
 
@@ -364,24 +376,24 @@ export function registerVideoSourceHandlers() {
     try {
       // Check if path exists and is accessible
       if (!fs.existsSync(path)) {
-        return { valid: false, error: 'Path does not exist' };
+        return { isValid: false, errors: ['Path does not exist'] };
       }
 
       const stats = fs.statSync(path);
       if (!stats.isDirectory()) {
-        return { valid: false, error: 'Path is not a directory' };
+        return { isValid: false, errors: ['Path is not a directory'] };
       }
 
       // Check if directory is readable
       try {
         fs.accessSync(path, fs.constants.R_OK);
-        return { valid: true };
+        return { isValid: true };
       } catch (accessError) {
-        return { valid: false, error: 'Directory is not readable' };
+        return { isValid: false, errors: ['Directory is not readable'] };
       }
     } catch (error) {
       log.error('[IPC] Error validating local path:', error);
-      return { valid: false, error: 'Validation error' };
+      return { isValid: false, errors: ['Validation error'] };
     }
   });
 }
