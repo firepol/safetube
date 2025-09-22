@@ -60,8 +60,22 @@ function getCacheDir(): string {
 
       // Use fallback only if both sync and async failed
       if (!CACHE_DIR) {
-        CACHE_DIR = path.join('.', '.cache');
-        logVerbose(`[LocalVideoScanner] Using fallback cache directory: ${CACHE_DIR}`);
+        // In production, try to use a better fallback than current working directory
+        const isProduction = process.env.NODE_ENV !== 'development';
+        if (isProduction && typeof process !== 'undefined' && process.platform === 'win32') {
+          // On Windows production, try to use APPDATA if available
+          const appData = process.env.APPDATA || process.env.USERPROFILE;
+          if (appData) {
+            CACHE_DIR = path.join(appData, 'safetube', '.cache');
+            logVerbose(`[LocalVideoScanner] Using Windows production fallback cache directory: ${CACHE_DIR}`);
+          } else {
+            CACHE_DIR = path.join('.', '.cache');
+            logVerbose(`[LocalVideoScanner] Using default fallback cache directory: ${CACHE_DIR}`);
+          }
+        } else {
+          CACHE_DIR = path.join('.', '.cache');
+          logVerbose(`[LocalVideoScanner] Using fallback cache directory: ${CACHE_DIR}`);
+        }
       }
 
       CACHE_DIR_INITIALIZED = true;

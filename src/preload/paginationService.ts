@@ -41,9 +41,21 @@ export class PaginationService {
         });
       }
 
-      // Keep fallback if both failed
+      // Keep fallback if both failed, but try to improve it for Windows production
       if (this.cacheFile === '.cache/pageCache.json') {
-        console.log(`[PaginationService] Using fallback cache path: ${this.cacheFile}`);
+        const isProduction = process.env.NODE_ENV !== 'development';
+        if (isProduction && typeof process !== 'undefined' && process.platform === 'win32') {
+          // On Windows production, try to use APPDATA if available
+          const appData = process.env.APPDATA || process.env.USERPROFILE;
+          if (appData) {
+            this.cacheFile = path.join(appData, 'safetube', '.cache', 'pageCache.json');
+            console.log(`[PaginationService] Using Windows production fallback cache path: ${this.cacheFile}`);
+          } else {
+            console.log(`[PaginationService] Using default fallback cache path: ${this.cacheFile}`);
+          }
+        } else {
+          console.log(`[PaginationService] Using fallback cache path: ${this.cacheFile}`);
+        }
       }
     } catch (error) {
       console.warn('[PaginationService] Failed to initialize cache file path:', error);
