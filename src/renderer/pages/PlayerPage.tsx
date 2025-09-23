@@ -1069,8 +1069,6 @@ export const PlayerPage: React.FC = () => {
 
       // Refresh favorites to get updated state
       refreshFavorites();
-
-      logVerbose('[PlayerPage] Favorite toggled for video:', videoId, 'new status:', newFavoriteStatus);
     } catch (error) {
     }
   }, [video, getVideoMetadataForFavorites, refreshFavorites]);

@@ -282,8 +282,6 @@ export const YouTubePlayerPage: React.FC = () => {
 
       // Refresh favorites to get updated state
       refreshFavorites();
-
-      logVerbose('[YouTubePlayerPage] Favorite toggled for video:', videoId, 'new status:', newFavoriteStatus);
     } catch (error) {
     }
   }, [video, refreshFavorites]);

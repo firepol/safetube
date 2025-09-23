@@ -81,7 +81,6 @@ export class FavoritesService {
         }
       }
 
-      logVerbose('[FavoritesService] Successfully added favorite:', favorite.videoId);
       return favorite;
     } catch (error) {
       // Rollback optimistic update
@@ -97,8 +96,6 @@ export class FavoritesService {
    */
   static async removeFavorite(videoId: string): Promise<FavoriteVideo> {
     try {
-      logVerbose('[FavoritesService] Removing favorite:', videoId);
-
       // Store previous state for rollback
       const wasFavorite = this.favoriteStatusCache.get(videoId) || false;
 
@@ -112,7 +109,6 @@ export class FavoritesService {
         this.favoritesCache = this.favoritesCache.filter(f => f.videoId !== videoId);
       }
 
-      logVerbose('[FavoritesService] Successfully removed favorite:', videoId);
       return removedFavorite;
     } catch (error) {
       // Rollback optimistic update
@@ -143,13 +139,11 @@ export class FavoritesService {
         return isFav;
       }
 
-      logVerbose('[FavoritesService] Checking favorite status for:', originalVideoId);
       const isFav = await window.electron.favoritesIsFavorite(originalVideoId);
 
       // Update cache
       this.favoriteStatusCache.set(originalVideoId, isFav);
 
-      logVerbose('[FavoritesService] Favorite status for', originalVideoId, ':', isFav);
       return isFav;
     } catch (error) {
       logVerbose('[FavoritesService] Error checking favorite status:', error);
@@ -170,8 +164,6 @@ export class FavoritesService {
     lastWatched?: string
   ): Promise<{ favorite: FavoriteVideo | null; isFavorite: boolean }> {
     try {
-      logVerbose('[FavoritesService] Toggling favorite:', { videoId, source, type, title });
-
       // Use original video ID like watched.json format (no normalization)
       const originalVideoId = videoId;
 
@@ -205,7 +197,6 @@ export class FavoritesService {
         }
       }
 
-      logVerbose('[FavoritesService] Successfully toggled favorite:', originalVideoId, 'now', newState);
       return {
         favorite: newState ? favorite : null,
         isFavorite: newState
@@ -218,7 +209,6 @@ export class FavoritesService {
         this.favoriteStatusCache.set(originalVideoId, !currentState);
       }
       console.error('[FavoritesService] Error toggling favorite:', error);
-      logVerbose('[FavoritesService] Error toggling favorite:', error);
       throw error;
     }
   }
@@ -231,8 +221,6 @@ export class FavoritesService {
     metadata: Partial<FavoriteVideo>
   ): Promise<FavoriteVideo> {
     try {
-      logVerbose('[FavoritesService] Updating favorite metadata:', { videoId, metadata });
-
       const updatedFavorite = await window.electron.favoritesUpdateMetadata(videoId, metadata);
 
       // Update cache if present
@@ -243,7 +231,6 @@ export class FavoritesService {
         }
       }
 
-      logVerbose('[FavoritesService] Successfully updated favorite metadata:', videoId);
       return updatedFavorite;
     } catch (error) {
       logVerbose('[FavoritesService] Error updating favorite metadata:', error);
@@ -256,7 +243,6 @@ export class FavoritesService {
    */
   static async getFavoritesBySource(sourceId: string): Promise<FavoriteVideo[]> {
     try {
-      logVerbose('[FavoritesService] Getting favorites by source:', sourceId);
       return await window.electron.favoritesGetBySource(sourceId);
     } catch (error) {
       logVerbose('[FavoritesService] Error getting favorites by source:', error);
@@ -269,7 +255,6 @@ export class FavoritesService {
    */
   static async getFavoritesConfig(): Promise<FavoritesConfig> {
     try {
-      logVerbose('[FavoritesService] Getting favorites config');
       return await window.electron.favoritesGetConfig();
     } catch (error) {
       logVerbose('[FavoritesService] Error getting favorites config:', error);
@@ -282,7 +267,6 @@ export class FavoritesService {
    */
   static async updateFavoritesConfig(config: Partial<FavoritesConfig>): Promise<FavoritesConfig> {
     try {
-      logVerbose('[FavoritesService] Updating favorites config:', config);
       return await window.electron.favoritesUpdateConfig(config);
     } catch (error) {
       logVerbose('[FavoritesService] Error updating favorites config:', error);
@@ -295,7 +279,6 @@ export class FavoritesService {
    */
   static async cleanupOrphanedFavorites(): Promise<FavoriteVideo[]> {
     try {
-      logVerbose('[FavoritesService] Cleaning up orphaned favorites');
       const result = await window.electron.favoritesCleanupOrphaned();
 
       // Clear cache to force refresh
@@ -313,7 +296,6 @@ export class FavoritesService {
    */
   static async syncWithWatchHistory(): Promise<FavoriteVideo[]> {
     try {
-      logVerbose('[FavoritesService] Syncing with watch history');
       const result = await window.electron.favoritesSyncWatchHistory();
 
       // Clear cache to force refresh
@@ -337,7 +319,6 @@ export class FavoritesService {
     count: number;
   }> {
     try {
-      logVerbose('[FavoritesService] Creating favorites source');
       const favorites = await this.getFavorites();
 
       // Convert favorites to VideoCardBaseProps format with thumbnail processing
@@ -350,7 +331,6 @@ export class FavoritesService {
             const generatedThumbnail = await window.electron.getBestThumbnail(favorite.videoId);
             if (generatedThumbnail) {
               bestThumbnail = generatedThumbnail;
-              logVerbose('[FavoritesService] Using generated thumbnail for:', favorite.videoId, '->', generatedThumbnail);
             }
           } catch (error) {
             logVerbose('[FavoritesService] Error getting best thumbnail for:', favorite.videoId, error);
@@ -440,7 +420,6 @@ export class FavoritesService {
    * Clear the favorites cache
    */
   static clearCache(): void {
-    logVerbose('[FavoritesService] Clearing cache');
     this.favoritesCache = null;
     this.favoriteStatusCache.clear();
     this.cacheExpiry = null;
@@ -451,7 +430,6 @@ export class FavoritesService {
    * Useful when navigating between pages to ensure fresh state
    */
   static invalidateCache(): void {
-    logVerbose('[FavoritesService] Invalidating cache for fresh state');
     this.clearCache();
   }
 
@@ -460,7 +438,6 @@ export class FavoritesService {
    */
   static async preloadFavoritesStatus(): Promise<void> {
     try {
-      logVerbose('[FavoritesService] Preloading favorites status');
       await this.getFavorites();
     } catch (error) {
       logVerbose('[FavoritesService] Error preloading favorites status:', error);
