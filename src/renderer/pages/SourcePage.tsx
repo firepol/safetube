@@ -6,7 +6,6 @@ import { LocalFolderNavigator } from '../components/video/LocalFolderNavigator';
 import { VideoGrid } from '../components/layout/VideoGrid';
 import { PageHeader } from '../components/layout/PageHeader';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
-import { FavoritesService } from '../services/favoritesService';
 import { logVerbose } from '../lib/logging';
 
 export const SourcePage: React.FC = () => {
@@ -20,7 +19,6 @@ export const SourcePage: React.FC = () => {
   const [paginationState, setPaginationState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
-  const [favoriteVideos, setFavoriteVideos] = useState<Set<string>>(new Set());
 
   const currentPage = page ? parseInt(page) : 1;
   
@@ -49,20 +47,6 @@ export const SourcePage: React.FC = () => {
     loadWatchedVideos();
   }, []);
 
-  // Load favorites data (only for initial state, sync system will take over)
-  useEffect(() => {
-    const loadFavorites = async () => {
-      try {
-        const favorites = await FavoritesService.getFavorites();
-        const favoriteIds = new Set(favorites.map(f => f.videoId));
-        setFavoriteVideos(favoriteIds);
-      } catch (error) {
-        console.error('Error loading favorites:', error);
-        setFavoriteVideos(new Set());
-      }
-    };
-    loadFavorites();
-  }, []);
 
   // Function to check video status
   const getVideoStatus = (videoId: string) => {
@@ -373,7 +357,6 @@ export const SourcePage: React.FC = () => {
       <VideoGrid
         videos={currentPageVideos.map((video: any) => {
           const { isWatched, isClicked } = getVideoStatus(video.id);
-          const isFavorite = favoriteVideos.has(video.id);
 
           return {
             id: video.id,
@@ -388,8 +371,7 @@ export const SourcePage: React.FC = () => {
             errorInfo: video.errorInfo,
             resumeAt: video.resumeAt,
             onVideoClick: () => handleVideoClick(video),
-            // Provide initial favorite status - VideoGrid sync will override this
-            isFavorite: isFavorite,
+            // isFavorite will be populated by VideoGrid's useFavoriteStatus hook
             source: source?.id || 'unknown',
             lastWatched: video.lastWatched
           };
@@ -398,8 +380,6 @@ export const SourcePage: React.FC = () => {
         className="mb-6"
         // Enable favorite icons for all sources including local, YouTube, and favorites page
         showFavoriteIcons={true}
-        // Enable real-time favorite synchronization for all sources
-        enableFavoriteSync={true}
       />
       
       {/* Bottom pagination */}

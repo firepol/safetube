@@ -8,6 +8,7 @@ import { audioWarningService } from '../services/audioWarning';
 import { useDownload } from '../hooks/useDownload';
 import { CompactControlsRow } from '../components/video/CompactControlsRow';
 import { FavoritesService } from '../services/favoritesService';
+import { useFavoriteStatus } from '../hooks/useFavoriteStatus';
 
 
 const PLAYER_CONTAINER_ID = 'youtube-player-container';
@@ -29,8 +30,8 @@ export const YouTubePlayerPage: React.FC = () => {
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
 
-  // Favorite state management
-  const [isFavorite, setIsFavorite] = useState<boolean>(false);
+  // Use simple favorite status hook
+  const { isFavorite: isFavoriteVideo, refreshFavorites } = useFavoriteStatus();
 
   // Download state management using shared hook
   const {
@@ -173,22 +174,8 @@ export const YouTubePlayerPage: React.FC = () => {
     }
   }, [video?.id, video?.type, checkDownloadStatus]);
 
-  // Load initial favorite status when video loads
-  useEffect(() => {
-    const loadFavoriteStatus = async () => {
-      if (video?.id) {
-        try {
-          const status = await FavoritesService.isFavorite(video.id, 'youtube');
-          setIsFavorite(status);
-          logVerbose('[YouTubePlayerPage] Loaded favorite status for', video.id, ':', status);
-        } catch (error) {
-          logVerbose('[YouTubePlayerPage] Error loading favorite status:', error);
-        }
-      }
-    };
-
-    loadFavoriteStatus();
-  }, [video?.id]);
+  // Get current favorite status for this video
+  const isFavorite = video?.id ? isFavoriteVideo(video.id, video.type) : false;
 
     // Time tracking state
   const timeTrackingRef = useRef<{
@@ -267,11 +254,39 @@ export const YouTubePlayerPage: React.FC = () => {
     }
   }, [video?.id, handleResetDownload]);
 
-  // Favorite handlers
+  // Favorite handlers - call service to toggle and then refresh
   const handleFavoriteToggle = useCallback(async (videoId: string, newFavoriteStatus: boolean) => {
-    setIsFavorite(newFavoriteStatus);
-    logVerbose('[YouTubePlayerPage] Favorite toggled for video:', videoId, 'new status:', newFavoriteStatus);
-  }, []);
+    try {
+      if (!video) {
+        return;
+      }
+
+      // Validate required data before proceeding
+      if (!video.title || video.title.trim() === '') {
+        return;
+      }
+
+      // For YouTube videos, construct thumbnail URL if not available
+      const thumbnail = video.thumbnail || (video.id ? `https://img.youtube.com/vi/${video.id}/maxresdefault.jpg` : '');
+
+      // Call service to toggle favorite
+      await FavoritesService.toggleFavorite(
+        video.id,
+        video.sourceId || 'youtube',
+        'youtube',
+        video.title,
+        thumbnail,
+        video.duration || 0,
+        new Date().toISOString()
+      );
+
+      // Refresh favorites to get updated state
+      refreshFavorites();
+
+      logVerbose('[YouTubePlayerPage] Favorite toggled for video:', videoId, 'new status:', newFavoriteStatus);
+    } catch (error) {
+    }
+  }, [video, refreshFavorites]);
 
   // Initialize YouTube player
   useEffect(() => {

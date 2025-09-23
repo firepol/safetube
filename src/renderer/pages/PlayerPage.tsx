@@ -9,6 +9,9 @@ import { audioWarningService } from '../services/audioWarning';
 import { DownloadUI } from '../components/video/DownloadUI';
 import { LocalPlayerResetUI } from '../components/video/LocalPlayerResetUI';
 import { FavoriteButton } from '../components/video/FavoriteButton';
+import { CompactControlsRow } from '../components/video/CompactControlsRow';
+import { useFavoriteStatus } from '../hooks/useFavoriteStatus';
+import { FavoritesService } from '../services/favoritesService';
 import { useDownload } from '../hooks/useDownload';
 
 
@@ -50,7 +53,10 @@ export const PlayerPage: React.FC = () => {
     handleStartDownload: startDownload,
     handleCancelDownload: cancelDownload
   } = useDownload();
-  
+
+  // Use simple favorite status hook
+  const { isFavorite: isFavoriteVideo, refreshFavorites } = useFavoriteStatus();
+
   // Time tracking state
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
@@ -1029,10 +1035,45 @@ export const PlayerPage: React.FC = () => {
     return null;
   }, [video, extractThumbnailFromStreams]);
 
-  // Enhanced favorite toggle handler using normalized metadata
-  const handleFavoriteToggle = useCallback(async (videoId: string, newStatus: boolean) => {
-    logVerbose('[PlayerPage] Favorite toggled:', { videoId, newStatus });
-  }, []);
+  // Get current favorite status for this video
+  const isFavorite = video?.id ? isFavoriteVideo(video.id, video.type) : false;
+
+  // Favorite handlers - call service to toggle and then refresh
+  const handleFavoriteToggle = useCallback(async (videoId: string, newFavoriteStatus: boolean) => {
+    try {
+      if (!video) {
+        return;
+      }
+
+      // Validate required data before proceeding
+      if (!video.title || video.title.trim() === '') {
+        return;
+      }
+
+      // Get video metadata for favorites
+      const videoMetadata = getVideoMetadataForFavorites();
+      if (!videoMetadata) {
+        return;
+      }
+
+      // Call service to toggle favorite
+      await FavoritesService.toggleFavorite(
+        videoMetadata.videoId,
+        videoMetadata.source,
+        videoMetadata.type,
+        videoMetadata.title,
+        videoMetadata.thumbnail,
+        videoMetadata.duration,
+        videoMetadata.lastWatched
+      );
+
+      // Refresh favorites to get updated state
+      refreshFavorites();
+
+      logVerbose('[PlayerPage] Favorite toggled for video:', videoId, 'new status:', newFavoriteStatus);
+    } catch (error) {
+    }
+  }, [video, getVideoMetadataForFavorites, refreshFavorites]);
 
   // Event handlers for the base component
   const handleVideoPlay = useCallback(() => {
@@ -1251,34 +1292,28 @@ export const PlayerPage: React.FC = () => {
         onCancelDownload={handleCancelDownload}
       />
 
-      {/* Favorites UI */}
-      {video && (() => {
-        const metadata = getVideoMetadataForFavorites();
-        return metadata ? (
-          <div className="p-4 bg-white/90 backdrop-blur-sm rounded-lg shadow-lg mb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <FavoriteButton
-                  videoId={metadata.videoId}
-                  source={metadata.source}
-                  type={metadata.type}
-                  title={metadata.title}
-                  thumbnail={metadata.thumbnail}
-                  duration={metadata.duration}
-                  lastWatched={metadata.lastWatched}
-                  size="large"
-                  showLabel={true}
-                  onToggle={handleFavoriteToggle}
-                  data-testid="favorite-button"
-                />
-                <div className="text-sm text-gray-600">
-                  Press <kbd className="px-2 py-1 text-xs font-semibold text-gray-800 bg-gray-100 border border-gray-200 rounded-lg">F</kbd> to toggle favorite
-                </div>
-              </div>
+      {/* Compact Controls Row - matches YouTube player layout */}
+      {video && (
+        <div className="mt-4">
+          <CompactControlsRow
+            video={video}
+            isFavorite={isFavorite}
+            onFavoriteToggle={handleFavoriteToggle}
+            downloadStatus={downloadStatus}
+            isDownloading={isDownloading}
+            onStartDownload={handleStartDownload}
+            onCancelDownload={handleCancelDownload}
+            size="large"
+          />
+
+          {/* Keyboard shortcut hint - matches YouTube player */}
+          <div className="mt-2 text-center">
+            <div className="text-xs text-gray-500">
+              Press <kbd className="px-1.5 py-0.5 text-xs font-semibold text-gray-700 bg-gray-100 border border-gray-300 rounded">F</kbd> to toggle favorite
             </div>
           </div>
-        ) : null;
-      })()}
+        </div>
+      )}
     </BasePlayerPage>
   );
 }; 

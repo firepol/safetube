@@ -70,6 +70,7 @@ export class FavoritesService {
         videoId, source, type, title, thumbnail, duration, lastWatched
       );
 
+
       // Update cache if present
       if (this.favoritesCache) {
         const existingIndex = this.favoritesCache.findIndex(f => f.videoId === videoId);
@@ -85,6 +86,7 @@ export class FavoritesService {
     } catch (error) {
       // Rollback optimistic update
       this.favoriteStatusCache.delete(videoId);
+      console.error('[FavoritesService] Error adding favorite, rolled back cache:', error);
       logVerbose('[FavoritesService] Error adding favorite:', error);
       throw error;
     }
@@ -183,6 +185,7 @@ export class FavoritesService {
         videoId, source, type, title, thumbnail, duration, lastWatched
       );
 
+
       const newState = !currentState;
 
       // Update cache based on new state using original ID
@@ -197,6 +200,7 @@ export class FavoritesService {
           }
         } else {
           // Removed from favorites
+          const initialLength = this.favoritesCache.length;
           this.favoritesCache = this.favoritesCache.filter(f => f.videoId !== originalVideoId);
         }
       }
@@ -213,6 +217,7 @@ export class FavoritesService {
       if (currentState !== undefined) {
         this.favoriteStatusCache.set(originalVideoId, !currentState);
       }
+      console.error('[FavoritesService] Error toggling favorite:', error);
       logVerbose('[FavoritesService] Error toggling favorite:', error);
       throw error;
     }
@@ -439,6 +444,15 @@ export class FavoritesService {
     this.favoritesCache = null;
     this.favoriteStatusCache.clear();
     this.cacheExpiry = null;
+  }
+
+  /**
+   * Clear cache and force refresh on next access
+   * Useful when navigating between pages to ensure fresh state
+   */
+  static invalidateCache(): void {
+    logVerbose('[FavoritesService] Invalidating cache for fresh state');
+    this.clearCache();
   }
 
   /**

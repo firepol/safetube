@@ -1167,8 +1167,8 @@ export function registerFavoritesHandlers() {
 
         // Trigger video sources refresh to update favorites source
         setTimeout(() => {
-          const { loadVideosFromSources } = require('../services/videoDataService');
-          loadVideosFromSources().catch((error: any) => {
+          const { loadAllVideosFromSources } = require('./videoDataService');
+          loadAllVideosFromSources().catch((error: any) => {
             log.error('[IPC] Error refreshing video sources after favorite removal:', error);
           });
         }, 100);
@@ -1191,8 +1191,8 @@ export function registerFavoritesHandlers() {
 
         // Trigger video sources refresh to update favorites source
         setTimeout(() => {
-          const { loadVideosFromSources } = require('../services/videoDataService');
-          loadVideosFromSources().catch((error: any) => {
+          const { loadAllVideosFromSources } = require('./videoDataService');
+          loadAllVideosFromSources().catch((error: any) => {
             log.error('[IPC] Error refreshing video sources after favorite addition:', error);
           });
         }, 100);

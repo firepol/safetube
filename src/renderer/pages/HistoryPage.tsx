@@ -292,14 +292,13 @@ export const HistoryPage: React.FC = () => {
               onVideoClick: () => handleVideoClick(video),
               source: video.sourceId || 'history',
               lastWatched: video.watchedData.lastWatched,
-              // The VideoGrid will automatically load favorite status with enableFavoriteSync
-              isFavorite: false // Will be updated by VideoGrid's favorite sync
+              // Will be checked by VideoGrid using simple favorites hook
+              isFavorite: false
             }))}
             groupByType={false}
             className="mb-6"
             // Enable favorite icons for YouTube videos in history
             showFavoriteIcons={true}
-            enableFavoriteSync={true}
           />
 
           {/* Pagination */}

@@ -9,6 +9,7 @@ import { WatchedVideosPage } from './components/video/WatchedVideosPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { ErrorFallbackPage } from './pages/ErrorFallbackPage';
 import { RateLimitWarning } from './components/layout/RateLimitWarning';
+import { ErrorBoundary } from './components/common/ErrorBoundary';
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -89,27 +90,55 @@ const YouTubeNavigationHandler: React.FC = () => {
 
 function App() {
   return (
-    <Tooltip.Provider>
-      <RateLimitProvider>
-        <HashRouter>
-          <YouTubeNavigationHandler />
-          <div className="min-h-screen bg-background">
-            <Routes>
-              <Route path="/" element={<KidScreen />} />
-              <Route path="/source/:sourceId" element={<SourcePage />} />
-              <Route path="/source/:sourceId/page/:page" element={<SourcePage />} />
-              <Route path="/source/:sourceId/watched" element={<WatchedVideosPage />} />
-              <Route path="/source/:sourceId/watched/:page" element={<WatchedVideosPage />} />
-              <Route path="/history" element={<HistoryPage />} />
-              <Route path="/player/:id" element={<PlayerRouter />} />
-              <Route path="/time-up" element={<TimeUpPage />} />
-              <Route path="/admin" element={<AdminPage />} />
-              <Route path="*" element={<ErrorFallbackPage />} />
-            </Routes>
-          </div>
-        </HashRouter>
-      </RateLimitProvider>
-    </Tooltip.Provider>
+    <ErrorBoundary>
+      <Tooltip.Provider>
+        <RateLimitProvider>
+          <HashRouter>
+            <YouTubeNavigationHandler />
+            <div className="min-h-screen bg-background">
+              <ErrorBoundary>
+                <Routes>
+                  <Route path="/" element={<KidScreen />} />
+                  <Route path="/source/:sourceId" element={
+                    <ErrorBoundary>
+                      <SourcePage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/source/:sourceId/page/:page" element={
+                    <ErrorBoundary>
+                      <SourcePage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/source/:sourceId/watched" element={
+                    <ErrorBoundary>
+                      <WatchedVideosPage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/source/:sourceId/watched/:page" element={
+                    <ErrorBoundary>
+                      <WatchedVideosPage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/history" element={
+                    <ErrorBoundary>
+                      <HistoryPage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/player/:id" element={
+                    <ErrorBoundary>
+                      <PlayerRouter />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/time-up" element={<TimeUpPage />} />
+                  <Route path="/admin" element={<AdminPage />} />
+                  <Route path="*" element={<ErrorFallbackPage />} />
+                </Routes>
+              </ErrorBoundary>
+            </div>
+          </HashRouter>
+        </RateLimitProvider>
+      </Tooltip.Provider>
+    </ErrorBoundary>
   );
 }
 

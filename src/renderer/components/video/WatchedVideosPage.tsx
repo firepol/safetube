@@ -297,14 +297,14 @@ export const WatchedVideosPage: React.FC = () => {
                 watched: isWatched,
                 isClicked: isClicked,
                 onVideoClick: () => handleVideoClick(video),
-                source: 'watched'
+                source: 'watched',
+                isFavorite: false // Will be updated by VideoGrid's favorite sync
               };
             })}
             groupByType={false}
             className="mb-6"
             // Enable favorite icons for YouTube videos in watched videos
             showFavoriteIcons={true}
-            enableFavoriteSync={true}
           />
 
           {/* Pagination */}

@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { VideoCardBase, VideoCardBaseProps } from '../video/VideoCardBase';
 import { useThumbnailUpdates } from '../../hooks/useThumbnailUpdates';
-import { useFavoriteUpdates } from '../../hooks/useFavoriteUpdates';
+import { useFavoriteStatus } from '../../hooks/useFavoriteStatus';
 import { FavoritesService } from '../../services/favoritesService';
 import { normalizeVideoSource } from '../../../shared/favoritesUtils';
 import { logVerbose } from '../../lib/logging';
@@ -12,7 +12,6 @@ interface VideoGridProps {
   groupByType?: boolean;
   className?: string;
   showFavoriteIcons?: boolean; // Whether to show favorite star icons
-  enableFavoriteSync?: boolean; // Whether to enable real-time favorite synchronization
 }
 
 export const VideoGrid: React.FC<VideoGridProps> = ({
@@ -20,121 +19,67 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
   groupByType = true,
   className,
   showFavoriteIcons = false,
-  enableFavoriteSync = true,
 }) => {
-  const [updatedVideos, setUpdatedVideos] = useState<VideoCardBaseProps[]>(videos);
+  // Store thumbnail updates in separate state
+  const [thumbnailUpdates, setThumbnailUpdates] = useState<Record<string, string>>({});
 
   // Use the thumbnail updates hook
   const { getThumbnailForVideo } = useThumbnailUpdates({
     onThumbnailUpdate: (videoId: string, thumbnailUrl: string) => {
-      // Update the video with the new thumbnail
-      setUpdatedVideos(prevVideos =>
-        prevVideos.map(video =>
-          video.id === videoId
-            ? { ...video, thumbnail: thumbnailUrl }
-            : video
-        )
-      );
+      // Store thumbnail updates in a map
+      setThumbnailUpdates(prev => ({
+        ...prev,
+        [videoId]: thumbnailUrl
+      }));
     }
   });
 
-  // Use the favorite updates hook for real-time synchronization
-  const {
-    favoriteUpdates,
-    loadFavoriteStatusesWithSync,
-    updateFavoriteStatus,
-    getFavoriteStatus,
-    hasFavoriteStatus,
-    toggleFavoriteWithSync,
-    isLoading: favoritesLoading
-  } = useFavoriteUpdates({
-    onFavoriteUpdate: (videoId: string, isFavorite: boolean) => {
-      // Update the video with the new favorite status
-      setUpdatedVideos(prevVideos =>
-        prevVideos.map(video =>
-          video.id === videoId
-            ? { ...video, isFavorite, showFavoriteIcon: showFavoriteIcons }
-            : video
-        )
-      );
+  // Use simple favorite status hook - like the visited/clicked system
+  const { isFavorite: isFavoriteVideo, refreshFavorites } = useFavoriteStatus();
 
-      logVerbose('[VideoGrid] Updated favorite status for video:', { videoId, isFavorite });
-    },
-    autoSync: false, // Disable auto-sync to prevent infinite loops
-    enableRealTimeSync: enableFavoriteSync
-  });
-
-  // Handle favorite toggle with proper metadata extraction and synchronization
-  const handleFavoriteToggle = async (videoId: string, isFavorite: boolean) => {
+  // Simple favorite toggle - memoized to prevent infinite loops
+  const handleFavoriteToggle = useCallback(async (videoId: string, isFavorite: boolean) => {
     try {
-      const video = updatedVideos.find(v => v.id === videoId);
+      const video = videos.find(v => v.id === videoId);
       if (!video) {
-        logVerbose('[VideoGrid] Video not found for favorite toggle:', videoId);
         return;
       }
 
-      logVerbose('[VideoGrid] Toggling favorite for video:', { videoId, isFavorite, video: { title: video.title, type: video.type } });
+      // Validate required data before proceeding
+      if (!video.title || video.title.trim() === '') {
+        return;
+      }
 
-      // Normalize the video source using the utility from Task 1.3
-      const normalizedSource = normalizeVideoSource({
-        id: video.id,
-        type: video.type,
-        title: video.title,
-        thumbnail: video.thumbnail,
-        duration: video.duration,
-        url: video.source
-      });
-
-      // Use the sync service for cross-player synchronization
-      const result = await toggleFavoriteWithSync(
-        normalizedSource.id,
+      // Use the existing service to toggle favorite
+      await FavoritesService.toggleFavorite(
+        video.id,
         video.source || 'unknown',
-        normalizedSource.type,
-        normalizedSource.title,
-        normalizedSource.thumbnail || '',
-        normalizedSource.duration || 0
+        video.type,
+        video.title,
+        // Use updated thumbnail if available
+        thumbnailUpdates[video.id] || video.thumbnail || '',
+        video.duration || 0
       );
 
-      logVerbose('[VideoGrid] Favorite toggle completed with sync:', { videoId, newStatus: result.isFavorite });
+      // Refresh favorites data to get the updated state
+      refreshFavorites();
+
     } catch (error) {
-      logVerbose('[VideoGrid] Error toggling favorite:', error);
-      // Revert optimistic update on error
-      updateFavoriteStatus(videoId, !isFavorite);
     }
-  };
+  }, [videos, thumbnailUpdates, refreshFavorites, isFavoriteVideo]);
 
-  // Load favorite statuses when videos change (debounced to prevent rapid calls)
-  useEffect(() => {
-    if (!enableFavoriteSync || videos.length === 0) return;
-
-    const timeoutId = setTimeout(() => {
-      const videoIds = videos.map(v => v.id);
-      const youtubeVideoIds = videos.filter(v => v.type === 'youtube').map(v => v.id);
-
-      if (videoIds.length > 0) {
-        loadFavoriteStatusesWithSync(videoIds);
-      }
-    }, 50); // Reduced debounce for better responsiveness
-
-    return () => clearTimeout(timeoutId);
-  }, [videos, enableFavoriteSync, loadFavoriteStatusesWithSync]);
-
-  // Update local state when videos prop changes
-  useEffect(() => {
-    setUpdatedVideos(videos.map(video => {
-      const hasStatus = hasFavoriteStatus(video.id);
-      const cachedStatus = hasStatus ? getFavoriteStatus(video.id) : null;
-      const finalFavorite = hasStatus ? (cachedStatus || false) : (video.isFavorite || false);
-
-      return {
-        ...video,
-        showFavoriteIcon: showFavoriteIcons,
-        onFavoriteToggle: showFavoriteIcons ? handleFavoriteToggle : undefined,
-        // Use cached favorite status if available, with proper fallback
-        isFavorite: finalFavorite
-      };
+  // Memoize the updated videos to prevent infinite re-renders
+  const updatedVideos = useMemo(() => {
+    return videos.map(video => ({
+      ...video,
+      // Apply thumbnail updates if available
+      thumbnail: thumbnailUpdates[video.id] || video.thumbnail,
+      showFavoriteIcon: showFavoriteIcons,
+      onFavoriteToggle: showFavoriteIcons ? handleFavoriteToggle : undefined,
+      // Check if this video is in favorites.json with proper ID matching
+      isFavorite: isFavoriteVideo(video.id, video.type)
     }));
-  }, [videos, showFavoriteIcons, hasFavoriteStatus, getFavoriteStatus]);
+  }, [videos, thumbnailUpdates, showFavoriteIcons, isFavoriteVideo, handleFavoriteToggle]);
 
   const groupedVideos = groupByType
     ? updatedVideos.reduce((acc, video) => {

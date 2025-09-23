@@ -500,6 +500,8 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
                 type: video.type,
                 watched: isWatched,
                 isClicked: isClicked,
+                source: sourceId || 'local',
+                isFavorite: false, // Will be updated by VideoGrid's favorite sync
                 onVideoClick: () => {
                   // Cancel any ongoing duration loading when video is clicked
                   if (durationLoadingController) {
@@ -536,6 +538,8 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
               };
             })}
             groupByType={false}
+            // Enable favorite icons for local videos
+            showFavoriteIcons={true}
           />
         </div>
       )}

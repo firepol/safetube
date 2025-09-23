@@ -42,9 +42,11 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Load initial favorite status if not provided
+  // Update internal state when initialFavorite prop changes
   useEffect(() => {
-    if (initialFavorite === undefined && !disabled) {
+    if (initialFavorite !== undefined) {
+      setIsFavorite(initialFavorite);
+    } else if (!disabled) {
       loadFavoriteStatus();
     }
   }, [videoId, initialFavorite, disabled]);
@@ -63,36 +65,45 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
   const handleToggle = useCallback(async () => {
     if (disabled || isLoading) return;
 
+    // Validate required data before proceeding
+    if (!title || title.trim() === '') {
+      console.error('[FavoriteButton] Cannot toggle favorite: video has no title', videoId);
+      setError('Cannot add to favorites: video has no title');
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      logVerbose('[FavoriteButton] Toggling favorite for:', { videoId, isFavorite });
-
-      const result = await FavoritesService.toggleFavorite(
-        videoId,
-        source,
-        type,
-        title,
-        thumbnail,
-        duration,
-        lastWatched
-      );
-
-      setIsFavorite(result.isFavorite);
-
-      // Call parent callback if provided
+      // If we have a parent callback (VideoGrid), use that instead of direct service call
       if (onToggle) {
-        onToggle(videoId, result.isFavorite);
+        onToggle(videoId, !isFavorite); // Pass the desired new state
+      } else {
+        // Fallback: handle toggle ourselves (for standalone usage)
+        const result = await FavoritesService.toggleFavorite(
+          videoId,
+          source,
+          type,
+          title,
+          thumbnail,
+          duration,
+          lastWatched
+        );
+
+        // Validate response
+        if (!result || typeof result.isFavorite !== 'boolean') {
+          throw new Error('Invalid response from FavoritesService.toggleFavorite');
+        }
+
+        setIsFavorite(result.isFavorite);
       }
-
-      logVerbose('[FavoriteButton] Successfully toggled favorite:', videoId, 'now', result.isFavorite);
     } catch (error) {
+      console.error('[FavoriteButton] Error toggling favorite:', error);
       logVerbose('[FavoriteButton] Error toggling favorite:', error);
-      setError(error instanceof Error ? error.message : 'Failed to toggle favorite');
 
-      // Keep the previous state on error
-      // The optimistic update in the service will handle rollback
+      const errorMessage = error instanceof Error ? error.message : 'Failed to toggle favorite';
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
