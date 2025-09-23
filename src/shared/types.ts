@@ -208,7 +208,7 @@ export interface DownloadedVideo {
 
 // Video ID parsing and generation utilities
 export interface ParsedVideoId {
-  type: 'youtube' | 'local' | 'dlna';
+  type: 'youtube' | 'local' | 'dlna' | 'downloaded';
   originalId: string;
   path?: string; // for local and dlna videos
   host?: string; // for dlna videos (e.g., "192.168.1.100:8200")
@@ -225,7 +225,7 @@ export interface VideoIdUtilityResult {
 export interface FavoriteVideo {
   videoId: string;                                   // Unique video identifier (cross-source compatible)
   dateAdded: string;                                // ISO date string when favorited
-  sourceType: 'youtube' | 'local' | 'dlna';        // Video type for proper handling
+  sourceType: 'youtube' | 'local' | 'dlna' | 'downloaded';        // Video type for proper handling
   title: string;                                    // Video title for display
   thumbnail?: string;                               // Optional thumbnail URL/path
   duration?: number;                                // Optional duration in seconds
@@ -239,7 +239,7 @@ export interface FavoritesConfig {
 // Video metadata interface for adding favorites
 export interface VideoMetadata {
   id: string;
-  type: 'youtube' | 'local' | 'dlna';
+  type: 'youtube' | 'local' | 'dlna' | 'downloaded';
   title: string;
   thumbnail?: string;
   duration?: number;
@@ -263,7 +263,7 @@ export interface FavoritesOperationResult {
 export interface NormalizedVideoSource {
   id: string;                           // Normalized video ID
   originalId: string;                   // Original ID as provided
-  type: 'youtube' | 'local' | 'dlna';  // Source type
+  type: 'youtube' | 'local' | 'dlna' | 'downloaded';  // Source type
   title: string;                        // Video title
   thumbnail?: string;                   // Thumbnail URL/path
   duration?: number;                    // Duration in seconds

@@ -137,7 +137,7 @@ export async function loadAllVideosFromSources(configPath = AppPaths.getConfigPa
         videoCount: downloadedVideos.length,
         videos: downloadedVideos.map(dv => ({
           id: dv.videoId,
-          type: 'downloaded' as const,
+          type: 'local' as const,
           title: dv.title,
           thumbnail: dv.thumbnail,
           duration: dv.duration,

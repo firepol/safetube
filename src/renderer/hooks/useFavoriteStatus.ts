@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 
 interface FavoriteVideo {
   videoId: string;
-  sourceType: 'youtube' | 'local' | 'dlna';
+  sourceType: 'youtube' | 'local' | 'dlna' | 'downloaded';
   title: string;
   thumbnail: string;
   duration: number;
@@ -43,7 +43,7 @@ export const useFavoriteStatus = () => {
    * @param videoId - The ID of the video to check
    * @returns boolean indicating if video is favorited
    */
-  const isFavorite = useCallback((videoId: string, videoType?: 'youtube' | 'local' | 'dlna'): boolean => {
+  const isFavorite = useCallback((videoId: string, videoType?: 'youtube' | 'local' | 'dlna' | 'downloaded'): boolean => {
     // Try exact match first
     let result = favoriteVideos.some(f => f.videoId === videoId);
 

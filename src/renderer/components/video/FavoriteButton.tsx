@@ -7,7 +7,7 @@ import { logVerbose } from '../../lib/logging';
 export interface FavoriteButtonProps {
   videoId: string;
   source: string;
-  type: 'youtube' | 'local' | 'dlna';
+  type: 'youtube' | 'local' | 'dlna' | 'downloaded';
   title: string;
   thumbnail: string;
   duration: number;

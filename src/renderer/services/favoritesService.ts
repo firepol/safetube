@@ -54,7 +54,7 @@ export class FavoritesService {
   static async addFavorite(
     videoId: string,
     source: string,
-    type: 'youtube' | 'local' | 'dlna',
+    type: 'youtube' | 'local' | 'dlna' | 'downloaded',
     title: string,
     thumbnail: string,
     duration: number,
@@ -121,7 +121,7 @@ export class FavoritesService {
   /**
    * Check if a video is favorited with caching
    */
-  static async isFavorite(videoId: string, type?: 'youtube' | 'local' | 'dlna'): Promise<boolean> {
+  static async isFavorite(videoId: string, type?: 'youtube' | 'local' | 'dlna' | 'downloaded'): Promise<boolean> {
     try {
       // Use original video ID like watched.json format (no normalization)
       const originalVideoId = videoId;
@@ -157,7 +157,7 @@ export class FavoritesService {
   static async toggleFavorite(
     videoId: string,
     source: string,
-    type: 'youtube' | 'local' | 'dlna',
+    type: 'youtube' | 'local' | 'dlna' | 'downloaded',
     title: string,
     thumbnail: string,
     duration: number,
@@ -342,7 +342,7 @@ export class FavoritesService {
           title: favorite.title,
           thumbnail: bestThumbnail || '', // Use generated thumbnail or empty string
           duration: favorite.duration || 0, // Provide 0 fallback for duration
-          type: favorite.sourceType,
+          type: favorite.sourceType === 'downloaded' ? 'local' : favorite.sourceType,
           watched: false, // Will be populated by mergeWatchedData
           isClicked: false, // Will be populated by UI
           isFavorite: true, // Always true for favorites source

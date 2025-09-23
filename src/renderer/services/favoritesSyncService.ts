@@ -110,7 +110,7 @@ export class FavoritesSyncService {
         isFavorite: result.isFavorite,
         timestamp: Date.now(),
         source,
-        type: normalizedSource.type,
+        type: normalizedSource.type === 'downloaded' ? 'local' : normalizedSource.type,
         metadata: {
           title: normalizedSource.title,
           thumbnail: normalizedSource.thumbnail || '',
@@ -263,7 +263,7 @@ export class FavoritesSyncService {
           isFavorite: true,
           timestamp: Date.now(),
           source: 'force-sync',
-          type: favorite.sourceType,
+          type: favorite.sourceType === 'downloaded' ? 'local' : favorite.sourceType,
           metadata: {
             title: favorite.title,
             thumbnail: favorite.thumbnail || '',

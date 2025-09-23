@@ -9,7 +9,7 @@ import { FavoriteVideo, FavoritesConfig, VideoMetadata, FavoritesOperationResult
 /**
  * Generate a normalized video ID for cross-source compatibility
  */
-export function generateVideoId(sourceType: 'youtube' | 'local' | 'dlna', originalId: string): string {
+export function generateVideoId(sourceType: 'youtube' | 'local' | 'dlna' | 'downloaded', originalId: string): string {
   // For YouTube videos, use the video ID as-is
   if (sourceType === 'youtube') {
     return originalId;
@@ -20,7 +20,7 @@ export function generateVideoId(sourceType: 'youtube' | 'local' | 'dlna', origin
     return originalId; // Already normalized, return as-is
   }
 
-  // For local and DLNA videos, prefix with source type to avoid conflicts
+  // For local, DLNA, and downloaded videos, prefix with source type to avoid conflicts
   return `${sourceType}:${originalId}`;
 }
 
@@ -403,7 +403,7 @@ export function getBestYouTubeThumbnail(videoId: string, preferredQuality?: 'max
  */
 export function normalizeVideoSource(source: {
   id: string;
-  type?: 'youtube' | 'local' | 'dlna';
+  type?: 'youtube' | 'local' | 'dlna' | 'downloaded';
   title: string;
   thumbnail?: string;
   duration?: number;
@@ -509,8 +509,28 @@ export function normalizeVideoSource(source: {
     };
   }
 
+  // Handle downloaded videos
+  if (source.type === 'downloaded' || source.id.startsWith('downloaded:')) {
+    const normalizedId = generateVideoId('downloaded', source.id);
+
+    return {
+      id: normalizedId,
+      originalId: source.id,
+      type: 'downloaded',
+      title: source.title || 'Downloaded Video',
+      thumbnail: source.thumbnail,
+      duration: source.duration,
+      url: source.url,
+      metadata: {
+        isValidId: true,                // Downloaded IDs are always considered valid
+        thumbnailGenerated: false,      // Thumbnails are handled separately for downloaded videos
+        normalizedAt: now,
+      },
+    };
+  }
+
   // Fallback: try to determine type from ID or treat as YouTube
-  let detectedType: 'youtube' | 'local' | 'dlna' = 'youtube';
+  let detectedType: 'youtube' | 'local' | 'dlna' | 'downloaded' = 'youtube';
 
   // Check for DLNA first (pattern: host:port/path or server:port/path)
   if (source.id.includes(':') && !isValidYouTubeVideoId(source.id)) {

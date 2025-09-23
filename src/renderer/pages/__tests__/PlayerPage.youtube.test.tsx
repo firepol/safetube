@@ -64,16 +64,18 @@ describe('PlayerPage - YouTube Video Handling', () => {
     it('should handle downloaded YouTube videos as YouTube type', () => {
       const downloadedVideo = {
         id: 'dQw4w9WgXcQ',
-        type: 'downloaded' as const,
+        type: 'local' as const,
         title: 'Never Gonna Give You Up',
         thumbnail: '',
         duration: 213,
         sourceId: 'youtube',
+        sourceType: 'youtube_channel' as const,
+        downloadedAt: '2024-01-01T00:00:00.000Z',
       };
 
       const extractThumbnailFromStreams = (video: any): string => {
         if (video.thumbnail) return video.thumbnail;
-        if ((video.type === 'youtube' || video.type === 'downloaded') && video.id) {
+        if (video.type === 'youtube' || (video.type === 'local' && video.downloadedAt && (video.sourceType === 'youtube_channel' || video.sourceType === 'youtube_playlist')) && video.id) {
           const youtubeId = video.id.replace(/^.*[?&]v=([^&]+).*$/, '$1');
           return `https://img.youtube.com/vi/${youtubeId}/maxresdefault.jpg`;
         }
@@ -83,7 +85,7 @@ describe('PlayerPage - YouTube Video Handling', () => {
       const getVideoMetadataForFavorites = (video: any) => {
         if (!video) return null;
 
-        if (video.type === 'downloaded') {
+        if (video.type === 'local' && video.downloadedAt && (video.sourceType === 'youtube_channel' || video.sourceType === 'youtube_playlist')) {
           return {
             videoId: video.id,
             source: video.sourceId || 'youtube',

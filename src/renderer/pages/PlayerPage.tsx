@@ -994,7 +994,7 @@ export const PlayerPage: React.FC = () => {
     }
 
     // For downloaded YouTube videos, treat as YouTube
-    if (video.type === 'downloaded') {
+    if (video.type === 'local' && video.downloadedAt && (video.sourceType === 'youtube_channel' || video.sourceType === 'youtube_playlist')) {
       return {
         videoId: video.id,
         source: video.sourceId || 'youtube',
@@ -1259,7 +1259,7 @@ export const PlayerPage: React.FC = () => {
       />
       
       {/* Downloaded video indicator */}
-      {video?.type === 'downloaded' && (
+      {video?.type === 'local' && video?.downloadedAt && (video?.sourceType === 'youtube_channel' || video?.sourceType === 'youtube_playlist') && (
         <div className="mt-4">
           <div className="bg-green-50 border border-green-200 rounded-lg p-4">
             <div className="flex items-center">

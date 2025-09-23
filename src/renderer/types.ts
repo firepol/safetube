@@ -205,10 +205,10 @@ export interface ElectronAPI {
   offNavigateToVideo: (wrappedCallback: any) => void;
   // Favorites management
   favoritesGetAll: () => Promise<any[]>;
-  favoritesAdd: (videoId: string, source: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail: string, duration: number, lastWatched?: string) => Promise<any>;
+  favoritesAdd: (videoId: string, source: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) => Promise<any>;
   favoritesRemove: (videoId: string) => Promise<any>;
   favoritesIsFavorite: (videoId: string) => Promise<boolean>;
-  favoritesToggle: (videoId: string, source: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail: string, duration: number, lastWatched?: string) => Promise<any>;
+  favoritesToggle: (videoId: string, source: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) => Promise<any>;
   favoritesUpdateMetadata: (videoId: string, metadata: any) => Promise<any>;
   favoritesGetBySource: (sourceId: string) => Promise<any[]>;
   favoritesGetConfig: () => Promise<any>;
