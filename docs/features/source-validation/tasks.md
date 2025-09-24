@@ -105,7 +105,7 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Tests Required**: Window open handler tests, setting toggle tests, channel validation tests
   - **Code Review**: Main process logic review, YouTube API integration review
 
-- [ ] 4.1 Implement IPC communication for validation errors
+- [x] 4.1 Implement IPC communication for validation errors
   - Add IPC channel 'show-channel-not-approved-error' to send error to renderer
   - Add IPC channel 'show-validation-error' for generic validation errors
   - Implement renderer-side listeners for error messages

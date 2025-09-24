@@ -88,6 +88,65 @@ const YouTubeNavigationHandler: React.FC = () => {
   return null; // This component doesn't render anything
 };
 
+// Component to handle validation error events
+const ValidationErrorHandler: React.FC = () => {
+  const [channelNotApprovedError, setChannelNotApprovedError] = useState<{
+    videoId: string;
+    channelId: string;
+    title: string;
+  } | null>(null);
+  const [validationError, setValidationError] = useState<{ message: string } | null>(null);
+
+  useEffect(() => {
+    if (!window.electron?.onShowChannelNotApprovedError || !window.electron?.onShowValidationError) {
+      console.warn('[ValidationErrorHandler] Validation error events not available');
+      return;
+    }
+
+    const handleChannelNotApprovedError = (data: { videoId: string; channelId: string; title: string }) => {
+      console.log('[ValidationErrorHandler] Channel not approved:', data);
+      setChannelNotApprovedError(data);
+    };
+
+    const handleValidationError = (data: { message: string }) => {
+      console.log('[ValidationErrorHandler] Validation error:', data);
+      setValidationError(data);
+    };
+
+    // Subscribe to error events
+    const channelErrorCallback = window.electron.onShowChannelNotApprovedError(handleChannelNotApprovedError);
+    const validationErrorCallback = window.electron.onShowValidationError(handleValidationError);
+
+    // Cleanup on unmount
+    return () => {
+      if (window.electron?.offShowChannelNotApprovedError && channelErrorCallback) {
+        window.electron.offShowChannelNotApprovedError(channelErrorCallback);
+      }
+      if (window.electron?.offShowValidationError && validationErrorCallback) {
+        window.electron.offShowValidationError(validationErrorCallback);
+      }
+    };
+  }, []);
+
+  // Simple alert-based error display for now
+  // TODO: Replace with proper dialog components in Phase 5
+  useEffect(() => {
+    if (channelNotApprovedError) {
+      alert(`This video's channel is not approved.\n\nVideo: ${channelNotApprovedError.title}`);
+      setChannelNotApprovedError(null);
+    }
+  }, [channelNotApprovedError]);
+
+  useEffect(() => {
+    if (validationError) {
+      alert(`Unable to play video: ${validationError.message}`);
+      setValidationError(null);
+    }
+  }, [validationError]);
+
+  return null; // This component doesn't render anything
+};
+
 function App() {
   return (
     <ErrorBoundary>
@@ -95,6 +154,7 @@ function App() {
         <RateLimitProvider>
           <HashRouter>
             <YouTubeNavigationHandler />
+            <ValidationErrorHandler />
             <div className="min-h-screen bg-background">
               <ErrorBoundary>
                 <Routes>

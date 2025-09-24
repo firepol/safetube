@@ -125,6 +125,23 @@ contextBridge.exposeInMainWorld(
     offNavigateToVideo: (wrappedCallback: any) => {
       ipcRenderer.off('navigate-to-video', wrappedCallback);
     },
+    // Validation error events
+    onShowChannelNotApprovedError: (callback: (data: { videoId: string; channelId: string; title: string }) => void) => {
+      const wrappedCallback = (_: any, data: { videoId: string; channelId: string; title: string }) => callback(data);
+      ipcRenderer.on('show-channel-not-approved-error', wrappedCallback);
+      return wrappedCallback;
+    },
+    offShowChannelNotApprovedError: (wrappedCallback: any) => {
+      ipcRenderer.off('show-channel-not-approved-error', wrappedCallback);
+    },
+    onShowValidationError: (callback: (data: { message: string }) => void) => {
+      const wrappedCallback = (_: any, data: { message: string }) => callback(data);
+      ipcRenderer.on('show-validation-error', wrappedCallback);
+      return wrappedCallback;
+    },
+    offShowValidationError: (wrappedCallback: any) => {
+      ipcRenderer.off('show-validation-error', wrappedCallback);
+    },
     // Favorites management
     favoritesGetAll: () => ipcRenderer.invoke('favorites:get-all'),
     favoritesAdd: (videoId: string, source: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) =>

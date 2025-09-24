@@ -203,6 +203,11 @@ export interface ElectronAPI {
   // Navigation events for YouTube iframe links
   onNavigateToVideo: (callback: (videoId: string) => void) => any;
   offNavigateToVideo: (wrappedCallback: any) => void;
+  // Validation error events
+  onShowChannelNotApprovedError: (callback: (data: { videoId: string; channelId: string; title: string }) => void) => any;
+  offShowChannelNotApprovedError: (wrappedCallback: any) => void;
+  onShowValidationError: (callback: (data: { message: string }) => void) => any;
+  offShowValidationError: (wrappedCallback: any) => void;
   // Favorites management
   favoritesGetAll: () => Promise<any[]>;
   favoritesAdd: (videoId: string, source: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) => Promise<any>;
