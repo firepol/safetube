@@ -95,7 +95,7 @@ This implementation plan outlines the tasks required to implement source-based v
 
 ### Phase 4: YouTube Click Interception
 
-- [ ] 4. Enhance WindowOpenHandler to support channel validation
+- [x] 4. Enhance WindowOpenHandler to support channel validation
   - Modify `src/main/index.ts` window open handler (lines 1288-1307)
   - Load mainSettings to check `allowYouTubeClicksToOtherVideos` setting
   - Implement conditional logic: block all if setting is false, validate channel if true

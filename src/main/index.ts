@@ -12,7 +12,8 @@ import { createLocalVideoId } from '../shared/fileUtils'
 import { logVerbose } from '../shared/logging'
 
 import { AppPaths } from './appPaths'
-import { readTimeLimits } from './fileUtils'
+import { readTimeLimits, readMainSettings, readVideoSources } from './fileUtils'
+import { YouTubeChannelSource } from '../shared/types'
 import log from './logger'
 import { recordVideoWatching, getTimeTrackingState } from './timeTracking'
 import { setupYouTubeHandlers } from './youtube'
@@ -1296,9 +1297,76 @@ const createWindow = (): void => {
       if (match) {
         videoId = match[1];
 
-        // Send event to renderer to handle internal navigation
-        mainWindow.webContents.send('navigate-to-video', videoId);
-        return { action: 'deny' }; // Prevent external window
+        // Handle validation asynchronously
+        (async () => {
+          try {
+            // Load main settings to check YouTube click control setting
+            const settings = await readMainSettings();
+            const allowClicksToOtherVideos = settings.allowYouTubeClicksToOtherVideos || false;
+
+            if (allowClicksToOtherVideos) {
+              // Validate channel ID against approved sources
+              const apiKey = settings.youtubeApiKey;
+
+              if (!apiKey) {
+                logVerbose('[Main] Cannot validate YouTube click: No API key configured');
+                mainWindow.webContents.send('show-validation-error', {
+                  message: 'YouTube API key not configured'
+                });
+                return;
+              }
+
+              // Fetch video info to get channel ID
+              const youtubeApi = new YouTubeAPI(apiKey);
+              const videoInfo = await youtubeApi.getVideoDetails(videoId);
+
+              if (!videoInfo || !videoInfo.snippet) {
+                logVerbose('[Main] Cannot validate YouTube click: Video not found');
+                mainWindow.webContents.send('show-validation-error', {
+                  message: 'Unable to load video information'
+                });
+                return;
+              }
+
+              const channelId = videoInfo.snippet.channelId;
+              const videoTitle = videoInfo.snippet.title;
+
+              // Load video sources to check approved channels
+              const sources = await readVideoSources();
+              const approvedChannelIds = sources
+                .filter(s => s.type === 'youtube_channel')
+                .map(s => (s as YouTubeChannelSource).channelId)
+                .filter(Boolean);
+
+              // Check if channel is approved
+              if (approvedChannelIds.includes(channelId)) {
+                // Allow playback - navigate to video
+                logVerbose('[Main] YouTube click approved: Channel is in approved sources');
+                mainWindow.webContents.send('navigate-to-video', videoId);
+              } else {
+                // Block and show error
+                logVerbose('[Main] YouTube click blocked: Channel not in approved sources');
+                mainWindow.webContents.send('show-channel-not-approved-error', {
+                  videoId,
+                  channelId,
+                  title: videoTitle
+                });
+              }
+            } else {
+              // Original behavior: block all clicks (setting is false/undefined)
+              logVerbose('[Main] YouTube click blocked: Setting disables all clicks to other videos');
+              // Just deny, no navigation
+            }
+          } catch (error) {
+            // On error, deny access
+            console.error('[Main] Error validating YouTube video channel:', error);
+            mainWindow.webContents.send('show-validation-error', {
+              message: 'Unable to validate video channel'
+            });
+          }
+        })();
+
+        return { action: 'deny' }; // Always prevent external window
       }
     }
 
