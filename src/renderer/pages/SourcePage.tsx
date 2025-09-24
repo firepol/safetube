@@ -7,6 +7,7 @@ import { VideoGrid } from '../components/layout/VideoGrid';
 import { PageHeader } from '../components/layout/PageHeader';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
 import { logVerbose } from '../lib/logging';
+import { SourceValidationService } from '../services/sourceValidationService';
 
 export const SourcePage: React.FC = () => {
   const navigate = useNavigate();
@@ -19,6 +20,7 @@ export const SourcePage: React.FC = () => {
   const [paginationState, setPaginationState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
+  const [validationResults, setValidationResults] = useState<Map<string, boolean>>(new Map());
 
   const currentPage = page ? parseInt(page) : 1;
   
@@ -109,13 +111,14 @@ export const SourcePage: React.FC = () => {
         setSource(foundSource);
 
         // Load videos for the current page
+        let videos: any[] = [];
         if (window.electron.getPaginatedVideos) {
           const pageResult = await window.electron.getPaginatedVideos(sourceId, currentPage);
-          setCurrentPageVideos(pageResult.videos || []);
+          videos = pageResult.videos || [];
           setPaginationState(pageResult.paginationState || null);
         } else {
           // Fallback: use all videos from source
-          setCurrentPageVideos(foundSource.videos || []);
+          videos = foundSource.videos || [];
           setPaginationState({
             currentPage: 1,
             totalPages: 1,
@@ -123,6 +126,20 @@ export const SourcePage: React.FC = () => {
             pageSize: 50 // Will be updated with actual config
           });
         }
+
+        // Batch validate videos if this is the favorites source
+        if (sourceId === 'favorites' && videos.length > 0) {
+          const videosToValidate = videos.map(v => ({
+            videoId: v.id,
+            sourceId: v.originalSourceId || v.sourceId || 'unknown',
+            sourceType: v.type === 'youtube' ? 'youtube' : v.type === 'local' ? 'local' : 'dlna'
+          }));
+
+          const validationMap = await SourceValidationService.batchValidateVideos(videosToValidate);
+          setValidationResults(validationMap);
+        }
+
+        setCurrentPageVideos(videos);
       } catch (err) {
         setError('Error loading source: ' + (err instanceof Error ? err.message : String(err)));
       } finally {
@@ -358,6 +375,11 @@ export const SourcePage: React.FC = () => {
         videos={currentPageVideos.map((video: any) => {
           const { isWatched, isClicked } = getVideoStatus(video.id);
 
+          // For favorites, use validation results; otherwise use video's isAvailable flag
+          const isAvailable = sourceId === 'favorites'
+            ? validationResults.get(video.id) ?? true
+            : video.isAvailable !== false;
+
           return {
             id: video.id,
             thumbnail: video.thumbnail || '/placeholder-thumbnail.svg',
@@ -366,7 +388,8 @@ export const SourcePage: React.FC = () => {
             type: video.type,
             watched: isWatched,
             isClicked: isClicked,
-            isAvailable: video.isAvailable !== false,
+            isAvailable: isAvailable,
+            unavailableReason: sourceId === 'favorites' ? "This video's source is no longer approved" : undefined,
             isFallback: video.isFallback === true,
             errorInfo: video.errorInfo,
             resumeAt: video.resumeAt,

@@ -166,7 +166,7 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Tests Required**: Page integration tests, validation flow tests, error handling tests, performance tests
   - **Code Review**: Integration pattern review, performance review, error handling review
 
-- [ ] 6.1 Integrate source validation into Favorites page
+- [x] 6.1 Integrate source validation into Favorites page
   - Modify `src/renderer/pages/FavoritesPage.tsx` (if exists) or favorite source loader
   - Implement batch validation for all favorited videos
   - Show unavailable favorites with grayed-out state

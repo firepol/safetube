@@ -216,12 +216,13 @@ export async function loadAllVideosFromSources(configPath = AppPaths.getConfigPa
           duration: favorite.duration,
           url: videoUrl,
           sourceId: 'favorites',
+          originalSourceId: favorite.sourceId, // Original approved source ID for validation
           sourceTitle: 'Favorites',
           sourceType: 'favorites',
           sourceThumbnail: '⭐',
           favoriteId: favorite.videoId,
           addedAt: favorite.dateAdded, // Use dateAdded from FavoriteVideo interface
-          isAvailable: true, // Favorites should always be available
+          isAvailable: true, // Will be validated in renderer
           isFallback: false // Never show fallback UI for favorites
         };
 
