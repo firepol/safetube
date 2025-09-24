@@ -53,6 +53,13 @@ export interface ElectronAPI {
   loadAllVideosFromSources: () => Promise<{ videos: any[]; debug: string[] }>;
   loadVideosFromSources: () => Promise<{ videosBySource: any[]; debug: string[] }>;
   getYouTubeApiKey: () => Promise<string | null>;
+  getYouTubeVideoInfo: (videoId: string) => Promise<{
+    videoId: string;
+    title: string;
+    channelId: string;
+    channelTitle: string;
+    thumbnail: string;
+  } | null>;
   getPaginatedVideos: (sourceId: string, pageNumber: number) => Promise<{ videos: any[]; paginationState: any }>;
   getLocalFolderContents: (folderPath: string, maxDepth: number, currentDepth?: number) => Promise<{ folders: any[]; videos: any[]; depth: number }>;
   getLocalSourceVideoCount: (sourcePath: string, maxDepth: number) => Promise<number>;

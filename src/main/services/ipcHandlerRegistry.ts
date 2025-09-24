@@ -691,6 +691,48 @@ export function registerSystemHandlers() {
     }
   });
 
+  // Get YouTube video info (for source validation)
+  ipcMain.handle('get-youtube-video-info', async (_, videoId: string) => {
+    try {
+      // Get API key
+      let apiKey: string | null = null;
+      const envApiKey = process.env.YOUTUBE_API_KEY;
+      if (envApiKey) {
+        apiKey = envApiKey;
+      } else {
+        const mainSettings = await readMainSettings();
+        if (mainSettings.youtubeApiKey) {
+          apiKey = mainSettings.youtubeApiKey;
+        }
+      }
+
+      if (!apiKey) {
+        log.error('[IPC] YouTube API key not found');
+        return null;
+      }
+
+      // Fetch video details including channelId
+      const youtubeApi = new YouTubeAPI(apiKey);
+      const videoDetails = await youtubeApi.getVideoDetails(videoId);
+
+      if (!videoDetails) {
+        return null;
+      }
+
+      // Return simplified video info with channelId
+      return {
+        videoId: videoDetails.id,
+        title: videoDetails.snippet?.title || '',
+        channelId: videoDetails.snippet?.channelId || '',
+        channelTitle: videoDetails.snippet?.channelTitle || '',
+        thumbnail: videoDetails.snippet?.thumbnails?.default?.url || ''
+      };
+    } catch (error) {
+      log.error('[IPC] Error getting YouTube video info:', error);
+      return null;
+    }
+  });
+
   // Get verbose logging status
   ipcMain.handle('logging:get-verbose', async () => {
     try {

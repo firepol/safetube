@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld(
     loadVideosFromSources: () => ipcRenderer.invoke('load-videos-from-sources'),
     // New IPC handler for getting YouTube API key
     getYouTubeApiKey: () => ipcRenderer.invoke('get-youtube-api-key'),
+    // New IPC handler for getting YouTube video info (for source validation)
+    getYouTubeVideoInfo: (videoId: string) => ipcRenderer.invoke('get-youtube-video-info', videoId),
     // New IPC handler for getting paginated videos from a specific source
     getPaginatedVideos: (sourceId: string, pageNumber: number) => 
       ipcRenderer.invoke('get-paginated-videos', sourceId, pageNumber),
