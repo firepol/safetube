@@ -20,6 +20,7 @@ export interface VideoCardBaseProps {
   isAvailable?: boolean;
   isFallback?: boolean;
   errorInfo?: VideoLoadError;
+  unavailableReason?: string; // NEW: Reason for unavailability
   // Optional custom click handler
   onVideoClick?: (video: VideoCardBaseProps) => void;
   // Favorites functionality
@@ -43,6 +44,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   isAvailable = true,
   isFallback = false,
   errorInfo,
+  unavailableReason = 'This video is no longer available',
   onVideoClick,
   isFavorite,
   showFavoriteIcon = false,
@@ -55,6 +57,11 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   const navigate = useNavigate();
 
   const handleClick = () => {
+    // Prevent clicks on unavailable videos
+    if (!isAvailable) {
+      return;
+    }
+
     // Only handle click for available videos - fallback videos use the link
     if (!isFallback) {
       if (onVideoClick) {
@@ -88,7 +95,8 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
       <div
         className={cn(
           "relative aspect-[16/9] w-full overflow-hidden rounded-t-xl",
-          !isFallback && "cursor-pointer"
+          !isFallback && isAvailable && "cursor-pointer",
+          !isAvailable && "cursor-not-allowed"
         )}
         onClick={!isFallback ? handleClick : undefined}
       >
@@ -157,6 +165,19 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
             </div>
           </>
         )}
+
+        {/* Unavailable Video Overlay - Source Validation */}
+        {!isAvailable && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
+            <div className="flex flex-col items-center gap-2">
+              <div className="text-4xl">🔒</div>
+              <span className="text-white text-sm text-center px-4 font-medium">
+                {unavailableReason}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Progress Bar */}
         {watched && (
           <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-200">
@@ -240,7 +261,8 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
     'bg-card rounded-xl border shadow-md flex flex-col w-full',
     'max-w-[280px] sm:max-w-[320px] lg:max-w-[380px] xl:max-w-[420px] 2xl:max-w-[500px]',
     'transition-transform hover:scale-[1.03]',
-    isFallback ? 'opacity-60 border-dashed border-yellow-400' : ''
+    isFallback && 'opacity-60 border-dashed border-yellow-400',
+    !isAvailable && 'opacity-50'
   );
 
   // For all videos, use non-clickable card (thumbnail handles clicks)

@@ -125,7 +125,7 @@ This implementation plan outlines the tasks required to implement source-based v
 
 ### Phase 5: UI Components
 
-- [ ] 5. Create grayed-out video card state in VideoCardBase
+- [x] 5. Create grayed-out video card state in VideoCardBase
   - Add `isAvailable` and `unavailableReason` props to VideoCardBase in `src/renderer/components/video/VideoCardBase.tsx`
   - Implement 50% opacity styling when `isAvailable={false}`
   - Add "not-allowed" cursor on hover for unavailable cards
@@ -135,7 +135,7 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Tests Required**: Component rendering tests, interaction prevention tests, visual consistency tests
   - **Code Review**: UI design review, accessibility review, interaction pattern review
 
-- [ ] 5.1 Create ChannelNotApprovedDialog component
+- [x] 5.1 Create ChannelNotApprovedDialog component
   - Create `src/renderer/components/dialogs/ChannelNotApprovedDialog.tsx`
   - Implement dialog UI with child-friendly error message
   - Add "OK" button to dismiss dialog
@@ -145,7 +145,7 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Tests Required**: Component rendering tests, dialog interaction tests, message display tests
   - **Code Review**: UI design review, messaging clarity review, accessibility review
 
-- [ ] 5.2 Create unavailable video indicator overlay
+- [x] 5.2 Create unavailable video indicator overlay
   - Design lock icon overlay component
   - Implement tooltip showing unavailability reason on hover
   - Add "Not Available" badge to unavailable video cards
