@@ -1366,6 +1366,64 @@ export function registerFavoritesHandlers() {
       return { success: false };
     }
   });
+
+  // Get unavailable favorites (for admin dashboard)
+  ipcMain.handle('favorites:get-unavailable', async () => {
+    try {
+      const favoritesPath = AppPaths.getConfigPath('favorites.json');
+      const sourcesPath = AppPaths.getConfigPath('videoSources.json');
+
+      if (!fs.existsSync(favoritesPath)) {
+        return [];
+      }
+
+      const favorites = JSON.parse(fs.readFileSync(favoritesPath, 'utf8'));
+      const sources = fs.existsSync(sourcesPath) ? JSON.parse(fs.readFileSync(sourcesPath, 'utf8')) : [];
+      const sourceIds = new Set(sources.map((s: any) => s.id));
+
+      // Filter favorites where sourceId doesn't exist in sources
+      const unavailable = (favorites.favorites || []).filter((fav: any) =>
+        !fav.sourceId || fav.sourceId === 'unknown' || !sourceIds.has(fav.sourceId)
+      );
+
+      return unavailable;
+    } catch (error) {
+      log.error('[IPC] Error getting unavailable favorites:', error);
+      return [];
+    }
+  });
+
+  // Clear unavailable favorites (for admin dashboard)
+  ipcMain.handle('favorites:clear-unavailable', async () => {
+    try {
+      const favoritesPath = AppPaths.getConfigPath('favorites.json');
+      const sourcesPath = AppPaths.getConfigPath('videoSources.json');
+
+      if (!fs.existsSync(favoritesPath)) {
+        return { success: true, count: 0 };
+      }
+
+      const favorites = JSON.parse(fs.readFileSync(favoritesPath, 'utf8'));
+      const sources = fs.existsSync(sourcesPath) ? JSON.parse(fs.readFileSync(sourcesPath, 'utf8')) : [];
+      const sourceIds = new Set(sources.map((s: any) => s.id));
+
+      // Keep only favorites with valid sourceIds
+      const initialCount = (favorites.favorites || []).length;
+      favorites.favorites = (favorites.favorites || []).filter((fav: any) =>
+        fav.sourceId && fav.sourceId !== 'unknown' && sourceIds.has(fav.sourceId)
+      );
+      const removedCount = initialCount - favorites.favorites.length;
+
+      favorites.lastModified = new Date().toISOString();
+      fs.writeFileSync(favoritesPath, JSON.stringify(favorites, null, 2));
+
+      logVerbose('[IPC] Cleared unavailable favorites:', removedCount);
+      return { success: true, count: removedCount };
+    } catch (error) {
+      log.error('[IPC] Error clearing unavailable favorites:', error);
+      return { success: false, count: 0, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  });
 }
 
 // Register all IPC handlers

@@ -158,6 +158,8 @@ contextBridge.exposeInMainWorld(
     favoritesUpdateConfig: (config: any) => ipcRenderer.invoke('favorites:update-config', config),
     favoritesCleanupOrphaned: () => ipcRenderer.invoke('favorites:cleanup-orphaned'),
     favoritesSyncWatchHistory: () => ipcRenderer.invoke('favorites:sync-watch-history'),
+    favoritesGetUnavailable: () => ipcRenderer.invoke('favorites:get-unavailable'),
+    favoritesClearUnavailable: () => ipcRenderer.invoke('favorites:clear-unavailable'),
     // App paths
     getCacheDir: () => ipcRenderer.invoke('app-paths:get-cache-dir'),
     getCacheDirSync: () => ipcRenderer.sendSync('app-paths:get-cache-dir-sync'),

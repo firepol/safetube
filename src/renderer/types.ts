@@ -227,6 +227,8 @@ export interface ElectronAPI {
   favoritesUpdateConfig: (config: any) => Promise<any>;
   favoritesCleanupOrphaned: () => Promise<any[]>;
   favoritesSyncWatchHistory: () => Promise<any[]>;
+  favoritesGetUnavailable: () => Promise<any[]>;
+  favoritesClearUnavailable: () => Promise<{ success: boolean; count: number; error?: string }>;
 
   // Path utilities for cross-platform compatibility
   pathJoin: (...paths: string[]) => Promise<string>;

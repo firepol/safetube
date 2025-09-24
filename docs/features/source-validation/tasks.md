@@ -243,7 +243,7 @@ All essential features for source-based video access control are implemented and
   - **Tests Required**: IPC handler tests, YouTube API integration tests, error scenario tests
   - **Code Review**: IPC architecture review, API integration review
 
-- [ ] 8.1 Update favorites IPC handlers to require sourceId
+- [x] 8.1 Update favorites IPC handlers to require sourceId
   - Modify `favorites:add` IPC handler to validate sourceId is present
   - Update favorites data structure when saving
   - Add validation to reject favorites without sourceId
