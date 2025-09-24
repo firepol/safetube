@@ -44,6 +44,7 @@ export function parseVideoId(videoId: string): { sourceType: string; originalId:
 export function videoToMetadata(video: {
   id: string;
   type: 'youtube' | 'local' | 'dlna';
+  source: string;
   title: string;
   thumbnail?: string;
   duration?: number;
@@ -52,6 +53,7 @@ export function videoToMetadata(video: {
   return {
     id: video.id,
     type: video.type,
+    source: video.source,
     title: video.title,
     thumbnail: video.thumbnail,
     duration: video.duration,
@@ -69,6 +71,7 @@ export function createFavoriteVideo(metadata: VideoMetadata): FavoriteVideo {
     videoId: metadata.id,
     dateAdded: new Date().toISOString(),
     sourceType: metadata.type,
+    sourceId: metadata.source,
     title: metadata.title,
     thumbnail: metadata.thumbnail,
     duration: metadata.duration,
@@ -255,6 +258,13 @@ export function validateFavoritesConfig(data: any): FavoritesOperationResult {
         };
       }
 
+      if (!favorite.sourceId || typeof favorite.sourceId !== 'string') {
+        return {
+          success: false,
+          error: `Invalid favorite at index ${index}: sourceId is required`,
+        };
+      }
+
       if (!favorite.title || typeof favorite.title !== 'string') {
         return {
           success: false,
@@ -292,6 +302,7 @@ export function sanitizeFavoritesConfig(data: any): FavoritesConfig {
         typeof fav.dateAdded === 'string' &&
         typeof fav.sourceType === 'string' &&
         ['youtube', 'local', 'dlna'].includes(fav.sourceType) &&
+        typeof fav.sourceId === 'string' &&
         typeof fav.title === 'string'
       )
     : [];
@@ -632,10 +643,11 @@ export function validateAndNormalizeVideoMetadata(metadata: VideoMetadata): Vide
 /**
  * Convert normalized video source to VideoMetadata format
  */
-export function normalizedSourceToVideoMetadata(normalized: NormalizedVideoSource): VideoMetadata {
+export function normalizedSourceToVideoMetadata(normalized: NormalizedVideoSource, source: string = 'unknown'): VideoMetadata {
   return {
     id: normalized.id,
     type: normalized.type,
+    source: source,
     title: normalized.title,
     thumbnail: normalized.thumbnail,
     duration: normalized.duration,

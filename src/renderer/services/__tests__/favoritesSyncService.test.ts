@@ -96,7 +96,8 @@ describe('FavoritesSyncService', () => {
           videoId: 'test-video',
           title: 'Test Video',
           dateAdded: '2023-01-01T00:00:00.000Z',
-          sourceType: 'youtube' as const
+          sourceType: 'youtube' as const,
+          sourceId: 'test-source'
         },
         isFavorite: true
       };
@@ -222,6 +223,7 @@ describe('FavoritesSyncService', () => {
           title: 'Video 1',
           dateAdded: '2023-01-01T00:00:00.000Z',
           sourceType: 'youtube' as const,
+          sourceId: 'test-source',
           thumbnail: 'thumb1.jpg',
           duration: 120
         },
@@ -230,6 +232,7 @@ describe('FavoritesSyncService', () => {
           title: 'Video 2',
           dateAdded: '2023-01-01T00:00:00.000Z',
           sourceType: 'local' as const,
+          sourceId: 'test-source',
           thumbnail: 'thumb2.jpg',
           duration: 180
         }
@@ -281,7 +284,8 @@ describe('FavoritesSyncService', () => {
           videoId: 'dQw4w9WgXcQ',
           title: 'Never Gonna Give You Up',
           dateAdded: '2023-01-01T00:00:00.000Z',
-          sourceType: 'youtube' as const
+          sourceType: 'youtube' as const,
+          sourceId: 'test-source'
         },
         isFavorite: true
       };
@@ -320,7 +324,8 @@ describe('FavoritesSyncService', () => {
           videoId: 'test-video',
           title: 'MediaSource Video',
           dateAdded: '2023-01-01T00:00:00.000Z',
-          sourceType: 'youtube' as const
+          sourceType: 'youtube' as const,
+          sourceId: 'test-source'
         },
         isFavorite: true
       };

@@ -8,6 +8,7 @@ export const FavoriteVideoSchema = z.object({
   sourceType: z.enum(['youtube', 'local', 'dlna'], {
     errorMap: () => ({ message: 'Source type must be youtube, local, or dlna' })
   }),
+  sourceId: z.string().min(1, 'Source ID is required'),
   title: z.string().min(1, 'Title is required'),
   thumbnail: z.string().optional(),
   duration: z.number().min(0, 'Duration must be non-negative').optional()
@@ -95,6 +96,7 @@ export function sanitizeVideoData(data: Partial<FavoriteVideo>): Partial<Favorit
     videoId: typeof data.videoId === 'string' ? data.videoId.trim() : undefined,
     dateAdded: data.dateAdded, // ISO string validation handled by schema
     sourceType: data.sourceType, // Enum validation handled by schema
+    sourceId: typeof data.sourceId === 'string' ? data.sourceId.trim() : undefined,
     title: typeof data.title === 'string' ? data.title.trim() : undefined,
     thumbnail: typeof data.thumbnail === 'string' ? data.thumbnail.trim() : undefined,
     duration: typeof data.duration === 'number' && data.duration >= 0 ? data.duration : undefined,
@@ -107,6 +109,7 @@ export function sanitizeVideoData(data: Partial<FavoriteVideo>): Partial<Favorit
 export function createFavoriteFromVideo(
   videoId: string,
   sourceType: 'youtube' | 'local' | 'dlna',
+  sourceId: string,
   title: string,
   thumbnail?: string,
   duration?: number
@@ -115,6 +118,7 @@ export function createFavoriteFromVideo(
     videoId,
     dateAdded: new Date().toISOString(),
     sourceType,
+    sourceId,
     title: title.trim(),
     thumbnail: thumbnail?.trim(),
     duration: duration !== undefined ? Math.max(0, duration) : undefined

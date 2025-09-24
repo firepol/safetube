@@ -35,6 +35,7 @@ describe('FavoritesService', () => {
         videoId: 'test-video-1',
         dateAdded: '2025-09-17T16:00:00.000Z',
         sourceType: 'youtube',
+        sourceId: 'test-source',
         title: 'Test Video 1',
         thumbnail: 'https://example.com/thumb1.jpg',
         duration: 120
@@ -59,6 +60,7 @@ describe('FavoritesService', () => {
       videoId: 'test-video-2',
       dateAdded: '2025-09-17T16:00:00.000Z',
       sourceType: 'youtube',
+        sourceId: 'test-source',
       title: 'Test Video 2',
       thumbnail: 'https://example.com/thumb2.jpg',
       duration: 180
@@ -93,6 +95,7 @@ describe('FavoritesService', () => {
         videoId: 'cached-video',
         dateAdded: '2025-09-17T16:00:00.000Z',
         sourceType: 'youtube',
+        sourceId: 'test-source',
         title: 'Cached Video',
         thumbnail: 'https://example.com/cached.jpg',
         duration: 90
@@ -118,6 +121,7 @@ describe('FavoritesService', () => {
       videoId: 'toggle-video',
       dateAdded: '2025-09-17T16:00:00.000Z',
       sourceType: 'youtube',
+        sourceId: 'test-source',
       title: 'Toggle Video',
       thumbnail: 'https://example.com/toggle.jpg',
       duration: 240
@@ -160,6 +164,7 @@ describe('FavoritesService', () => {
         videoId: 'grid-video-1',
         dateAdded: '2025-09-17T16:00:00.000Z',
         sourceType: 'youtube',
+        sourceId: 'test-source',
         title: 'Grid Video 1',
         thumbnail: 'https://example.com/grid1.jpg',
         duration: 120
@@ -168,6 +173,7 @@ describe('FavoritesService', () => {
         videoId: 'grid-video-2',
         dateAdded: '2025-09-17T16:01:00.000Z',
         sourceType: 'local',
+        sourceId: 'test-source',
         title: 'Grid Video 2',
         thumbnail: 'https://example.com/grid2.jpg',
         duration: 180

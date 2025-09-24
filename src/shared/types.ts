@@ -226,6 +226,7 @@ export interface FavoriteVideo {
   videoId: string;                                   // Unique video identifier (cross-source compatible)
   dateAdded: string;                                // ISO date string when favorited
   sourceType: 'youtube' | 'local' | 'dlna' | 'downloaded';        // Video type for proper handling
+  sourceId: string;                                 // Source ID for validation (which approved source this video belongs to)
   title: string;                                    // Video title for display
   thumbnail?: string;                               // Optional thumbnail URL/path
   duration?: number;                                // Optional duration in seconds
@@ -240,6 +241,7 @@ export interface FavoritesConfig {
 export interface VideoMetadata {
   id: string;
   type: 'youtube' | 'local' | 'dlna' | 'downloaded';
+  source: string;                                   // Source ID this video belongs to
   title: string;
   thumbnail?: string;
   duration?: number;

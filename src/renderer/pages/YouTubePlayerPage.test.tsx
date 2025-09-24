@@ -107,6 +107,7 @@ describe('YouTubePlayerPage', () => {
         videoId: 'test-video-id',
         dateAdded: new Date().toISOString(),
         sourceType: 'youtube',
+        sourceId: 'test-source',
         title: 'Test Video',
         thumbnail: 'https://example.com/thumbnail.jpg',
         duration: 300,

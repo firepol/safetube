@@ -8,7 +8,7 @@ This implementation plan outlines the tasks required to implement source-based v
 
 ### Phase 1: Data Model Updates
 
-- [ ] 1. Update FavoriteVideo interface to include sourceId field
+- [x] 1. Update FavoriteVideo interface to include sourceId field
   - Modify `src/shared/types.ts` to add `sourceId: string` to FavoriteVideo interface
   - Update all existing FavoriteVideo type references to include sourceId
   - Add Zod schema validation for sourceId field

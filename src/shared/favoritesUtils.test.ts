@@ -57,6 +57,7 @@ describe('Favorites Utilities', () => {
       const metadata: VideoMetadata = {
         id: 'test-video',
         type: 'youtube',
+        source: 'test-source',
         title: 'Test Video',
         thumbnail: 'https://example.com/thumb.jpg',
         duration: 120,
@@ -76,6 +77,7 @@ describe('Favorites Utilities', () => {
       const metadata: VideoMetadata = {
         id: '/path/to/local/video.mp4',
         type: 'local',
+        source: 'local-source',
         title: 'Local Video',
       };
 
@@ -90,6 +92,7 @@ describe('Favorites Utilities', () => {
       const video = {
         id: 'test-video',
         type: 'youtube' as const,
+        source: 'test-source',
         title: 'Test Video',
         thumbnail: 'https://example.com/thumb.jpg',
         duration: 120,
@@ -101,6 +104,7 @@ describe('Favorites Utilities', () => {
       expect(metadata).toEqual({
         id: 'test-video',
         type: 'youtube',
+        source: 'test-source',
         title: 'Test Video',
         thumbnail: 'https://example.com/thumb.jpg',
         duration: 120,
@@ -124,6 +128,7 @@ describe('Favorites Utilities', () => {
             videoId: 'test-video',
             dateAdded: '2025-09-17T16:00:00.000Z',
             sourceType: 'youtube',
+            sourceId: 'test-source',
             title: 'Test Video',
           },
         ],
@@ -161,6 +166,7 @@ describe('Favorites Utilities', () => {
             videoId: 'valid-video',
             dateAdded: '2025-09-17T16:00:00.000Z',
             sourceType: 'youtube',
+            sourceId: 'test-source',
             title: 'Valid Video',
           },
           {
@@ -172,6 +178,7 @@ describe('Favorites Utilities', () => {
             videoId: 'another-valid',
             dateAdded: '2025-09-17T16:01:00.000Z',
             sourceType: 'local',
+            sourceId: 'local-source',
             title: 'Another Valid',
           },
         ],
@@ -199,6 +206,7 @@ describe('Favorites Utilities', () => {
       const metadata: VideoMetadata = {
         id: 'new-video',
         type: 'youtube',
+        source: 'test-source',
         title: 'New Video',
       };
 
@@ -215,6 +223,7 @@ describe('Favorites Utilities', () => {
       const metadata: VideoMetadata = {
         id: 'duplicate-video',
         type: 'youtube',
+        source: 'test-source',
         title: 'Duplicate Video',
       };
 
@@ -234,6 +243,7 @@ describe('Favorites Utilities', () => {
       const metadata: VideoMetadata = {
         id: 'to-remove',
         type: 'youtube',
+        source: 'test-source',
         title: 'To Remove',
       };
 
@@ -263,6 +273,7 @@ describe('Favorites Utilities', () => {
       const metadata: VideoMetadata = {
         id: 'favorite-video',
         type: 'youtube',
+        source: 'test-source',
         title: 'Favorite Video',
       };
 
@@ -281,12 +292,14 @@ describe('Favorites Utilities', () => {
             videoId: 'video-1',
             dateAdded: '2025-09-17T16:00:00.000Z', // Older
             sourceType: 'youtube',
+            sourceId: 'test-source',
             title: 'B Video',
           },
           {
             videoId: 'video-2',
             dateAdded: '2025-09-17T16:01:00.000Z', // Newer
             sourceType: 'youtube',
+            sourceId: 'test-source',
             title: 'A Video',
           },
         ],
@@ -580,6 +593,7 @@ describe('Favorites Utilities', () => {
         const metadata: VideoMetadata = {
           id: 'dQw4w9WgXcQ',
           type: 'youtube',
+          source: 'test-source',
           title: 'Valid YouTube Video',
           duration: 212,
         };
@@ -645,6 +659,7 @@ describe('Favorites Utilities', () => {
         const metadata: VideoMetadata = {
           id: 'dQw4w9WgXcQ',
           type: 'youtube',
+          source: 'test-source',
           title: 'Video with Invalid Duration',
           duration: -10,
         };
@@ -658,6 +673,7 @@ describe('Favorites Utilities', () => {
         const metadata: VideoMetadata = {
           id: 'invalid-id',
           type: 'youtube',
+          source: 'test-source',
           title: 'Video with Warnings',
         };
 
@@ -672,6 +688,7 @@ describe('Favorites Utilities', () => {
         const metadata: VideoMetadata = {
           id: 'short',  // Invalid YouTube ID length
           type: 'youtube',
+          source: 'test-source',
           title: 'Edge Case Video',
         };
 
@@ -696,10 +713,11 @@ describe('Favorites Utilities', () => {
           url: 'https://youtube.com/watch?v=dQw4w9WgXcQ',
         });
 
-        const metadata = normalizedSourceToVideoMetadata(normalized);
+        const metadata = normalizedSourceToVideoMetadata(normalized, 'test-source');
 
         expect(metadata.id).toBe('dQw4w9WgXcQ');
         expect(metadata.type).toBe('youtube');
+        expect(metadata.source).toBe('test-source');
         expect(metadata.title).toBe('Test Video');
         expect(metadata.thumbnail).toBe('custom-thumb.jpg');
         expect(metadata.duration).toBe(212);
@@ -722,11 +740,11 @@ describe('Favorites Utilities', () => {
       const normalized = normalizeVideoSource(playerMetadata);
 
       // Validate and convert to VideoMetadata
-      const validation = validateAndNormalizeVideoMetadata(normalizedSourceToVideoMetadata(normalized));
+      const validation = validateAndNormalizeVideoMetadata(normalizedSourceToVideoMetadata(normalized, 'test-source'));
       expect(validation.isValid).toBe(true);
 
       // Create favorite from normalized metadata
-      const favoriteMetadata = normalizedSourceToVideoMetadata(normalized);
+      const favoriteMetadata = normalizedSourceToVideoMetadata(normalized, 'test-source');
       const favorite = createFavoriteVideo(favoriteMetadata);
 
       expect(favorite.videoId).toBe('dQw4w9WgXcQ');
