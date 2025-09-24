@@ -156,7 +156,7 @@ This implementation plan outlines the tasks required to implement source-based v
 
 ### Phase 6: Page Integration
 
-- [ ] 6. Integrate source validation into History page
+- [x] 6. Integrate source validation into History page
   - Modify `src/renderer/pages/HistoryPage.tsx` to use SourceValidationService
   - Implement batch validation for all history videos on page load
   - Pass `isAvailable` prop to VideoCardBase based on validation results

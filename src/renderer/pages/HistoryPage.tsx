@@ -5,6 +5,7 @@ import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndic
 import { VideoGrid } from '../components/layout/VideoGrid';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
 import { logVerbose } from '../lib/logging';
+import { SourceValidationService } from '../services/sourceValidationService';
 
 interface WatchedVideo {
   videoId: string;
@@ -34,6 +35,7 @@ export const HistoryPage: React.FC = () => {
   const [paginationState, setPaginationState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [validationResults, setValidationResults] = useState<Map<string, boolean>>(new Map());
   const pageSize = 20; // Videos per page
 
   useEffect(() => {
@@ -173,9 +175,19 @@ export const HistoryPage: React.FC = () => {
         }
 
         // Sort by last watched date (newest first)
-        videosWithDetails.sort((a, b) => 
+        videosWithDetails.sort((a, b) =>
           new Date(b.watchedData.lastWatched).getTime() - new Date(a.watchedData.lastWatched).getTime()
         );
+
+        // Batch validate all videos for source availability
+        const videosToValidate = videosWithDetails.map(v => ({
+          videoId: v.id,
+          sourceId: v.sourceId,
+          sourceType: v.type === 'youtube' ? 'youtube' : v.type === 'local' ? 'local' : 'dlna'
+        }));
+
+        const validationMap = await SourceValidationService.batchValidateVideos(videosToValidate);
+        setValidationResults(validationMap);
 
         // Apply pagination
         const startIndex = (currentPage - 1) * pageSize;
@@ -293,7 +305,10 @@ export const HistoryPage: React.FC = () => {
               source: video.sourceId || 'history',
               lastWatched: video.watchedData.lastWatched,
               // Will be checked by VideoGrid using simple favorites hook
-              isFavorite: false
+              isFavorite: false,
+              // Source validation
+              isAvailable: validationResults.get(video.id) ?? true,
+              unavailableReason: "This video's source is no longer approved"
             }))}
             groupByType={false}
             className="mb-6"
