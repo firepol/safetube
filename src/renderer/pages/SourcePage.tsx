@@ -395,7 +395,9 @@ export const SourcePage: React.FC = () => {
             resumeAt: video.resumeAt,
             onVideoClick: () => handleVideoClick(video),
             // isFavorite will be populated by VideoGrid's useFavoriteStatus hook
-            source: source?.id || 'unknown',
+            sourceId: sourceId === 'favorites'
+              ? (video.originalSourceId || video.sourceId || 'unknown')
+              : (source?.id || 'unknown'),
             lastWatched: video.lastWatched
           };
         })}

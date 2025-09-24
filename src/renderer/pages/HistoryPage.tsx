@@ -302,7 +302,7 @@ export const HistoryPage: React.FC = () => {
               watched: video.watchedData.watched === true,
               isClicked: true, // All videos in history have been clicked
               onVideoClick: () => handleVideoClick(video),
-              source: video.sourceId || 'history',
+              sourceId: video.sourceId || 'unknown',
               lastWatched: video.watchedData.lastWatched,
               // Will be checked by VideoGrid using simple favorites hook
               isFavorite: false,
