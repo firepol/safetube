@@ -747,11 +747,13 @@ export function registerSystemHandlers() {
   // Clear source cache
   ipcMain.handle('clear-source-cache', async (_, sourceId: string) => {
     try {
-      // This would clear cached data for a specific source
-      return { success: true };
+      const { YouTubePageCache } = await import('../../preload/youtubePageCache');
+      YouTubePageCache.clearSourcePages(sourceId);
+      logVerbose(`[IPC] Cleared cache for source: ${sourceId}`);
+      return { success: true, message: 'Cache cleared successfully' };
     } catch (error) {
       log.error('[IPC] Error clearing source cache:', error);
-      return { success: false };
+      return { success: false, message: 'Failed to clear cache', error: error instanceof Error ? error.message : String(error) };
     }
   });
 
