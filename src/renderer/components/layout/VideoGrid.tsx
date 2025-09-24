@@ -53,7 +53,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
       // Use the existing service to toggle favorite
       await FavoritesService.toggleFavorite(
         video.id,
-        video.source || 'unknown',
+        video.sourceId || 'unknown',
         video.type,
         video.title,
         // Use updated thumbnail if available

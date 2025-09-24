@@ -26,7 +26,7 @@ export interface VideoCardBaseProps {
   // Favorites functionality
   isFavorite?: boolean;
   showFavoriteIcon?: boolean;
-  source?: string;
+  sourceId?: string;
   lastWatched?: string;
   onFavoriteToggle?: (videoId: string, isFavorite: boolean) => void;
 }
@@ -48,7 +48,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
   onVideoClick,
   isFavorite,
   showFavoriteIcon = false,
-  source,
+  sourceId,
   lastWatched,
   onFavoriteToggle,
 }) => {
@@ -240,7 +240,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
           {showFavoriteIcon && !isFallback && (
             <FavoriteButton
               videoId={id}
-              source={source || 'unknown'}
+              sourceId={sourceId || 'unknown'}
               type={type}
               title={title}
               thumbnail={thumbnail}

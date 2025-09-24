@@ -21,7 +21,7 @@ describe('FavoriteButton', () => {
 
   const mockProps = {
     videoId: 'test-video',
-    source: 'test-source',
+    sourceId: 'test-source',
     type: 'youtube' as const,
     title: 'Test Video',
     thumbnail: 'https://example.com/thumb.jpg',

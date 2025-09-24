@@ -6,7 +6,7 @@ import { logVerbose } from '../../lib/logging';
 
 export interface FavoriteButtonProps {
   videoId: string;
-  source: string;
+  sourceId: string;
   type: 'youtube' | 'local' | 'dlna' | 'downloaded';
   title: string;
   thumbnail: string;
@@ -23,7 +23,7 @@ export interface FavoriteButtonProps {
 
 export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
   videoId,
-  source,
+  sourceId,
   type,
   title,
   thumbnail,
@@ -83,7 +83,7 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
         // Fallback: handle toggle ourselves (for standalone usage)
         const result = await FavoritesService.toggleFavorite(
           videoId,
-          source,
+          sourceId,
           type,
           title,
           thumbnail,
@@ -107,7 +107,7 @@ export const FavoriteButton: React.FC<FavoriteButtonProps> = ({
     } finally {
       setIsLoading(false);
     }
-  }, [videoId, source, type, title, thumbnail, duration, lastWatched, isFavorite, onToggle, disabled, isLoading]);
+  }, [videoId, sourceId, type, title, thumbnail, duration, lastWatched, isFavorite, onToggle, disabled, isLoading]);
 
   // Size-based styling
   const sizeClasses = {

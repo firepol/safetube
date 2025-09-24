@@ -53,7 +53,7 @@ export class FavoritesService {
    */
   static async addFavorite(
     videoId: string,
-    source: string,
+    sourceId: string,
     type: 'youtube' | 'local' | 'dlna' | 'downloaded',
     title: string,
     thumbnail: string,
@@ -61,13 +61,13 @@ export class FavoritesService {
     lastWatched?: string
   ): Promise<FavoriteVideo> {
     try {
-      logVerbose('[FavoritesService] Adding favorite:', { videoId, source, type, title });
+      logVerbose('[FavoritesService] Adding favorite:', { videoId, sourceId, type, title });
 
       // Optimistic update
       this.favoriteStatusCache.set(videoId, true);
 
       const favorite = await window.electron.favoritesAdd(
-        videoId, source, type, title, thumbnail, duration, lastWatched
+        videoId, sourceId, type, title, thumbnail, duration, lastWatched
       );
 
 
@@ -156,7 +156,7 @@ export class FavoritesService {
    */
   static async toggleFavorite(
     videoId: string,
-    source: string,
+    sourceId: string,
     type: 'youtube' | 'local' | 'dlna' | 'downloaded',
     title: string,
     thumbnail: string,
@@ -174,7 +174,7 @@ export class FavoritesService {
       this.favoriteStatusCache.set(originalVideoId, !currentState);
 
       const favorite = await window.electron.favoritesToggle(
-        videoId, source, type, title, thumbnail, duration, lastWatched
+        videoId, sourceId, type, title, thumbnail, duration, lastWatched
       );
 
 

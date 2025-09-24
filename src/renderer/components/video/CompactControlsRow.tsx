@@ -67,7 +67,7 @@ export const CompactControlsRow: React.FC<CompactControlsRowProps> = ({
       {/* Favorite Button */}
       <FavoriteButton
         videoId={video.id}
-        source={video.url || video.sourceId || 'unknown'}
+        sourceId={video.sourceId || 'unknown'}
         type={video.type}
         title={video.title}
         thumbnail={video.thumbnail || ''}

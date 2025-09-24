@@ -234,7 +234,7 @@ All essential features for source-based video access control are implemented and
 
 ### Phase 8: IPC Handlers
 
-- [ ] 8. Create IPC handler for YouTube video info retrieval
+- [x] 8. Create IPC handler for YouTube video info retrieval
   - Add `electron.getYouTubeVideoInfo(videoId)` IPC handler in main process
   - Implement YouTube API call to fetch video details including channelId
   - Add error handling for API failures

@@ -1109,8 +1109,14 @@ export function registerFavoritesHandlers() {
   });
 
   // Add favorite
-  ipcMain.handle('favorites:add', async (_, metadata: { id: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail?: string, duration?: number, url?: string }) => {
+  ipcMain.handle('favorites:add', async (_, metadata: { id: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail?: string, duration?: number, url?: string }) => {
     try {
+      // Validate sourceId is present
+      if (!metadata.sourceId || metadata.sourceId.trim() === '') {
+        log.error('[IPC] Cannot add favorite without sourceId:', metadata.id);
+        return { success: false, error: 'sourceId is required to add favorite' };
+      }
+
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
       let favorites = { favorites: [], lastModified: new Date().toISOString() };
 
@@ -1125,9 +1131,10 @@ export function registerFavoritesHandlers() {
       // Check if already exists
       const existingIndex = favorites.favorites.findIndex((fav: any) => fav.videoId === metadata.id);
       if (existingIndex === -1) {
-        // Use correct FavoriteVideo structure
+        // Use correct FavoriteVideo structure with sourceId
         (favorites.favorites as any[]).push({
           videoId: metadata.id,
+          sourceId: metadata.sourceId,
           sourceType: metadata.type,
           title: metadata.title,
           thumbnail: metadata.thumbnail || '',
@@ -1137,7 +1144,7 @@ export function registerFavoritesHandlers() {
 
         favorites.lastModified = new Date().toISOString();
         fs.writeFileSync(favoritesPath, JSON.stringify(favorites, null, 2));
-        logVerbose('[IPC] Added to favorites:', metadata.id);
+        logVerbose('[IPC] Added to favorites:', metadata.id, 'from source:', metadata.sourceId);
       }
 
       return { success: true };
@@ -1187,7 +1194,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Toggle favorite
-  ipcMain.handle('favorites:toggle', async (_, videoId: string, source: string, type: 'youtube' | 'local' | 'dlna', title: string, thumbnail: string, duration: number, lastWatched?: string) => {
+  ipcMain.handle('favorites:toggle', async (_, videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
       let favorites = { favorites: [], lastModified: new Date().toISOString() };
@@ -1219,9 +1226,16 @@ export function registerFavoritesHandlers() {
 
         return { favorite: null, isFavorite: false };
       } else {
-        // Add to favorites using correct FavoriteVideo structure
+        // Validate sourceId is present
+        if (!sourceId || sourceId.trim() === '') {
+          log.error('[IPC] Cannot add favorite without sourceId:', videoId);
+          return { success: false, error: 'sourceId is required to add favorite' };
+        }
+
+        // Add to favorites using correct FavoriteVideo structure with sourceId
         (favorites.favorites as any[]).push({
           videoId: videoId,
+          sourceId: sourceId,
           sourceType: type,
           title: title,
           thumbnail: thumbnail || '',
@@ -1231,7 +1245,7 @@ export function registerFavoritesHandlers() {
         favorites.lastModified = new Date().toISOString();
 
         fs.writeFileSync(favoritesPath, JSON.stringify(favorites, null, 2));
-        logVerbose('[IPC] Added to favorites:', videoId);
+        logVerbose('[IPC] Added to favorites:', videoId, 'from source:', sourceId);
 
         // Trigger video sources refresh to update favorites source
         setTimeout(() => {
@@ -1244,6 +1258,7 @@ export function registerFavoritesHandlers() {
         // Return the newly created favorite object
         const newFavorite = {
           videoId: videoId,
+          sourceId: sourceId,
           sourceType: type,
           title: title,
           thumbnail: thumbnail || '',
