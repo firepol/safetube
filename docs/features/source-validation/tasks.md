@@ -34,7 +34,7 @@ This implementation plan outlines the tasks required to implement source-based v
 
 ### Phase 2: Source Validation Service
 
-- [ ] 2. Create SourceValidationService with core validation logic
+- [x] 2. Create SourceValidationService with core validation logic
   - Create `src/renderer/services/sourceValidationService.ts`
   - Implement `isVideoSourceValid(videoId, sourceId, sourceType)` method
   - Implement `isChannelApproved(channelId)` method
@@ -44,7 +44,7 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Tests Required**: Unit tests for each validation method, caching tests, edge case tests
   - **Code Review**: Service architecture review, caching strategy review, performance review
 
-- [ ] 2.1 Implement batch validation for performance optimization
+- [x] 2.1 Implement batch validation for performance optimization
   - Add `batchValidateVideos(videos)` method to SourceValidationService
   - Optimize to load sources once and validate all videos in single pass
   - Implement validation result caching with 5-minute TTL
