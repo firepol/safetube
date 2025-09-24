@@ -24,7 +24,7 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Tests Required**: Type guard tests, interface validation tests
   - **Code Review**: Interface design review, optional field handling review
 
-- [ ] 1.2 Update MainSettings interface to include YouTube click control setting
+- [x] 1.2 Update MainSettings interface to include YouTube click control setting
   - Add `allowYouTubeClicksToOtherVideos?: boolean` to MainSettings interface in `src/shared/types.ts`
   - Set default value to `false` (most restrictive) in settings initialization
   - Update settings validation to handle new field

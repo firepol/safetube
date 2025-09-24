@@ -174,6 +174,7 @@ export interface MainSettings {
   youtubeApiKey?: string; // YouTube API key for enhanced functionality
   adminPassword?: string; // Admin access password
   enableVerboseLogging?: boolean; // Enable detailed logging
+  allowYouTubeClicksToOtherVideos?: boolean; // Allow clicks to non-approved channels (default: false - most restrictive)
 }
 
 // Download status tracking
