@@ -1270,6 +1270,59 @@ function parseISODuration(iso: string): number {
   return (parseInt(h || '0') * 3600) + (parseInt(m || '0') * 60) + parseInt(s || '0');
 }
 
+// Channel validation cache with TTL
+interface ChannelValidationCache {
+  channelId: string;
+  isApproved: boolean;
+  timestamp: number;
+}
+
+const channelValidationCache = new Map<string, ChannelValidationCache>();
+const CHANNEL_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Request throttling for YouTube API
+const apiRequestQueue: Array<{ videoId: string; timestamp: number }> = [];
+const API_REQUEST_WINDOW = 10 * 1000; // 10 seconds
+const MAX_REQUESTS_PER_WINDOW = 5;
+
+function isChannelValidationCached(channelId: string): boolean | null {
+  const cached = channelValidationCache.get(channelId);
+  if (!cached) return null;
+
+  const age = Date.now() - cached.timestamp;
+  if (age > CHANNEL_CACHE_TTL) {
+    channelValidationCache.delete(channelId);
+    return null;
+  }
+
+  return cached.isApproved;
+}
+
+function cacheChannelValidation(channelId: string, isApproved: boolean): void {
+  channelValidationCache.set(channelId, {
+    channelId,
+    isApproved,
+    timestamp: Date.now()
+  });
+}
+
+function canMakeApiRequest(): boolean {
+  const now = Date.now();
+  // Remove old requests outside the window
+  while (apiRequestQueue.length > 0 && now - apiRequestQueue[0].timestamp > API_REQUEST_WINDOW) {
+    apiRequestQueue.shift();
+  }
+
+  return apiRequestQueue.length < MAX_REQUESTS_PER_WINDOW;
+}
+
+function recordApiRequest(videoId: string): void {
+  apiRequestQueue.push({
+    videoId,
+    timestamp: Date.now()
+  });
+}
+
 // Helper functions for parsing YouTube URLs
 const createWindow = (): void => {
   const preloadPath = path.join(__dirname, '../../preload/preload/index.js');
@@ -1316,7 +1369,17 @@ const createWindow = (): void => {
                 return;
               }
 
+              // Check rate limiting before making API request
+              if (!canMakeApiRequest()) {
+                logVerbose('[Main] YouTube click blocked: Rate limit reached');
+                mainWindow.webContents.send('show-validation-error', {
+                  message: 'Too many requests, please try again in a moment'
+                });
+                return;
+              }
+
               // Fetch video info to get channel ID
+              recordApiRequest(videoId);
               const youtubeApi = new YouTubeAPI(apiKey);
               const videoInfo = await youtubeApi.getVideoDetails(videoId);
 
@@ -1331,6 +1394,22 @@ const createWindow = (): void => {
               const channelId = videoInfo.snippet.channelId;
               const videoTitle = videoInfo.snippet.title;
 
+              // Check cache first
+              const cachedResult = isChannelValidationCached(channelId);
+              if (cachedResult !== null) {
+                logVerbose('[Main] Using cached channel validation result');
+                if (cachedResult) {
+                  mainWindow.webContents.send('navigate-to-video', videoId);
+                } else {
+                  mainWindow.webContents.send('show-channel-not-approved-error', {
+                    videoId,
+                    channelId,
+                    title: videoTitle
+                  });
+                }
+                return;
+              }
+
               // Load video sources to check approved channels
               const sources = await readVideoSources();
               const approvedChannelIds = sources
@@ -1339,7 +1418,12 @@ const createWindow = (): void => {
                 .filter(Boolean);
 
               // Check if channel is approved
-              if (approvedChannelIds.includes(channelId)) {
+              const isApproved = approvedChannelIds.includes(channelId);
+
+              // Cache the result
+              cacheChannelValidation(channelId, isApproved);
+
+              if (isApproved) {
                 // Allow playback - navigate to video
                 logVerbose('[Main] YouTube click approved: Channel is in approved sources');
                 mainWindow.webContents.send('navigate-to-video', videoId);
