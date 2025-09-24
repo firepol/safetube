@@ -27,6 +27,7 @@ export const AdminPage: React.FC = () => {
     youtubeApiKey?: string;
     adminPassword?: string;
     enableVerboseLogging?: boolean;
+    allowYouTubeClicksToOtherVideos?: boolean;
   }>({});
   const [originalAdminPasswordHash, setOriginalAdminPasswordHash] = useState<string>('');
   const [isLoadingMainSettings, setIsLoadingMainSettings] = useState(false);
@@ -712,6 +713,32 @@ export const AdminPage: React.FC = () => {
                   <p className="text-xs text-gray-500">
                     Enable detailed logging for debugging purposes.
                   </p>
+
+                  {/* YouTube Click Control Setting */}
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        id="allowYouTubeClicksToOtherVideos"
+                        checked={mainSettings.allowYouTubeClicksToOtherVideos || false}
+                        onChange={(e) => setMainSettings(prev => ({ ...prev, allowYouTubeClicksToOtherVideos: e.target.checked }))}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
+                      />
+                      <div className="ml-2 flex-1">
+                        <label htmlFor="allowYouTubeClicksToOtherVideos" className="block text-sm font-medium text-gray-700">
+                          Allow YouTube Clicks to Other Videos (Channel Validation Mode)
+                        </label>
+                        <div className="mt-2 space-y-2">
+                          <p className="text-xs text-gray-600">
+                            <strong>When unchecked (default, most restrictive):</strong> Blocks all clicks to related videos in the YouTube iframe player.
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            <strong>When checked (less restrictive):</strong> Validates clicked videos against approved channel sources. Only allows videos from channels that are in your approved sources list.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   {/* Save Button */}
                   <div className="pt-4 border-t border-gray-200">

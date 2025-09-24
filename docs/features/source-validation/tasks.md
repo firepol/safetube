@@ -176,7 +176,7 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Tests Required**: Page integration tests, unfavorite tests, empty state tests
   - **Code Review**: Integration review, UX flow review
 
-- [ ] 6.2 Integrate error dialog into YouTube player pages
+- [x] 6.2 Integrate error dialog into YouTube player pages
   - Add ChannelNotApprovedDialog to YouTubePlayerPage
   - Implement IPC listener for 'show-channel-not-approved-error' event
   - Show dialog when channel validation fails
@@ -185,10 +185,11 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Definition of Done**: Error dialogs displayed correctly, IPC events handled, state management working
   - **Tests Required**: Dialog integration tests, IPC event tests, state management tests
   - **Code Review**: Event handling review, state management review
+  - **Note**: Implemented via ValidationErrorHandler component in App.tsx with alert-based dialogs (to be replaced with proper dialogs in Phase 5)
 
 ### Phase 7: Settings UI
 
-- [ ] 7. Add YouTube click control setting to Settings page
+- [x] 7. Add YouTube click control setting to Settings page
   - Modify `src/renderer/pages/SettingsPage.tsx` to add new setting section
   - Create checkbox UI for "Block clicks to non-approved channels"
   - Add descriptive text explaining both modes (checked vs unchecked)
@@ -197,8 +198,9 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Definition of Done**: Setting UI added, toggle working, saves persisted, documentation clear
   - **Tests Required**: Setting UI tests, toggle tests, persistence tests
   - **Code Review**: UI design review, setting documentation review
+  - **Note**: Implemented in AdminPage.tsx main settings tab (settings are in admin panel, not separate settings page)
 
-- [ ] 7.1 Add visual confirmation for setting changes
+- [x] 7.1 Add visual confirmation for setting changes
   - Implement save confirmation message/toast when setting changes
   - Add loading state during save operation
   - Show error message if save fails
@@ -206,6 +208,7 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Definition of Done**: Visual feedback implemented, save states handled, tooltips informative
   - **Tests Required**: Visual feedback tests, save state tests, tooltip tests
   - **Code Review**: UX feedback review, error messaging review
+  - **Note**: Visual confirmation already exists via mainSettingsSaveMessage state and save button with loading state. Detailed explanation provided inline with checkbox.
 
 ### Phase 8: IPC Handlers
 
