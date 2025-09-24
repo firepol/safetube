@@ -64,7 +64,7 @@ This implementation plan outlines the tasks required to implement source-based v
 
 ### Phase 3: Data Migration
 
-- [ ] 3. Create favorites migration script for sourceId population
+- [x] 3. Create favorites migration script for sourceId population
   - Create `src/main/migrations/favoritesSourceIdMigration.ts`
   - Implement logic to match favorites with watch history source field
   - Add YouTube API lookup for favorites without history match
@@ -74,7 +74,7 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Tests Required**: Migration tests with sample data, rollback tests, edge case tests (missing data, API failures)
   - **Code Review**: Migration logic review, data integrity review, backup strategy review
 
-- [ ] 3.1 Create channel ID population script for YouTube sources
+- [x] 3.1 Create channel ID population script for YouTube sources
   - Create `src/main/migrations/channelIdPopulation.ts`
   - Implement channel ID extraction from YouTube API for @username URLs
   - Implement channel ID extraction from /channel/ URLs
@@ -84,7 +84,7 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Tests Required**: URL parsing tests, API integration tests, error handling tests
   - **Code Review**: API integration review, error recovery review
 
-- [ ] 3.2 Implement migration coordination and rollback capability
+- [x] 3.2 Implement migration coordination and rollback capability
   - Add migration version tracking to prevent duplicate runs
   - Implement pre-migration backup creation for favorites and sources
   - Add rollback capability if migration fails mid-process
