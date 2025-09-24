@@ -299,4 +299,95 @@ describe('SourceValidationService', () => {
       vi.useRealTimers();
     });
   });
+
+  describe('error handling and resilience', () => {
+    it('should fail-open for source validation errors', async () => {
+      (window.electron.videoSourcesGetAll as any).mockRejectedValueOnce(new Error('IPC Error'));
+      SourceValidationService.clearCache();
+
+      const isValid = await SourceValidationService.isVideoSourceValid(
+        'video123',
+        'youtube-channel-1',
+        'youtube'
+      );
+
+      // Should default to valid (fail-open) on error
+      expect(isValid).toBe(true);
+    });
+
+    it('should fail-closed for channel approval errors', async () => {
+      (window.electron.videoSourcesGetAll as any).mockRejectedValueOnce(new Error('IPC Error'));
+      SourceValidationService.clearCache();
+
+      const isApproved = await SourceValidationService.isChannelApproved('UC123');
+
+      // Should default to not approved (fail-closed) on error
+      expect(isApproved).toBe(false);
+    });
+
+    it('should fail-open for batch validation errors', async () => {
+      (window.electron.videoSourcesGetAll as any).mockRejectedValueOnce(new Error('IPC Error'));
+      SourceValidationService.clearCache();
+
+      const videos = [
+        { videoId: 'vid1', sourceId: 'youtube-channel-1', sourceType: 'youtube' },
+        { videoId: 'vid2', sourceId: 'deleted-source', sourceType: 'youtube' }
+      ];
+
+      const results = await SourceValidationService.batchValidateVideos(videos);
+
+      // Should default all to valid (fail-open) on error
+      expect(results.get('vid1')).toBe(true);
+      expect(results.get('vid2')).toBe(true);
+    });
+
+    it('should use stale cache when source fetch fails', async () => {
+      // First successful call to populate cache
+      await SourceValidationService.isVideoSourceValid('video123', 'youtube-channel-1', 'youtube');
+
+      // Expire the cache
+      vi.useFakeTimers();
+      vi.advanceTimersByTime(6 * 60 * 1000);
+
+      // Mock failure
+      (window.electron.videoSourcesGetAll as any).mockRejectedValueOnce(new Error('Network Error'));
+
+      // Clear validation caches but not sources cache
+      (SourceValidationService as any).sourceCache.clear();
+
+      // Should use stale cache and succeed
+      const isValid = await SourceValidationService.isVideoSourceValid('video123', 'youtube-channel-1', 'youtube');
+
+      expect(isValid).toBe(true);
+
+      vi.useRealTimers();
+    });
+
+    it('should handle timeout errors', async () => {
+      vi.useFakeTimers();
+
+      // Mock a slow response
+      (window.electron.videoSourcesGetAll as any).mockImplementationOnce(
+        () => new Promise(resolve => setTimeout(() => resolve(mockSources), 5000))
+      );
+
+      SourceValidationService.clearCache();
+
+      // Start validation
+      const validationPromise = SourceValidationService.isVideoSourceValid(
+        'video123',
+        'youtube-channel-1',
+        'youtube'
+      );
+
+      // Fast forward past timeout (3 seconds)
+      vi.advanceTimersByTime(4000);
+
+      // Should timeout and fail-open
+      const isValid = await validationPromise;
+      expect(isValid).toBe(true);
+
+      vi.useRealTimers();
+    });
+  });
 });
