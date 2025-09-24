@@ -16,7 +16,7 @@ This implementation plan outlines the tasks required to implement source-based v
   - **Tests Required**: Type validation tests, schema validation tests for sourceId
   - **Code Review**: TypeScript interface design review, backward compatibility review
 
-- [ ] 1.1 Update YouTubeChannelSource interface to include channelId field
+- [x] 1.1 Update YouTubeChannelSource interface to include channelId field
   - Modify `src/shared/types.ts` to add `channelId?: string` to YouTubeChannelSource interface
   - Update video source type guards to handle channelId
   - Document channelId field purpose and population strategy

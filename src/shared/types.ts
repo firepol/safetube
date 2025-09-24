@@ -73,6 +73,7 @@ export interface YouTubeChannelSource {
   type: 'youtube_channel';
   url: string; // e.g. https://www.youtube.com/channel/UCxxxxx
   title: string;
+  channelId?: string; // YouTube channel ID for validation (fetched from YouTube API)
   sortOrder?: 'newestFirst' | 'oldestFirst';
 }
 
