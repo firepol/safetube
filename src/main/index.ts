@@ -217,6 +217,23 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
         const { extractVideoDuration } = await import('../shared/videoDurationUtils');
         const duration = await extractVideoDuration(localFilePath);
 
+        // Find the actual source ID for this local video
+        let sourceId = 'unknown';
+        let sourceTitle = 'Local Video';
+        try {
+          const { readVideoSources } = await import('./fileUtils');
+          const sources = await readVideoSources();
+          for (const source of sources) {
+            if (source.type === 'local' && localFilePath.startsWith(source.path)) {
+              sourceId = source.id;
+              sourceTitle = source.title;
+              break;
+            }
+          }
+        } catch (error) {
+          log.error('[Main] Error finding source for local video:', error);
+        }
+
         // Create video object for local video
         const video = {
           id: videoId,
@@ -228,8 +245,8 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
           video: localFilePath,
           audio: undefined,
           preferredLanguages: ['en'],
-          sourceId: 'local', // We'll need to determine the actual source ID
-          sourceTitle: 'Local Video',
+          sourceId: sourceId,
+          sourceTitle: sourceTitle,
           sourceThumbnail: '',
           resumeAt: undefined as number | undefined, // Add resumeAt property
         };
