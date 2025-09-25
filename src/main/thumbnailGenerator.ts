@@ -4,6 +4,7 @@ import path from 'path';
 import { logVerbose } from '../shared/logging';
 import { ThumbnailGenerationOptions, getThumbnailCacheKey } from '../shared/thumbnailUtils';
 import { AppPaths } from './appPaths';
+import { FFmpegManager } from './ffmpegManager';
 
 /**
  * Service for generating video thumbnails using FFmpeg
@@ -26,54 +27,46 @@ export class ThumbnailGenerator {
    * Check if FFmpeg is available on the system
    */
   static async isFFmpegAvailable(): Promise<boolean> {
-    return new Promise((resolve) => {
-      const ffmpeg = spawn('ffmpeg', ['-version'], { stdio: 'pipe' });
-
-      ffmpeg.on('close', (code) => {
-        resolve(code === 0);
-      });
-
-      ffmpeg.on('error', () => {
-        resolve(false);
-      });
-
-      // Timeout after 5 seconds
-      setTimeout(() => {
-        ffmpeg.kill();
-        resolve(false);
-      }, 5000);
-    });
+    return FFmpegManager.isFFmpegAvailable();
   }
 
   /**
    * Get video duration using FFprobe
    */
   static async getVideoDuration(videoPath: string): Promise<number> {
-    return new Promise((resolve, reject) => {
-      const ffprobe = spawn('ffprobe', [
-        '-v', 'quiet',
-        '-show_entries', 'format=duration',
-        '-of', 'csv=p=0',
-        videoPath
-      ], { stdio: 'pipe' });
+    return new Promise(async (resolve, reject) => {
+      try {
+        // Ensure FFmpeg is available (will auto-download on Windows if needed)
+        await FFmpegManager.ensureFFmpegAvailable();
 
-      let output = '';
-      ffprobe.stdout.on('data', (data) => {
-        output += data.toString();
-      });
+        const ffprobeCommand = FFmpegManager.getFFprobeCommand();
+        const ffprobe = spawn(ffprobeCommand, [
+          '-v', 'quiet',
+          '-show_entries', 'format=duration',
+          '-of', 'csv=p=0',
+          videoPath
+        ], { stdio: 'pipe', shell: process.platform === 'win32' });
 
-      ffprobe.on('close', (code) => {
-        if (code === 0) {
-          const duration = parseFloat(output.trim());
-          resolve(isNaN(duration) ? 0 : duration);
-        } else {
-          reject(new Error(`FFprobe failed with code ${code}`));
-        }
-      });
+        let output = '';
+        ffprobe.stdout.on('data', (data) => {
+          output += data.toString();
+        });
 
-      ffprobe.on('error', (error) => {
+        ffprobe.on('close', (code) => {
+          if (code === 0) {
+            const duration = parseFloat(output.trim());
+            resolve(isNaN(duration) ? 0 : duration);
+          } else {
+            reject(new Error(`FFprobe failed with code ${code}`));
+          }
+        });
+
+        ffprobe.on('error', (error) => {
+          reject(error);
+        });
+      } catch (error) {
         reject(error);
-      });
+      }
     });
   }
 
@@ -109,43 +102,51 @@ export class ThumbnailGenerator {
       }
     }
 
-    return new Promise((resolve, reject) => {
-      const ffmpeg = spawn('ffmpeg', [
-        '-i', videoPath,
-        '-ss', seekTime.toString(),
-        '-vframes', '1',
-        '-vf', `scale=${width}:${height}`,
-        '-q:v', Math.round((100 - quality) / 4).toString(), // Convert quality to FFmpeg scale (2-31)
-        '-y', // Overwrite output file
-        outputPath
-      ], { stdio: 'pipe' });
+    return new Promise(async (resolve, reject) => {
+      try {
+        // Ensure FFmpeg is available (will auto-download on Windows if needed)
+        await FFmpegManager.ensureFFmpegAvailable();
 
-      let errorOutput = '';
-      ffmpeg.stderr.on('data', (data) => {
-        errorOutput += data.toString();
-      });
+        const ffmpegCommand = FFmpegManager.getFFmpegCommand();
+        const ffmpeg = spawn(ffmpegCommand, [
+          '-i', videoPath,
+          '-ss', seekTime.toString(),
+          '-vframes', '1',
+          '-vf', `scale=${width}:${height}`,
+          '-q:v', Math.round((100 - quality) / 4).toString(), // Convert quality to FFmpeg scale (2-31)
+          '-y', // Overwrite output file
+          outputPath
+        ], { stdio: 'pipe', shell: process.platform === 'win32' });
 
-      ffmpeg.on('close', (code) => {
-        if (code === 0 && fs.existsSync(outputPath)) {
-          logVerbose(`[ThumbnailGenerator] Generated thumbnail: ${outputPath}`);
-          resolve(outputPath);
-        } else {
-          const error = new Error(`FFmpeg failed with code ${code}: ${errorOutput}`);
-          logVerbose('[ThumbnailGenerator] FFmpeg error:', error);
+        let errorOutput = '';
+        ffmpeg.stderr.on('data', (data) => {
+          errorOutput += data.toString();
+        });
+
+        ffmpeg.on('close', (code) => {
+          if (code === 0 && fs.existsSync(outputPath)) {
+            logVerbose(`[ThumbnailGenerator] Generated thumbnail: ${outputPath}`);
+            resolve(outputPath);
+          } else {
+            const error = new Error(`FFmpeg failed with code ${code}: ${errorOutput}`);
+            logVerbose('[ThumbnailGenerator] FFmpeg error:', error);
+            reject(error);
+          }
+        });
+
+        ffmpeg.on('error', (error) => {
+          logVerbose('[ThumbnailGenerator] FFmpeg spawn error:', error);
           reject(error);
-        }
-      });
+        });
 
-      ffmpeg.on('error', (error) => {
-        logVerbose('[ThumbnailGenerator] FFmpeg spawn error:', error);
+        // Timeout after 30 seconds
+        setTimeout(() => {
+          ffmpeg.kill();
+          reject(new Error('Thumbnail generation timed out'));
+        }, 30000);
+      } catch (error) {
         reject(error);
-      });
-
-      // Timeout after 30 seconds
-      setTimeout(() => {
-        ffmpeg.kill();
-        reject(new Error('Thumbnail generation timed out'));
-      }, 30000);
+      }
     });
   }
 
@@ -165,10 +166,11 @@ export class ThumbnailGenerator {
         return thumbnailPath;
       }
 
-      // Check if FFmpeg is available
-      const ffmpegAvailable = await this.isFFmpegAvailable();
-      if (!ffmpegAvailable) {
-        logVerbose('[ThumbnailGenerator] FFmpeg not available, cannot generate thumbnail');
+      // Check if FFmpeg is available (will auto-download on Windows if needed)
+      try {
+        await FFmpegManager.ensureFFmpegAvailable();
+      } catch (error) {
+        logVerbose('[ThumbnailGenerator] FFmpeg not available, cannot generate thumbnail:', error);
         return null;
       }
 
