@@ -50,10 +50,37 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
         return;
       }
 
+      // Determine the correct sourceId, avoiding 'unknown' fallback
+      let sourceId = video.sourceId;
+      if (!sourceId || sourceId === 'unknown') {
+        // For local videos, try to determine source from video path if available
+        if (video.type === 'local' && video.id.includes('local:')) {
+          // Extract path from local video ID and try to match with known sources
+          const videoPath = video.id.replace('local:', '');
+          // Try to get sources and find matching source for this path
+          try {
+            const allSources = await window.electron.videoSourcesGetAll();
+            const localSources = allSources.filter((s: any) => s.type === 'local');
+            for (const source of localSources) {
+              if (videoPath.startsWith(source.path)) {
+                sourceId = source.id;
+                break;
+              }
+            }
+          } catch (error) {
+            console.warn('Could not determine source for local video:', error);
+          }
+        }
+        // Final fallback to 'unknown' only if we couldn't determine the correct source
+        if (!sourceId) {
+          sourceId = 'unknown';
+        }
+      }
+
       // Use the existing service to toggle favorite
       await FavoritesService.toggleFavorite(
         video.id,
-        video.sourceId || 'unknown',
+        sourceId,
         video.type,
         video.title,
         // Use updated thumbnail if available
