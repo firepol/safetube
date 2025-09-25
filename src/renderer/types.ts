@@ -209,7 +209,7 @@ export interface ElectronAPI {
   offThumbnailReady: (wrappedCallback: any) => void;
   getBestThumbnail: (videoId: string) => Promise<string | null>;
   // Navigation events for YouTube iframe links
-  onNavigateToVideo: (callback: (videoId: string) => void) => any;
+  onNavigateToVideo: (callback: (data: string | { videoId: string; videoMetadata?: any }) => void) => any;
   offNavigateToVideo: (wrappedCallback: any) => void;
   // Validation error events
   onShowChannelNotApprovedError: (callback: (data: { videoId: string; channelId: string; title: string }) => void) => any;

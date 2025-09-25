@@ -13,7 +13,7 @@ import { logVerbose } from '../shared/logging'
 
 import { AppPaths } from './appPaths'
 import { readTimeLimits, readMainSettings, readVideoSources } from './fileUtils'
-import { YouTubeChannelSource } from '../shared/types'
+import { YouTubeChannelSource, VideoSource } from '../shared/types'
 import log from './logger'
 import { recordVideoWatching, getTimeTrackingState } from './timeTracking'
 import { setupYouTubeHandlers } from './youtube'
@@ -167,24 +167,50 @@ const isDev = process.env.NODE_ENV === 'development'
 // Handle video data loading - ONLY from new source system
 ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: any) => {
   try {
+    // Check if we have pre-fetched video metadata from navigation context (e.g., from related video clicks)
+    if (navigationContext?.videoMetadata) {
+      logVerbose('[Main] Using pre-fetched video metadata from navigation context');
+
+      // Create video object from the provided metadata
+      const video = {
+        id: videoId,
+        type: navigationContext.videoMetadata.type || 'youtube',
+        title: navigationContext.videoMetadata.title || 'Unknown Title',
+        thumbnail: navigationContext.videoMetadata.thumbnail || '',
+        duration: navigationContext.videoMetadata.duration || 0,
+        url: navigationContext.videoMetadata.url || `https://www.youtube.com/watch?v=${videoId}`,
+        sourceId: navigationContext.videoMetadata.sourceId || 'external-youtube',
+        sourceTitle: navigationContext.videoMetadata.sourceTitle || 'YouTube',
+        sourceType: navigationContext.videoMetadata.sourceType || 'youtube_channel',
+        sourceThumbnail: navigationContext.videoMetadata.sourceThumbnail || '',
+        resumeAt: undefined as number | undefined,
+      };
+
+      // Merge with watched data to populate resumeAt
+      const { mergeWatchedData } = await import('./fileUtils');
+      const videosWithWatchedData = await mergeWatchedData([video]);
+      const videoWithResume = videosWithWatchedData[0];
+
+      return videoWithResume;
+    }
 
     // Check if this is a YouTube video that has been downloaded and should be played as local
     // This supports the smart routing functionality
     try {
       const { SmartPlaybackRouter } = await import('./smartPlaybackRouter');
       const downloadedCheck = await SmartPlaybackRouter.shouldUseDownloadedVersion(videoId);
-      
+
       if (downloadedCheck.useDownloaded && downloadedCheck.downloadedVideo) {
         const localVideo = await SmartPlaybackRouter.createLocalVideoFromDownload(
           downloadedCheck.downloadedVideo,
           navigationContext
         );
-        
+
         // Merge with watched data to populate resumeAt
         const { mergeWatchedData } = await import('./fileUtils');
         const videosWithWatchedData = await mergeWatchedData([localVideo]);
         const videoWithResume = videosWithWatchedData[0];
-        
+
         return videoWithResume;
       }
     } catch (downloadError) {
@@ -1412,13 +1438,73 @@ const createWindow = (): void => {
               const channelId = videoInfo.snippet.channelId;
               const videoTitle = videoInfo.snippet.title;
 
+              logVerbose(`[Main] YouTube related video validation for ${videoId}:`);
+              logVerbose(`[Main] - Video title: ${videoTitle}`);
+              logVerbose(`[Main] - Channel ID: ${channelId}`);
+
               // Check cache first
               const cachedResult = isChannelValidationCached(channelId);
+              logVerbose(`[Main] - Cached result: ${cachedResult}`);
               if (cachedResult !== null) {
                 logVerbose('[Main] Using cached channel validation result');
                 if (cachedResult) {
-                  mainWindow.webContents.send('navigate-to-video', videoId);
+                  // Find the matching source for complete metadata
+                  const sources = await readVideoSources();
+                  logVerbose(`[Main] - Loaded ${sources.length} sources`);
+
+                  // First try to match channel sources by channelId
+                  let matchingSource: VideoSource | undefined = sources
+                    .filter(s => s.type === 'youtube_channel')
+                    .find(s => (s as YouTubeChannelSource).channelId === channelId);
+
+                  // If no channel match, check if this video might belong to a playlist source
+                  // by looking at the channel of videos already loaded from those playlists
+                  if (!matchingSource && global.currentVideos) {
+                    logVerbose(`[Main] - No channel match found, checking playlist sources...`);
+                    const videoFromPlaylist = global.currentVideos.find((v: any) =>
+                      v.type === 'youtube' && v.channelId === channelId
+                    );
+
+                    if (videoFromPlaylist) {
+                      matchingSource = sources.find(s => s.id === videoFromPlaylist.sourceId);
+                      logVerbose(`[Main] - Found matching playlist source via existing video: ${matchingSource ? matchingSource.title + ' (' + matchingSource.id + ')' : 'none'}`);
+                    }
+                  }
+
+                  logVerbose(`[Main] - Final matching source: ${matchingSource ? matchingSource.title + ' (' + matchingSource.id + ')' : 'none'}`);
+
+                  if (matchingSource) {
+                    // Convert duration from ISO 8601 to seconds
+                    const { parseDuration } = await import('../shared/videoDurationUtils');
+                    const duration = parseDuration(videoInfo.contentDetails.duration);
+
+                    const videoMetadata = {
+                      id: videoId,
+                      type: 'youtube',
+                      title: videoInfo.snippet.title || 'Unknown Title',
+                      thumbnail: videoInfo.snippet.thumbnails?.medium?.url ||
+                                videoInfo.snippet.thumbnails?.default?.url || '',
+                      duration,
+                      url: `https://www.youtube.com/watch?v=${videoId}`,
+                      sourceId: matchingSource.id,
+                      sourceTitle: matchingSource.title,
+                      sourceType: matchingSource.type as 'youtube_channel' | 'youtube_playlist',
+                      sourceThumbnail: '',
+                      channelId: channelId
+                    };
+
+                    logVerbose(`[Main] - Sending navigation with complete metadata`);
+                    mainWindow.webContents.send('navigate-to-video', {
+                      videoId,
+                      videoMetadata
+                    });
+                  } else {
+                    // Fallback if source not found
+                    logVerbose(`[Main] - Fallback: source not found, sending only videoId`);
+                    mainWindow.webContents.send('navigate-to-video', videoId);
+                  }
                 } else {
+                  logVerbose(`[Main] - Channel not approved, showing error`);
                   mainWindow.webContents.send('show-channel-not-approved-error', {
                     videoId,
                     channelId,
@@ -1435,16 +1521,58 @@ const createWindow = (): void => {
                 .map(s => (s as YouTubeChannelSource).channelId)
                 .filter(Boolean);
 
-              // Check if channel is approved
-              const isApproved = approvedChannelIds.includes(channelId);
+              // Check if channel is approved and find the matching source
+              // First try to match channel sources by channelId
+              let matchingSource: VideoSource | undefined = sources
+                .filter(s => s.type === 'youtube_channel')
+                .find(s => (s as YouTubeChannelSource).channelId === channelId);
+
+              // If no channel match, check if this video might belong to a playlist source
+              // by looking at the channel of videos already loaded from those playlists
+              if (!matchingSource && global.currentVideos) {
+                logVerbose(`[Main] - No channel match found for fresh validation, checking playlist sources...`);
+                const videoFromPlaylist = global.currentVideos.find((v: any) =>
+                  v.type === 'youtube' && v.channelId === channelId
+                );
+
+                if (videoFromPlaylist) {
+                  matchingSource = sources.find(s => s.id === videoFromPlaylist.sourceId);
+                  logVerbose(`[Main] - Found matching playlist source via existing video: ${matchingSource ? matchingSource.title + ' (' + matchingSource.id + ')' : 'none'}`);
+                }
+              }
+
+              const isApproved = matchingSource !== undefined;
 
               // Cache the result
               cacheChannelValidation(channelId, isApproved);
 
-              if (isApproved) {
-                // Allow playback - navigate to video
+              if (isApproved && matchingSource) {
+                // Allow playback - navigate to video with complete metadata
                 logVerbose('[Main] YouTube click approved: Channel is in approved sources');
-                mainWindow.webContents.send('navigate-to-video', videoId);
+
+                // Convert duration from ISO 8601 to seconds
+                const { parseDuration } = await import('../shared/videoDurationUtils');
+                const duration = parseDuration(videoInfo.contentDetails.duration);
+
+                const videoMetadata = {
+                  id: videoId,
+                  type: 'youtube',
+                  title: videoInfo.snippet.title || 'Unknown Title',
+                  thumbnail: videoInfo.snippet.thumbnails?.medium?.url ||
+                            videoInfo.snippet.thumbnails?.default?.url || '',
+                  duration,
+                  url: `https://www.youtube.com/watch?v=${videoId}`,
+                  sourceId: matchingSource.id,
+                  sourceTitle: matchingSource.title,
+                  sourceType: matchingSource.type as 'youtube_channel' | 'youtube_playlist',
+                  sourceThumbnail: '',
+                  channelId: channelId
+                };
+
+                mainWindow.webContents.send('navigate-to-video', {
+                  videoId,
+                  videoMetadata
+                });
               } else {
                 // Block and show error
                 logVerbose('[Main] YouTube click blocked: Channel not in approved sources');

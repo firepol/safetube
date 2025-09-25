@@ -119,8 +119,15 @@ contextBridge.exposeInMainWorld(
     // Get best available thumbnail for a video ID
     getBestThumbnail: (videoId: string) => ipcRenderer.invoke('get-best-thumbnail', videoId),
     // Navigation events for YouTube iframe links
-    onNavigateToVideo: (callback: (videoId: string) => void) => {
-      const wrappedCallback = (_: any, videoId: string) => callback(videoId);
+    onNavigateToVideo: (callback: (data: { videoId: string; videoMetadata?: any }) => void) => {
+      const wrappedCallback = (_: any, data: any) => {
+        // Handle both old format (just videoId string) and new format (object with videoId and videoMetadata)
+        if (typeof data === 'string') {
+          callback({ videoId: data });
+        } else {
+          callback(data);
+        }
+      };
       ipcRenderer.on('navigate-to-video', wrappedCallback);
       return wrappedCallback; // Return wrapped callback for cleanup
     },

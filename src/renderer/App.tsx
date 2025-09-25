@@ -68,10 +68,24 @@ const YouTubeNavigationHandler: React.FC = () => {
       return;
     }
 
-    const handleNavigateToVideo = (videoId: string) => {
-      console.log('[YouTubeNavigationHandler] Navigating to video:', videoId);
-      // Navigate to the video player with the extracted video ID
-      navigate(`/player/${encodeURIComponent(videoId)}`);
+    const handleNavigateToVideo = (data: string | { videoId: string; videoMetadata?: any }) => {
+      let videoId: string;
+      let videoMetadata: any = undefined;
+
+      // Handle both old format (string videoId) and new format (object with videoId and videoMetadata)
+      if (typeof data === 'string') {
+        videoId = data;
+      } else {
+        videoId = data.videoId;
+        videoMetadata = data.videoMetadata;
+      }
+
+      console.log('[YouTubeNavigationHandler] Navigating to video:', videoId, videoMetadata ? 'with metadata' : 'without metadata');
+
+      // Navigate to the video player with the extracted video ID and pass metadata if available
+      navigate(`/player/${encodeURIComponent(videoId)}`, {
+        state: videoMetadata ? { videoMetadata } : undefined
+      });
     };
 
     // Subscribe to navigation events
