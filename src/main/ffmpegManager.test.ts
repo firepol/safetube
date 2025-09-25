@@ -5,9 +5,13 @@ import { FFmpegManager } from './ffmpegManager';
 
 // Mock util module with promisify
 const mockExecAsync = vi.fn();
-vi.mock('util', () => ({
-  promisify: vi.fn(() => mockExecAsync)
-}));
+vi.mock('util', async (importOriginal) => {
+  const actual = await importOriginal() as any;
+  return {
+    ...actual,
+    promisify: vi.fn(() => mockExecAsync)
+  };
+});
 
 // Mock child_process
 vi.mock('child_process');
