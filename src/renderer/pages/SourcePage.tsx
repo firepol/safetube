@@ -162,7 +162,8 @@ export const SourcePage: React.FC = () => {
 
           const videosToValidate = videos.map(v => ({
             videoId: v.id,
-            sourceId: v.originalSourceId || v.sourceId || 'unknown',
+            // For favorites, use the correct sourceId - not 'local' but the actual source like 'local1'
+            sourceId: v.sourceId && v.sourceId !== 'local' ? v.sourceId : (v.originalSourceId || 'unknown'),
             sourceType: v.type === 'youtube' ? 'youtube' : v.type === 'local' ? 'local' : 'dlna'
           }));
 
