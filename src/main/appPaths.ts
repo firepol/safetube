@@ -72,6 +72,19 @@ export class AppPaths {
   }
 
   /**
+   * Get the appropriate data directory (for database files)
+   */
+  static getDataDir(): string {
+    if (this.isDev()) {
+      // In development, use project root data folder
+      return path.join(process.cwd(), 'data');
+    } else {
+      // In production, use user data directory
+      return path.join(app.getPath('userData'), 'data');
+    }
+  }
+
+  /**
    * Get the user data directory (always Electron's user data path)
    */
   static getUserDataDir(): string {
@@ -111,5 +124,12 @@ export class AppPaths {
    */
   static getThumbnailPath(filename: string): string {
     return path.join(this.getThumbnailsDir(), filename);
+  }
+
+  /**
+   * Get the appropriate data file path
+   */
+  static getDataPath(filename: string): string {
+    return path.join(this.getDataDir(), filename);
   }
 }
