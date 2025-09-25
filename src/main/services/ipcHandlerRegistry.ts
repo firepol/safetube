@@ -365,7 +365,8 @@ export function registerVideoSourceHandlers() {
               const channelDetails = await youtubeApi.getChannelDetails(channelId);
               return {
                 isValid: true,
-                title: channelDetails.title
+                title: channelDetails.title,
+                channelId: channelId
               };
             } else {
               // If we can't extract channel ID, try searching by username for @ URLs
@@ -375,7 +376,8 @@ export function registerVideoSourceHandlers() {
                 const searchResult = await youtubeApi.searchChannelByUsername(usernameMatch[1]);
                 return {
                   isValid: true,
-                  title: searchResult.title
+                  title: searchResult.title,
+                  channelId: searchResult.channelId
                 };
               }
             }

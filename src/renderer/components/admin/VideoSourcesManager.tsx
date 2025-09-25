@@ -125,7 +125,8 @@ export const VideoSourcesManager: React.FC = () => {
             type: 'youtube_channel',
             title: formData.title,
             url: formData.url!,
-            sortOrder: (formData.sortOrder as 'newestFirst' | 'oldestFirst') || 'newestFirst'
+            sortOrder: (formData.sortOrder as 'newestFirst' | 'oldestFirst') || 'newestFirst',
+            channelId: formData.channelId
           };
         } else if (formData.type === 'youtube_playlist') {
           newSource = {
@@ -159,7 +160,8 @@ export const VideoSourcesManager: React.FC = () => {
                 type: 'youtube_channel' as const,
                 title: formData.title,
                 url: formData.url!,
-                sortOrder: (formData.sortOrder as 'newestFirst' | 'oldestFirst') || 'newestFirst'
+                sortOrder: (formData.sortOrder as 'newestFirst' | 'oldestFirst') || 'newestFirst',
+                channelId: formData.channelId
               };
             } else {
               return {

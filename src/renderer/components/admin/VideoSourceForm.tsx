@@ -152,9 +152,13 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
         setValidation({ isValid: true, errors: [] });
         setUrlValidated(true);
 
-        // Auto-populate title from fetched metadata
+        // Auto-populate title and channelId from fetched metadata
         if (result.title) {
           setFormData(prev => ({ ...prev, title: result.title! }));
+        }
+
+        if (result.channelId && detectedType === 'youtube_channel') {
+          setFormData(prev => ({ ...prev, channelId: result.channelId! }));
         }
 
         // Update URL if it was cleaned

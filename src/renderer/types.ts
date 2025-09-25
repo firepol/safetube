@@ -86,6 +86,7 @@ export interface ElectronAPI {
     cleanedUrl?: string;
     message?: string;
     title?: string;
+    channelId?: string;
   }>;
   videoSourcesValidateLocalPath: (path: string) => Promise<{
     isValid: boolean;

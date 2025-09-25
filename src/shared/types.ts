@@ -105,6 +105,7 @@ export interface VideoSourceFormData {
   title: string;
   sortOrder?: string;
   maxDepth?: number;
+  channelId?: string; // For YouTube channel sources
 }
 
 export interface VideoSourceValidation {
@@ -112,6 +113,8 @@ export interface VideoSourceValidation {
   errors: string[];
   warnings?: string[];
   cleanedUrl?: string; // for YouTube URLs that were cleaned
+  title?: string; // Fetched title for YouTube sources
+  channelId?: string; // Fetched channelId for YouTube channel sources
 }
 
 export interface VideoSourceManagementState {
