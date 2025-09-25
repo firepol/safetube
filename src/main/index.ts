@@ -167,6 +167,9 @@ const isDev = process.env.NODE_ENV === 'development'
 // Handle video data loading - ONLY from new source system
 ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: any) => {
   try {
+    logVerbose(`[Main] get-video-data called for videoId: ${videoId}`);
+    logVerbose(`[Main] navigationContext: ${JSON.stringify(navigationContext, null, 2)}`);
+
     // Check if we have pre-fetched video metadata from navigation context (e.g., from related video clicks)
     if (navigationContext?.videoMetadata) {
       logVerbose('[Main] Using pre-fetched video metadata from navigation context');
@@ -362,6 +365,45 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
           const { parseDuration } = await import('../shared/videoDurationUtils');
           const duration = parseDuration(videoDetails.contentDetails.duration);
 
+          // Try to find matching source for this video (for related video clicks)
+          const channelId = videoDetails.snippet.channelId;
+          let matchingSource: VideoSource | undefined = undefined;
+          let finalSourceId = 'external-youtube';
+          let finalSourceTitle = 'YouTube';
+          let finalSourceType: 'youtube_channel' | 'youtube_playlist' = 'youtube_channel';
+
+          if (channelId) {
+            logVerbose(`[Main] YouTube video ${videoId} belongs to channel ${channelId}, checking for matching sources`);
+
+            // First try to match channel sources by channelId
+            const sources = await readVideoSources();
+            matchingSource = sources
+              .filter(s => s.type === 'youtube_channel')
+              .find(s => (s as YouTubeChannelSource).channelId === channelId);
+
+            // If no channel match, check playlist sources via existing videos
+            if (!matchingSource && global.currentVideos) {
+              logVerbose(`[Main] No channel match found, checking playlist sources...`);
+              const videoFromPlaylist = global.currentVideos.find((v: any) =>
+                v.type === 'youtube' && v.channelId === channelId
+              );
+
+              if (videoFromPlaylist) {
+                matchingSource = sources.find(s => s.id === videoFromPlaylist.sourceId);
+                logVerbose(`[Main] Found matching playlist source: ${matchingSource ? matchingSource.title + ' (' + matchingSource.id + ')' : 'none'}`);
+              }
+            }
+
+            if (matchingSource) {
+              finalSourceId = matchingSource.id;
+              finalSourceTitle = matchingSource.title;
+              finalSourceType = matchingSource.type as 'youtube_channel' | 'youtube_playlist';
+              logVerbose(`[Main] YouTube video ${videoId} mapped to source: ${finalSourceTitle} (${finalSourceId})`);
+            } else {
+              logVerbose(`[Main] YouTube video ${videoId} does not belong to any approved source`);
+            }
+          }
+
           // Create video object from YouTube API data
           const video = {
             id: videoId,
@@ -371,11 +413,12 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
                       videoDetails.snippet.thumbnails?.default?.url || '',
             duration,
             url: `https://www.youtube.com/watch?v=${videoId}`,
-            sourceId: 'external-youtube',
-            sourceTitle: 'YouTube',
-            sourceType: 'youtube_channel' as 'youtube_channel',
+            sourceId: finalSourceId,
+            sourceTitle: finalSourceTitle,
+            sourceType: finalSourceType,
             sourceThumbnail: '',
             resumeAt: undefined as number | undefined,
+            channelId: channelId,
           };
 
           // Merge with watched data to populate resumeAt
