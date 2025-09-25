@@ -129,13 +129,47 @@ export const SourcePage: React.FC = () => {
 
         // Batch validate videos if this is the favorites source
         if (sourceId === 'favorites' && videos.length > 0) {
+          console.log('[SourcePage] Favorites page navigation detected. Debug info for all videos:');
+
+          // Process videos for thumbnail generation (like HistoryPage does)
+          for (let i = 0; i < videos.length; i++) {
+            const video = videos[i];
+            console.log(`[SourcePage] Video ${i + 1}:`, {
+              id: video.id,
+              title: video.title,
+              type: video.type,
+              thumbnail: video.thumbnail,
+              sourceId: video.sourceId,
+              originalSourceId: video.originalSourceId,
+              path: video.path,
+              duration: video.duration,
+              videoObject: video
+            });
+
+            // Check for best available thumbnail if original is empty (like HistoryPage)
+            if (!video.thumbnail || video.thumbnail.trim() === '') {
+              try {
+                const generatedThumbnail = await (window as any).electron.getBestThumbnail(video.id);
+                if (generatedThumbnail) {
+                  video.thumbnail = generatedThumbnail;
+                  logVerbose('[SourcePage] Using generated thumbnail for:', video.id, '->', generatedThumbnail);
+                }
+              } catch (error) {
+                logVerbose('[SourcePage] Error getting best thumbnail for:', video.id, error);
+              }
+            }
+          }
+
           const videosToValidate = videos.map(v => ({
             videoId: v.id,
             sourceId: v.originalSourceId || v.sourceId || 'unknown',
             sourceType: v.type === 'youtube' ? 'youtube' : v.type === 'local' ? 'local' : 'dlna'
           }));
 
+          console.log('[SourcePage] Videos to validate:', videosToValidate);
+
           const validationMap = await SourceValidationService.batchValidateVideos(videosToValidate);
+          console.log('[SourcePage] Validation results:', Array.from(validationMap.entries()));
           setValidationResults(validationMap);
         }
 

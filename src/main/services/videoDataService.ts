@@ -215,8 +215,8 @@ export async function loadAllVideosFromSources(configPath = AppPaths.getConfigPa
           thumbnail: bestThumbnail,
           duration: favorite.duration,
           url: videoUrl,
-          sourceId: 'favorites',
-          originalSourceId: favorite.sourceId, // Original approved source ID for validation
+          sourceId: favorite.sourceId, // Use actual sourceId from favorites.json
+          originalSourceId: favorite.sourceId, // Keep for compatibility
           sourceTitle: 'Favorites',
           sourceType: 'favorites',
           sourceThumbnail: '⭐',

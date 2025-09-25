@@ -835,7 +835,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
                     video: localFilePath,
                     audio: undefined,
                     preferredLanguages: ['en'],
-                    sourceId: favorite.sourceType, // Use sourceType instead of 'favorites'
+                    sourceId: favorite.sourceId, // Use the actual sourceId from favorites.json
                     sourceTitle: 'Local Video',
                     sourceThumbnail: '',
                     resumeAt: undefined as number | undefined,
@@ -889,7 +889,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
                   thumbnail: bestThumbnail,
                   type: favorite.sourceType,
                   duration: favorite.duration || 0,
-                  sourceId: favorite.sourceType,
+                  sourceId: favorite.sourceId,
                   sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
                   isAvailable: true, // Favorites should always be available
                   isFallback: false // Never show fallback UI for favorites
@@ -935,7 +935,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
                 thumbnail: bestThumbnail,
                 duration: favorite.duration || 0,
                 type: favorite.sourceType,
-                sourceId: favorite.sourceType, // Use original source type as sourceId
+                sourceId: favorite.sourceId, // Use the actual sourceId from favorites.json
                 sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
                 isAvailable: true, // Favorites should always be available
                 isFallback: false // Never show fallback UI for favorites
@@ -975,7 +975,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
               thumbnail: bestThumbnail,
               duration: favorite.duration || 0,
               type: favorite.sourceType,
-              sourceId: favorite.sourceType,
+              sourceId: favorite.sourceId,
               sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
               isAvailable: true, // Favorites should always be available
               isFallback: false // Never show fallback UI for favorites
