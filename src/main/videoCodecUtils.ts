@@ -2,6 +2,7 @@ import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import * as path from 'path';
 import * as fs from 'fs';
+import { FFmpegManager } from './ffmpegManager';
 
 const execAsync = promisify(exec);
 
@@ -61,7 +62,11 @@ export interface VideoCodecInfo {
  */
 export async function getVideoCodecInfo(filePath: string): Promise<VideoCodecInfo> {
   try {
-    const command = `ffprobe -v quiet -print_format json -show_format -show_streams "${filePath}"`;
+    // Ensure FFmpeg is available (will auto-download on Windows if needed)
+    await FFmpegManager.ensureFFmpegAvailable();
+
+    const ffprobeCommand = FFmpegManager.getFFprobeCommand();
+    const command = `${ffprobeCommand} -v quiet -print_format json -show_format -show_streams "${filePath}"`;
     const { stdout } = await execAsync(command);
     const data = JSON.parse(stdout);
 
@@ -115,7 +120,7 @@ export async function getVideoCodecInfo(filePath: string): Promise<VideoCodecInf
  * Convert video to a browser-compatible format using ffmpeg
  */
 export async function convertVideoToCompatibleFormat(
-  inputPath: string, 
+  inputPath: string,
   outputPath: string,
   options: {
     quality?: 'low' | 'medium' | 'high';
@@ -123,8 +128,11 @@ export async function convertVideoToCompatibleFormat(
   } = {}
 ): Promise<string> {
   try {
+    // Ensure FFmpeg is available (will auto-download on Windows if needed)
+    await FFmpegManager.ensureFFmpegAvailable();
+
     const { quality = 'medium', preserveAudio = true } = options;
-    
+
     // Quality settings
     const qualitySettings = {
       low: { crf: 28, preset: 'fast' },
@@ -133,20 +141,21 @@ export async function convertVideoToCompatibleFormat(
     };
 
     const settings = qualitySettings[quality];
-    
+
     // Build ffmpeg command
-    let command = `ffmpeg -i "${inputPath}" -c:v libx264 -crf ${settings.crf} -preset ${settings.preset}`;
-    
+    const ffmpegCommand = FFmpegManager.getFFmpegCommand();
+    let command = `${ffmpegCommand} -i "${inputPath}" -c:v libx264 -crf ${settings.crf} -preset ${settings.preset}`;
+
     if (preserveAudio) {
       command += ' -c:a aac -b:a 128k';
     } else {
       command += ' -an'; // No audio
     }
-    
+
     command += ` "${outputPath}" -y`; // -y to overwrite output file
 
     console.log('Converting video with command:', command);
-    
+
     const { stdout, stderr } = await execAsync(command);
     console.log('FFmpeg output:', stdout);
     if (stderr) console.log('FFmpeg stderr:', stderr);
@@ -293,8 +302,12 @@ export async function startVideoConversion(
     
     console.log('Starting background conversion with command:', command);
     
+    // Ensure FFmpeg is available first
+    await FFmpegManager.ensureFFmpegAvailable();
+
     // Use spawn for real-time progress tracking
-    const ffmpeg = spawn('ffmpeg', [
+    const ffmpegCommand = FFmpegManager.getFFmpegCommand();
+    const ffmpeg = spawn(ffmpegCommand, [
       '-i', originalPath,
       '-c:v', 'libx264',
       '-crf', settings.crf.toString(),
@@ -302,7 +315,7 @@ export async function startVideoConversion(
       ...(preserveAudio ? ['-c:a', 'aac', '-b:a', '128k'] : ['-an']),
       convertedPath,
       '-y'
-    ]);
+    ], { shell: process.platform === 'win32' });
     
     let stderr = '';
     
