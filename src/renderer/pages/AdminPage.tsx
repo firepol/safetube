@@ -32,6 +32,8 @@ export const AdminPage: React.FC = () => {
   const [originalAdminPasswordHash, setOriginalAdminPasswordHash] = useState<string>('');
   const [isLoadingMainSettings, setIsLoadingMainSettings] = useState(false);
   const [mainSettingsSaveMessage, setMainSettingsSaveMessage] = useState<string | null>(null);
+  const [isPopulatingChannelIds, setIsPopulatingChannelIds] = useState(false);
+  const [channelIdPopulateMessage, setChannelIdPopulateMessage] = useState<string | null>(null);
 
   useEffect(() => {
     // Always start unauthenticated - no need to check
@@ -307,6 +309,36 @@ export const AdminPage: React.FC = () => {
     } catch (error) {
       console.error('Error getting default download path:', error);
       setError('Failed to get default download path');
+    }
+  };
+
+  const handlePopulateChannelIds = async () => {
+    try {
+      setIsPopulatingChannelIds(true);
+      setChannelIdPopulateMessage(null);
+
+      const result = await window.electron.sourcesPopulateChannelIds();
+
+      if (result.success) {
+        const message = `Successfully populated ${result.updatedCount || 0} channel IDs!`;
+        setChannelIdPopulateMessage(message);
+
+        if (result.errors && result.errors.length > 0) {
+          console.warn('Some channel IDs could not be resolved:', result.errors);
+          setChannelIdPopulateMessage(message + ` (${result.errors.length} warnings - check console)`);
+        }
+      } else {
+        setChannelIdPopulateMessage(`Error: ${result.error}`);
+      }
+
+      // Clear message after 5 seconds
+      setTimeout(() => setChannelIdPopulateMessage(null), 5000);
+    } catch (error) {
+      console.error('Error populating channel IDs:', error);
+      setChannelIdPopulateMessage(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setTimeout(() => setChannelIdPopulateMessage(null), 5000);
+    } finally {
+      setIsPopulatingChannelIds(false);
     }
   };
 
@@ -677,6 +709,35 @@ export const AdminPage: React.FC = () => {
                     <p className="text-xs text-gray-500 mt-1">
                       Optional. Used for enhanced YouTube functionality. Get your key from Google Cloud Console.
                     </p>
+                  </div>
+
+                  {/* Channel ID Population */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                    <h3 className="text-sm font-medium text-blue-800 mb-2">YouTube Channel Setup</h3>
+                    <p className="text-xs text-blue-600 mb-3">
+                      Populate channel IDs for YouTube sources to enable related video validation.
+                      Required for the "Allow clicks to non-approved channels" setting to work properly.
+                    </p>
+                    <div className="flex items-center space-x-3">
+                      <button
+                        type="button"
+                        onClick={handlePopulateChannelIds}
+                        disabled={isPopulatingChannelIds || !mainSettings.youtubeApiKey}
+                        className="px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isPopulatingChannelIds ? 'Populating...' : 'Populate Channel IDs'}
+                      </button>
+                      {channelIdPopulateMessage && (
+                        <span className={`text-xs ${channelIdPopulateMessage.includes('Error') ? 'text-red-600' : 'text-green-600'}`}>
+                          {channelIdPopulateMessage}
+                        </span>
+                      )}
+                    </div>
+                    {!mainSettings.youtubeApiKey && (
+                      <p className="text-xs text-orange-600 mt-2">
+                        ⚠️ YouTube API key is required to populate channel IDs.
+                      </p>
+                    )}
                   </div>
 
                   {/* Admin Password Setting */}

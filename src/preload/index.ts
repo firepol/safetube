@@ -160,6 +160,8 @@ contextBridge.exposeInMainWorld(
     favoritesSyncWatchHistory: () => ipcRenderer.invoke('favorites:sync-watch-history'),
     favoritesGetUnavailable: () => ipcRenderer.invoke('favorites:get-unavailable'),
     favoritesClearUnavailable: () => ipcRenderer.invoke('favorites:clear-unavailable'),
+    // Sources management
+    sourcesPopulateChannelIds: () => ipcRenderer.invoke('sources:populate-channel-ids'),
     // App paths
     getCacheDir: () => ipcRenderer.invoke('app-paths:get-cache-dir'),
     getCacheDirSync: () => ipcRenderer.sendSync('app-paths:get-cache-dir-sync'),

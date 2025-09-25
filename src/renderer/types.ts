@@ -230,6 +230,9 @@ export interface ElectronAPI {
   favoritesGetUnavailable: () => Promise<any[]>;
   favoritesClearUnavailable: () => Promise<{ success: boolean; count: number; error?: string }>;
 
+  // Sources management
+  sourcesPopulateChannelIds: () => Promise<{ success: boolean; updatedCount?: number; errors?: string[]; error?: string }>;
+
   // Path utilities for cross-platform compatibility
   pathJoin: (...paths: string[]) => Promise<string>;
 }
