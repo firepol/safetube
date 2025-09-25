@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 import { VideoSourceForm } from './VideoSourceForm';
 import { VideoSourceList } from './VideoSourceList';
+import { SourceValidationService } from '../../services/sourceValidationService';
 
 import { VideoSource, VideoSourceFormData, VideoSourceManagementState } from '@/shared/types';
 
@@ -71,6 +72,9 @@ export const VideoSourcesManager: React.FC = () => {
       const updatedSources = state.sources.filter(s => s.id !== sourceId);
       await window.electron.videoSourcesSaveAll(updatedSources);
       setState(prev => ({ ...prev, sources: updatedSources }));
+
+      // Clear source validation cache to immediately reflect the deleted source
+      SourceValidationService.clearCache();
     } catch (error) {
       console.error('Error deleting video source:', error);
       setState(prev => ({ 
@@ -178,12 +182,15 @@ export const VideoSourcesManager: React.FC = () => {
       }
 
       await window.electron.videoSourcesSaveAll(updatedSources);
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         sources: updatedSources,
         editingSource: null,
         isAdding: false
       }));
+
+      // Clear source validation cache to immediately reflect the added/updated source
+      SourceValidationService.clearCache();
     } catch (error) {
       console.error('Error saving video source:', error);
       setState(prev => ({ 
