@@ -20,6 +20,7 @@ import { setupYouTubeHandlers } from './youtube'
 import { YouTubeAPI } from './youtube-api'
 import { extractChannelId, extractPlaylistId, resolveUsernameToChannelId } from './utils/urlUtils'
 import { loadAllVideosFromSources } from './services/videoDataService'
+import { migrateChannelIds } from './channelIdMigration'
 import {
   scanLocalFolder,
   getLocalFolderContents,
@@ -1569,6 +1570,13 @@ app.on('ready', async () => {
     }
   } catch (error) {
     log.error('[Main] Error during first-time setup:', error);
+  }
+
+  // Run background channel ID migration (non-blocking)
+  try {
+    migrateChannelIds();
+  } catch (error) {
+    // Silent failure - don't log errors to avoid noise
   }
 
   // Register all IPC handlers
