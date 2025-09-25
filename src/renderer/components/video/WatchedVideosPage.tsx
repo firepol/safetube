@@ -108,7 +108,6 @@ export const WatchedVideosPage: React.FC = () => {
                     const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
                     if (generatedThumbnail) {
                       bestThumbnail = generatedThumbnail;
-                      logVerbose('[WatchedVideosPage] Using generated thumbnail for:', watchedVideo.videoId, '->', generatedThumbnail);
                     }
                   } catch (error) {
                     logVerbose('[WatchedVideosPage] Error getting best thumbnail for:', watchedVideo.videoId, error);
@@ -138,7 +137,6 @@ export const WatchedVideosPage: React.FC = () => {
                     const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
                     if (generatedThumbnail) {
                       bestThumbnail = generatedThumbnail;
-                      logVerbose('[WatchedVideosPage] Using generated thumbnail for fallback video:', watchedVideo.videoId, '->', generatedThumbnail);
                     }
                   } catch (error) {
                     logVerbose('[WatchedVideosPage] Error getting best thumbnail for fallback video:', watchedVideo.videoId, error);

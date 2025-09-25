@@ -89,7 +89,6 @@ export const HistoryPage: React.FC = () => {
                   const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
                   if (generatedThumbnail) {
                     bestThumbnail = generatedThumbnail;
-                    logVerbose('[HistoryPage] Using generated thumbnail for:', watchedVideo.videoId, '->', generatedThumbnail);
                   }
                 } catch (error) {
                   logVerbose('[HistoryPage] Error getting best thumbnail for:', watchedVideo.videoId, error);
@@ -119,7 +118,6 @@ export const HistoryPage: React.FC = () => {
                 const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
                 if (generatedThumbnail) {
                   bestThumbnail = generatedThumbnail;
-                  logVerbose('[HistoryPage] Using generated thumbnail for fallback video:', watchedVideo.videoId, '->', generatedThumbnail);
                 }
               } catch (error) {
                 logVerbose('[HistoryPage] Error getting best thumbnail for fallback video:', watchedVideo.videoId, error);
@@ -155,7 +153,6 @@ export const HistoryPage: React.FC = () => {
               const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
               if (generatedThumbnail) {
                 bestThumbnail = generatedThumbnail;
-                logVerbose('[HistoryPage] Using generated thumbnail for error fallback video:', watchedVideo.videoId, '->', generatedThumbnail);
               }
             } catch (error) {
               logVerbose('[HistoryPage] Error getting best thumbnail for error fallback video:', watchedVideo.videoId, error);
