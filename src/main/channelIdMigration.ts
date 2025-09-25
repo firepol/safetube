@@ -89,8 +89,8 @@ async function processSources(
 
             try {
               const searchResult = await youtubeApi.searchChannelByUsername(username);
-              if (searchResult && searchResult.id && searchResult.id.channelId) {
-                channelId = searchResult.id.channelId;
+              if (searchResult && searchResult.channelId) {
+                channelId = searchResult.channelId;
               }
             } catch (apiError) {
               logVerbose(`[ChannelMigration] API error for ${username}:`, apiError);
