@@ -119,7 +119,7 @@ describe('Database Initialization', () => {
     };
 
     await dbService.run(`
-      INSERT INTO sources (id, type, title, sort_order, url, channel_id)
+      INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id)
       VALUES (?, ?, ?, ?, ?, ?)
     `, [
       testSource.id,
@@ -154,7 +154,7 @@ describe('Database Initialization', () => {
 
     // Insert a test source first
     await dbService.run(`
-      INSERT INTO sources (id, type, title, sort_order, url, channel_id)
+      INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id)
       VALUES ('test_source', 'youtube_channel', 'Test', 0, 'https://test.com', 'UC123')
     `);
 
@@ -216,7 +216,7 @@ describe('Database Initialization', () => {
     // Insert all sources
     for (const source of testSources) {
       await dbService.run(`
-        INSERT INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
+        INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         source.id,

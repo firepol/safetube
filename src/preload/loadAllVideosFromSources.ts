@@ -102,15 +102,37 @@ function isVideoFile(filename: string): boolean {
 export async function loadAllVideosFromSources(configPath = 'config/videoSources.json', apiKey?: string | null) {
   const debug: string[] = [];
   let sources: VideoSource[] = [];
-  logVerbose(`[Loader] Starting loadAllVideosFromSources with configPath: ${configPath}`);
+  logVerbose(`[Loader] Starting loadAllVideosFromSources (database mode)`);
+
   try {
-    debug.push(`[Loader] Loading video sources from: ${configPath}`);
-    sources = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    debug.push(`[Loader] Loaded ${sources.length} sources.`);
-    logVerbose(`[Loader] Loaded ${sources.length} sources from config.`);
+    // Load sources from database via IPC
+    debug.push(`[Loader] Loading video sources from database`);
+    if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+      const dbSources = await (window as any).electron.invoke('video-sources:get-all');
+
+      if (dbSources && Array.isArray(dbSources)) {
+        // Convert database format to VideoSource format
+        sources = dbSources.map(source => ({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          url: source.url,
+          channelId: source.channel_id,
+          path: source.path,
+          maxDepth: source.max_depth,
+          sortOrder: source.sort_order
+        }));
+        debug.push(`[Loader] Loaded ${sources.length} sources from database.`);
+        logVerbose(`[Loader] Loaded ${sources.length} sources from database.`);
+      } else {
+        throw new Error('No sources found in database');
+      }
+    } else {
+      throw new Error('IPC not available - cannot load sources from database');
+    }
   } catch (err) {
-    debug.push(`[Loader] ERROR loading videoSources.json: ${err}`);
-    logVerbose(`[Loader] ERROR loading videoSources.json: ${err}`);
+    debug.push(`[Loader] ERROR loading sources from database: ${err}`);
+    logVerbose(`[Loader] ERROR loading sources from database: ${err}`);
     return { videosBySource: [], debug };
   }
 

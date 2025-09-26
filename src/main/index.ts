@@ -39,6 +39,7 @@ import {
 } from './services/thumbnailService'
 import { getDlnaFile } from './services/networkService'
 import { registerAllHandlers } from './services/ipcHandlerRegistry'
+import { DatabaseService } from './services/DatabaseService'
 
 // Load .env file from multiple possible locations
 const possibleEnvPaths = [
@@ -459,23 +460,46 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
 ipcMain.handle('load-all-videos-from-sources', async () => {
   try {
 
-    // Step 1: Read and parse videoSources.json configuration
-    const configPath = AppPaths.getConfigPath('videoSources.json');
+    // Step 1: Load video sources from database
+    let videoSources: any[] = [];
+    try {
+      const dbSources = await DatabaseService.getInstance().all('SELECT * FROM sources ORDER BY sort_order');
 
-    if (!fs.existsSync(configPath)) {
-      log.warn('[Main] videoSources.json not found, returning empty result');
+      if (!dbSources || dbSources.length === 0) {
+        log.warn('[Main] No video sources found in database');
+        return {
+          videos: [],
+          sources: [],
+          debug: [
+            '[Main] No video sources found in database',
+            '[Main] Please add video sources through the admin panel'
+          ]
+        };
+      }
+
+      // Convert database format to expected format
+      videoSources = dbSources.map((source: any) => ({
+        id: source.id,
+        type: source.type,
+        title: source.title,
+        url: source.url,
+        channelId: source.channel_id,
+        path: source.path,
+        maxDepth: source.max_depth,
+        sortOrder: source.sort_order
+      }));
+
+    } catch (dbError) {
+      log.error('[Main] Database error loading sources:', dbError);
       return {
         videos: [],
         sources: [],
         debug: [
-          '[Main] videoSources.json not found at: ' + configPath,
-          '[Main] Please create videoSources.json in your config directory'
+          '[Main] Database error loading sources: ' + dbError,
+          '[Main] Please check database connectivity'
         ]
       };
     }
-
-    const configData = fs.readFileSync(configPath, 'utf8');
-    const videoSources = JSON.parse(configData);
 
 
     // Step 2: Parse each source into structured objects
@@ -1325,7 +1349,7 @@ ipcMain.handle('load-videos-from-sources', async () => {
     }
 
     // Import and use the main process version that has the encoded IDs
-    const result = await loadAllVideosFromSources(AppPaths.getConfigPath('videoSources.json'), apiKey);
+    const result = await loadAllVideosFromSources(apiKey);
 
     // Extract all videos from the grouped structure and store them globally
     const allVideos: any[] = [];
@@ -1758,7 +1782,7 @@ app.on('ready', async () => {
         // Migrate sources to database
         for (const source of sourcesData) {
           await dbService.run(`
-            INSERT INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
+            INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           `, [
             source.id,

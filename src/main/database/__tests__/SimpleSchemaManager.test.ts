@@ -145,7 +145,7 @@ describe('SimpleSchemaManager', () => {
 
     // Insert a source first
     await databaseService.run(`
-      INSERT INTO sources (id, type, title, url)
+      INSERT OR REPLACE INTO sources (id, type, title, url)
       VALUES ('test-source', 'youtube_channel', 'Test Source', 'https://youtube.com/test')
     `);
 
@@ -167,7 +167,7 @@ describe('SimpleSchemaManager', () => {
 
     // Insert a source and video with description
     await databaseService.run(`
-      INSERT INTO sources (id, type, title, url)
+      INSERT OR REPLACE INTO sources (id, type, title, url)
       VALUES ('test-source', 'youtube_channel', 'Test Source', 'https://youtube.com/test')
     `);
 

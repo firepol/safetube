@@ -6,7 +6,7 @@ import log from '../logger';
 import { getThumbnailUrl } from './thumbnailService';
 
 // Main video data loading function - extracted from main index.ts
-export async function loadAllVideosFromSources(configPath = AppPaths.getConfigPath('videoSources.json'), apiKey?: string | null) {
+export async function loadAllVideosFromSources(apiKey?: string | null) {
   let sources: any[] = [];
 
   // Try to load sources from database first
@@ -41,20 +41,12 @@ export async function loadAllVideosFromSources(configPath = AppPaths.getConfigPa
       }
     }
   } catch (dbError) {
-    logVerbose('[VideoDataService] Database not available, falling back to JSON:', dbError);
-
-    // Fallback to JSON file only if database is not available
-    try {
-      sources = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-      logVerbose('[VideoDataService] Loaded sources from JSON:', sources.length);
-    } catch (err) {
-      log.error('[VideoDataService] ERROR loading videoSources.json:', err);
-      return { videosBySource: [] };
-    }
+    log.error('[VideoDataService] Database not available:', dbError);
+    return { videosBySource: [] };
   }
 
   if (sources.length === 0) {
-    logVerbose('[VideoDataService] No sources found in database or JSON');
+    logVerbose('[VideoDataService] No sources found in database');
     return { videosBySource: [] };
   }
 
