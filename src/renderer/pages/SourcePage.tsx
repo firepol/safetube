@@ -251,7 +251,9 @@ export const SourcePage: React.FC = () => {
     }
 
     if (video.type === 'youtube') {
-      navigate(`/player/${encodeURIComponent(video.id)}`, {
+      const encodedId = encodeURIComponent(video.id);
+      const targetUrl = `/player/${encodedId}`;
+      navigate(targetUrl, {
         state: {
           videoTitle: video.title,
           returnTo: `/source/${sourceId}${currentPage > 1 ? `/page/${currentPage}` : ''}`,
@@ -277,6 +279,24 @@ export const SourcePage: React.FC = () => {
           breadcrumb: breadcrumbData
         }
       });
+    } else {
+      console.error('[SourcePage] Unknown video type or undefined type', {
+        videoType: video.type,
+        video: video
+      });
+      // Fallback navigation - assume it's a YouTube video if type is undefined
+      if (!video.type && video.id) {
+        console.log('[SourcePage] Fallback - treating as YouTube video');
+        const encodedId = encodeURIComponent(video.id);
+        const targetUrl = `/player/${encodedId}`;
+        navigate(targetUrl, {
+          state: {
+            videoTitle: video.title,
+            returnTo: `/source/${sourceId}${currentPage > 1 ? `/page/${currentPage}` : ''}`,
+            breadcrumb: breadcrumbData
+          }
+        });
+      }
     }
   };
 
@@ -425,7 +445,7 @@ export const SourcePage: React.FC = () => {
             thumbnail: video.thumbnail || '/placeholder-thumbnail.svg',
             title: video.title,
             duration: video.duration || 0,
-            type: video.type,
+            type: video.type || (source?.type === 'youtube_channel' || source?.type === 'youtube_playlist' ? 'youtube' : undefined),
             watched: isWatched,
             isClicked: isClicked,
             isAvailable: isAvailable,
@@ -433,7 +453,10 @@ export const SourcePage: React.FC = () => {
             isFallback: video.isFallback === true,
             errorInfo: video.errorInfo,
             resumeAt: video.resumeAt,
-            onVideoClick: () => handleVideoClick(video),
+            onVideoClick: () => handleVideoClick({
+              ...video,
+              type: video.type || (source?.type === 'youtube_channel' || source?.type === 'youtube_playlist' ? 'youtube' : undefined)
+            }, undefined),
             // isFavorite will be populated by VideoGrid's useFavoriteStatus hook
             sourceId: sourceId === 'favorites'
               ? (video.originalSourceId || video.sourceId || 'unknown')

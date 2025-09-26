@@ -82,9 +82,13 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
           onVideoClick
         });
       } else {
+        const encodedId = encodeURIComponent(id);
+        const targetUrl = `/player/${encodedId}`;
         // Default navigation - URL encode the video ID to handle special characters
-        navigate(`/player/${encodeURIComponent(id)}`);
+        navigate(targetUrl);
       }
+    } else {
+      console.log('[VideoCardBase] Click blocked - video is fallback');
     }
   };
 

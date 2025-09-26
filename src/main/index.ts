@@ -359,6 +359,11 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
 
     const video = global.currentVideos.find((v: any) => v.id === videoId);
     if (video) {
+      // Ensure YouTube videos have the correct type set (PlayerRouter depends on this)
+      if (!video.type && videoId.length === 11 && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+        video.type = 'youtube';
+        logVerbose('[Main] Fixed missing type for YouTube video:', videoId);
+      }
 
       // Merge with watched data to populate resumeAt for all video types
       const { mergeWatchedData } = await import('./fileUtils');
