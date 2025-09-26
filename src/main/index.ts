@@ -770,6 +770,34 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
   }
 });
 
+// Handle loading videos for a specific source
+ipcMain.handle('load-videos-for-source', async (_, sourceId: string) => {
+  try {
+    console.log('[Main] load-videos-for-source handler called for:', sourceId);
+    // Read API key from mainSettings.json
+    let apiKey = '';
+    try {
+      const { readMainSettings } = await import('./fileUtils');
+      const mainSettings = await readMainSettings();
+      apiKey = mainSettings.youtubeApiKey || '';
+      console.log('[Main] API key loaded for source:', sourceId, apiKey ? '***configured***' : 'NOT configured');
+    } catch (error) {
+      console.warn('[Main] Could not read mainSettings for source video loading:', error);
+    }
+    // Import and use the specific source loading function
+    const { loadVideosForSpecificSource } = await import('./services/videoDataService');
+    const result = await loadVideosForSpecificSource(sourceId, apiKey);
+    console.log('[Main] Videos loaded for specific source:', sourceId, {
+      videoCount: result.source.videos?.length || 0,
+      fetchedNewData: result.source.fetchedNewData
+    });
+    return result;
+  } catch (error) {
+    console.error('[Main] Error loading videos for specific source:', sourceId, error);
+    throw error;
+  }
+});
+
 // Handle getting paginated videos from a specific source
 ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumber: number) => {
   try {

@@ -180,12 +180,27 @@ export class CachedYouTubeSources {
     // Write to database
     try {
       // Only update sources table if we fetched new info
-      if (fetchedNewInfo && typeof window !== 'undefined' && (window as any).electron?.invoke) {
-        await (window as any).electron.invoke('database:sources:update', source.id, {
-          thumbnail: sourceThumbnail,
-          total_videos: totalVideos,
-          updated_at: now
-        });
+      if (fetchedNewInfo) {
+        if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+          // Renderer process: use IPC
+          await (window as any).electron.invoke('database:sources:update', source.id, {
+            thumbnail: sourceThumbnail,
+            total_videos: totalVideos,
+            updated_at: now
+          });
+        } else if (typeof process !== 'undefined' && process.type === 'browser') {
+          // Main process: use direct database access
+          try {
+            const { DatabaseService } = await import('../main/services/DatabaseService');
+            const dbService = DatabaseService.getInstance();
+            await dbService.run(`
+              UPDATE sources SET thumbnail = ?, total_videos = ?, updated_at = ? WHERE id = ?
+            `, [sourceThumbnail, totalVideos, now, source.id]);
+            logVerbose(`[CachedYouTubeSources] Updated source ${source.id} with thumbnail and total_videos in main process`);
+          } catch (error) {
+            logVerbose(`[CachedYouTubeSources] Error updating source in main process: ${error}`);
+          }
+        }
       }
       await writeCacheToDatabase(source.id, updatedCache);
     } catch (dbError) {
@@ -300,12 +315,27 @@ export class CachedYouTubeSources {
     try {
       await writeCacheToDatabase(source.id, updatedCache);
       // Only update sources table if we fetched new info
-      if (fetchedNewInfo && typeof window !== 'undefined' && (window as any).electron?.invoke) {
-        await (window as any).electron.invoke('database:sources:update', source.id, {
-          thumbnail: sourceThumbnail,
-          total_videos: totalVideos,
-          updated_at: now
-        });
+      if (fetchedNewInfo) {
+        if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+          // Renderer process: use IPC
+          await (window as any).electron.invoke('database:sources:update', source.id, {
+            thumbnail: sourceThumbnail,
+            total_videos: totalVideos,
+            updated_at: now
+          });
+        } else if (typeof process !== 'undefined' && process.type === 'browser') {
+          // Main process: use direct database access
+          try {
+            const { DatabaseService } = await import('../main/services/DatabaseService');
+            const dbService = DatabaseService.getInstance();
+            await dbService.run(`
+              UPDATE sources SET thumbnail = ?, total_videos = ?, updated_at = ? WHERE id = ?
+            `, [sourceThumbnail, totalVideos, now, source.id]);
+            logVerbose(`[CachedYouTubeSources] Updated source ${source.id} with thumbnail and total_videos in main process`);
+          } catch (error) {
+            logVerbose(`[CachedYouTubeSources] Error updating source in main process: ${error}`);
+          }
+        }
       }
     } catch (dbError) {
       logVerbose(`[CachedYouTubeSources] Warning: Could not write videos cache to database: ${dbError}`);
