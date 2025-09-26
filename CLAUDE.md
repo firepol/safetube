@@ -34,7 +34,7 @@ yarn type-check      # Type checking
 - **Shared Code** (`src/shared/`): Common utilities and types
 
 ### Configuration Files (`config/`)
-- `videoSources.json` - Video source definitions
+- Video sources are now managed through the admin panel and stored in the SQLite database
 - `youtubePlayer.json` - Player settings and quality control
 - `timeLimits.json` - Daily time limits and parental controls
 - `usageLog.json` - Usage tracking data (generated)
@@ -69,7 +69,7 @@ Follow the Cursor rules in `@.cursor/rules/` for:
 
 - **YouTube Integration**: Dual player system (MediaSource + iframe)
 - **Time Tracking**: Second-level precision with automatic enforcement
-- **Video Sources**: YouTube channels/playlists + local files + DLNA
+- **Video Sources**: YouTube channels/playlists + local files (managed via database and admin panel)
 - **Security**: IPC-only renderer access, no direct filesystem access
 - **Environment**: `ELECTRON_LOG_VERBOSE=true` for debug logging
 

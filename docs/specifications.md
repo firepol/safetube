@@ -92,7 +92,7 @@ Videos are loaded from:
 3. **YouTube channels**
 4. **YouTube playlists**
 
-Each source is defined in the `videoSources.json` config like:
+Each source is managed through the admin panel and stored in the database like:
 
 {id: "yt1", type: "youtube_channel", url: "https://www.youtube.com/channel/UCxxxxx", title: "Science For Kids", sortOrder: "newestFirst"}
 
@@ -238,8 +238,8 @@ Records video watching progress and history for resume functionality:
 ]
 ```
 
-#### Video Sources (`videoSources.json`)
-Defines available video sources (YouTube channels, playlists, DLNA servers, local folders):
+#### Video Sources (Database)
+Video sources are stored in the SQLite database `sources` table and managed through the admin panel. Sources define available video content (YouTube channels, playlists, local folders):
 
 ```json
 [
