@@ -116,7 +116,7 @@ export class FirstRunSetup {
           await fs.access(targetPath);
           continue; // File already exists, skip
         } catch {
-          // Special handling for videoSources.json - check database first
+          // Special handling for videoSources.json - check database first and migrate if needed
           if (filename === 'videoSources.json') {
             try {
               // Check if database has sources
@@ -126,7 +126,37 @@ export class FirstRunSetup {
 
               if (healthStatus.initialized) {
                 const sourceCount = await dbService.get<{ count: number }>('SELECT COUNT(*) as count FROM sources');
-                if (sourceCount && sourceCount.count > 0) {
+                if (sourceCount && sourceCount.count === 0) {
+                  // Migrate sources from JSON to DB using INSERT OR REPLACE
+                  const sourcesPath = path.join(configDir, filename);
+                  const fsSync = require('fs');
+                  if (fsSync.existsSync(sourcesPath)) {
+                    const sources = JSON.parse(fsSync.readFileSync(sourcesPath, 'utf-8'));
+                    for (const source of sources) {
+                      await dbService.run(`
+                        INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                      `, [
+                        source.id,
+                        source.type,
+                        source.title,
+                        source.sortOrder || 0,
+                        source.url || null,
+                        source.channelId || null,
+                        source.path || null,
+                        source.maxDepth || null
+                      ]);
+                    }
+                    logVerbose(`[FirstRunSetup] Migrated ${sources.length} sources from videoSources.json to database`);
+                    // Delete the JSON file after successful migration
+                    try {
+                      fsSync.unlinkSync(sourcesPath);
+                      logVerbose(`[FirstRunSetup] Deleted videoSources.json after migration`);
+                    } catch (deleteErr) {
+                      logVerbose(`[FirstRunSetup] Failed to delete videoSources.json after migration:`, deleteErr);
+                    }
+                  }
+                } else if (sourceCount && sourceCount.count > 0) {
                   logVerbose(`[FirstRunSetup] Skipping videoSources.json creation - found ${sourceCount.count} sources in database`);
                   continue; // Skip creating JSON file, database has sources
                 }

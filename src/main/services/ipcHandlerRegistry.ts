@@ -307,30 +307,21 @@ export function registerAdminHandlers() {
 export function registerVideoSourceHandlers() {
   // Get all video sources
   ipcMain.handle('video-sources:get-all', async () => {
+    // Only use the database for video sources
     try {
-      // Try SQLite database first
-      try {
-        const DatabaseService = await import('../services/DatabaseService');
-        const dbService = DatabaseService.default.getInstance();
-        const status = await dbService.getHealthStatus();
-        if (dbService && status.initialized) {
-          const sources = await dbService.all<any>(`
-            SELECT id, type, title, sort_order, url, channel_id, path, max_depth
-            FROM sources
-            ORDER BY sort_order ASC, title ASC
-          `);
-          log.info('[IPC] Retrieved sources from database:', sources.length);
-          return sources || [];
-        }
-      } catch (dbError) {
-        log.warn('[IPC] Database not available for sources, falling back to JSON:', dbError);
+      const DatabaseService = await import('../services/DatabaseService');
+      const dbService = DatabaseService.default.getInstance();
+      const status = await dbService.getHealthStatus();
+      if (dbService && status.initialized) {
+        const sources = await dbService.all<any>(`
+          SELECT id, type, title, sort_order, url, channel_id, path, max_depth
+          FROM sources
+          ORDER BY sort_order ASC, title ASC
+        `);
+        log.info('[IPC] Retrieved sources from database:', sources.length);
+        return sources || [];
       }
-
-      // Fallback to JSON file for compatibility
-      const sourcesPath = AppPaths.getConfigPath('videoSources.json');
-      if (fs.existsSync(sourcesPath)) {
-        return JSON.parse(fs.readFileSync(sourcesPath, 'utf8'));
-      }
+      // If DB is not initialized, return empty (migration/first-run will handle JSON)
       return [];
     } catch (error) {
       log.error('[IPC] Error reading video sources:', error);
@@ -340,55 +331,41 @@ export function registerVideoSourceHandlers() {
 
   // Save all video sources
   ipcMain.handle('video-sources:save-all', async (_, sources: any[]) => {
+    // Only use the database for saving video sources
     try {
-      // Try SQLite database first
-      let dbSuccess = false;
-      try {
-        const DatabaseService = await import('../services/DatabaseService');
-        const dbService = DatabaseService.default.getInstance();
-        const status = await dbService.getHealthStatus();
-        if (dbService && status.initialized) {
-          // Clear existing sources and insert new ones in a transaction
-          await dbService.run('BEGIN TRANSACTION');
-          try {
-            await dbService.run('DELETE FROM sources');
-
-            for (const source of sources) {
-              await dbService.run(`
-                INSERT INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-              `, [
-                source.id,
-                source.type,
-                source.title,
-                source.sortOrder || 0,
-                source.url || null,
-                source.channelId || null,
-                source.path || null,
-                source.maxDepth || null
-              ]);
-            }
-
-            await dbService.run('COMMIT');
-            log.info('[IPC] Saved sources to database:', sources.length);
-            dbSuccess = true;
-          } catch (dbError) {
-            await dbService.run('ROLLBACK');
-            throw dbError;
+      const DatabaseService = await import('../services/DatabaseService');
+      const dbService = DatabaseService.default.getInstance();
+      const status = await dbService.getHealthStatus();
+      if (dbService && status.initialized) {
+        // Clear existing sources and insert new ones in a transaction
+        await dbService.run('BEGIN TRANSACTION');
+        try {
+          await dbService.run('DELETE FROM sources');
+          for (const source of sources) {
+            await dbService.run(`
+              INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `, [
+              source.id,
+              source.type,
+              source.title,
+              source.sortOrder || 0,
+              source.url || null,
+              source.channelId || null,
+              source.path || null,
+              source.maxDepth || null
+            ]);
           }
+          await dbService.run('COMMIT');
+          log.info('[IPC] Saved sources to database:', sources.length);
+          return { success: true };
+        } catch (dbError) {
+          await dbService.run('ROLLBACK');
+          throw dbError;
         }
-      } catch (dbError) {
-        log.warn('[IPC] Database not available for saving sources, falling back to JSON:', dbError);
       }
-
-      // Always also save to JSON file for compatibility (unless database succeeded and we want to phase out JSON)
-      const sourcesPath = AppPaths.getConfigPath('videoSources.json');
-      fs.writeFileSync(sourcesPath, JSON.stringify(sources, null, 2));
-
-      const method = dbSuccess ? 'database (with JSON backup)' : 'JSON file only';
-      log.info(`[IPC] Video sources saved via ${method}`);
-
-      return { success: true };
+      // If DB is not initialized, return error (migration/first-run will handle JSON)
+      throw new Error('Database not initialized');
     } catch (error) {
       log.error('[IPC] Error saving video sources:', error);
       throw error;
@@ -815,7 +792,15 @@ export function registerSystemHandlers() {
   ipcMain.handle('get-setup-status', async () => {
     try {
       const hasApiKey = !!(process.env.YOUTUBE_API_KEY || fs.existsSync(AppPaths.getConfigPath('youtubeApiKey.json')));
-      const hasVideoSources = fs.existsSync(AppPaths.getConfigPath('videoSources.json'));
+      // Only check DB for video sources now (JSON is only for migration)
+      const DatabaseService = await import('../services/DatabaseService');
+      const dbService = DatabaseService.default.getInstance();
+      const status = await dbService.getHealthStatus();
+      let hasVideoSources = false;
+      if (dbService && status.initialized) {
+        const count = await dbService.get<{ count: number }>('SELECT COUNT(*) as count FROM sources');
+        hasVideoSources = !!(count && count.count > 0);
+      }
 
       return {
         hasApiKey,
@@ -1438,14 +1423,22 @@ export function registerFavoritesHandlers() {
   ipcMain.handle('favorites:get-unavailable', async () => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
-      const sourcesPath = AppPaths.getConfigPath('videoSources.json');
 
       if (!fs.existsSync(favoritesPath)) {
         return [];
       }
 
       const favorites = JSON.parse(fs.readFileSync(favoritesPath, 'utf8'));
-      const sources = fs.existsSync(sourcesPath) ? JSON.parse(fs.readFileSync(sourcesPath, 'utf8')) : [];
+      // Use DB for sources, JSON only for migration. If needed, fetch sources from DB here.
+      const DatabaseService = await import('../services/DatabaseService');
+      const dbService = DatabaseService.default.getInstance();
+      const status = await dbService.getHealthStatus();
+      let sources = [];
+      if (dbService && status.initialized) {
+        sources = await dbService.all<any>(
+          'SELECT id, type, title, sort_order, url, channel_id, path, max_depth FROM sources ORDER BY sort_order ASC, title ASC'
+        );
+      }
       const sourceIds = new Set(sources.map((s: any) => s.id));
 
       // Filter favorites where sourceId doesn't exist in sources
@@ -1464,14 +1457,22 @@ export function registerFavoritesHandlers() {
   ipcMain.handle('favorites:clear-unavailable', async () => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
-      const sourcesPath = AppPaths.getConfigPath('videoSources.json');
 
       if (!fs.existsSync(favoritesPath)) {
         return { success: true, count: 0 };
       }
 
       const favorites = JSON.parse(fs.readFileSync(favoritesPath, 'utf8'));
-      const sources = fs.existsSync(sourcesPath) ? JSON.parse(fs.readFileSync(sourcesPath, 'utf8')) : [];
+      // Use DB for sources, JSON only for migration. If needed, fetch sources from DB here.
+      const DatabaseService = await import('../services/DatabaseService');
+      const dbService = DatabaseService.default.getInstance();
+      const status = await dbService.getHealthStatus();
+      let sources = [];
+      if (dbService && status.initialized) {
+        sources = await dbService.all<any>(
+          'SELECT id, type, title, sort_order, url, channel_id, path, max_depth FROM sources ORDER BY sort_order ASC, title ASC'
+        );
+      }
       const sourceIds = new Set(sources.map((s: any) => s.id));
 
       // Keep only favorites with valid sourceIds
