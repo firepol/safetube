@@ -169,12 +169,6 @@ contextBridge.exposeInMainWorld(
     favoritesSyncWatchHistory: () => ipcRenderer.invoke('favorites:sync-watch-history'),
     favoritesGetUnavailable: () => ipcRenderer.invoke('favorites:get-unavailable'),
     favoritesClearUnavailable: () => ipcRenderer.invoke('favorites:clear-unavailable'),
-    // App paths
-    getCacheDir: () => ipcRenderer.invoke('app-paths:get-cache-dir'),
-    getCacheDirSync: () => ipcRenderer.sendSync('app-paths:get-cache-dir-sync'),
-    getCachePath: (filename: string) => ipcRenderer.invoke('app-paths:get-cache-path', filename),
-    getCachePathSync: (filename: string) => ipcRenderer.sendSync('app-paths:get-cache-path-sync', filename),
-
     // Path utilities for cross-platform compatibility
     pathJoin: (...paths: string[]) => ipcRenderer.invoke('path-join', ...paths)
   }

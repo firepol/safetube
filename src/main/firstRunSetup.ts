@@ -62,17 +62,11 @@ export class FirstRunSetup {
   private static async createDirectories(result: SetupResult): Promise<void> {
     try {
       const configDir = AppPaths.getConfigDir();
-      const cacheDir = AppPaths.getCacheDir();
       const logsDir = AppPaths.getLogsDir();
 
       // Create config directory
       if (!await this.ensureDirectoryExists(configDir)) {
         result.createdDirs.push(configDir);
-      }
-
-      // Create cache directory
-      if (!await this.ensureDirectoryExists(cacheDir)) {
-        result.createdDirs.push(cacheDir);
       }
 
       // Create logs directory

@@ -861,45 +861,6 @@ export function registerSystemHandlers() {
       throw error;
     }
   });
-
-  // App paths handlers
-  ipcMain.handle('app-paths:get-cache-dir', async () => {
-    try {
-      return AppPaths.getCacheDir();
-    } catch (error) {
-      log.error('[IPC] Error getting cache directory:', error);
-      throw error;
-    }
-  });
-
-  // Synchronous cache directory handler for immediate access
-  ipcMain.on('app-paths:get-cache-dir-sync', (event) => {
-    try {
-      event.returnValue = AppPaths.getCacheDir();
-    } catch (error) {
-      log.error('[IPC] Error getting cache directory synchronously:', error);
-      event.returnValue = null;
-    }
-  });
-
-  ipcMain.handle('app-paths:get-cache-path', async (_, filename: string) => {
-    try {
-      return AppPaths.getCachePath(filename);
-    } catch (error) {
-      log.error('[IPC] Error getting cache path:', error);
-      throw error;
-    }
-  });
-
-  // Synchronous cache path handler for immediate access
-  ipcMain.on('app-paths:get-cache-path-sync', (event, filename: string) => {
-    try {
-      event.returnValue = AppPaths.getCachePath(filename);
-    } catch (error) {
-      log.error('[IPC] Error getting cache path synchronously:', error);
-      event.returnValue = null;
-    }
-  });
 }
 
 // Download Handlers
