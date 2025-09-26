@@ -17,10 +17,80 @@ export class YouTubePageCache {
   static async getCachedPage(sourceId: string, pageNumber: number): Promise<CachedYouTubePage | null> {
     try {
       if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+        // Renderer process: use IPC
         const result = await (window as any).electron.invoke('youtube-cache:get-page', sourceId, pageNumber);
         if (result && result.videos) {
           logVerbose(`[YouTubePageCache] Using database cache for ${sourceId} page ${pageNumber}`);
           return result;
+        }
+      } else if (typeof process !== 'undefined' && process.type === 'browser') {
+        // Main process: use direct database access
+        try {
+          const { DatabaseService } = await import('../main/services/DatabaseService');
+          const dbService = DatabaseService.getInstance();
+
+          // Calculate page range for the query
+          const pageSize = 50;
+          const start = (pageNumber - 1) * pageSize + 1;
+          const end = start + pageSize - 1;
+          const pageRange = `${start}-${end}`;
+
+          // Query all video info for this page range
+          const rows = await dbService.all<any>(
+            `SELECT v.id, v.title, v.published_at, v.thumbnail, v.duration, v.url, v.is_available, v.description, y.position, y.fetch_timestamp
+             FROM youtube_api_results y
+             JOIN videos v ON y.video_id = v.id
+             WHERE y.source_id = ? AND y.page_range = ?
+             ORDER BY y.position ASC`,
+            [sourceId, pageRange]
+          );
+
+          if (!rows || rows.length === 0) {
+            return null;
+          }
+
+          // Compose the CachedYouTubePage object
+          const videos = rows.map(r => ({
+            id: r.id,
+            title: r.title,
+            publishedAt: r.published_at,
+            thumbnail: r.thumbnail,
+            duration: r.duration,
+            url: r.url,
+            isAvailable: r.is_available,
+            description: r.description
+          }));
+
+          const fetchTimestamps = rows.map(r => new Date(r.fetch_timestamp).getTime());
+          const timestamp = fetchTimestamps.length > 0 ? Math.max(...fetchTimestamps) : Date.now();
+
+          // Fetch totalResults for the source
+          const totalResultsRow = await dbService.get<{ count: number }>(
+            `SELECT COUNT(*) as count FROM youtube_api_results WHERE source_id = ?`,
+            [sourceId]
+          );
+          const totalResults = totalResultsRow?.count || 0;
+
+          // Fetch sourceType from sources table
+          const sourceRow = await dbService.get<{ type: string }>(
+            `SELECT type FROM sources WHERE id = ?`,
+            [sourceId]
+          );
+          const sourceType = sourceRow?.type || 'youtube_channel';
+
+          logVerbose(`[YouTubePageCache] Using database cache for ${sourceId} page ${pageNumber} (main process)`);
+
+          return {
+            videos,
+            pageNumber,
+            totalResults,
+            timestamp,
+            sourceId,
+            sourceType: sourceType as 'youtube_channel' | 'youtube_playlist'
+          };
+        } catch (error) {
+          logVerbose(`[YouTubePageCache] Error reading database cache in main process: ${error}`);
+          return null;
         }
       }
     } catch (error) {
