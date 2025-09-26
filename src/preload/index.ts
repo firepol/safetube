@@ -11,6 +11,8 @@ import { contextBridge, ipcRenderer } from 'electron';
 contextBridge.exposeInMainWorld(
   'electron',
   {
+    // Generic invoke for DatabaseClient and other advanced usage
+    invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
     getLocalFile: (filePath: string) => ipcRenderer.invoke('get-local-file', filePath),
     getDlnaFile: (server: string, port: number, path: string) => 
       ipcRenderer.invoke('get-dlna-file', server, port, path),

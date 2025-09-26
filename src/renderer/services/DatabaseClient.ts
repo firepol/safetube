@@ -479,7 +479,6 @@ export class DatabaseClient {
       const response = await (window.electron as any).invoke('database:sources:update', sourceId, updates) as DatabaseResponse<boolean>;
 
       if (response.success) {
-        logVerbose('[DatabaseClient] Updated source:', sourceId);
         return response.data || false;
       } else {
         logVerbose('[DatabaseClient] Update source failed:', response.error);

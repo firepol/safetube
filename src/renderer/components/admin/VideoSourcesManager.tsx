@@ -3,8 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { VideoSourceForm } from './VideoSourceForm';
 import { VideoSourceList } from './VideoSourceList';
 import { SourceValidationService } from '../../services/sourceValidationService';
-
 import { VideoSource, VideoSourceFormData, VideoSourceManagementState } from '@/shared/types';
+import { DatabaseClient } from '@/renderer/services/DatabaseClient';
 
 export const VideoSourcesManager: React.FC = () => {
   const [state, setState] = useState<VideoSourceManagementState>({
@@ -69,11 +69,13 @@ export const VideoSourcesManager: React.FC = () => {
     }
 
     try {
+      // Remove from DB
+      await DatabaseClient.deleteSource(sourceId);
+      // Remove from local state
       const updatedSources = state.sources.filter(s => s.id !== sourceId);
-      await window.electron.videoSourcesSaveAll(updatedSources);
+      // Reassign sort_order and persist
+      await persistSortOrder(updatedSources);
       setState(prev => ({ ...prev, sources: updatedSources }));
-
-      // Clear source validation cache to immediately reflect the deleted source
       SourceValidationService.clearCache();
     } catch (error) {
       console.error('Error deleting video source:', error);
@@ -94,8 +96,8 @@ export const VideoSourcesManager: React.FC = () => {
     try {
       const updatedSources = [...state.sources];
       [updatedSources[currentIndex], updatedSources[newIndex]] = [updatedSources[newIndex], updatedSources[currentIndex]];
-      
-      await window.electron.videoSourcesSaveAll(updatedSources);
+      // Reassign sort_order and persist
+      await persistSortOrder(updatedSources);
       setState(prev => ({ ...prev, sources: updatedSources }));
     } catch (error) {
       console.error('Error moving video source:', error);
@@ -103,6 +105,18 @@ export const VideoSourcesManager: React.FC = () => {
         ...prev, 
         error: 'Failed to move video source' 
       }));
+    }
+  };
+
+  // Helper to reassign and persist sort_order for all sources
+  const persistSortOrder = async (sources: VideoSource[]) => {
+    for (let i = 0; i < sources.length; i++) {
+      const s = sources[i];
+      // Only update if sort_order is different or missing (assume undefined for new/migrated sources)
+      if ((s as any).sort_order !== i + 1) {
+        await DatabaseClient.updateSource(s.id, { sort_order: i + 1 });
+        // Do not assign to s.sort_order, keep UI type clean
+      }
     }
   };
 
