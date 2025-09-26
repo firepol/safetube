@@ -707,14 +707,21 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       log.warn('[Main] Could not read mainSettings for pagination:', error);
     }
 
-    // Read source configuration directly (don't load all videos)
-    let sources = [];
+    // Fetch source from database
+    let source = null;
     try {
-      const sourcesPath = AppPaths.getConfigPath('videoSources.json');
-      const sourcesData = fs.readFileSync(sourcesPath, 'utf-8');
-      sources = JSON.parse(sourcesData);
+  const DatabaseService = (await import('./services/DatabaseService')).DatabaseService;
+  const dbService = DatabaseService.getInstance();
+      source = await dbService.get(
+        'SELECT * FROM sources WHERE id = ?',
+        [sourceId]
+      );
+      if (!source) {
+        log.error('[Main] Source not found in database:', sourceId);
+        throw new Error('Source not found');
+      }
     } catch (error) {
-      log.error('[Main] Error reading videoSources.json:', error);
+      log.error('[Main] Error reading source from database:', error);
       throw new Error('Failed to read video sources configuration');
     }
 
@@ -1037,13 +1044,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       }
     }
 
-    // Find the specific source
-    const source = sources.find((s: any) => s.id === sourceId);
-    if (!source) {
-      log.error('[Main] Source not found:', sourceId);
-      log.error('[Main] Available sources:', sources.map((s: any) => ({ id: s.id, type: s.type, title: s.title })));
-      throw new Error('Source not found');
-    }
+
 
 
     // For local sources, use local video scanner with pagination
