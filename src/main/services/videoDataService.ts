@@ -136,17 +136,19 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
           YouTubeAPI.setApiKey(apiKey);
           await YouTubeAPI.loadCacheConfig();
           logVerbose('[VideoDataService] YouTube API configured for source:', source.id);
-          cache = await CachedYouTubeSources.loadSourceVideos(source);
+          // Use basic info only for initial load to save API calls
+          cache = await CachedYouTubeSources.loadSourceBasicInfo(source);
         } else {
           log.warn('[VideoDataService] No API key provided for YouTube source:', source.id);
-          // Try to load from cache without API key (cache-only mode)
-          cache = await CachedYouTubeSources.loadSourceVideos(source);
+          // Try to load basic info from cache without API key (cache-only mode)
+          cache = await CachedYouTubeSources.loadSourceBasicInfo(source);
         }
 
-        logVerbose('[VideoDataService] Cache loaded for source:', source.id, 'videos:', cache.videos?.length || 0, 'cached:', cache.usingCachedData);
+        logVerbose('[VideoDataService] Basic info loaded for source:', source.id, 'total videos:', cache.totalVideos || 0, 'cached videos:', cache.videos?.length || 0);
 
-        // Add source metadata to each video for global.currentVideos compatibility
-        const videosWithMetadata = cache.videos.map((video: any) => ({
+        // For initial load, we only get basic source info (no videos fetched from API)
+        // Videos will be loaded on-demand when user clicks the source
+        const videosWithMetadata = (cache.videos || []).map((video: any) => ({
           ...video,
           type: 'youtube',  // PlayerRouter expects this for YouTube videos
           sourceId: source.id,
@@ -416,4 +418,98 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
   }
 
   return { videosBySource };
+}
+
+// Load videos for a specific source (called when user clicks on a source)
+export async function loadVideosForSpecificSource(sourceId: string, apiKey?: string | null) {
+  try {
+    const DatabaseService = await import('./DatabaseService');
+    const dbService = DatabaseService.default.getInstance();
+    const healthStatus = await dbService.getHealthStatus();
+
+    if (!healthStatus.initialized) {
+      throw new Error('Database not initialized');
+    }
+
+    // Get the specific source from database
+    const sourceRow = await dbService.get<any>(`
+      SELECT id, type, title, sort_order, url, channel_id, path, max_depth
+      FROM sources
+      WHERE id = ?
+    `, [sourceId]);
+
+    if (!sourceRow) {
+      throw new Error(`Source not found: ${sourceId}`);
+    }
+
+    const source = {
+      id: sourceRow.id,
+      type: sourceRow.type,
+      title: sourceRow.title,
+      sortOrder: sourceRow.sort_order || 'newestFirst',
+      url: sourceRow.url,
+      channelId: sourceRow.channel_id,
+      path: sourceRow.path,
+      maxDepth: sourceRow.max_depth
+    };
+
+    if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
+      const { CachedYouTubeSources } = await import('../../preload/cached-youtube-sources');
+
+      let cache;
+      if (apiKey) {
+        const { YouTubeAPI } = await import('../../preload/youtube');
+        YouTubeAPI.setApiKey(apiKey);
+        await YouTubeAPI.loadCacheConfig();
+        logVerbose('[VideoDataService] Loading videos for source:', source.id);
+        cache = await CachedYouTubeSources.loadSourceVideos(source);
+      } else {
+        log.warn('[VideoDataService] No API key provided for YouTube source:', source.id);
+        cache = await CachedYouTubeSources.loadSourceVideos(source);
+      }
+
+      const videosWithMetadata = cache.videos.map((video: any) => ({
+        ...video,
+        type: 'youtube',
+        sourceId: source.id,
+        sourceType: source.type,
+        sourceTitle: source.title
+      }));
+
+      // Write new videos to database if fetched from API
+      if (cache.fetchedNewData && videosWithMetadata.length > 0) {
+        try {
+          logVerbose('[VideoDataService] Writing', videosWithMetadata.length, 'new videos to database for source:', source.id);
+          await writeVideosToDatabase(videosWithMetadata);
+        } catch (dbError) {
+          log.error('[VideoDataService] Warning: Could not write videos to database for source:', source.id, dbError);
+        }
+      }
+
+      return {
+        source: {
+          id: source.id,
+          type: source.type,
+          title: cache.title || source.title,
+          thumbnail: cache.thumbnail || '',
+          videoCount: cache.totalVideos || cache.videos.length,
+          videos: videosWithMetadata,
+          paginationState: {
+            currentPage: 1,
+            totalPages: Math.ceil((cache.totalVideos || cache.videos.length) / 50),
+            totalVideos: cache.totalVideos || cache.videos.length,
+            pageSize: 50
+          },
+          usingCachedData: cache.usingCachedData,
+          fetchedNewData: cache.fetchedNewData || false
+        }
+      };
+    } else {
+      throw new Error(`Unsupported source type for video loading: ${source.type}`);
+    }
+
+  } catch (error) {
+    log.error('[VideoDataService] Error loading videos for source:', sourceId, error);
+    throw error;
+  }
 }
