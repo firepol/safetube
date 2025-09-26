@@ -24,134 +24,17 @@ interface LocalVideoItem {
   relativePath: string;
 }
 
-// Cache directory will be retrieved from main process via IPC, with fallback
-let CACHE_DIR: string | null = null;
-let CACHE_DIR_INITIALIZED = false;
-
-function getCacheDir(): string {
-  if (!CACHE_DIR_INITIALIZED) {
-    try {
-      // Try to get proper cache directory from main process synchronously first
-      if (typeof window !== 'undefined' && (window as any).electron?.getCacheDirSync) {
-        try {
-          const syncCacheDir = (window as any).electron.getCacheDirSync();
-          if (syncCacheDir) {
-            CACHE_DIR = syncCacheDir;
-            logVerbose(`[LocalVideoScanner] Got cache directory synchronously: ${syncCacheDir}`);
-          }
-        } catch (error) {
-          console.warn('[LocalVideoScanner] Failed to get cache directory synchronously:', error);
-        }
-      }
-
-      // If sync didn't work, try async as fallback
-      if (!CACHE_DIR && typeof window !== 'undefined' && (window as any).electron?.getCacheDir) {
-        try {
-          (window as any).electron.getCacheDir().then((cacheDir: string) => {
-            CACHE_DIR = cacheDir;
-            logVerbose(`[LocalVideoScanner] Updated cache directory asynchronously: ${cacheDir}`);
-          }).catch((error: any) => {
-            console.warn('[LocalVideoScanner] Failed to get cache directory asynchronously:', error);
-          });
-        } catch (error) {
-          console.warn('[LocalVideoScanner] Failed to call getCacheDir IPC:', error);
-        }
-      }
-
-      // Use fallback only if both sync and async failed
-      if (!CACHE_DIR) {
-        // In production, try to use a better fallback than current working directory
-        const isProduction = process.env.NODE_ENV !== 'development';
-        if (isProduction && typeof process !== 'undefined' && process.platform === 'win32') {
-          // On Windows production, try to use APPDATA if available
-          const appData = process.env.APPDATA || process.env.USERPROFILE;
-          if (appData) {
-            CACHE_DIR = path.join(appData, 'safetube', '.cache');
-            logVerbose(`[LocalVideoScanner] Using Windows production fallback cache directory: ${CACHE_DIR}`);
-          } else {
-            CACHE_DIR = path.join('.', '.cache');
-            logVerbose(`[LocalVideoScanner] Using default fallback cache directory: ${CACHE_DIR}`);
-          }
-        } else {
-          CACHE_DIR = path.join('.', '.cache');
-          logVerbose(`[LocalVideoScanner] Using fallback cache directory: ${CACHE_DIR}`);
-        }
-      }
-
-      CACHE_DIR_INITIALIZED = true;
-    } catch (error) {
-      console.warn('[LocalVideoScanner] Failed to initialize cache directory:', error);
-      CACHE_DIR = path.join('.', '.cache');
-    }
-  }
-  return CACHE_DIR!;
-}
 const VIDEO_EXTENSIONS = ['.mp4', '.mkv', '.webm', '.avi', '.mov', '.m4v'];
 const THUMBNAIL_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp', '.gif'];
 
 export class LocalVideoScanner {
-  /**
-   * Get cache file path for a local source
-   */
-  static getCacheFilePath(sourceId: string): string {
-    const cacheDir = getCacheDir();
-    return path.join(cacheDir, `local-videos-${sourceId}.json`);
-  }
+
+
 
   /**
-   * Check if cached scan is valid based on configuration
-   */
-  static isCacheValid(cacheData: LocalVideoScanResult): boolean {
-    if (!cacheData || !cacheData.scannedAt) return false;
-
-    const age = Date.now() - cacheData.scannedAt;
-
-    // Load cache duration from pagination config
-    let cacheDurationMs = 30 * 60 * 1000; // 30 minutes default
-    try {
-      const configPath = path.join('.', 'config', 'pagination.json');
-      if (fs.existsSync(configPath)) {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-        cacheDurationMs = (config.cacheDurationMinutes || 30) * 60 * 1000;
-      }
-    } catch (error) {
-      console.warn('[LocalVideoScanner] Failed to load cache duration config:', error);
-    }
-
-    return age < cacheDurationMs;
-  }
-
-  /**
-   * Get cached scan result if valid
-   */
-  static getCachedScan(sourceId: string): LocalVideoScanResult | null {
-    try {
-      const cacheFile = this.getCacheFilePath(sourceId);
-      if (fs.existsSync(cacheFile)) {
-        const cacheData = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
-        if (this.isCacheValid(cacheData)) {
-          logVerbose(`[LocalVideoScanner] Using valid cache for local source ${sourceId}`);
-          return cacheData;
-        } else {
-          logVerbose(`[LocalVideoScanner] Cache expired for local source ${sourceId}`);
-        }
-      }
-    } catch (e) {
-      console.warn(`[LocalVideoScanner] Error reading cache for local source ${sourceId}:`, e);
-    }
-    return null;
-  }
-
-  /**
-   * Scan a local folder for video files
+   * Scan a local folder for video files (no caching - dynamic scanning)
    */
   static async scanFolder(sourceId: string, sourcePath: string, maxDepth: number = 3): Promise<LocalVideoScanResult> {
-    // Check cache first
-    const cachedScan = this.getCachedScan(sourceId);
-    if (cachedScan) {
-      return cachedScan;
-    }
-
     logVerbose(`[LocalVideoScanner] Scanning local folder for ${sourceId}: ${sourcePath}`);
 
     const videos: LocalVideoItem[] = [];
@@ -164,9 +47,6 @@ export class LocalVideoScanner {
       sourceId,
       sourcePath
     };
-
-    // Cache the result
-    this.cacheScanResult(result);
 
     logVerbose(`[LocalVideoScanner] Found ${videos.length} videos in ${sourceId}`);
     return result;
@@ -305,39 +185,7 @@ export class LocalVideoScanner {
     return enhanced;
   }
 
-  /**
-   * Cache scan result to disk
-   */
-  private static cacheScanResult(result: LocalVideoScanResult): void {
-    try {
-      // Ensure cache directory exists
-      const cacheDir = getCacheDir();
-      if (!fs.existsSync(cacheDir)) {
-        fs.mkdirSync(cacheDir, { recursive: true });
-      }
 
-      const cacheFile = this.getCacheFilePath(result.sourceId);
-      fs.writeFileSync(cacheFile, JSON.stringify(result, null, 2), 'utf-8');
-      logVerbose(`[LocalVideoScanner] Cached scan result for ${result.sourceId} (${result.totalVideos} videos)`);
-    } catch (e) {
-      console.warn(`[LocalVideoScanner] Error caching scan result for ${result.sourceId}:`, e);
-    }
-  }
-
-  /**
-   * Clear cached scan for a specific source
-   */
-  static clearCache(sourceId: string): void {
-    try {
-      const cacheFile = this.getCacheFilePath(sourceId);
-      if (fs.existsSync(cacheFile)) {
-        fs.unlinkSync(cacheFile);
-        logVerbose(`[LocalVideoScanner] Cleared cache for local source ${sourceId}`);
-      }
-    } catch (error) {
-      console.warn(`[LocalVideoScanner] Error clearing cache for local source ${sourceId}:`, error);
-    }
-  }
 
   /**
    * Get paginated videos from scan result

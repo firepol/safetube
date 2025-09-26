@@ -3,11 +3,9 @@
 
 export interface AppPathsInterface {
   getConfigDir(): string;
-  getCacheDir(): string;
   getLogsDir(): string;
   getUserDataDir(): string;
   isDev(): boolean;
   getConfigPath(filename: string): string;
-  getCachePath(filename: string): string;
   getLogPath(filename: string): string;
 }

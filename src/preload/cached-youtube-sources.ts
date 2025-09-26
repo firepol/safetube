@@ -1,7 +1,5 @@
 import { YouTubeAPI } from './youtube';
 import { YouTubeSourceCache, VideoSource } from './types';
-import fs from 'fs';
-import path from 'path';
 import { logVerbose } from './logging';
 
 /**
@@ -21,72 +19,24 @@ async function writeCacheToDatabase(sourceId: string, cache: YouTubeSourceCache)
   }
 }
 
-// Cache directory will be retrieved from main process via IPC, with fallback
-let CACHE_DIR: string | null = null;
-let CACHE_DIR_INITIALIZED = false;
-
-function getCacheDir(): string {
-  if (!CACHE_DIR_INITIALIZED) {
-    try {
-      // Try to get proper cache directory from main process synchronously first
-      if (typeof window !== 'undefined' && (window as any).electron?.getCacheDirSync) {
-        try {
-          const syncCacheDir = (window as any).electron.getCacheDirSync();
-          if (syncCacheDir) {
-            CACHE_DIR = syncCacheDir;
-            logVerbose(`[CachedYouTubeSources] Got cache directory synchronously: ${syncCacheDir}`);
-          }
-        } catch (error) {
-          console.warn('[CachedYouTubeSources] Failed to get cache directory synchronously:', error);
-        }
+/**
+ * Load YouTube cache from database
+ */
+async function loadCacheFromDatabase(sourceId: string): Promise<YouTubeSourceCache | null> {
+  try {
+    if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+      const result = await (window as any).electron.invoke('youtube-cache:get', sourceId);
+      if (result && result.cache_data) {
+        const cache = JSON.parse(result.cache_data);
+        logVerbose(`[CachedYouTubeSources] Loaded cache for ${sourceId} from database`);
+        return cache;
       }
-
-      // If sync didn't work, try async as fallback
-      if (!CACHE_DIR && typeof window !== 'undefined' && (window as any).electron?.getCacheDir) {
-        try {
-          (window as any).electron.getCacheDir().then((cacheDir: string) => {
-            CACHE_DIR = cacheDir;
-            logVerbose(`[CachedYouTubeSources] Updated cache directory asynchronously: ${cacheDir}`);
-          }).catch((error: any) => {
-            console.warn('[CachedYouTubeSources] Failed to get cache directory asynchronously:', error);
-          });
-        } catch (error) {
-          console.warn('[CachedYouTubeSources] Failed to call getCacheDir IPC:', error);
-        }
-      }
-
-      // Use fallback only if both sync and async failed
-      if (!CACHE_DIR) {
-        // In production, try to use a better fallback than current working directory
-        const isProduction = process.env.NODE_ENV !== 'development';
-        if (isProduction && typeof process !== 'undefined' && process.platform === 'win32') {
-          // On Windows production, try to use APPDATA if available
-          const appData = process.env.APPDATA || process.env.USERPROFILE;
-          if (appData) {
-            CACHE_DIR = path.join(appData, 'safetube', '.cache');
-            logVerbose(`[CachedYouTubeSources] Using Windows production fallback cache directory: ${CACHE_DIR}`);
-          } else {
-            CACHE_DIR = path.join('.', '.cache');
-            logVerbose(`[CachedYouTubeSources] Using default fallback cache directory: ${CACHE_DIR}`);
-          }
-        } else {
-          CACHE_DIR = path.join('.', '.cache');
-          logVerbose(`[CachedYouTubeSources] Using fallback cache directory: ${CACHE_DIR}`);
-        }
-      }
-
-      CACHE_DIR_INITIALIZED = true;
-    } catch (error) {
-      console.warn('[CachedYouTubeSources] Failed to initialize cache directory:', error);
-      CACHE_DIR = path.join('.', '.cache');
     }
+    return null;
+  } catch (error) {
+    logVerbose(`[CachedYouTubeSources] Error loading cache from database: ${error}`);
+    return null;
   }
-  return CACHE_DIR!;
-}
-
-function getCacheFilePath(sourceId: string): string {
-  const cacheDir = getCacheDir();
-  return path.join(cacheDir, `youtube-${sourceId}.json`);
 }
 
 export class CachedYouTubeSources {
@@ -95,48 +45,8 @@ export class CachedYouTubeSources {
       throw new Error('Invalid source type for YouTube cache');
     }
 
-    // Try to use database for caching, fallback to file system
-    let cache: YouTubeSourceCache | null = null;
-    let useDatabaseCache = false;
-
-    // Try database first
-    try {
-      if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
-        // Check if we have cached results in database
-        const dbResponse = await (window as any).electron.invoke('database:youtube-cache:get-cached-results', source.id, 1);
-        if (dbResponse && dbResponse.success && dbResponse.data && dbResponse.data.length > 0) {
-          // We have some cached data, construct a basic cache object
-          cache = {
-            sourceId: source.id,
-            type: source.type,
-            videos: [], // Will be populated by loadSourceVideos
-            totalVideos: dbResponse.data.length,
-            lastFetched: new Date().toISOString(), // We'll use current time as approximation
-            thumbnail: '',
-            title: source.title
-          };
-          useDatabaseCache = true;
-          logVerbose(`[CachedYouTubeSources] Found ${dbResponse.data.length} cached videos in database for source: ${source.id}`);
-        }
-      }
-    } catch (error) {
-      logVerbose(`[CachedYouTubeSources] Failed to check database cache for source ${source.id}: ${error}`);
-    }
-
-    // Fallback to file system cache if database not available
-    if (!cache) {
-      const cacheDir = getCacheDir();
-      if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-      const cacheFile = getCacheFilePath(source.id);
-      if (fs.existsSync(cacheFile)) {
-        try {
-          cache = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
-          logVerbose(`[CachedYouTubeSources] Using file system cache for source: ${source.id}`);
-        } catch (e) {
-          cache = null;
-        }
-      }
-    }
+    // Load cache from database
+    let cache = await loadCacheFromDatabase(source.id);
 
     const now = new Date().toISOString();
     let totalVideos = 0;
@@ -144,24 +54,13 @@ export class CachedYouTubeSources {
     let sourceTitle = source.title;
     let usingCachedData = false;
 
-    // Ensure we have cacheFile for fallback file writes
-    const cacheFile = getCacheFilePath(source.id);
 
     // Check if cache is still valid
     if (cache && cache.lastFetched) {
       const cacheAge = Date.now() - new Date(cache.lastFetched).getTime();
 
-      // Load cache duration from pagination config
-      let cacheDurationMs = 90 * 60 * 1000; // 90 minutes default
-      try {
-        const configPath = 'config/pagination.json';
-        if (fs.existsSync(configPath)) {
-          const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-          cacheDurationMs = (config.cacheDurationMinutes || 90) * 60 * 1000;
-        }
-      } catch (error) {
-        console.warn('[CachedYouTubeSources] Failed to load cache duration config:', error);
-      }
+      // Default cache duration - 90 minutes
+      const cacheDurationMs = 90 * 60 * 1000;
 
       if (cacheAge < cacheDurationMs) {
         logVerbose(`[CachedYouTubeSources] Using valid cache for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes)`);
@@ -228,14 +127,12 @@ export class CachedYouTubeSources {
       usingCachedData
     };
 
-    fs.writeFileSync(cacheFile, JSON.stringify(updatedCache, null, 2), 'utf-8');
-
-    // Also write to database
+    // Write to database
     try {
       await writeCacheToDatabase(source.id, updatedCache);
     } catch (dbError) {
       logVerbose(`[CachedYouTubeSources] Warning: Could not write basic info cache to database: ${dbError}`);
-      // Continue - file cache is still available
+      throw dbError;
     }
 
     return updatedCache;
@@ -245,17 +142,9 @@ export class CachedYouTubeSources {
     if (source.type !== 'youtube_channel' && source.type !== 'youtube_playlist') {
       throw new Error('Invalid source type for YouTube cache');
     }
-    const cacheDir = getCacheDir();
-    if (!fs.existsSync(cacheDir)) fs.mkdirSync(cacheDir, { recursive: true });
-    const cacheFile = getCacheFilePath(source.id);
-    let cache: YouTubeSourceCache | null = null;
-    if (fs.existsSync(cacheFile)) {
-      try {
-        cache = JSON.parse(fs.readFileSync(cacheFile, 'utf-8'));
-      } catch (e) {
-        cache = null;
-      }
-    }
+
+    // Load cache from database
+    let cache = await loadCacheFromDatabase(source.id);
     const now = new Date().toISOString();
     let newVideos: any[] = [];
     let totalVideos = 0;
@@ -265,29 +154,14 @@ export class CachedYouTubeSources {
     // Check if cache is still valid
     if (cache && cache.lastFetched) {
       const cacheAge = Date.now() - new Date(cache.lastFetched).getTime();
-      
-      // Load cache duration from pagination config
-      let cacheDurationMs = 90 * 60 * 1000; // 90 minutes default
-      try {
-        const configPath = 'config/pagination.json';
-        if (fs.existsSync(configPath)) {
-          const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-          cacheDurationMs = (config.cacheDurationMinutes || 90) * 60 * 1000;
-        }
-      } catch (error) {
-        console.warn('[CachedYouTubeSources] Failed to load cache duration config:', error);
-      }
+
+      // Default cache duration - 90 minutes
+      const cacheDurationMs = 90 * 60 * 1000;
       
       if (cacheAge < cacheDurationMs) {
         logVerbose(`[CachedYouTubeSources] Using valid cache for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes)`);
         return {
-          sourceId: source.id,
-          type: source.type,
-          lastFetched: cache.lastFetched,
-          lastVideoDate: cache.lastVideoDate,
-          videos: cache.videos,
-          totalVideos: cache.totalVideos,
-          thumbnail: cache.thumbnail,
+          ...cache,
           usingCachedData: false  // Valid cache hit, not rate-limited fallback
         };
       } else {
@@ -358,14 +232,12 @@ export class CachedYouTubeSources {
       thumbnail: sourceThumbnail,
       usingCachedData // This flag indicates if we're using cached data as fallback (API failed)
     };
-    fs.writeFileSync(cacheFile, JSON.stringify(updatedCache, null, 2), 'utf-8');
-
-    // Also write to database
+    // Write to database
     try {
       await writeCacheToDatabase(source.id, updatedCache);
     } catch (dbError) {
       logVerbose(`[CachedYouTubeSources] Warning: Could not write videos cache to database: ${dbError}`);
-      // Continue - file cache is still available
+      throw dbError;
     }
 
     return updatedCache;
