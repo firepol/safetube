@@ -21,13 +21,13 @@ async function writeFavoriteToDatabase(metadata: VideoMetadata, operation: 'add'
           added_at, video_type
         ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)
       `, [
-        metadata.id,
-        metadata.title || '',
-        metadata.thumbnail || '',
-        metadata.duration || 0,
-        metadata.sourceId || '',
-        metadata.sourceType || metadata.type,
-        metadata.type || 'unknown'
+  metadata.id,
+  metadata.title || '',
+  metadata.thumbnail || '',
+  metadata.duration || 0,
+  metadata.source || '',
+  '', // source_type not present in VideoMetadata, leave empty or adjust as needed
+  metadata.type || 'unknown'
       ]);
 
       console.log(`[FileUtils] Added favorite ${metadata.id} to database`);

@@ -25,7 +25,7 @@ export class YouTubePageFetcher {
     logVerbose(`[YouTubePageFetcher] Fetching page ${pageNumber} for ${sourceId} (${source.type})`);
 
     // Check for valid cache first
-    const cachedPage = YouTubePageCache.getCachedPage(sourceId, pageNumber);
+    const cachedPage = await YouTubePageCache.getCachedPage(sourceId, pageNumber);
     if (cachedPage) {
       return {
         videos: cachedPage.videos,
@@ -78,7 +78,7 @@ export class YouTubePageFetcher {
       console.warn(`[YouTubePageFetcher] YouTube API failed for ${sourceId} page ${pageNumber}:`, error);
 
       // API failed, try to use expired cache as fallback
-      const fallbackCache = YouTubePageCache.getCachedPageFallback(sourceId, pageNumber);
+      const fallbackCache = await YouTubePageCache.getCachedPageFallback(sourceId, pageNumber);
       if (fallbackCache) {
         logVerbose(`[YouTubePageFetcher] Using expired cache as fallback for ${sourceId} page ${pageNumber}`);
         return {
