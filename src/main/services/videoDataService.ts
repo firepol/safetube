@@ -24,8 +24,8 @@ async function writeVideosToDatabase(videos: any[]): Promise<void> {
           // Insert new video
           await dbService.run(`
             INSERT OR REPLACE INTO videos (
-              id, title, thumbnail, duration, source_id, source_type,
-              url, type, created_at, updated_at
+              id, title, thumbnail, duration, source_id,
+              url, published_at, description, created_at, updated_at
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
           `, [
             video.id,
@@ -33,22 +33,24 @@ async function writeVideosToDatabase(videos: any[]): Promise<void> {
             video.thumbnail || '',
             video.duration || 0,
             video.sourceId || '',
-            video.sourceType || video.type,
             video.url || '',
-            video.type || 'unknown'
+            video.publishedAt || video.published_at || null,
+            video.description || null
           ]);
         } else {
           // Update existing video metadata
           await dbService.run(`
             UPDATE videos SET
-              title = ?, thumbnail = ?, duration = ?,
-              url = ?, updated_at = datetime('now')
+              title = ?, thumbnail = ?, duration = ?, url = ?,
+              published_at = ?, description = ?, updated_at = datetime('now')
             WHERE id = ?
           `, [
             video.title || '',
             video.thumbnail || '',
             video.duration || 0,
             video.url || '',
+            video.publishedAt || video.published_at || null,
+            video.description || null,
             video.id
           ]);
         }
