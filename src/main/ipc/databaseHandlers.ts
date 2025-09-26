@@ -51,6 +51,8 @@ interface SourceRecord {
   channel_id?: string;
   path?: string;
   max_depth?: number;
+  thumbnail?: string;
+  total_videos?: number;
 }
 
 /**
@@ -603,7 +605,7 @@ export function registerDatabaseHandlers() {
   ipcMain.handle('database:sources:create', async (_, source: Omit<SourceRecord, 'id'>): Promise<DatabaseResponse<string>> => {
     try {
       const dbService = DatabaseService.getInstance();
-      const sourceId = `source_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const sourceId = `source_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
       await dbService.run(`
         INSERT INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth, thumbnail, total_videos)
@@ -784,17 +786,38 @@ export function registerDatabaseHandlers() {
     try {
       const dbService = DatabaseService.getInstance();
 
-      // Save the complete cache object to youtube_api_results table
+      // Clear existing cache entries for this source
       await dbService.run(`
-        INSERT OR REPLACE INTO youtube_api_results (
-          source_id, page_number, video_ids, fetched_at, cache_data
-        ) VALUES (?, ?, ?, datetime('now'), ?)
-      `, [
-        sourceId,
-        1, // Use page 1 for complete cache
-        JSON.stringify(cache.videos?.map((v: any) => v.id) || []),
-        JSON.stringify(cache)
-      ]);
+        DELETE FROM youtube_api_results WHERE source_id = ?
+      `, [sourceId]);
+
+      // Save individual video entries to youtube_api_results table
+      if (cache.videos && Array.isArray(cache.videos) && cache.videos.length > 0) {
+        const pageSize = 50;
+        const queries = cache.videos.map((video: any, index: number) => {
+          const pageNumber = Math.floor(index / pageSize) + 1;
+          const pageStart = (pageNumber - 1) * pageSize + 1;
+          const pageEnd = pageStart + pageSize - 1;
+          const pageRange = `${pageStart}-${pageEnd}`;
+
+          return {
+            sql: `INSERT INTO youtube_api_results (
+              source_id, video_id, position, page_range, fetch_timestamp
+            ) VALUES (?, ?, ?, ?, ?)`,
+            params: [
+              sourceId,
+              video.id,
+              index + 1,
+              pageRange,
+              new Date().toISOString()
+            ]
+          };
+        });
+
+        if (queries.length > 0) {
+          await dbService.executeTransaction(queries);
+        }
+      }
 
       return {
         success: true,
