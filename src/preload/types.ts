@@ -48,6 +48,7 @@ export interface YouTubeSourceCache {
   thumbnail?: string; // Thumbnail for the source (from first video)
   title?: string; // Title for the source (from channel/playlist details)
   usingCachedData?: boolean; // Flag indicating if we're using cached data due to API failure
+  fetchedNewData?: boolean; // Flag indicating if new data was fetched from API (not cache hit)
 }
 
 // Pagination configuration

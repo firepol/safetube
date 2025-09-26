@@ -15,12 +15,14 @@ async function writeVideosToDatabase(videos: any[]): Promise<void> {
 
     for (const video of videos) {
       try {
+        logVerbose(`[VideoDataService] Checking if video exists in DB: ${video.id}`);
         // Check if video already exists
         const existing = await dbService.get(`
           SELECT id FROM videos WHERE id = ?
         `, [video.id]);
 
         if (!existing) {
+          logVerbose(`[VideoDataService] Inserting new video into DB: ${video.id}`);
           // Insert new video
           await dbService.run(`
             INSERT OR REPLACE INTO videos (
@@ -38,6 +40,7 @@ async function writeVideosToDatabase(videos: any[]): Promise<void> {
             video.description || null
           ]);
         } else {
+          logVerbose(`[VideoDataService] Updating existing video in DB: ${video.id}`);
           // Update existing video metadata
           await dbService.run(`
             UPDATE videos SET
@@ -164,7 +167,8 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
             totalVideos: cache.totalVideos || cache.videos.length,
             pageSize: 50
           },
-          usingCachedData: cache.usingCachedData
+          usingCachedData: cache.usingCachedData,
+          fetchedNewData: cache.fetchedNewData || false  // Flag to indicate if new data was fetched
         });
 
       } catch (err) {
@@ -378,9 +382,19 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
 
   // Collect all videos for global access (needed for video playback)
   const allVideos: any[] = [];
+  const newVideosToWrite: any[] = [];
+
   for (const source of videosBySource) {
     if (source.videos && source.videos.length > 0) {
       allVideos.push(...source.videos);
+
+      // Only collect videos from sources that fetched new data
+      if (source.fetchedNewData === true) {
+        newVideosToWrite.push(...source.videos);
+        logVerbose('[VideoDataService] Source', source.id, 'fetched new data, will write', source.videos.length, 'videos to DB');
+      } else {
+        logVerbose('[VideoDataService] Source', source.id, 'used cache, skipping DB write');
+      }
     }
   }
 
@@ -388,12 +402,17 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
   global.currentVideos = allVideos;
   logVerbose('[VideoDataService] Set global.currentVideos with', allVideos.length, 'videos');
 
-  // Store videos in database for persistence and search
-  try {
-    await writeVideosToDatabase(allVideos);
-  } catch (dbError) {
-    log.error('[VideoDataService] Warning: Could not write videos to database:', dbError);
-    // Continue execution - this is not critical for basic functionality
+  // Store videos in database for persistence and search - ONLY for new data
+  if (newVideosToWrite.length > 0) {
+    try {
+      logVerbose('[VideoDataService] Writing', newVideosToWrite.length, 'new videos to database (out of', allVideos.length, 'total)');
+      await writeVideosToDatabase(newVideosToWrite);
+    } catch (dbError) {
+      log.error('[VideoDataService] Warning: Could not write videos to database:', dbError);
+      // Continue execution - this is not critical for basic functionality
+    }
+  } else {
+    logVerbose('[VideoDataService] No new videos to write to database - all sources used cache');
   }
 
   return { videosBySource };

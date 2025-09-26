@@ -72,7 +72,7 @@ export class CachedYouTubeSources {
 
       if (cacheAge < cacheDurationMs) {
         logVerbose(`[CachedYouTubeSources] Using valid cache for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes)`);
-        return cache;
+        return { ...cache, fetchedNewData: false };
       } else {
         logVerbose(`[CachedYouTubeSources] Cache expired for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes), fetching fresh basic info`);
       }
@@ -114,7 +114,7 @@ export class CachedYouTubeSources {
       // Always use cached data as fallback when API fails
       if (cache) {
         logVerbose(`[CachedYouTubeSources] Using cached data as fallback for source ${source.id} (API failed)`);
-        return { ...cache, usingCachedData: true };
+        return { ...cache, usingCachedData: true, fetchedNewData: false };
       } else {
         // No cache available, create minimal fallback
         logVerbose(`[CachedYouTubeSources] Creating minimal fallback for source ${source.id} (no cache available)`);
@@ -134,7 +134,8 @@ export class CachedYouTubeSources {
       totalVideos,
       thumbnail: sourceThumbnail,
       title: sourceTitle,
-      usingCachedData
+      usingCachedData,
+      fetchedNewData: fetchedNewInfo
     };
 
     // Write to database
@@ -181,7 +182,8 @@ export class CachedYouTubeSources {
         logVerbose(`[CachedYouTubeSources] Using valid cache for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes)`);
         return {
           ...cache,
-          usingCachedData: false  // Valid cache hit, not rate-limited fallback
+          usingCachedData: false,  // Valid cache hit, not rate-limited fallback
+          fetchedNewData: false    // No new data fetched - cache hit
         };
       } else {
         logVerbose(`[CachedYouTubeSources] Cache expired for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes), fetching fresh data`);
@@ -226,6 +228,7 @@ export class CachedYouTubeSources {
         newVideos = [];
         sourceThumbnail = cache.thumbnail || '';
         usingCachedData = true;
+        fetchedNewInfo = false; // No new data when using fallback
       } else {
         // No cache available, create minimal fallback
         logVerbose(`[CachedYouTubeSources] Creating minimal fallback for source ${source.id} (no cache available)`);
@@ -251,7 +254,8 @@ export class CachedYouTubeSources {
       videos,
       totalVideos,
       thumbnail: sourceThumbnail,
-      usingCachedData // This flag indicates if we're using cached data as fallback (API failed)
+      usingCachedData, // This flag indicates if we're using cached data as fallback (API failed)
+      fetchedNewData: fetchedNewInfo // Flag to indicate if we fetched new data from API
     };
     // Write to database
     try {
