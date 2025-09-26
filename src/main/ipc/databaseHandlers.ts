@@ -58,6 +58,71 @@ interface SourceRecord {
  * Following existing SafeTube IPC handler patterns
  */
 export function registerDatabaseHandlers() {
+  // YouTube Page Cache: Get a cached page (for preload YouTubePageCache)
+  ipcMain.handle('youtube-cache:get-page', async (_, sourceId: string, pageNumber: number): Promise<DatabaseResponse<any>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      // Get page size from config or default
+      const pageSize = 50;
+      const start = (pageNumber - 1) * pageSize + 1;
+      const end = start + pageSize - 1;
+      const pageRange = `${start}-${end}`;
+
+      // Query all video info for this page range
+      const rows = await dbService.all<any>(
+        `SELECT v.id, v.title, v.published_at, v.thumbnail, v.duration, v.url, v.is_available, v.description, y.position, y.fetch_timestamp
+         FROM youtube_api_results y
+         JOIN videos v ON y.video_id = v.id
+         WHERE y.source_id = ? AND y.page_range = ?
+         ORDER BY y.position ASC`,
+        [sourceId, pageRange]
+      );
+      if (!rows || rows.length === 0) {
+        return { success: true, data: null };
+      }
+      // Compose the CachedYouTubePage object
+      const videos = rows.map(r => ({
+        id: r.id,
+        title: r.title,
+        publishedAt: r.published_at,
+        thumbnail: r.thumbnail,
+        duration: r.duration,
+        url: r.url,
+        isAvailable: r.is_available,
+        description: r.description
+      }));
+      const fetchTimestamps = rows.map(r => new Date(r.fetch_timestamp).getTime());
+      const timestamp = fetchTimestamps.length > 0 ? Math.max(...fetchTimestamps) : Date.now();
+      // Fetch totalResults for the source (count of all video_ids)
+      const totalResultsRow = await dbService.get<{ count: number }>(
+        `SELECT COUNT(*) as count FROM youtube_api_results WHERE source_id = ?`,
+        [sourceId]
+      );
+      const totalResults = totalResultsRow?.count || 0;
+      // Fetch sourceType from sources table
+      const sourceRow = await dbService.get<{ type: string }>(
+        `SELECT type FROM sources WHERE id = ?`,
+        [sourceId]
+      );
+      const sourceType = sourceRow?.type || 'youtube_channel';
+      const page: any = {
+        videos,
+        pageNumber,
+        totalResults,
+        timestamp,
+        sourceId,
+        sourceType
+      };
+      return { success: true, data: page };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get cached YouTube page:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get cached YouTube page',
+        code: 'GET_YT_PAGE_CACHE_FAILED'
+      };
+    }
+  });
   // Database connection and health
   ipcMain.handle('database:health-check', async (): Promise<DatabaseResponse<{ isHealthy: boolean; version?: string }>> => {
     try {

@@ -2,6 +2,7 @@ import { YouTubeAPI } from './youtube';
 import { YouTubePageCache } from './youtubePageCache';
 import { VideoSource } from './types';
 import { logVerbose } from './logging';
+import { PaginationService } from './paginationService';
 
 export interface YouTubePageResult {
   videos: any[];
@@ -24,16 +25,26 @@ export class YouTubePageFetcher {
     const sourceId = source.id;
     logVerbose(`[YouTubePageFetcher] Fetching page ${pageNumber} for ${sourceId} (${source.type})`);
 
+    // Use PaginationService for cache config
+    const cacheDurationMinutes = PaginationService.getInstance().getConfig().cacheDurationMinutes;
+
     // Check for valid cache first
     const cachedPage = await YouTubePageCache.getCachedPage(sourceId, pageNumber);
-    if (cachedPage) {
-      return {
-        videos: cachedPage.videos,
-        pageNumber: cachedPage.pageNumber,
-        totalResults: cachedPage.totalResults,
-        fromCache: true,
-        fallback: false
-      };
+    if (cachedPage && cachedPage.timestamp) {
+      const cacheAge = Date.now() - cachedPage.timestamp;
+      const cacheDurationMs = cacheDurationMinutes * 60 * 1000;
+      if (cacheAge < cacheDurationMs) {
+        logVerbose(`[YouTubePageFetcher] Using valid cache for ${sourceId} page ${pageNumber} (age: ${Math.round(cacheAge / 60000)} minutes)`);
+        return {
+          videos: cachedPage.videos,
+          pageNumber: cachedPage.pageNumber,
+          totalResults: cachedPage.totalResults,
+          fromCache: true,
+          fallback: false
+        };
+      } else {
+        logVerbose(`[YouTubePageFetcher] Cache expired for ${sourceId} page ${pageNumber} (age: ${Math.round(cacheAge / 60000)} minutes), fetching fresh data`);
+      }
     }
 
     // Cache is expired or missing, try to fetch from API
