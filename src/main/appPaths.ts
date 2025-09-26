@@ -130,6 +130,11 @@ export class AppPaths {
    * Get the appropriate data file path
    */
   static getDataPath(filename: string): string {
+    // Special handling for database file in development
+    if (this.isDev() && filename === 'safetube.db') {
+      // In development, place database in project root (same as README.md)
+      return path.join(process.cwd(), filename);
+    }
     return path.join(this.getDataDir(), filename);
   }
 }

@@ -211,6 +211,66 @@ yarn electron:dev
 yarn electron:dev:win
 ```
 
+## Database Management
+
+SafeTube uses SQLite for data storage. The database location depends on the environment:
+
+**Development Mode:**
+- Database file is located in the project root: `./safetube.db` (same directory as README.md)
+
+**Production Mode:**
+- **Windows**: `%APPDATA%/safetube/data/safetube.db`
+- **macOS**: `~/Library/Application Support/safetube/data/safetube.db`
+- **Linux**: `~/.config/safetube/data/safetube.db`
+
+### Accessing the Database via Command Line
+
+You can interact with the SQLite database directly using the `sqlite3` command-line tool:
+
+```bash
+# Development mode - open the database
+sqlite3 ./safetube.db
+
+# Production mode - open the database (Linux example)
+sqlite3 ~/.config/safetube/data/safetube.db
+
+# Show all tables
+.tables
+
+# Show table structure
+.schema videos
+
+# View video records
+SELECT id, title, source_id, is_available FROM videos LIMIT 10;
+
+# Check favorites
+SELECT v.title, f.date_added
+FROM favorites f
+JOIN videos v ON f.video_id = v.id
+ORDER BY f.date_added DESC;
+
+# View recent watching history
+SELECT v.title, vr.position, vr.time_watched, vr.last_watched
+FROM view_records vr
+JOIN videos v ON vr.video_id = v.id
+ORDER BY vr.last_watched DESC
+LIMIT 10;
+
+# Show sources
+SELECT * FROM sources ORDER BY sort_order;
+
+# Exit sqlite3
+.quit
+```
+
+### Database Tables
+
+- **`videos`**: Video metadata (title, thumbnail, duration, etc.)
+- **`view_records`**: Viewing history and resume positions
+- **`favorites`**: User bookmarked videos
+- **`sources`**: Video source definitions (YouTube channels, local folders)
+- **`youtube_api_results`**: Cached YouTube API responses
+
 ## Building Executables
 
 ### Building for Distribution

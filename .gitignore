@@ -80,3 +80,5 @@ test-videos/
 # yt-dlp executable (should use system version)
 yt-dlp
 yt-dlp.exe
+
+safetube.db

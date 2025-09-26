@@ -17,6 +17,7 @@
   - Implement connection management with WAL mode, foreign key enforcement, and performance settings
   - Add database initialization, close, and health check methods
   - Implement connection pooling for concurrent operations
+  - **UPDATE**: Updated AppPaths.getDataPath() to place database in project root during development (./safetube.db)
   - **Definition of Done**: DatabaseService class created, connection established with proper configuration, health checks pass
   - **Tests Required**: Unit tests for connection management, integration tests for WAL mode, concurrent connection tests
   - **Code Review**: Architecture review by senior developer, performance configuration review
@@ -132,6 +133,7 @@
   - Add favorite operations: getAll, add, remove, isFavorite, toggle
   - Add source operations: getAll, getById, create, update, delete, validate
   - Add YouTube cache operations: getCachedResults, setCachedResults, clearCache
+  - **UPDATE**: Enhanced existing admin panel IPC handlers (video-sources:save-all, video-sources:get-all) to use database with JSON fallback
   - **Definition of Done**: All Phase 1 operations accessible via IPC, proper parameter validation, consistent response format
   - **Tests Required**: Individual IPC method tests, parameter validation tests, response format tests
   - **Code Review**: IPC method implementation review, API consistency review

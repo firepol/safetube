@@ -308,6 +308,25 @@ export function registerVideoSourceHandlers() {
   // Get all video sources
   ipcMain.handle('video-sources:get-all', async () => {
     try {
+      // Try SQLite database first
+      try {
+        const DatabaseService = await import('../services/DatabaseService');
+        const dbService = DatabaseService.default.getInstance();
+        const status = await dbService.getHealthStatus();
+        if (dbService && status.initialized) {
+          const sources = await dbService.all<any>(`
+            SELECT id, type, title, sort_order, url, channel_id, path, max_depth
+            FROM sources
+            ORDER BY sort_order ASC, title ASC
+          `);
+          log.info('[IPC] Retrieved sources from database:', sources.length);
+          return sources || [];
+        }
+      } catch (dbError) {
+        log.warn('[IPC] Database not available for sources, falling back to JSON:', dbError);
+      }
+
+      // Fallback to JSON file for compatibility
       const sourcesPath = AppPaths.getConfigPath('videoSources.json');
       if (fs.existsSync(sourcesPath)) {
         return JSON.parse(fs.readFileSync(sourcesPath, 'utf8'));
@@ -322,8 +341,53 @@ export function registerVideoSourceHandlers() {
   // Save all video sources
   ipcMain.handle('video-sources:save-all', async (_, sources: any[]) => {
     try {
+      // Try SQLite database first
+      let dbSuccess = false;
+      try {
+        const DatabaseService = await import('../services/DatabaseService');
+        const dbService = DatabaseService.default.getInstance();
+        const status = await dbService.getHealthStatus();
+        if (dbService && status.initialized) {
+          // Clear existing sources and insert new ones in a transaction
+          await dbService.run('BEGIN TRANSACTION');
+          try {
+            await dbService.run('DELETE FROM sources');
+
+            for (const source of sources) {
+              await dbService.run(`
+                INSERT INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              `, [
+                source.id,
+                source.type,
+                source.title,
+                source.sortOrder || 0,
+                source.url || null,
+                source.channelId || null,
+                source.path || null,
+                source.maxDepth || null
+              ]);
+            }
+
+            await dbService.run('COMMIT');
+            log.info('[IPC] Saved sources to database:', sources.length);
+            dbSuccess = true;
+          } catch (dbError) {
+            await dbService.run('ROLLBACK');
+            throw dbError;
+          }
+        }
+      } catch (dbError) {
+        log.warn('[IPC] Database not available for saving sources, falling back to JSON:', dbError);
+      }
+
+      // Always also save to JSON file for compatibility (unless database succeeded and we want to phase out JSON)
       const sourcesPath = AppPaths.getConfigPath('videoSources.json');
       fs.writeFileSync(sourcesPath, JSON.stringify(sources, null, 2));
+
+      const method = dbSuccess ? 'database (with JSON backup)' : 'JSON file only';
+      log.info(`[IPC] Video sources saved via ${method}`);
+
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error saving video sources:', error);
