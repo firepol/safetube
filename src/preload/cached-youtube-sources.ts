@@ -7,15 +7,22 @@ import { logVerbose } from './logging';
  */
 async function writeCacheToDatabase(sourceId: string, cache: YouTubeSourceCache): Promise<void> {
   try {
+    // Only attempt IPC if in a renderer/preload context
     if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
       await (window as any).electron.invoke('youtube-cache:save', sourceId, cache);
       logVerbose(`[CachedYouTubeSources] Written cache for ${sourceId} to database`);
+    } else if (typeof process !== 'undefined' && process.type === 'browser') {
+      // In main process: skip IPC, assume direct DB write is handled elsewhere or is unnecessary
+      logVerbose(`[CachedYouTubeSources] Skipping IPC writeCacheToDatabase in main process for ${sourceId}`);
+      return;
     } else {
-      throw new Error('IPC not available');
+      // Unknown context: skip or warn
+      logVerbose(`[CachedYouTubeSources] Skipping writeCacheToDatabase: unknown context for ${sourceId}`);
+      return;
     }
   } catch (error) {
     logVerbose(`[CachedYouTubeSources] Error writing cache to database: ${error}`);
-    throw error;
+    // Do not throw to avoid blocking main process
   }
 }
 
