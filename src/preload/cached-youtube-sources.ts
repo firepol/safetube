@@ -27,13 +27,22 @@ async function writeCacheToDatabase(sourceId: string, cache: YouTubeSourceCache)
             DELETE FROM youtube_api_results WHERE source_id = ? AND page_range = ?
           `, [sourceId, '1-50']);
 
-          // Insert new cache entries
+          // Batch insert cache entries using parameter binding
+          const insertParams: any[] = [];
+          const insertPlaceholders: string[] = [];
+
           for (let i = 0; i < cache.videos.length; i++) {
             const video = cache.videos[i];
+            insertParams.push(sourceId, video.id, i + 1, '1-50', new Date().toISOString());
+            insertPlaceholders.push(`(?, ?, ?, ?, ?)`);
+          }
+
+          if (insertPlaceholders.length > 0) {
             await dbService.run(`
               INSERT INTO youtube_api_results (source_id, video_id, position, page_range, fetch_timestamp)
-              VALUES (?, ?, ?, ?, ?)
-            `, [sourceId, video.id, i + 1, '1-50', new Date().toISOString()]);
+              VALUES ${insertPlaceholders.join(',')}
+            `, insertParams);
+            logVerbose(`[CachedYouTubeSources] Batch inserted ${cache.videos.length} cache entries for ${sourceId}`);
           }
 
           logVerbose(`[CachedYouTubeSources] Written cache for ${sourceId} to database in main process: ${cache.videos.length} videos`);
@@ -119,7 +128,14 @@ async function loadCacheFromDatabase(sourceId: string): Promise<YouTubeSourceCac
                 duration: v.duration,
                 url: v.url
               })),
-              totalVideos: videos.length,
+              // Get total_videos from sources table if reconstructing
+              const sourceData = await dbService.get(
+                'SELECT total_videos FROM sources WHERE id = ?',
+                [source.id]
+              );
+              const totalVideosFromSource = sourceData ? sourceData.total_videos : videos.length;
+
+              totalVideos: totalVideosFromSource,
               thumbnail: videos[0].thumbnail || '',
               usingCachedData: false,
               fetchedNewData: false
@@ -191,7 +207,51 @@ export class CachedYouTubeSources {
     let usingCachedData = false;
     let fetchedNewInfo = false;
 
-    // Check if cache is still valid AND source has required data
+    // Check if cache is still valid OR if we can reconstruct from videos table
+    let reconstructedCache = null;
+    if (!cache && hasExistingData) {
+      // Reconstruct cache from videos table if api_results is empty but basic data exists
+      try {
+        if (typeof process !== 'undefined' && process.type === 'browser') {
+          const { DatabaseService } = await import('../main/services/DatabaseService');
+          const dbService = DatabaseService.getInstance();
+          const videos = await dbService.all(`
+            SELECT id, title, published_at, thumbnail, duration, url
+            FROM videos
+            WHERE source_id = ?
+            ORDER BY published_at DESC
+            LIMIT 50
+          `, [source.id]);
+
+          if (videos.length > 0) {
+            reconstructedCache = {
+              sourceId: source.id,
+              type: source.type,
+              lastFetched: new Date().toISOString(), // Use current time or source.updated_at if available
+              lastVideoDate: videos[0].published_at || '',
+              videos: videos.map(v => ({
+                id: v.id,
+                title: v.title,
+                publishedAt: v.published_at,
+                thumbnail: v.thumbnail,
+                duration: v.duration,
+                url: v.url
+              })),
+              totalVideos: videos.length, // Use count or from sources table
+              thumbnail: videos[0].thumbnail || '',
+              usingCachedData: true,
+              fetchedNewData: false
+            };
+            logVerbose(`[CachedYouTubeSources] Reconstructed cache for ${source.id} from videos table: ${videos.length} videos`);
+            cache = reconstructedCache;
+          }
+        }
+      } catch (reconError) {
+        logVerbose(`[CachedYouTubeSources] Failed to reconstruct cache for ${source.id}: ${reconError}`);
+      }
+    }
+
+    // Now check the (possibly reconstructed) cache
     if (cache && cache.lastFetched && hasExistingData) {
       const cacheAge = Date.now() - new Date(cache.lastFetched).getTime();
 
@@ -206,8 +266,10 @@ export class CachedYouTubeSources {
       }
     } else if (!hasExistingData) {
       logVerbose(`[CachedYouTubeSources] Source ${source.id} missing required data (total_videos/thumbnail), fetching from API`);
-    } else {
+    } else if (!cache && !reconstructedCache) {
       logVerbose(`[CachedYouTubeSources] No cache found for source ${source.id}, fetching from API`);
+    } else {
+      logVerbose(`[CachedYouTubeSources] Cache exists but missing lastFetched timestamp for source ${source.id}, fetching from API`);
     }
 
     try {
@@ -436,6 +498,151 @@ export class CachedYouTubeSources {
     }
 
     return updatedCache;
+  }
+
+  /**
+   * Batch load cache for multiple sources to optimize database queries
+   */
+  static async batchLoadSourcesBasicInfo(sources: VideoSource[]): Promise<Map<string, YouTubeSourceCache>> {
+    const cacheMap = new Map<string, YouTubeSourceCache>();
+
+    if (sources.length === 0) {
+      return cacheMap;
+    }
+
+    try {
+      const sourceIds = sources.map(s => s.id);
+      const placeholders = sourceIds.map(() => '?').join(',');
+
+      if (typeof process !== 'undefined' && process.type === 'browser') {
+        // Main process: use direct database access for batch operations
+        try {
+          const { DatabaseService } = await import('../main/services/DatabaseService');
+          const dbService = DatabaseService.getInstance();
+
+          // Batch load sources data
+          const sourcesData = await dbService.all(`
+            SELECT id, total_videos, thumbnail, updated_at
+            FROM sources
+            WHERE id IN (${placeholders})
+          `, sourceIds);
+
+          // Batch load cache data
+          const cacheResults = await dbService.all(`
+            SELECT source_id, video_id, position, fetch_timestamp
+            FROM youtube_api_results
+            WHERE source_id IN (${placeholders}) AND page_range = '1-50'
+            ORDER BY source_id, position ASC
+          `, sourceIds);
+
+          // Group cache results by source_id using forEach to avoid iteration issues
+          const cacheBySource = new Map<string, any[]>();
+          cacheResults.forEach(result => {
+            if (!cacheBySource.has(result.source_id)) {
+              cacheBySource.set(result.source_id, []);
+            }
+            cacheBySource.get(result.source_id)!.push(result);
+          });
+
+          // Get all video IDs for batch video details lookup
+          const allVideoIds: string[] = [];
+          const videoIdToSourceMap = new Map<string, string>();
+
+          for (const [sourceId, cacheEntries] of cacheBySource) {
+            for (const entry of cacheEntries) {
+              allVideoIds.push(entry.video_id);
+              videoIdToSourceMap.set(entry.video_id, sourceId);
+            }
+          }
+
+          // Batch load video details if we have cached videos
+          let videosBySource = new Map<string, any[]>();
+          if (allVideoIds.length > 0) {
+            const videoPlaceholders = allVideoIds.map(() => '?').join(',');
+            const videos = await dbService.all(`
+              SELECT id, title, published_at, thumbnail, duration, url
+              FROM videos
+              WHERE id IN (${videoPlaceholders})
+              ORDER BY published_at DESC
+            `, allVideoIds);
+
+            // Group videos by source
+            for (const video of videos) {
+              const sourceId = videoIdToSourceMap.get(video.id);
+              if (sourceId) {
+                if (!videosBySource.has(sourceId)) {
+                  videosBySource.set(sourceId, []);
+                }
+                videosBySource.get(sourceId)!.push({
+                  id: video.id,
+                  title: video.title,
+                  publishedAt: video.published_at,
+                  thumbnail: video.thumbnail,
+                  duration: video.duration,
+                  url: video.url
+                });
+              }
+            }
+          }
+
+          // Build cache objects for each source
+          for (const source of sources) {
+            const sourceData = sourcesData.find(s => s.id === source.id);
+            let hasExistingData = sourceData && sourceData.total_videos != null && sourceData.thumbnail != null;
+
+            const sourceCacheEntries = cacheBySource.get(source.id) || [];
+            const sourceVideos = videosBySource.get(source.id) || [];
+
+            if ((sourceCacheEntries.length > 0 && sourceVideos.length > 0 && hasExistingData) || (sourceVideos.length > 0 && hasExistingData)) {
+              if (sourceCacheEntries.length === 0) {
+                // Reconstruct if cache entries missing but videos exist
+                const firstVideo = sourceVideos[0];
+                const reconstructionTimestamp = new Date().toISOString();
+                const cache: YouTubeSourceCache = {
+                  sourceId: source.id,
+                  type: source.type as 'youtube_channel' | 'youtube_playlist',
+                  lastFetched: reconstructionTimestamp,
+                  lastVideoDate: firstVideo.publishedAt || '',
+                  videos: sourceVideos.slice(0, 50),
+                  totalVideos: sourceData ? sourceData.total_videos : sourceVideos.length,
+                  thumbnail: sourceData ? sourceData.thumbnail || firstVideo.thumbnail || '' : firstVideo.thumbnail || '',
+                  title: source.title,
+                  usingCachedData: true,
+                  fetchedNewData: false
+                };
+                cacheMap.set(source.id, cache);
+                logVerbose(`[CachedYouTubeSources] Reconstructed cache for ${source.id} in batch load: ${sourceVideos.length > 50 ? 50 : sourceVideos.length} videos`);
+              } else {
+                const firstEntry = sourceCacheEntries[0];
+                const cache: YouTubeSourceCache = {
+                  sourceId: source.id,
+                  type: source.type as 'youtube_channel' | 'youtube_playlist',
+                  lastFetched: firstEntry.fetch_timestamp,
+                  lastVideoDate: sourceVideos[0].published_at || '',
+                  videos: sourceVideos,
+                  totalVideos: sourceData ? sourceData.total_videos : sourceVideos.length,
+                  thumbnail: sourceData ? sourceData.thumbnail || '' : sourceVideos[0].thumbnail || '',
+                  title: source.title,
+                  usingCachedData: false,
+                  fetchedNewData: false
+                };
+                cacheMap.set(source.id, cache);
+              }
+            }
+          }
+
+          logVerbose(`[CachedYouTubeSources] Batch loaded cache for ${cacheMap.size} out of ${sources.length} sources`);
+
+        } catch (error) {
+          logVerbose(`[CachedYouTubeSources] Error in batch cache loading: ${error}`);
+        }
+      }
+
+    } catch (error) {
+      logVerbose(`[CachedYouTubeSources] Error in batchLoadSourcesBasicInfo: ${error}`);
+    }
+
+    return cacheMap;
   }
 }
 

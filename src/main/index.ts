@@ -1239,18 +1239,55 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         };
       }
     } else if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
-      // For YouTube sources, use smart page fetching with caching
+      // For YouTube sources, check DB cache first, then fall back to smart page fetching
       if (!apiKey) {
         throw new Error('YouTube API key not configured for pagination');
       }
 
-      const { YouTubeAPI } = await import('../preload/youtube');
-      const { YouTubePageFetcher } = await import('../preload/youtubePageFetcher');
+      // Check for valid DB cache (only for page 1, as DB caches first 50 videos)
+      let pageResult;
+      if (pageNumber === 1) {
+        try {
+          const { CachedYouTubeSources } = await import('../preload/cached-youtube-sources');
+          const { VideoSource } = await import('../shared/types');
+          const dbSource: VideoSource = {
+            id: sourceId,
+            type: source.type as 'youtube_channel' | 'youtube_playlist',
+            title: source.title,
+            url: source.url || '',
+          };
+          const cache = await CachedYouTubeSources.loadSourceVideos(dbSource);
 
-      YouTubeAPI.setApiKey(apiKey);
-      await YouTubeAPI.loadCacheConfig(); // Load cache configuration
+          // Check if cache is valid
+          if (cache && cache.videos && cache.videos.length > 0) {
+            const cacheAge = Date.now() - new Date(cache.lastFetched).getTime();
+            const cacheDurationMs = 90 * 60 * 1000; // 90 minutes
+            if (cacheAge < cacheDurationMs && !cache.fetchedNewData) {
+              logVerbose(`[Main] Using valid DB cache for page ${pageNumber} of ${sourceId} (age: ${Math.round(cacheAge / 60000)} minutes)`);
+              pageResult = {
+                videos: cache.videos.slice(0, pageSize), // Slice for page size
+                pageNumber,
+                totalResults: cache.totalVideos,
+                fromCache: true,
+                fallback: false
+              };
+            }
+          }
+        } catch (dbCacheError) {
+          logVerbose(`[Main] DB cache check failed for ${sourceId} page ${pageNumber}, falling back to API: ${dbCacheError}`);
+        }
+      }
 
-      const pageResult = await YouTubePageFetcher.fetchPage(source, pageNumber, pageSize);
+      if (!pageResult) {
+        const { YouTubeAPI } = await import('../preload/youtube');
+        const { YouTubePageFetcher } = await import('../preload/youtubePageFetcher');
+
+        YouTubeAPI.setApiKey(apiKey);
+        await YouTubeAPI.loadCacheConfig(); // Load cache configuration
+
+        pageResult = await YouTubePageFetcher.fetchPage(source, pageNumber, pageSize);
+      }
+
 
       // Calculate total pages from total results
       const totalPages = Math.ceil(pageResult.totalResults / pageSize);

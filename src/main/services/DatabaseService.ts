@@ -419,7 +419,7 @@ export class DatabaseService {
   /**
    * Execute multiple statements in a transaction
    */
-  async executeTransaction(queries: Array<{ sql: string; params?: any[] }>): Promise<void> {
+  async executeTransaction(queries: Array<{ sql: string; params?: any[] }>, options: { silent?: boolean } = {}): Promise<void> {
     if (!this.isInitialized) {
       throw new Error('Database not initialized');
     }
@@ -454,7 +454,11 @@ export class DatabaseService {
                   log.error('[DatabaseService] Error committing transaction:', commitErr);
                   reject(commitErr);
                 } else {
-                  log.debug(`[DatabaseService] Transaction completed in ${duration}ms with ${queries.length} queries`);
+                  if (!options.silent) {
+                    log.debug(`[DatabaseService] Transaction completed in ${duration}ms with ${queries.length} queries`);
+                  } else {
+                    log.debug(`[DatabaseService] Batch transaction completed with ${queries.length} queries (silent mode)`);
+                  }
                   resolve();
                 }
               });

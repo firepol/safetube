@@ -116,6 +116,20 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
 
   const videosBySource: any[] = [];
 
+  // Batch load cache for YouTube sources to optimize database queries
+  const youtubeSources = sources.filter(s => s.type === 'youtube_channel' || s.type === 'youtube_playlist');
+  let batchCacheMap = new Map<string, any>();
+
+  if (youtubeSources.length > 0) {
+    try {
+      const { CachedYouTubeSources } = await import('../../preload/cached-youtube-sources');
+      batchCacheMap = await CachedYouTubeSources.batchLoadSourcesBasicInfo(youtubeSources);
+      logVerbose('[VideoDataService] Batch loaded cache for', batchCacheMap.size, 'YouTube sources');
+    } catch (error) {
+      logVerbose('[VideoDataService] Error in batch cache loading:', error);
+    }
+  }
+
   for (const source of sources) {
     if (!source.id || !source.type || !source.title) {
       log.warn('[VideoDataService] WARNING: Skipping invalid source entry:', source);
