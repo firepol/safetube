@@ -22,6 +22,40 @@ interface VideoMetadata {
 }
 
 /**
+ * Write view record to database for persistence and history tracking
+ */
+async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<void> {
+  try {
+    const { DatabaseService } = await import('./services/DatabaseService');
+    const dbService = DatabaseService.getInstance();
+
+    // Insert or update view record
+    await dbService.run(`
+      INSERT OR REPLACE INTO view_records (
+        video_id, position, time_watched, duration, watched_at,
+        first_watched, watched, title, thumbnail, source_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      watchedEntry.videoId,
+      watchedEntry.position,
+      watchedEntry.timeWatched,
+      watchedEntry.duration,
+      watchedEntry.lastWatched,
+      watchedEntry.firstWatched,
+      watchedEntry.watched ? 1 : 0,
+      watchedEntry.title || '',
+      watchedEntry.thumbnail || '',
+      watchedEntry.source || ''
+    ]);
+
+    logVerbose(`[TimeTracking] Written view record for ${watchedEntry.videoId} to database`);
+  } catch (error) {
+    logVerbose(`[TimeTracking] Error writing view record to database: ${error}`);
+    throw error;
+  }
+}
+
+/**
  * Get video metadata for enhanced history storage
  */
 async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
@@ -172,6 +206,14 @@ export async function recordVideoWatching(
     }
 
     await writeWatchedVideos(watchedVideos);
+
+    // Also write to database
+    try {
+      await writeViewRecordToDatabase(watchedEntry);
+    } catch (dbError) {
+      logVerbose(`[TimeTracking] Warning: Could not write view record to database: ${dbError}`);
+      // Continue - JSON fallback is still available
+    }
 
     // Also record in usage log
     await recordUsageTime(timeWatched);

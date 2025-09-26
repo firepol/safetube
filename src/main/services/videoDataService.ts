@@ -5,6 +5,65 @@ import { AppPaths } from '../appPaths';
 import log from '../logger';
 import { getThumbnailUrl } from './thumbnailService';
 
+/**
+ * Write video metadata to database for persistence and search
+ */
+async function writeVideosToDatabase(videos: any[]): Promise<void> {
+  try {
+    const DatabaseService = await import('./DatabaseService');
+    const dbService = DatabaseService.default.getInstance();
+
+    for (const video of videos) {
+      try {
+        // Check if video already exists
+        const existing = await dbService.get(`
+          SELECT id FROM videos WHERE id = ?
+        `, [video.id]);
+
+        if (!existing) {
+          // Insert new video
+          await dbService.run(`
+            INSERT OR REPLACE INTO videos (
+              id, title, thumbnail, duration, source_id, source_type,
+              url, type, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+          `, [
+            video.id,
+            video.title || '',
+            video.thumbnail || '',
+            video.duration || 0,
+            video.sourceId || '',
+            video.sourceType || video.type,
+            video.url || '',
+            video.type || 'unknown'
+          ]);
+        } else {
+          // Update existing video metadata
+          await dbService.run(`
+            UPDATE videos SET
+              title = ?, thumbnail = ?, duration = ?,
+              url = ?, updated_at = datetime('now')
+            WHERE id = ?
+          `, [
+            video.title || '',
+            video.thumbnail || '',
+            video.duration || 0,
+            video.url || '',
+            video.id
+          ]);
+        }
+      } catch (error) {
+        log.warn(`[VideoDataService] Warning: Could not write video ${video.id} to database:`, error);
+        // Continue with other videos
+      }
+    }
+
+    logVerbose(`[VideoDataService] Written ${videos.length} videos to database`);
+  } catch (dbError) {
+    log.error('[VideoDataService] Database not available for video writing:', dbError);
+  }
+}
+
 // Main video data loading function - extracted from main index.ts
 export async function loadAllVideosFromSources(apiKey?: string | null) {
   let sources: any[] = [];
@@ -326,6 +385,14 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
   // Store videos globally so the player can access them
   global.currentVideos = allVideos;
   logVerbose('[VideoDataService] Set global.currentVideos with', allVideos.length, 'videos');
+
+  // Store videos in database for persistence and search
+  try {
+    await writeVideosToDatabase(allVideos);
+  } catch (dbError) {
+    log.error('[VideoDataService] Warning: Could not write videos to database:', dbError);
+    // Continue execution - this is not critical for basic functionality
+  }
 
   return { videosBySource };
 }

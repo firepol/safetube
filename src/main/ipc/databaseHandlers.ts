@@ -713,6 +713,36 @@ export function registerDatabaseHandlers() {
     }
   });
 
+  ipcMain.handle('youtube-cache:save', async (_, sourceId: string, cache: any): Promise<DatabaseResponse<boolean>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+
+      // Save the complete cache object to youtube_api_results table
+      await dbService.run(`
+        INSERT OR REPLACE INTO youtube_api_results (
+          source_id, page_number, video_ids, fetched_at, cache_data
+        ) VALUES (?, ?, ?, datetime('now'), ?)
+      `, [
+        sourceId,
+        1, // Use page 1 for complete cache
+        JSON.stringify(cache.videos?.map((v: any) => v.id) || []),
+        JSON.stringify(cache)
+      ]);
+
+      return {
+        success: true,
+        data: true
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to save YouTube cache:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to save YouTube cache',
+        code: 'SAVE_CACHE_FAILED'
+      };
+    }
+  });
+
   log.info('[Database IPC] All database handlers registered');
 }
 

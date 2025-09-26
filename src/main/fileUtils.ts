@@ -6,6 +6,46 @@ import { TimeLimits, UsageLog, WatchedVideo, VideoSource, TimeExtra, MainSetting
 const CONFIG_DIR = AppPaths.getConfigDir();
 
 /**
+ * Write favorite to database for persistence and synchronization
+ */
+async function writeFavoriteToDatabase(metadata: VideoMetadata, operation: 'add' | 'remove'): Promise<void> {
+  try {
+    const { DatabaseService } = await import('./services/DatabaseService');
+    const dbService = DatabaseService.getInstance();
+
+    if (operation === 'add') {
+      // Insert new favorite
+      await dbService.run(`
+        INSERT OR REPLACE INTO favorites (
+          video_id, title, thumbnail, duration, source_id, source_type,
+          added_at, video_type
+        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)
+      `, [
+        metadata.id,
+        metadata.title || '',
+        metadata.thumbnail || '',
+        metadata.duration || 0,
+        metadata.sourceId || '',
+        metadata.sourceType || metadata.type,
+        metadata.type || 'unknown'
+      ]);
+
+      console.log(`[FileUtils] Added favorite ${metadata.id} to database`);
+    } else {
+      // Remove favorite
+      await dbService.run(`
+        DELETE FROM favorites WHERE video_id = ?
+      `, [metadata.id]);
+
+      console.log(`[FileUtils] Removed favorite ${metadata.id} from database`);
+    }
+  } catch (error) {
+    console.error(`[FileUtils] Error writing favorite to database: ${error}`);
+    throw error;
+  }
+}
+
+/**
  * Ensures the config directory exists
  */
 async function ensureConfigDir(): Promise<void> {
@@ -244,6 +284,14 @@ export async function addFavorite(metadata: VideoMetadata): Promise<void> {
   }
 
   await writeFavoritesConfig(result.data as FavoritesConfig);
+
+  // Also write to database
+  try {
+    await writeFavoriteToDatabase(metadata, 'add');
+  } catch (dbError) {
+    console.warn('[FileUtils] Warning: Could not write favorite to database:', dbError);
+    // Continue - JSON fallback is still available
+  }
 }
 
 export async function removeFavorite(videoId: string): Promise<void> {
@@ -258,6 +306,14 @@ export async function removeFavorite(videoId: string): Promise<void> {
   }
 
   await writeFavoritesConfig(result.data as FavoritesConfig);
+
+  // Also remove from database
+  try {
+    await writeFavoriteToDatabase({ id: videoId } as VideoMetadata, 'remove');
+  } catch (dbError) {
+    console.warn('[FileUtils] Warning: Could not remove favorite from database:', dbError);
+    // Continue - JSON fallback is still available
+  }
 }
 
 export async function isFavorite(videoId: string): Promise<boolean> {

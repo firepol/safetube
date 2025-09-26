@@ -41,6 +41,60 @@ import { getDlnaFile } from './services/networkService'
 import { registerAllHandlers } from './services/ipcHandlerRegistry'
 import { DatabaseService } from './services/DatabaseService'
 
+/**
+ * Write video metadata to database for persistence and search
+ */
+async function writeVideosToDatabase(videos: any[]): Promise<void> {
+  const dbService = DatabaseService.getInstance();
+
+  for (const video of videos) {
+    try {
+      // Check if video already exists
+      const existing = await dbService.get(`
+        SELECT id FROM videos WHERE id = ?
+      `, [video.id]);
+
+      if (!existing) {
+        // Insert new video
+        await dbService.run(`
+          INSERT OR REPLACE INTO videos (
+            id, title, thumbnail, duration, source_id, source_type,
+            url, type, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
+        `, [
+          video.id,
+          video.title || '',
+          video.thumbnail || '',
+          video.duration || 0,
+          video.sourceId || '',
+          video.sourceType || video.type,
+          video.url || '',
+          video.type || 'unknown'
+        ]);
+      } else {
+        // Update existing video metadata
+        await dbService.run(`
+          UPDATE videos SET
+            title = ?, thumbnail = ?, duration = ?,
+            url = ?, updated_at = datetime('now')
+          WHERE id = ?
+        `, [
+          video.title || '',
+          video.thumbnail || '',
+          video.duration || 0,
+          video.url || '',
+          video.id
+        ]);
+      }
+    } catch (error) {
+      log.warn(`[Main] Warning: Could not write video ${video.id} to database:`, error);
+      // Continue with other videos
+    }
+  }
+
+  logVerbose(`[Main] Written ${videos.length} videos to database`);
+}
+
 // Load .env file from multiple possible locations
 const possibleEnvPaths = [
   '.env', // Project root (for development)
@@ -684,6 +738,13 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
     // Store videos globally so the player can access them
     global.currentVideos = allVideos;
 
+    // Store videos in database for persistence and search
+    try {
+      await writeVideosToDatabase(allVideos);
+    } catch (dbError) {
+      log.warn('[Main] Warning: Could not write videos to database:', dbError);
+      // Continue execution - this is not critical for basic functionality
+    }
 
     // Group videos by source for the UI
     const videosBySource = parsedSources.map((source: any) => {

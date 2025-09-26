@@ -4,6 +4,23 @@ import fs from 'fs';
 import path from 'path';
 import { logVerbose } from './logging';
 
+/**
+ * Write YouTube cache to database for persistence
+ */
+async function writeCacheToDatabase(sourceId: string, cache: YouTubeSourceCache): Promise<void> {
+  try {
+    if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+      await (window as any).electron.invoke('youtube-cache:save', sourceId, cache);
+      logVerbose(`[CachedYouTubeSources] Written cache for ${sourceId} to database`);
+    } else {
+      throw new Error('IPC not available');
+    }
+  } catch (error) {
+    logVerbose(`[CachedYouTubeSources] Error writing cache to database: ${error}`);
+    throw error;
+  }
+}
+
 // Cache directory will be retrieved from main process via IPC, with fallback
 let CACHE_DIR: string | null = null;
 let CACHE_DIR_INITIALIZED = false;
@@ -212,6 +229,15 @@ export class CachedYouTubeSources {
     };
 
     fs.writeFileSync(cacheFile, JSON.stringify(updatedCache, null, 2), 'utf-8');
+
+    // Also write to database
+    try {
+      await writeCacheToDatabase(source.id, updatedCache);
+    } catch (dbError) {
+      logVerbose(`[CachedYouTubeSources] Warning: Could not write basic info cache to database: ${dbError}`);
+      // Continue - file cache is still available
+    }
+
     return updatedCache;
   }
 
@@ -333,6 +359,15 @@ export class CachedYouTubeSources {
       usingCachedData // This flag indicates if we're using cached data as fallback (API failed)
     };
     fs.writeFileSync(cacheFile, JSON.stringify(updatedCache, null, 2), 'utf-8');
+
+    // Also write to database
+    try {
+      await writeCacheToDatabase(source.id, updatedCache);
+    } catch (dbError) {
+      logVerbose(`[CachedYouTubeSources] Warning: Could not write videos cache to database: ${dbError}`);
+      // Continue - file cache is still available
+    }
+
     return updatedCache;
   }
 }
