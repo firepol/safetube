@@ -1249,7 +1249,6 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       if (pageNumber === 1) {
         try {
           const { CachedYouTubeSources } = await import('../preload/cached-youtube-sources');
-          const { VideoSource } = await import('../shared/types');
           const dbSource: VideoSource = {
             id: sourceId,
             type: source.type as 'youtube_channel' | 'youtube_playlist',
@@ -1288,10 +1287,8 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         pageResult = await YouTubePageFetcher.fetchPage(source, pageNumber, pageSize);
       }
 
-
       // Calculate total pages from total results
-      const totalPages = Math.ceil(pageResult.totalResults / pageSize);
-
+      const totalPages = Math.ceil((pageResult.totalResults ?? 0) / pageSize);
 
       // Add source metadata to videos for compatibility
       const videosWithMetadata = pageResult.videos.map(video => ({

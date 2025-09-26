@@ -115,6 +115,13 @@ async function loadCacheFromDatabase(sourceId: string): Promise<YouTubeSourceCac
           `, videoIds);
 
           if (videos && videos.length > 0) {
+            // Get total_videos from sources table if reconstructing
+            const sourceData = await dbService.get(
+              'SELECT total_videos FROM sources WHERE id = ?',
+              [sourceId]
+            );
+            const totalVideosFromSource = sourceData ? sourceData.total_videos : videos.length;
+
             const cache: YouTubeSourceCache = {
               sourceId: sourceId,
               type: 'youtube_channel', // Default, will be overridden if needed
@@ -128,13 +135,6 @@ async function loadCacheFromDatabase(sourceId: string): Promise<YouTubeSourceCac
                 duration: v.duration,
                 url: v.url
               })),
-              // Get total_videos from sources table if reconstructing
-              const sourceData = await dbService.get(
-                'SELECT total_videos FROM sources WHERE id = ?',
-                [source.id]
-              );
-              const totalVideosFromSource = sourceData ? sourceData.total_videos : videos.length;
-
               totalVideos: totalVideosFromSource,
               thumbnail: videos[0].thumbnail || '',
               usingCachedData: false,
