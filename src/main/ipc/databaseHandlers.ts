@@ -541,8 +541,8 @@ export function registerDatabaseHandlers() {
       const sourceId = `source_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       await dbService.run(`
-        INSERT INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth, thumbnail, total_videos)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         sourceId,
         source.type,
@@ -551,7 +551,9 @@ export function registerDatabaseHandlers() {
         source.url || null,
         source.channel_id || null,
         source.path || null,
-        source.max_depth || null
+        source.max_depth || null,
+        (source as any).thumbnail || null,
+        (source as any).total_videos || null
       ]);
 
       return {

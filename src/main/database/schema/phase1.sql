@@ -2,6 +2,7 @@
 -- This file contains all Phase 1 table definitions with proper indexes and constraints
 
 -- Sources Table (Replaces videoSources.json)
+
 CREATE TABLE IF NOT EXISTS sources (
     id TEXT PRIMARY KEY,                    -- Source ID (user-defined)
     type TEXT NOT NULL,                     -- 'youtube_channel' | 'youtube_playlist' | 'local'
@@ -15,6 +16,10 @@ CREATE TABLE IF NOT EXISTS sources (
     -- Local-specific fields
     path TEXT,                             -- Local folder path
     max_depth INTEGER,                     -- Scan depth for local folders
+
+    -- New fields for caching and UI
+    thumbnail TEXT,                        -- Cached thumbnail URL
+    total_videos INTEGER,                   -- Cached total video count
 
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,

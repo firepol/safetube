@@ -60,6 +60,7 @@ export class CachedYouTubeSources {
     let sourceThumbnail = '';
     let sourceTitle = source.title;
     let usingCachedData = false;
+    let fetchedNewInfo = false;
 
 
     // Check if cache is still valid
@@ -96,6 +97,7 @@ export class CachedYouTubeSources {
         const basicInfo = await YouTubeAPI.getChannelBasicInfo(actualChannelId);
         totalVideos = basicInfo.totalVideos;
         sourceThumbnail = basicInfo.thumbnail;
+        fetchedNewInfo = true;
         sourceTitle = basicInfo.title;
 
       } else if (source.type === 'youtube_playlist') {
@@ -103,6 +105,7 @@ export class CachedYouTubeSources {
         const basicInfo = await YouTubeAPI.getPlaylistBasicInfo(playlistId);
         totalVideos = basicInfo.totalVideos;
         sourceThumbnail = basicInfo.thumbnail;
+        fetchedNewInfo = true;
         sourceTitle = basicInfo.title;
       }
     } catch (error) {
@@ -136,6 +139,14 @@ export class CachedYouTubeSources {
 
     // Write to database
     try {
+      // Only update sources table if we fetched new info
+      if (fetchedNewInfo && typeof window !== 'undefined' && (window as any).electron?.invoke) {
+        await (window as any).electron.invoke('database:sources:update', source.id, {
+          thumbnail: sourceThumbnail,
+          total_videos: totalVideos,
+          updated_at: now
+        });
+      }
       await writeCacheToDatabase(source.id, updatedCache);
     } catch (dbError) {
       logVerbose(`[CachedYouTubeSources] Warning: Could not write basic info cache to database: ${dbError}`);
@@ -157,6 +168,7 @@ export class CachedYouTubeSources {
     let totalVideos = 0;
     let sourceThumbnail = '';
     let usingCachedData = false;
+    let fetchedNewInfo = false;
     
     // Check if cache is still valid
     if (cache && cache.lastFetched) {
@@ -196,11 +208,13 @@ export class CachedYouTubeSources {
         const result = await YouTubeAPI.getChannelVideos(actualChannelId, 50);
         totalVideos = result.totalResults;
         newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || []);
+        fetchedNewInfo = true;
       } else if (source.type === 'youtube_playlist') {
         const playlistId = extractPlaylistId(source.url);
         const result = await YouTubeAPI.getPlaylistVideos(playlistId, 50);
         totalVideos = result.totalResults;
         newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || []);
+        fetchedNewInfo = true;
       }
     } catch (error) {
       console.warn(`[CachedYouTubeSources] YouTube API failed for source ${source.id}:`, error);
@@ -242,6 +256,14 @@ export class CachedYouTubeSources {
     // Write to database
     try {
       await writeCacheToDatabase(source.id, updatedCache);
+      // Only update sources table if we fetched new info
+      if (fetchedNewInfo && typeof window !== 'undefined' && (window as any).electron?.invoke) {
+        await (window as any).electron.invoke('database:sources:update', source.id, {
+          thumbnail: sourceThumbnail,
+          total_videos: totalVideos,
+          updated_at: now
+        });
+      }
     } catch (dbError) {
       logVerbose(`[CachedYouTubeSources] Warning: Could not write videos cache to database: ${dbError}`);
       throw dbError;

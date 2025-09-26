@@ -72,24 +72,26 @@ export class SimpleSchemaManager {
    * Create sources table
    */
   private async createSourcesTable(): Promise<void> {
-    await this.databaseService.run(`
-      CREATE TABLE IF NOT EXISTS sources (
-          id TEXT PRIMARY KEY,
-          type TEXT NOT NULL,
-          title TEXT NOT NULL,
-          sort_order TEXT,
-          url TEXT,
-          channel_id TEXT,
-          path TEXT,
-          max_depth INTEGER,
-          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          CHECK (
-              (type = 'local' AND path IS NOT NULL) OR
-              (type IN ('youtube_channel', 'youtube_playlist') AND url IS NOT NULL)
-          )
+  await this.databaseService.run(`
+    CREATE TABLE IF NOT EXISTS sources (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      sort_order TEXT,
+      url TEXT,
+      channel_id TEXT,
+      path TEXT,
+      max_depth INTEGER,
+      thumbnail TEXT,
+      total_videos INTEGER,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CHECK (
+        (type = 'local' AND path IS NOT NULL) OR
+        (type IN ('youtube_channel', 'youtube_playlist') AND url IS NOT NULL)
       )
-    `);
+    )
+  `);
 
     // Create indexes
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_type ON sources(type)');
