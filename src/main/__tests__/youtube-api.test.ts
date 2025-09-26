@@ -19,12 +19,12 @@ describe('YouTube API', () => {
   });
   
   test('should extract channel ID from @username URL', () => {
-    const url = 'https://www.youtube.com/@skypaul77';
+    const url = 'https://www.youtube.com/@TEDEd';
     // This would test the extractChannelId function if it were public
     // For now, we'll test the URL parsing logic
     expect(url.includes('/@')).toBe(true);
     const match = url.match(/\/@([^\/\?]+)/);
-    expect(match?.[1]).toBe('skypaul77');
+    expect(match?.[1]).toBe('TEDEd');
   });
   
   test('should extract channel ID from /channel/ URL', () => {

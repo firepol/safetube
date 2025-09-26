@@ -39,7 +39,7 @@ describe('Video Sources Configuration', () => {
       expect(typeof source.sortOrder).toBe('string');
       
       // Type-specific validations
-      if (source.type.includes('youtube') || source.type === 'skypaul77') {
+      if (source.type.includes('youtube')) {
         expect(source).toHaveProperty('url');
         expect(typeof source.url).toBe('string');
         expect(source.url).toMatch(/^https:\/\/www\.youtube\.com\//);
@@ -60,7 +60,7 @@ describe('Video Sources Configuration', () => {
   
   test('should parse YouTube URLs correctly', () => {
     // Test channel ID extraction
-    const channelUrl1 = 'https://www.youtube.com/@skypaul77';
+    const channelUrl1 = 'https://www.youtube.com/@TEDEd';
     const channelUrl2 = 'https://www.youtube.com/channel/UCxxxxx';
     
     // Mock the extractChannelId function (we'll test the real one in integration tests)
@@ -75,7 +75,7 @@ describe('Video Sources Configuration', () => {
       return null;
     };
     
-    expect(extractChannelId(channelUrl1)).toBe('skypaul77');
+    expect(extractChannelId(channelUrl1)).toBe('TEDEd');
     expect(extractChannelId(channelUrl2)).toBe('UCxxxxx');
     
     // Test playlist ID extraction

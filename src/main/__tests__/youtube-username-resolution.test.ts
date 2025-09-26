@@ -30,8 +30,8 @@ describe('YouTube Username Resolution', () => {
     youtubeAPI = new YouTubeAPI(apiKey);
   });
 
-  it('should resolve @skypaul77 username to a valid channel ID', async () => {
-    const username = 'skypaul77';
+  it('should resolve @TEDEd username to a valid channel ID', async () => {
+    const username = 'TEDEd';
     
     // This should call the actual YouTube API
     const channelDetails = await youtubeAPI.searchChannelByUsername(username);
@@ -55,7 +55,7 @@ describe('YouTube Username Resolution', () => {
   });
 
   it('should be able to fetch videos from the resolved channel ID', async () => {
-    const username = 'skypaul77';
+    const username = 'TEDEd';
     
     // First resolve username to channel ID
     const channelDetails = await youtubeAPI.searchChannelByUsername(username);

@@ -338,7 +338,7 @@ export class CachedYouTubeSources {
 }
 
 function extractChannelId(url: string): string {
-  // Handle @username format (e.g., https://www.youtube.com/@skypaul77)
+  // Handle @username format (e.g., https://www.youtube.com/@TEDEd)
   if (url.includes('/@')) {
     const match = url.match(/\/@([^\/\?]+)/);
     if (match) return `@${match[1]}`; // Return with @ prefix for usernames

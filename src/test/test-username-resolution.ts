@@ -26,8 +26,8 @@ async function testUsernameResolution() {
     const youtubeAPI = new YouTubeAPI(apiKey);
     
     // Test username resolution
-    console.log('Testing username resolution for @skypaul77...');
-    const channelDetails = await youtubeAPI.searchChannelByUsername('skypaul77');
+    console.log('Testing username resolution for @TEDEd...');
+    const channelDetails = await youtubeAPI.searchChannelByUsername('TEDEd');
     console.log('Resolved channel:', channelDetails);
     
     // Test fetching videos

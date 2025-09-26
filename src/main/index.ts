@@ -512,7 +512,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
       };
 
       // Parse type-specific fields
-      if (source.type === 'skypaul77' || source.type === 'youtube_channel') {
+      if (source.type === 'youtube_channel') {
         parsed.url = source.url;
         parsed.channelId = extractChannelId(source.url);
         parsed.sourceType = 'youtube_channel';
