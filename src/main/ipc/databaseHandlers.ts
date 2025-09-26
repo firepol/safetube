@@ -782,57 +782,6 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('youtube-cache:save', async (_, sourceId: string, cache: any): Promise<DatabaseResponse<boolean>> => {
-    try {
-      const dbService = DatabaseService.getInstance();
-
-      // Clear existing cache entries for this source
-      await dbService.run(`
-        DELETE FROM youtube_api_results WHERE source_id = ?
-      `, [sourceId]);
-
-      // Save individual video entries to youtube_api_results table
-      if (cache.videos && Array.isArray(cache.videos) && cache.videos.length > 0) {
-        const pageSize = 50;
-        const queries = cache.videos.map((video: any, index: number) => {
-          const pageNumber = Math.floor(index / pageSize) + 1;
-          const pageStart = (pageNumber - 1) * pageSize + 1;
-          const pageEnd = pageStart + pageSize - 1;
-          const pageRange = `${pageStart}-${pageEnd}`;
-
-          return {
-            sql: `INSERT INTO youtube_api_results (
-              source_id, video_id, position, page_range, fetch_timestamp
-            ) VALUES (?, ?, ?, ?, ?)`,
-            params: [
-              sourceId,
-              video.id,
-              index + 1,
-              pageRange,
-              new Date().toISOString()
-            ]
-          };
-        });
-
-        if (queries.length > 0) {
-          await dbService.executeTransaction(queries);
-        }
-      }
-
-      return {
-        success: true,
-        data: true
-      };
-    } catch (error) {
-      log.error('[Database IPC] Failed to save YouTube cache:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to save YouTube cache',
-        code: 'SAVE_CACHE_FAILED'
-      };
-    }
-  });
-
   log.info('[Database IPC] All database handlers registered');
 }
 

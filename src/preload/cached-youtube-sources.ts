@@ -3,14 +3,18 @@ import { YouTubeSourceCache, VideoSource } from './types';
 import { logVerbose } from './logging';
 
 /**
- * Write YouTube cache to database for persistence
+ * Write YouTube cache to database using youtube_api_results table
  */
 async function writeCacheToDatabase(sourceId: string, cache: YouTubeSourceCache): Promise<void> {
   try {
     // Only attempt IPC if in a renderer/preload context
     if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
-      await (window as any).electron.invoke('youtube-cache:save', sourceId, cache);
-      logVerbose(`[CachedYouTubeSources] Written cache for ${sourceId} to database`);
+      // Use the existing database:youtube-cache:set-cached-results handler
+      if (cache.videos && cache.videos.length > 0) {
+        const videoIds = cache.videos.map(v => v.id);
+        await (window as any).electron.invoke('database:youtube-cache:set-cached-results', sourceId, 1, videoIds);
+        logVerbose(`[CachedYouTubeSources] Written cache for ${sourceId} to database: ${videoIds.length} videos`);
+      }
     } else if (typeof process !== 'undefined' && process.type === 'browser') {
       // In main process: skip IPC, assume direct DB write is handled elsewhere or is unnecessary
       logVerbose(`[CachedYouTubeSources] Skipping IPC writeCacheToDatabase in main process for ${sourceId}`);
@@ -27,15 +31,30 @@ async function writeCacheToDatabase(sourceId: string, cache: YouTubeSourceCache)
 }
 
 /**
- * Load YouTube cache from database
+ * Load YouTube cache from database using youtube_api_results table
  */
 async function loadCacheFromDatabase(sourceId: string): Promise<YouTubeSourceCache | null> {
   try {
     if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
-      const result = await (window as any).electron.invoke('youtube-cache:get', sourceId);
-      if (result && result.cache_data) {
-        const cache = JSON.parse(result.cache_data);
-        logVerbose(`[CachedYouTubeSources] Loaded cache for ${sourceId} from database`);
+      // Use the existing youtube-cache:get-page handler to get page 1
+      const result = await (window as any).electron.invoke('youtube-cache:get-page', sourceId, 1);
+      if (result && result.success && result.data && result.data.videos) {
+        const pageData = result.data;
+
+        // Reconstruct cache object from page data
+        const cache: YouTubeSourceCache = {
+          sourceId: sourceId,
+          type: pageData.sourceType || 'youtube_channel',
+          lastFetched: pageData.timestamp ? new Date(pageData.timestamp).toISOString() : new Date().toISOString(),
+          lastVideoDate: pageData.videos.length > 0 ? pageData.videos[0].publishedAt : '',
+          videos: pageData.videos || [],
+          totalVideos: pageData.totalResults || pageData.videos.length,
+          thumbnail: pageData.videos.length > 0 ? pageData.videos[0].thumbnail : '',
+          usingCachedData: false,
+          fetchedNewData: false
+        };
+
+        logVerbose(`[CachedYouTubeSources] Loaded cache for ${sourceId} from database: ${cache.videos.length} videos`);
         return cache;
       }
     }
@@ -55,6 +74,23 @@ export class CachedYouTubeSources {
     // Load cache from database
     let cache = await loadCacheFromDatabase(source.id);
 
+    // Check if source already has total_videos in the database (via IPC)
+    let hasExistingData = false;
+    try {
+      if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+        const sourceResult = await (window as any).electron.invoke('database:sources:get-by-id', source.id);
+        if (sourceResult && sourceResult.success && sourceResult.data) {
+          const sourceData = sourceResult.data;
+          hasExistingData = sourceData.total_videos != null && sourceData.thumbnail != null;
+          if (hasExistingData) {
+            logVerbose(`[CachedYouTubeSources] Source ${source.id} already has data in DB: total_videos=${sourceData.total_videos}`);
+          }
+        }
+      }
+    } catch (error) {
+      logVerbose(`[CachedYouTubeSources] Could not check existing source data for ${source.id}: ${error}`);
+    }
+
     const now = new Date().toISOString();
     let totalVideos = 0;
     let sourceThumbnail = '';
@@ -62,9 +98,8 @@ export class CachedYouTubeSources {
     let usingCachedData = false;
     let fetchedNewInfo = false;
 
-
-    // Check if cache is still valid
-    if (cache && cache.lastFetched) {
+    // Check if cache is still valid AND source has required data
+    if (cache && cache.lastFetched && hasExistingData) {
       const cacheAge = Date.now() - new Date(cache.lastFetched).getTime();
 
       // Default cache duration - 90 minutes
@@ -76,6 +111,10 @@ export class CachedYouTubeSources {
       } else {
         logVerbose(`[CachedYouTubeSources] Cache expired for source ${source.id} (age: ${Math.round(cacheAge / 60000)} minutes), fetching fresh basic info`);
       }
+    } else if (!hasExistingData) {
+      logVerbose(`[CachedYouTubeSources] Source ${source.id} missing required data (total_videos/thumbnail), fetching from API`);
+    } else {
+      logVerbose(`[CachedYouTubeSources] No cache found for source ${source.id}, fetching from API`);
     }
 
     try {
