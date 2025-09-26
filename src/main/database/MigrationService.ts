@@ -310,15 +310,15 @@ export class MigrationService {
     log.debug('[MigrationService] Loading favorites from JSON');
     const favoritesData = this.jsonLoader.loadFavorites();
 
-    if (!favoritesData || !favoritesData.favorites || favoritesData.favorites.length === 0) {
+    if (!favoritesData || !Array.isArray(favoritesData) || favoritesData.length === 0) {
       log.info('[MigrationService] No favorites found to migrate');
       return 0;
     }
 
-    const favorites = favoritesData.favorites;
+    const favorites = favoritesData;
     log.debug(`[MigrationService] Migrating ${favorites.length} favorites`);
 
-    const queries = favorites.map(favorite => ({
+    const queries = favorites.map((favorite: any) => ({
       sql: `
         INSERT OR REPLACE INTO favorites (
           video_id, source_id, date_added
@@ -425,7 +425,7 @@ export class MigrationService {
       // Check favorites
       const favoritesJson = this.jsonLoader.loadFavorites();
       const favoritesDb = await this.databaseService.get<{ count: number }>('SELECT COUNT(*) as count FROM favorites');
-      const expectedFavorites = favoritesJson?.favorites?.length || 0;
+      const expectedFavorites = Array.isArray(favoritesJson) ? favoritesJson.length : 0;
       result.counts.favorites = { expected: expectedFavorites, actual: favoritesDb?.count || 0 };
 
       if (result.counts.favorites.expected !== result.counts.favorites.actual) {

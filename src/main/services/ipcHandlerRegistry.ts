@@ -10,6 +10,7 @@ import { readTimeLimits, readMainSettings, writeMainSettings } from '../fileUtil
 import log from '../logger';
 import { recordVideoWatching, getTimeTrackingState } from '../timeTracking';
 import { YouTubeAPI } from '../youtube-api';
+import registerDatabaseHandlers from '../ipc/databaseHandlers';
 import { extractChannelId, extractPlaylistId } from '../../shared/videoSourceUtils';
 import {
   scanLocalFolder,
@@ -1443,4 +1444,5 @@ export function registerAllHandlers() {
   registerYouTubeCacheHandlers();
   registerDownloadedVideosHandlers();
   registerFavoritesHandlers();
+  registerDatabaseHandlers(); // New database handlers for SQLite migration
 }

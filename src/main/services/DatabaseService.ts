@@ -380,7 +380,7 @@ export class DatabaseService {
           reject(err);
         } else {
           log.debug(`[DatabaseService] Query executed in ${duration}ms:`, { sql, params: params.length });
-          resolve(row || null);
+          resolve(row as T || null);
         }
       });
     });
@@ -410,7 +410,7 @@ export class DatabaseService {
           reject(err);
         } else {
           log.debug(`[DatabaseService] Query executed in ${duration}ms, returned ${rows?.length || 0} rows:`, { sql, params: params.length });
-          resolve(rows || []);
+          resolve((rows || []) as T[]);
         }
       });
     });
@@ -522,6 +522,28 @@ export class DatabaseService {
       activeConnections: this.metrics.connectionsActive,
       metrics: { ...this.metrics }
     };
+  }
+
+  /**
+   * Check database health and return status
+   */
+  async healthCheck(): Promise<{ isHealthy: boolean; version?: string }> {
+    try {
+      if (!this.db) {
+        return { isHealthy: false };
+      }
+
+      // Test a simple query to verify database is working
+      const version = await this.get<{ version: string }>('SELECT sqlite_version() as version');
+
+      return {
+        isHealthy: true,
+        version: version?.version || 'unknown'
+      };
+    } catch (error) {
+      log.error('[DatabaseService] Health check failed:', error);
+      return { isHealthy: false };
+    }
   }
 
   /**
