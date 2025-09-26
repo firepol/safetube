@@ -99,28 +99,33 @@ export const SourcePage: React.FC = () => {
 
         let foundSource: any;
 
-        // Load videos for the specific source only (optimized approach)
-        if (window.electron?.loadVideosForSource) {
-          logVerbose('[SourcePage] Loading videos for specific source:', sourceId);
-          const result = await window.electron.loadVideosForSource(sourceId);
-          foundSource = result.source;
-        } else {
-          // Fallback: Load all sources to find the one we need (old approach)
-          logVerbose('[SourcePage] Fallback: Loading all sources to find:', sourceId);
-          if (!window.electron?.loadVideosFromSources) {
-            setError('Required dependencies not available');
-            setIsLoading(false);
-            return;
-          }
+        // First, get the source info to check if it's a local source
+        logVerbose('[SourcePage] Loading all sources to find source info:', sourceId);
+        if (!window.electron?.loadVideosFromSources) {
+          setError('Required dependencies not available');
+          setIsLoading(false);
+          return;
+        }
 
-          const result = await window.electron.loadVideosFromSources();
-          const { videosBySource } = result;
+        const allSourcesResult = await window.electron.loadVideosFromSources();
+        const { videosBySource } = allSourcesResult;
 
-          foundSource = videosBySource.find((s: any) => s.id === sourceId);
-          if (!foundSource) {
-            setError(`Source not found: ${sourceId}`);
-            setIsLoading(false);
-            return;
+        foundSource = videosBySource.find((s: any) => s.id === sourceId);
+        if (!foundSource) {
+          setError(`Source not found: ${sourceId}`);
+          setIsLoading(false);
+          return;
+        }
+
+        // For non-local sources, try to load videos using the optimized approach
+        if (foundSource.type !== 'local' && window.electron?.loadVideosForSource) {
+          try {
+            logVerbose('[SourcePage] Loading videos for specific non-local source:', sourceId);
+            const result = await window.electron.loadVideosForSource(sourceId);
+            foundSource = result.source;
+          } catch (error) {
+            logVerbose('[SourcePage] Failed to load specific source, using fallback data:', error);
+            // Continue with foundSource from loadVideosFromSources
           }
         }
 

@@ -4,6 +4,7 @@ import { logVerbose } from '../../shared/logging';
 import { AppPaths } from '../appPaths';
 import log from '../logger';
 import { getThumbnailUrl } from './thumbnailService';
+import { countVideosInFolder } from './localVideoService';
 
 /**
  * Write video metadata to database for persistence and search
@@ -203,25 +204,35 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
       }
     } else if (source.type === 'local') {
       try {
-        // For local sources, don't scan videos upfront - let the LocalFolderNavigator handle it dynamically
-        // This allows proper folder structure navigation instead of flattening
-        logVerbose(`[VideoDataService] Local source ${source.id}: Using folder navigation (not scanning videos upfront).`);
+        // For local sources, calculate video count upfront for display
+        logVerbose(`[VideoDataService] Local source ${source.id}: Calculating video count upfront.`);
+        const videoCount = await countVideosInFolder(source.path, source.maxDepth || 2);
 
-        // For local sources, don't count videos upfront to avoid performance issues
-        // Video count will be calculated lazily when needed
         videosBySource.push({
           id: source.id,
           type: source.type,
           title: source.title,
           thumbnail: '',
-          videoCount: 0, // Will be calculated lazily
-          videos: [], // Empty - LocalFolderNavigator will load videos dynamically
-          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
-          maxDepth: source.maxDepth, // Pass through maxDepth for navigation
-          path: source.path // Pass through path for navigation
+          videoCount: videoCount,
+          videos: [], // Empty - videos will be loaded when source is clicked
+          paginationState: { currentPage: 1, totalPages: Math.ceil(videoCount / 50), totalVideos: videoCount, pageSize: 50 },
+          maxDepth: source.maxDepth,
+          path: source.path
         });
       } catch (err) {
-        log.error('[VideoDataService] ERROR scanning local source:', source.id, err);
+        log.error('[VideoDataService] ERROR counting videos for local source:', source.id, err);
+        // Fallback to 0 on error
+        videosBySource.push({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          thumbnail: '',
+          videoCount: 0,
+          videos: [],
+          paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
+          maxDepth: source.maxDepth,
+          path: source.path
+        });
       }
     }
   }
