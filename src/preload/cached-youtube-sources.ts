@@ -16,8 +16,31 @@ async function writeCacheToDatabase(sourceId: string, cache: YouTubeSourceCache)
         logVerbose(`[CachedYouTubeSources] Written cache for ${sourceId} to database: ${videoIds.length} videos`);
       }
     } else if (typeof process !== 'undefined' && process.type === 'browser') {
-      // In main process: skip IPC, assume direct DB write is handled elsewhere or is unnecessary
-      logVerbose(`[CachedYouTubeSources] Skipping IPC writeCacheToDatabase in main process for ${sourceId}`);
+      // Main process: use direct database access
+      if (cache.videos && cache.videos.length > 0) {
+        try {
+          const { DatabaseService } = await import('../main/services/DatabaseService');
+          const dbService = DatabaseService.getInstance();
+
+          // Clear existing cache for this source and page
+          await dbService.run(`
+            DELETE FROM youtube_api_results WHERE source_id = ? AND page_range = ?
+          `, [sourceId, '1-50']);
+
+          // Insert new cache entries
+          for (let i = 0; i < cache.videos.length; i++) {
+            const video = cache.videos[i];
+            await dbService.run(`
+              INSERT INTO youtube_api_results (source_id, video_id, position, page_range, fetch_timestamp)
+              VALUES (?, ?, ?, ?, ?)
+            `, [sourceId, video.id, i + 1, '1-50', new Date().toISOString()]);
+          }
+
+          logVerbose(`[CachedYouTubeSources] Written cache for ${sourceId} to database in main process: ${cache.videos.length} videos`);
+        } catch (error) {
+          logVerbose(`[CachedYouTubeSources] Error writing cache to database in main process: ${error}`);
+        }
+      }
       return;
     } else {
       // Unknown context: skip or warn

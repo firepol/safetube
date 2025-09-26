@@ -43,18 +43,49 @@ export class YouTubePageCache {
    */
   static async cachePage(sourceId: string, pageNumber: number, videos: any[], totalResults: number, sourceType: 'youtube_channel' | 'youtube_playlist'): Promise<void> {
     try {
-      if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
-        const cacheData: CachedYouTubePage = {
-          videos,
-          pageNumber,
-          totalResults,
-          timestamp: Date.now(),
-          sourceId,
-          sourceType
-        };
+      const cacheData: CachedYouTubePage = {
+        videos,
+        pageNumber,
+        totalResults,
+        timestamp: Date.now(),
+        sourceId,
+        sourceType
+      };
 
+      if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+        // Renderer process: use IPC
         await (window as any).electron.invoke('youtube-cache:save-page', sourceId, pageNumber, cacheData);
-        logVerbose(`[YouTubePageCache] Cached page ${pageNumber} for ${sourceId} (${videos.length} videos) in database`);
+        logVerbose(`[YouTubePageCache] Cached page ${pageNumber} for ${sourceId} (${videos.length} videos) in database via IPC`);
+      } else if (typeof process !== 'undefined' && process.type === 'browser') {
+        // Main process: use direct database access
+        try {
+          const { DatabaseService } = await import('../main/services/DatabaseService');
+          const dbService = DatabaseService.getInstance();
+
+          // Calculate page range for the youtube_api_results table
+          const startPosition = (pageNumber - 1) * 50 + 1;
+          const endPosition = startPosition + videos.length - 1;
+          const pageRange = `${startPosition}-${endPosition}`;
+
+          // Clear existing cache for this source and page range
+          await dbService.run(`
+            DELETE FROM youtube_api_results WHERE source_id = ? AND page_range = ?
+          `, [sourceId, pageRange]);
+
+          // Insert new cache entries
+          for (let i = 0; i < videos.length; i++) {
+            const video = videos[i];
+            const position = startPosition + i;
+            await dbService.run(`
+              INSERT INTO youtube_api_results (source_id, video_id, position, page_range, fetch_timestamp)
+              VALUES (?, ?, ?, ?, ?)
+            `, [sourceId, video.id, position, pageRange, new Date().toISOString()]);
+          }
+
+          logVerbose(`[YouTubePageCache] Cached page ${pageNumber} for ${sourceId} (${videos.length} videos) in database via main process`);
+        } catch (error) {
+          logVerbose(`[YouTubePageCache] Error caching page in main process: ${error}`);
+        }
       }
     } catch (error) {
       console.warn(`[YouTubePageCache] Error caching page ${pageNumber} for ${sourceId} in database:`, error);
