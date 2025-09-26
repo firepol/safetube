@@ -59,7 +59,7 @@ async function writeCacheToDatabase(sourceId: string, cache: YouTubeSourceCache)
 async function loadCacheFromDatabase(sourceId: string): Promise<YouTubeSourceCache | null> {
   try {
     if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
-      // Use the existing youtube-cache:get-page handler to get page 1
+      // Renderer process: use IPC
       const result = await (window as any).electron.invoke('youtube-cache:get-page', sourceId, 1);
       if (result && result.success && result.data && result.data.videos) {
         const pageData = result.data;
@@ -80,6 +80,58 @@ async function loadCacheFromDatabase(sourceId: string): Promise<YouTubeSourceCac
         logVerbose(`[CachedYouTubeSources] Loaded cache for ${sourceId} from database: ${cache.videos.length} videos`);
         return cache;
       }
+    } else if (typeof process !== 'undefined' && process.type === 'browser') {
+      // Main process: use direct database access
+      try {
+        const { DatabaseService } = await import('../main/services/DatabaseService');
+        const dbService = DatabaseService.getInstance();
+
+        // Get cached results for page 1 (positions 1-50)
+        const cacheResults = await dbService.all(`
+          SELECT video_id, position, fetch_timestamp
+          FROM youtube_api_results
+          WHERE source_id = ? AND page_range = '1-50'
+          ORDER BY position ASC
+        `, [sourceId]);
+
+        if (cacheResults && cacheResults.length > 0) {
+          // Get video details from videos table
+          const videoIds = cacheResults.map(r => r.video_id);
+          const videoPlaceholders = videoIds.map(() => '?').join(',');
+          const videos = await dbService.all(`
+            SELECT id, title, published_at, thumbnail, duration, url
+            FROM videos
+            WHERE id IN (${videoPlaceholders})
+            ORDER BY published_at DESC
+          `, videoIds);
+
+          if (videos && videos.length > 0) {
+            const cache: YouTubeSourceCache = {
+              sourceId: sourceId,
+              type: 'youtube_channel', // Default, will be overridden if needed
+              lastFetched: cacheResults[0].fetch_timestamp,
+              lastVideoDate: videos[0].published_at || '',
+              videos: videos.map(v => ({
+                id: v.id,
+                title: v.title,
+                publishedAt: v.published_at,
+                thumbnail: v.thumbnail,
+                duration: v.duration,
+                url: v.url
+              })),
+              totalVideos: videos.length,
+              thumbnail: videos[0].thumbnail || '',
+              usingCachedData: false,
+              fetchedNewData: false
+            };
+
+            logVerbose(`[CachedYouTubeSources] Loaded cache for ${sourceId} from database (main process): ${cache.videos.length} videos`);
+            return cache;
+          }
+        }
+      } catch (error) {
+        logVerbose(`[CachedYouTubeSources] Error loading cache from database in main process: ${error}`);
+      }
     }
     return null;
   } catch (error) {
@@ -97,10 +149,11 @@ export class CachedYouTubeSources {
     // Load cache from database
     let cache = await loadCacheFromDatabase(source.id);
 
-    // Check if source already has total_videos in the database (via IPC)
+    // Check if source already has total_videos in the database
     let hasExistingData = false;
     try {
       if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+        // Renderer process: use IPC
         const sourceResult = await (window as any).electron.invoke('database:sources:get-by-id', source.id);
         if (sourceResult && sourceResult.success && sourceResult.data) {
           const sourceData = sourceResult.data;
@@ -108,6 +161,23 @@ export class CachedYouTubeSources {
           if (hasExistingData) {
             logVerbose(`[CachedYouTubeSources] Source ${source.id} already has data in DB: total_videos=${sourceData.total_videos}`);
           }
+        }
+      } else if (typeof process !== 'undefined' && process.type === 'browser') {
+        // Main process: use direct database access
+        try {
+          const { DatabaseService } = await import('../main/services/DatabaseService');
+          const dbService = DatabaseService.getInstance();
+          const sourceData = await dbService.get(`
+            SELECT total_videos, thumbnail FROM sources WHERE id = ?
+          `, [source.id]);
+          if (sourceData) {
+            hasExistingData = sourceData.total_videos != null && sourceData.thumbnail != null;
+            if (hasExistingData) {
+              logVerbose(`[CachedYouTubeSources] Source ${source.id} already has data in DB (main process): total_videos=${sourceData.total_videos}`);
+            }
+          }
+        } catch (error) {
+          logVerbose(`[CachedYouTubeSources] Error checking source data in main process: ${error}`);
         }
       }
     } catch (error) {

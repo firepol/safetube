@@ -29,6 +29,8 @@ export class SimpleSchemaManager {
       const currentVersion = await this.getCurrentSchemaVersion();
       if (currentVersion && currentVersion.phase === 'phase1') {
         log.debug('[SimpleSchemaManager] Phase 1 schema already initialized');
+        // Check if we need to fix the sources table columns
+        await this.fixSourcesTableColumns();
         return;
       }
 
@@ -347,6 +349,81 @@ export class SimpleSchemaManager {
       log.info('[SimpleSchemaManager] Schema dropped successfully');
     } catch (error) {
       log.error('[SimpleSchemaManager] Error dropping schema:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fix sources table columns that may have been added manually
+   */
+  private async fixSourcesTableColumns(): Promise<void> {
+    try {
+      // Check if columns exist and are properly formatted
+      const tableInfo = await this.databaseService.all<{ name: string; type: string; notnull: number; dflt_value: any }>(`
+        PRAGMA table_info(sources)
+      `);
+
+      const hasValidThumbnail = tableInfo.some(col => col.name === 'thumbnail' && col.type === 'TEXT');
+      const hasValidTotalVideos = tableInfo.some(col => col.name === 'total_videos' && col.type === 'INTEGER');
+
+      if (hasValidThumbnail && hasValidTotalVideos) {
+        log.debug('[SimpleSchemaManager] Sources table columns are already properly formatted');
+        return;
+      }
+
+      log.info('[SimpleSchemaManager] Fixing sources table columns...');
+
+      // Backup existing data
+      const existingSources = await this.databaseService.all(`SELECT * FROM sources`);
+
+      // Create new table with proper schema
+      await this.databaseService.run(`
+        CREATE TABLE sources_new (
+          id TEXT PRIMARY KEY,
+          type TEXT NOT NULL,
+          title TEXT NOT NULL,
+          sort_order TEXT,
+          url TEXT,
+          channel_id TEXT,
+          path TEXT,
+          max_depth INTEGER,
+          thumbnail TEXT,
+          total_videos INTEGER,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          CHECK (
+            (type = 'local' AND path IS NOT NULL) OR
+            (type IN ('youtube_channel', 'youtube_playlist') AND url IS NOT NULL)
+          )
+        )
+      `);
+
+      // Copy data to new table
+      for (const source of existingSources) {
+        await this.databaseService.run(`
+          INSERT INTO sources_new (
+            id, type, title, sort_order, url, channel_id, path, max_depth,
+            thumbnail, total_videos, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [
+          source.id, source.type, source.title, source.sort_order,
+          source.url, source.channel_id, source.path, source.max_depth,
+          source.thumbnail, source.total_videos,
+          source.created_at, source.updated_at
+        ]);
+      }
+
+      // Replace old table
+      await this.databaseService.run('DROP TABLE sources');
+      await this.databaseService.run('ALTER TABLE sources_new RENAME TO sources');
+
+      // Recreate indexes
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_type ON sources(type)');
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_title ON sources(title)');
+
+      log.info('[SimpleSchemaManager] Sources table columns fixed successfully');
+    } catch (error) {
+      log.error('[SimpleSchemaManager] Error fixing sources table columns:', error);
       throw error;
     }
   }
