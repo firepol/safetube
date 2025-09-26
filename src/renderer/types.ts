@@ -52,6 +52,7 @@ export interface ElectronAPI {
   };
   loadAllVideosFromSources: () => Promise<{ videos: any[]; debug: string[] }>;
   loadVideosFromSources: () => Promise<{ videosBySource: any[]; debug: string[] }>;
+  loadVideosForSource: (sourceId: string) => Promise<{ source: any }>;
   getYouTubeApiKey: () => Promise<string | null>;
   getYouTubeVideoInfo: (videoId: string) => Promise<{
     videoId: string;

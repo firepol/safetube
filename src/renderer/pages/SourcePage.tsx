@@ -87,8 +87,8 @@ export const SourcePage: React.FC = () => {
 
   useEffect(() => {
     const loadSourceAndVideos = async () => {
-      if (!sourceId || !window.electron?.loadVideosFromSources) {
-        setError('Required dependencies not available');
+      if (!sourceId) {
+        setError('Source ID not provided');
         setIsLoading(false);
         return;
       }
@@ -97,21 +97,38 @@ export const SourcePage: React.FC = () => {
         setIsLoading(true);
         setError(null);
 
-        // Load all sources to find the one we need
-        const result = await window.electron.loadVideosFromSources();
-        const { videosBySource } = result;
-        
-        const foundSource = videosBySource.find((s: any) => s.id === sourceId);
-        if (!foundSource) {
-          setError(`Source not found: ${sourceId}`);
-          setIsLoading(false);
-          return;
+        let foundSource: any;
+
+        // Load videos for the specific source only (optimized approach)
+        if (window.electron?.loadVideosForSource) {
+          logVerbose('[SourcePage] Loading videos for specific source:', sourceId);
+          const result = await window.electron.loadVideosForSource(sourceId);
+          foundSource = result.source;
+        } else {
+          // Fallback: Load all sources to find the one we need (old approach)
+          logVerbose('[SourcePage] Fallback: Loading all sources to find:', sourceId);
+          if (!window.electron?.loadVideosFromSources) {
+            setError('Required dependencies not available');
+            setIsLoading(false);
+            return;
+          }
+
+          const result = await window.electron.loadVideosFromSources();
+          const { videosBySource } = result;
+
+          foundSource = videosBySource.find((s: any) => s.id === sourceId);
+          if (!foundSource) {
+            setError(`Source not found: ${sourceId}`);
+            setIsLoading(false);
+            return;
+          }
         }
 
         setSource(foundSource);
 
         // Load videos for the current page
         let videos: any[] = [];
+
         if (window.electron.getPaginatedVideos) {
           const pageResult = await window.electron.getPaginatedVideos(sourceId, currentPage);
           videos = pageResult.videos || [];
@@ -119,7 +136,7 @@ export const SourcePage: React.FC = () => {
         } else {
           // Fallback: use all videos from source
           videos = foundSource.videos || [];
-          setPaginationState({
+          setPaginationState(foundSource.paginationState || {
             currentPage: 1,
             totalPages: 1,
             totalVideos: foundSource.videos?.length || 0,

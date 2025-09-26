@@ -29,6 +29,8 @@ contextBridge.exposeInMainWorld(
     loadAllVideosFromSources: () => ipcRenderer.invoke('load-all-videos-from-sources'),
     // New IPC handler for loading videos from new source system
     loadVideosFromSources: () => ipcRenderer.invoke('load-videos-from-sources'),
+    // New IPC handler for loading videos from a specific source
+    loadVideosForSource: (sourceId: string) => ipcRenderer.invoke('load-videos-for-source', sourceId),
     // New IPC handler for getting YouTube API key
     getYouTubeApiKey: () => ipcRenderer.invoke('get-youtube-api-key'),
     // New IPC handler for getting YouTube video info (for source validation)
