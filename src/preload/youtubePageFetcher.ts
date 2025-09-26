@@ -72,6 +72,27 @@ export class YouTubePageFetcher {
         result = await YouTubeAPI.getPlaylistVideosPage(playlistId, pageNumber, pageSize);
       }
 
+      // Add sourceId to each video for database insertion
+      const videosWithSourceId = result.videos.map(video => ({
+        ...video,
+        sourceId: sourceId
+      }));
+
+      // Insert videos into database first (required for foreign key constraints)
+      try {
+        if (typeof process !== 'undefined' && process.type === 'browser') {
+          // Main process: direct database access
+          const { writeVideosToDatabase } = await import('../main/services/videoDataService');
+          await writeVideosToDatabase(videosWithSourceId);
+        } else if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+          // Renderer process: use IPC (if handler exists)
+          // For now, just log that we'd need an IPC handler for this
+          logVerbose(`[YouTubePageFetcher] Videos would need to be inserted via IPC for ${sourceId} page ${pageNumber}`);
+        }
+      } catch (error) {
+        logVerbose(`[YouTubePageFetcher] Error inserting videos into database: ${error}`);
+      }
+
       // Cache the successful result
       YouTubePageCache.cachePage(sourceId, pageNumber, result.videos, result.totalResults, source.type);
 

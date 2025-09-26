@@ -426,7 +426,7 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
   }
 
   // Store videos globally so the player can access them
-  global.currentVideos = allVideos;
+  (global as any).currentVideos = allVideos;
   logVerbose('[VideoDataService] Set global.currentVideos with', allVideos.length, 'videos');
 
   // Store videos in database for persistence and search - ONLY for new data
@@ -538,3 +538,6 @@ export async function loadVideosForSpecificSource(sourceId: string, apiKey?: str
     throw error;
   }
 }
+
+// Export the writeVideosToDatabase function for use by other modules
+export { writeVideosToDatabase };
