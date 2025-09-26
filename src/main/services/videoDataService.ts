@@ -9,10 +9,52 @@ import { getThumbnailUrl } from './thumbnailService';
 export async function loadAllVideosFromSources(configPath = AppPaths.getConfigPath('videoSources.json'), apiKey?: string | null) {
   let sources: any[] = [];
 
+  // Try to load sources from database first
   try {
-    sources = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-  } catch (err) {
-    log.error('[VideoDataService] ERROR loading videoSources.json:', err);
+    const DatabaseService = await import('./DatabaseService');
+    const dbService = DatabaseService.default.getInstance();
+    const healthStatus = await dbService.getHealthStatus();
+
+    if (healthStatus.initialized) {
+      const dbSources = await dbService.all<any>(`
+        SELECT id, type, title, sort_order, url, channel_id, path, max_depth
+        FROM sources
+        ORDER BY sort_order ASC, title ASC
+      `);
+
+      if (dbSources && dbSources.length > 0) {
+        // Convert database format to expected format
+        sources = dbSources.map(source => ({
+          id: source.id,
+          type: source.type,
+          title: source.title,
+          sortOrder: source.sort_order || 'newestFirst',
+          url: source.url,
+          channelId: source.channel_id,
+          path: source.path,
+          maxDepth: source.max_depth
+        }));
+
+        logVerbose('[VideoDataService] Loaded sources from database:', sources.length);
+      } else {
+        logVerbose('[VideoDataService] No sources found in database');
+      }
+    }
+  } catch (dbError) {
+    logVerbose('[VideoDataService] Database not available, falling back to JSON:', dbError);
+
+    // Fallback to JSON file only if database is not available
+    try {
+      sources = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+      logVerbose('[VideoDataService] Loaded sources from JSON:', sources.length);
+    } catch (err) {
+      log.error('[VideoDataService] ERROR loading videoSources.json:', err);
+      return { videosBySource: [] };
+    }
+  }
+
+  if (sources.length === 0) {
+    logVerbose('[VideoDataService] No sources found in database or JSON');
     return { videosBySource: [] };
   }
 

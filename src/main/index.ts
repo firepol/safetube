@@ -1731,26 +1731,7 @@ const createWindow = (): void => {
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
 
-  // Run first-time setup if needed
-  try {
-    const { FirstRunSetup } = await import('./firstRunSetup');
-    const setupResult = await FirstRunSetup.setupIfNeeded();
-
-    if (!setupResult.success) {
-      log.error('[Main] First-time setup failed:', setupResult.errors);
-    }
-  } catch (error) {
-    log.error('[Main] Error during first-time setup:', error);
-  }
-
-  // Run background channel ID migration (non-blocking)
-  try {
-    migrateChannelIds();
-  } catch (error) {
-    // Silent failure - don't log errors to avoid noise
-  }
-
-  // Initialize SQLite database with automatic videoSources migration
+  // Initialize SQLite database with automatic videoSources migration FIRST
   try {
     const DatabaseService = await import('./services/DatabaseService');
     const { SimpleSchemaManager } = await import('./database/SimpleSchemaManager');
@@ -1798,6 +1779,25 @@ app.on('ready', async () => {
   } catch (error) {
     log.error('[Main] Error initializing database:', error);
     log.warn('[Main] Continuing without database - will use JSON fallback');
+  }
+
+  // Run first-time setup if needed (AFTER database initialization)
+  try {
+    const { FirstRunSetup } = await import('./firstRunSetup');
+    const setupResult = await FirstRunSetup.setupIfNeeded();
+
+    if (!setupResult.success) {
+      log.error('[Main] First-time setup failed:', setupResult.errors);
+    }
+  } catch (error) {
+    log.error('[Main] Error during first-time setup:', error);
+  }
+
+  // Run background channel ID migration (non-blocking)
+  try {
+    migrateChannelIds();
+  } catch (error) {
+    // Silent failure - don't log errors to avoid noise
   }
 
   // Register all IPC handlers

@@ -116,6 +116,26 @@ export class FirstRunSetup {
           await fs.access(targetPath);
           continue; // File already exists, skip
         } catch {
+          // Special handling for videoSources.json - check database first
+          if (filename === 'videoSources.json') {
+            try {
+              // Check if database has sources
+              const DatabaseService = await import('./services/DatabaseService');
+              const dbService = DatabaseService.default.getInstance();
+              const healthStatus = await dbService.getHealthStatus();
+
+              if (healthStatus.initialized) {
+                const sourceCount = await dbService.get<{ count: number }>('SELECT COUNT(*) as count FROM sources');
+                if (sourceCount && sourceCount.count > 0) {
+                  logVerbose(`[FirstRunSetup] Skipping videoSources.json creation - found ${sourceCount.count} sources in database`);
+                  continue; // Skip creating JSON file, database has sources
+                }
+              }
+            } catch (dbError) {
+              logVerbose('[FirstRunSetup] Database not available, proceeding with JSON file creation:', dbError);
+            }
+          }
+
           // Target file doesn't exist, try to copy from example
           try {
             await fs.access(examplePath);
