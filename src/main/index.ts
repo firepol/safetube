@@ -1750,6 +1750,56 @@ app.on('ready', async () => {
     // Silent failure - don't log errors to avoid noise
   }
 
+  // Initialize SQLite database with automatic videoSources migration
+  try {
+    const DatabaseService = await import('./services/DatabaseService');
+    const { SimpleSchemaManager } = await import('./database/SimpleSchemaManager');
+    const dbService = DatabaseService.default.getInstance();
+
+    log.info('[Main] Initializing SQLite database...');
+    await dbService.initialize();
+
+    // Initialize Phase 1 schema
+    const schemaManager = new SimpleSchemaManager(dbService);
+    await schemaManager.initializePhase1Schema();
+
+    // Check if sources table is empty and migrate from JSON if needed
+    const sourceCount = await dbService.get<{ count: number }>('SELECT COUNT(*) as count FROM sources');
+    if (sourceCount && sourceCount.count === 0) {
+      log.info('[Main] Sources table empty, migrating from videoSources.json...');
+
+      // Read existing JSON sources
+      const sourcesPath = AppPaths.getConfigPath('videoSources.json');
+      if (fs.existsSync(sourcesPath)) {
+        const sourcesData = JSON.parse(fs.readFileSync(sourcesPath, 'utf8'));
+
+        // Migrate sources to database
+        for (const source of sourcesData) {
+          await dbService.run(`
+            INSERT INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `, [
+            source.id,
+            source.type,
+            source.title,
+            source.sortOrder || 0,
+            source.url || null,
+            source.channelId || null,
+            source.path || null,
+            source.maxDepth || null
+          ]);
+        }
+
+        log.info(`[Main] Successfully migrated ${sourcesData.length} sources to database`);
+      }
+    } else {
+      log.info(`[Main] Database already contains ${sourceCount?.count || 0} sources`);
+    }
+  } catch (error) {
+    log.error('[Main] Error initializing database:', error);
+    log.warn('[Main] Continuing without database - will use JSON fallback');
+  }
+
   // Register all IPC handlers
   try {
     registerAllHandlers();
