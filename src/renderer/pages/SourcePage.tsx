@@ -8,7 +8,6 @@ import { VideoSkeleton } from '../components/layout/VideoSkeleton';
 import { PageHeader } from '../components/layout/PageHeader';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
 import { logVerbose } from '../lib/logging';
-import { perfMonitor, useRenderTiming } from '../lib/performanceUtils';
 import { SourceValidationService } from '../services/sourceValidationService';
 
 export const SourcePage: React.FC = () => {
