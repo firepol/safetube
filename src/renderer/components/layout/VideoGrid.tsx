@@ -26,7 +26,6 @@ export const VideoGrid: React.FC<VideoGridProps> = memo(({
 
   // Track only significant changes to avoid constant logging
   if (videos.length !== initialVideoCount.current) {
-    console.log(`🎨 [VideoGrid] Video count changed: ${initialVideoCount.current} → ${videos.length}`);
     renderStart.current = performance.now();
     initialVideoCount.current = videos.length;
   }
@@ -119,7 +118,6 @@ export const VideoGrid: React.FC<VideoGridProps> = memo(({
     }));
 
     const duration = performance.now() - start;
-    console.log(`🚀 [VideoGrid] Video processing: ${duration.toFixed(2)}ms (${videos.length} videos)`);
     return result;
   }, [videos, thumbnailVersion, showFavoriteIcons, handleFavoriteToggle, isFavoriteVideo]);
 
@@ -139,14 +137,12 @@ export const VideoGrid: React.FC<VideoGridProps> = memo(({
       : { all: processedVideos };
 
     const duration = performance.now() - start;
-    console.log(`🚀 [VideoGrid] Grouping: ${duration.toFixed(2)}ms`);
     return result;
   }, [groupByType, processedVideos]);
 
   // 🚀 PERFORMANCE: Optimized render time logging
   React.useEffect(() => {
     const totalRenderTime = performance.now() - renderStart.current;
-    console.log(`🎨 [VideoGrid] Render complete: ${totalRenderTime.toFixed(2)}ms for ${videos.length} videos`);
     performance.mark(`videogrid-render-complete-${videos.length}`);
   });
 

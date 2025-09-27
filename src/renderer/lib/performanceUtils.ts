@@ -29,7 +29,6 @@ class PerformanceMonitor {
       // Ignore performance mark errors
     }
 
-    console.log(`⏱️ [${category.toUpperCase()}-PERF] Starting: ${label}`);
 
     return startTime;
   }
@@ -66,9 +65,6 @@ class PerformanceMonitor {
       // Ignore performance measurement errors in case marks don't exist
     }
 
-    // Console logging with category-specific emoji
-    const emoji = this.getCategoryEmoji(category);
-    console.log(`${emoji} [${category.toUpperCase()}-PERF] ${label}: ${duration.toFixed(2)}ms`);
 
     return duration;
   }
@@ -94,36 +90,16 @@ class PerformanceMonitor {
   }
 
   /**
-   * Generate performance summary
+   * Generate performance summary (simplified)
    */
   getSummary(): string {
     if (this.metrics.length === 0) {
-      return '📊 [PERF-SUMMARY] No metrics collected';
+      return 'No metrics collected';
     }
 
-    const categories = this.metrics.reduce((acc, metric) => {
-      if (!acc[metric.category]) acc[metric.category] = [];
-      acc[metric.category].push(metric);
-      return acc;
-    }, {} as Record<string, PerformanceMetrics[]>);
-
-    let summary = '\n🏆 [PERF-SUMMARY] Performance Report:\n';
-
-    Object.entries(categories).forEach(([category, metrics]) => {
-      const total = metrics.reduce((sum, m) => sum + (m.duration || 0), 0);
-      const avg = total / metrics.length;
-      const emoji = this.getCategoryEmoji(category as PerformanceMetrics['category']);
-
-      summary += `${emoji} ${category.toUpperCase()}: ${metrics.length} operations, ${total.toFixed(2)}ms total, ${avg.toFixed(2)}ms avg\n`;
-
-      // Show top 3 slowest operations
-      const slowest = metrics.sort((a, b) => (b.duration || 0) - (a.duration || 0)).slice(0, 3);
-      slowest.forEach((metric, i) => {
-        summary += `  ${i + 1}. ${metric.label}: ${metric.duration?.toFixed(2)}ms\n`;
-      });
-    });
-
-    return summary;
+    const total = this.metrics.reduce((sum, m) => sum + (m.duration || 0), 0);
+    const avg = total / this.metrics.length;
+    return `Performance: ${this.metrics.length} operations, ${total.toFixed(2)}ms total, ${avg.toFixed(2)}ms avg`;
   }
 
   /**
@@ -189,24 +165,12 @@ export const withAsyncPerformanceTracking = <T extends (...args: any[]) => Promi
   }) as T;
 };
 
-// Browser-specific optimizations
+// Browser-specific optimizations (simplified)
 export const optimizeForBrowser = () => {
-  // Enable paint timing API if available
-  if ('PerformancePaintTiming' in window) {
-    window.addEventListener('load', () => {
-      const paintTiming = performance.getEntriesByType('paint');
-      paintTiming.forEach(entry => {
-        console.log(`🎨 [BROWSER-PERF] ${entry.name}: ${entry.startTime.toFixed(2)}ms`);
-      });
-    });
-  }
-
-  // Monitor long tasks
+  // Monitor long tasks without logging
   if ('PerformanceLongTaskTiming' in window) {
     const observer = new PerformanceObserver((list) => {
-      list.getEntries().forEach((entry) => {
-        console.warn(`⚠️ [LONG-TASK] ${entry.duration.toFixed(2)}ms task detected`);
-      });
+      // Silently monitor long tasks
     });
     observer.observe({ entryTypes: ['longtask'] });
   }

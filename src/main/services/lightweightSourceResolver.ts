@@ -19,7 +19,6 @@ export class LightweightSourceResolver {
 
     // Return cached source if available and fresh
     if (this.sourceCache.has(sourceId) && (now - this.cacheTimestamp) < this.CACHE_TTL) {
-      logVerbose(`[LightweightSourceResolver] Using cached metadata for ${sourceId}`);
       return this.sourceCache.get(sourceId);
     }
 
@@ -52,7 +51,6 @@ export class LightweightSourceResolver {
         this.sourceCache.set(sourceId, resolvedSource);
         this.cacheTimestamp = now;
 
-        logVerbose(`[LightweightSourceResolver] Resolved source ${sourceId} in ${Date.now() - now}ms`);
         return resolvedSource;
       }
 
@@ -72,7 +70,6 @@ export class LightweightSourceResolver {
 
     // Check if we have cached all sources
     if (this.sourceCache.size > 0 && (now - this.cacheTimestamp) < this.CACHE_TTL) {
-      logVerbose(`[LightweightSourceResolver] Using cached sources metadata`);
       return Array.from(this.sourceCache.values());
     }
 
@@ -106,8 +103,6 @@ export class LightweightSourceResolver {
       });
 
       this.cacheTimestamp = now;
-      logVerbose(`[LightweightSourceResolver] Cached ${resolvedSources.length} sources metadata`);
-
       return resolvedSources;
     } catch (error) {
       log.error('[LightweightSourceResolver] Error loading sources:', error);
@@ -121,6 +116,5 @@ export class LightweightSourceResolver {
   static clearCache(): void {
     this.sourceCache.clear();
     this.cacheTimestamp = 0;
-    logVerbose('[LightweightSourceResolver] Cache cleared');
   }
 }

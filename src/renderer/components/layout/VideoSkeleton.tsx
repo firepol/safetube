@@ -12,8 +12,6 @@ export const VideoSkeleton: React.FC<VideoSkeletonProps> = memo(({
 }) => {
   // 🚀 PERFORMANCE: Memoize skeleton items to prevent re-creation
   const skeletonItems = React.useMemo(() => {
-    const start = performance.now();
-    console.log(`💀 [VideoSkeleton] Rendering ${count} skeleton items`);
 
     const items = Array.from({ length: count }).map((_, i) => (
       <div key={i} className="bg-gray-200 rounded-lg animate-pulse">
@@ -24,10 +22,6 @@ export const VideoSkeleton: React.FC<VideoSkeletonProps> = memo(({
         </div>
       </div>
     ));
-
-    const duration = performance.now() - start;
-    console.log(`🚀 [VideoSkeleton] Created skeleton in ${duration.toFixed(2)}ms`);
-    performance.mark(`videoskeleton-render-${count}`);
 
     return items;
   }, [count]);

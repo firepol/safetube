@@ -47,12 +47,10 @@ export class NavigationCache {
     const cached = this.pageCache.get(key);
 
     if (cached && this.isValidCache(cached.timestamp, this.PAGE_CACHE_TTL)) {
-      console.log(`🚀 [NavigationCache] Cache HIT for ${key} (${Date.now() - cached.timestamp}ms old)`);
       return cached;
     }
 
     if (cached) {
-      console.log(`🚀 [NavigationCache] Cache EXPIRED for ${key}, removing`);
       this.pageCache.delete(key);
     }
 
@@ -74,7 +72,6 @@ export class NavigationCache {
     };
 
     this.pageCache.set(key, cached);
-    console.log(`🚀 [NavigationCache] Cached page data for ${key} (${videos.length} videos)`);
 
     // Also cache source metadata separately
     this.cacheSourceMetadata(sourceId, source);
@@ -90,7 +87,6 @@ export class NavigationCache {
     const cached = this.sourceCache.get(sourceId);
 
     if (cached && this.isValidCache(cached.timestamp, this.SOURCE_CACHE_TTL)) {
-      console.log(`🚀 [NavigationCache] Source metadata cache HIT for ${sourceId}`);
       return cached.source;
     }
 
@@ -136,7 +132,6 @@ export class NavigationCache {
         // Prefetch in background without blocking UI
         setTimeout(async () => {
           try {
-            console.log(`🚀 [NavigationCache] Prefetching ${key} in background`);
 
             if (window.electron?.getPaginatedVideos) {
               const result = await window.electron.getPaginatedVideos(sourceId, page);
@@ -150,7 +145,6 @@ export class NavigationCache {
               }
             }
           } catch (error) {
-            console.warn(`🚀 [NavigationCache] Prefetch failed for ${key}:`, error);
           } finally {
             this.prefetchQueue.delete(key);
           }
@@ -206,7 +200,6 @@ export class NavigationCache {
     this.pageCache.clear();
     this.sourceCache.clear();
     this.prefetchQueue.clear();
-    console.log(`🚀 [NavigationCache] All cache cleared`);
   }
 
   /**

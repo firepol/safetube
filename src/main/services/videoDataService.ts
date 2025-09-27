@@ -465,7 +465,6 @@ export async function loadVideosForSpecificSource(sourceId: string, apiKey?: str
         const { YouTubeAPI } = await import('../../preload/youtube');
         YouTubeAPI.setApiKey(apiKey);
         await YouTubeAPI.loadCacheConfig();
-        logVerbose('[VideoDataService] Loading videos for source:', source.id);
         cache = await CachedYouTubeSources.loadSourceVideos(source);
       } else {
         log.warn('[VideoDataService] No API key provided for YouTube source:', source.id);

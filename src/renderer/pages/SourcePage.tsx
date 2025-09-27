@@ -25,32 +25,7 @@ export const SourcePage: React.FC = () => {
   const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
   const [validationResults, setValidationResults] = useState<Map<string, boolean>>(new Map());
 
-  // Performance timing states
-  const [performanceMarkers] = useState(() => new Map<string, number>());
 
-  // Helper to log performance with consistent formatting
-  const logPerformance = (label: string, startTime?: number) => {
-    const now = performance.now();
-    if (startTime) {
-      const duration = now - startTime;
-      console.log(`🚀 [FRONTEND-PERF] ${label}: ${duration.toFixed(2)}ms`);
-      try {
-        performance.mark(`safetube-${label.toLowerCase().replace(/\s+/g, '-')}`);
-      } catch (error) {
-        // Ignore performance mark errors
-      }
-      return duration;
-    } else {
-      performanceMarkers.set(label, now);
-      console.log(`⏱️ [FRONTEND-PERF] Starting: ${label}`);
-      try {
-        performance.mark(`safetube-start-${label.toLowerCase().replace(/\s+/g, '-')}`);
-      } catch (error) {
-        // Ignore performance mark errors
-      }
-      return now;
-    }
-  };
 
   const currentPage = page ? parseInt(page) : 1;
   
@@ -128,8 +103,7 @@ export const SourcePage: React.FC = () => {
         const cachedPageData = NavigationCache.getCachedPageData(sourceId, currentPage);
 
         if (cachedPageData) {
-          console.log(`🚀 [SourcePage] INSTANT navigation from cache for ${sourceId}, page ${currentPage}`);
-
+  
           // Ultra-fast state update from cache
           React.startTransition(() => {
             setSource(cachedPageData.source);
@@ -152,9 +126,6 @@ export const SourcePage: React.FC = () => {
           return; // Exit early - cached data is sufficient
         }
 
-        // 🚀 FRONTEND PERFORMANCE TRACKING START (cache miss)
-        const overallStart = logPerformance('Overall Load Sequence (Cache Miss)');
-        const renderStart = logPerformance('React State Init');
 
         // Batch initial state updates for better performance
         React.startTransition(() => {
@@ -163,26 +134,20 @@ export const SourcePage: React.FC = () => {
           setError(null);
         });
 
-        logPerformance('React State Init', renderStart);
 
         let foundSource: any;
 
         // First, get the source info to check if it's a local source
-        logVerbose('[SourcePage] 🚀 Starting load sequence for:', sourceId);
         if (!window.electron?.loadVideosFromSources) {
           setError('Required dependencies not available');
           setIsLoading(false);
           return;
         }
 
-        const step1Start = logPerformance('Backend - Load Sources');
         const allSourcesResult = await window.electron.loadVideosFromSources();
-        const step1Duration = logPerformance('Backend - Load Sources', step1Start);
 
         const { videosBySource } = allSourcesResult;
 
-        // Frontend processing start
-        const processingStart = logPerformance('Frontend - Source Processing');
 
         foundSource = videosBySource.find((s: any) => s.id === sourceId);
         if (!foundSource) {
@@ -191,15 +156,11 @@ export const SourcePage: React.FC = () => {
           return;
         }
 
-        logPerformance('Frontend - Source Processing', processingStart);
 
         // For non-local sources, try to load videos using the optimized approach
         if (foundSource.type !== 'local' && window.electron?.loadVideosForSource) {
           try {
-            const step2Start = logPerformance('Backend - Load Specific Source');
-            logVerbose('[SourcePage] Loading videos for specific non-local source:', sourceId);
             const result = await window.electron.loadVideosForSource(sourceId);
-            logPerformance('Backend - Load Specific Source', step2Start);
             foundSource = result.source;
           } catch (error) {
             logVerbose('[SourcePage] Failed to load specific source, using fallback data:', error);
@@ -208,16 +169,13 @@ export const SourcePage: React.FC = () => {
         }
 
         // 🎯 CRITICAL: Batch UI updates for instant skeleton→content transition
-        const uiUpdateStart = logPerformance('Frontend - Critical UI Update');
 
         // Load videos for the current page first (this is the critical path)
         let videos: any[] = [];
         let paginationData: any = null;
 
         if (window.electron.getPaginatedVideos) {
-          const step3Start = logPerformance('Backend - Get Paginated Videos');
           const pageResult = await window.electron.getPaginatedVideos(sourceId, currentPage);
-          logPerformance('Backend - Get Paginated Videos', step3Start);
           logVerbose(`[SourcePage] 📊 Received pagination state:`, pageResult.paginationState);
           videos = pageResult.videos || [];
           paginationData = pageResult.paginationState || null;
@@ -252,17 +210,13 @@ export const SourcePage: React.FC = () => {
           NavigationCache.prefetchAdjacentPages(sourceId, currentPage, paginationData.totalPages);
         }
 
-        logPerformance('Frontend - Critical UI Update', uiUpdateStart);
-        console.log(`🎯 [FRONTEND-PERF] Videos available for display: ${videos.length} items`);
 
         // 🚀 ASYNC ENHANCEMENT: Non-blocking operations that enhance UX
         if (sourceId === 'favorites' && videos.length > 0) {
           // Run validation and thumbnail generation asynchronously - these don't block UI
           Promise.resolve().then(async () => {
-            const enhancementStart = logPerformance('Background - Enhancement Processing');
 
             // Process thumbnails in parallel, not sequentially
-            const thumbnailStart = logPerformance('Background - Thumbnail Generation');
             const thumbnailPromises = videos.map(async (video) => {
               if (!video.thumbnail || video.thumbnail.trim() === '') {
                 try {
@@ -279,7 +233,6 @@ export const SourcePage: React.FC = () => {
 
             // Wait for thumbnails and update videos
             const thumbnailResults = await Promise.all(thumbnailPromises);
-            logPerformance('Background - Thumbnail Generation', thumbnailStart);
 
             const updatedVideos = videos.map(video => {
               const thumbnailUpdate = thumbnailResults.find(t => t?.id === video.id);
@@ -288,15 +241,12 @@ export const SourcePage: React.FC = () => {
 
             // Update videos with new thumbnails (React will efficiently update only changed items)
             if (thumbnailResults.some(t => t !== null)) {
-              const thumbnailUpdateStart = logPerformance('Frontend - Thumbnail UI Update');
               React.startTransition(() => {
                 setCurrentPageVideos(updatedVideos);
               });
-              logPerformance('Frontend - Thumbnail UI Update', thumbnailUpdateStart);
             }
 
             // Run validation
-            const validationStart = logPerformance('Background - Video Validation');
             const videosToValidate = updatedVideos.map(v => ({
               videoId: v.id,
               sourceId: v.sourceId && v.sourceId !== 'local' ? v.sourceId : (v.originalSourceId || 'unknown'),
@@ -304,34 +254,18 @@ export const SourcePage: React.FC = () => {
             }));
 
             const validationMap = await SourceValidationService.batchValidateVideos(videosToValidate);
-            logPerformance('Background - Video Validation', validationStart);
 
             React.startTransition(() => {
               setValidationResults(validationMap);
             });
 
-            logPerformance('Background - Enhancement Processing', enhancementStart);
           }).catch(error => {
             console.error('🚨 [FRONTEND-PERF] Error in background enhancement processing:', error);
             logVerbose('[SourcePage] Error in async thumbnail/validation processing:', error);
           });
         }
 
-        // 🏁 PERFORMANCE SUMMARY
-        const totalDuration = logPerformance('Overall Load Sequence', overallStart);
-        console.log(`🏆 [FRONTEND-PERF] === PERFORMANCE SUMMARY ===`);
-        console.log(`🏆 [FRONTEND-PERF] Backend API calls: ${step1Duration?.toFixed(2)}ms`);
-        console.log(`🏆 [FRONTEND-PERF] Frontend processing: Fast (batched state updates)`);
-        console.log(`🏆 [FRONTEND-PERF] Skeleton→Content transition: Instant (${videos.length} videos)`);
-        console.log(`🏆 [FRONTEND-PERF] Total time to content: ${totalDuration.toFixed(2)}ms`);
-        console.log(`🏆 [FRONTEND-PERF] Background enhancements: Running async`);
 
-        // Browser dev tools markers
-        try {
-          performance.measure('safetube-complete-load', `safetube-start-overall-load-sequence`, `safetube-overall-load-sequence`);
-        } catch (error) {
-          // Ignore performance measurement errors
-        }
       } catch (err) {
         setError('Error loading source: ' + (err instanceof Error ? err.message : String(err)));
       } finally {
