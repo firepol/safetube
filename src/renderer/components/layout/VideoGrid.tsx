@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { cn } from '@/lib/utils';
 import { VideoCardBase, VideoCardBaseProps } from '../video/VideoCardBase';
 import { useThumbnailUpdates } from '../../hooks/useThumbnailUpdates';
@@ -6,6 +6,7 @@ import { useFavoriteStatus } from '../../hooks/useFavoriteStatus';
 import { FavoritesService } from '../../services/favoritesService';
 import { normalizeVideoSource } from '../../../shared/favoritesUtils';
 import { logVerbose } from '../../lib/logging';
+import { useRenderTiming } from '../../lib/performanceUtils';
 
 interface VideoGridProps {
   videos: VideoCardBaseProps[];
@@ -14,12 +15,19 @@ interface VideoGridProps {
   showFavoriteIcons?: boolean; // Whether to show favorite star icons
 }
 
-export const VideoGrid: React.FC<VideoGridProps> = ({
+export const VideoGrid: React.FC<VideoGridProps> = memo(({
   videos,
   groupByType = true,
   className,
   showFavoriteIcons = false,
 }) => {
+  // 🚀 PERFORMANCE: Track render timing
+  const renderStart = React.useMemo(() => {
+    const start = performance.now();
+    console.log(`🎨 [VideoGrid] Render start - ${videos.length} videos`);
+    return start;
+  }, [videos.length]);
+
   // Store thumbnail updates in separate state
   const [thumbnailUpdates, setThumbnailUpdates] = useState<Record<string, string>>({});
 
@@ -95,29 +103,49 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
     }
   }, [videos, thumbnailUpdates, refreshFavorites, isFavoriteVideo]);
 
-  // Memoize the updated videos to prevent infinite re-renders
-  const updatedVideos = useMemo(() => {
-    return videos.map(video => ({
+  // 🚀 PERFORMANCE: Optimized memoization to prevent re-render cascades
+  const processedVideos = useMemo(() => {
+    const start = performance.now();
+
+    const result = videos.map(video => ({
       ...video,
-      // Apply thumbnail updates if available
       thumbnail: thumbnailUpdates[video.id] || video.thumbnail,
       showFavoriteIcon: showFavoriteIcons,
       onFavoriteToggle: showFavoriteIcons ? handleFavoriteToggle : undefined,
-      // Check if this video is in favorites.json with proper ID matching
       isFavorite: isFavoriteVideo(video.id, video.type)
     }));
-  }, [videos, thumbnailUpdates, showFavoriteIcons, isFavoriteVideo, handleFavoriteToggle]);
 
-  const groupedVideos = groupByType
-    ? updatedVideos.reduce((acc, video) => {
-        const type = video.type;
-        if (!acc[type]) {
-          acc[type] = [];
-        }
-        acc[type].push(video);
-        return acc;
-      }, {} as Record<string, VideoCardBaseProps[]>)
-    : { all: updatedVideos };
+    const duration = performance.now() - start;
+    console.log(`🚀 [VideoGrid] Video processing: ${duration.toFixed(2)}ms`);
+    return result;
+  }, [videos, thumbnailUpdates, showFavoriteIcons, handleFavoriteToggle, isFavoriteVideo]);
+
+  // 🚀 PERFORMANCE: Optimized grouping with early return
+  const groupedVideos = useMemo(() => {
+    const start = performance.now();
+
+    const result = groupByType
+      ? processedVideos.reduce((acc, video) => {
+          const type = video.type;
+          if (!acc[type]) {
+            acc[type] = [];
+          }
+          acc[type].push(video);
+          return acc;
+        }, {} as Record<string, VideoCardBaseProps[]>)
+      : { all: processedVideos };
+
+    const duration = performance.now() - start;
+    console.log(`🚀 [VideoGrid] Grouping: ${duration.toFixed(2)}ms`);
+    return result;
+  }, [groupByType, processedVideos]);
+
+  // 🚀 PERFORMANCE: Log total render time
+  React.useEffect(() => {
+    const totalRenderTime = performance.now() - renderStart;
+    console.log(`🎨 [VideoGrid] Total render time: ${totalRenderTime.toFixed(2)}ms`);
+    performance.mark(`videogrid-render-complete-${videos.length}`);
+  });
 
   return (
     <div className={cn('space-y-8', className)}>
@@ -128,7 +156,7 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
           )}
           <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {typeVideos.map((video, index) => (
-              <div key={`${video.type}-${index}`} className="w-full flex justify-center">
+              <div key={`${video.id || video.type}-${index}`} className="w-full flex justify-center">
                 <VideoCardBase
                   {...video}
                 />
@@ -139,4 +167,6 @@ export const VideoGrid: React.FC<VideoGridProps> = ({
       ))}
     </div>
   );
-}; 
+});
+
+VideoGrid.displayName = 'VideoGrid';

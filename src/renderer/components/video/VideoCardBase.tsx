@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { formatDuration } from '../../lib/utils';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -31,7 +31,7 @@ export interface VideoCardBaseProps {
   onFavoriteToggle?: (videoId: string, isFavorite: boolean) => void;
 }
 
-export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
+export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
   id,
   thumbnail,
   title,
@@ -275,4 +275,6 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = ({
       {cardContent}
     </div>
   );
-}; 
+});
+
+VideoCardBase.displayName = 'VideoCardBase'; 

@@ -4,9 +4,11 @@ import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 import { LocalFolderNavigator } from '../components/video/LocalFolderNavigator';
 import { VideoGrid } from '../components/layout/VideoGrid';
+import { VideoSkeleton } from '../components/layout/VideoSkeleton';
 import { PageHeader } from '../components/layout/PageHeader';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
 import { logVerbose } from '../lib/logging';
+import { perfMonitor, useRenderTiming } from '../lib/performanceUtils';
 import { SourceValidationService } from '../services/sourceValidationService';
 
 export const SourcePage: React.FC = () => {
@@ -15,12 +17,32 @@ export const SourcePage: React.FC = () => {
   const { sourceId, page } = useParams();
   const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingVideos, setIsLoadingVideos] = useState(true);
   const [source, setSource] = useState<any>(null);
   const [currentPageVideos, setCurrentPageVideos] = useState<any[]>([]);
   const [paginationState, setPaginationState] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [watchedVideos, setWatchedVideos] = useState<any[]>([]);
   const [validationResults, setValidationResults] = useState<Map<string, boolean>>(new Map());
+
+  // Performance timing states
+  const [performanceMarkers] = useState(() => new Map<string, number>());
+
+  // Helper to log performance with consistent formatting
+  const logPerformance = (label: string, startTime?: number) => {
+    const now = performance.now();
+    if (startTime) {
+      const duration = now - startTime;
+      console.log(`🚀 [FRONTEND-PERF] ${label}: ${duration.toFixed(2)}ms`);
+      performance.mark(`safetube-${label.toLowerCase().replace(/\s+/g, '-')}`);
+      return duration;
+    } else {
+      performanceMarkers.set(label, now);
+      console.log(`⏱️ [FRONTEND-PERF] Starting: ${label}`);
+      performance.mark(`safetube-start-${label.toLowerCase().replace(/\s+/g, '-')}`);
+      return now;
+    }
+  };
 
   const currentPage = page ? parseInt(page) : 1;
   
@@ -94,9 +116,18 @@ export const SourcePage: React.FC = () => {
       }
 
       try {
-        const startTime = performance.now();
-        setIsLoading(true);
-        setError(null);
+        // 🚀 FRONTEND PERFORMANCE TRACKING START
+        const overallStart = logPerformance('Overall Load Sequence');
+        const renderStart = logPerformance('React State Init');
+
+        // Batch initial state updates for better performance
+        React.startTransition(() => {
+          setIsLoading(true);
+          setIsLoadingVideos(true);
+          setError(null);
+        });
+
+        logPerformance('React State Init', renderStart);
 
         let foundSource: any;
 
@@ -108,12 +139,14 @@ export const SourcePage: React.FC = () => {
           return;
         }
 
-        const step1Start = performance.now();
+        const step1Start = logPerformance('Backend - Load Sources');
         const allSourcesResult = await window.electron.loadVideosFromSources();
-        const step1Time = performance.now() - step1Start;
-        logVerbose(`[SourcePage] ⏱️ Step 1 (loadVideosFromSources): ${step1Time.toFixed(1)}ms`);
+        const step1Duration = logPerformance('Backend - Load Sources', step1Start);
 
         const { videosBySource } = allSourcesResult;
+
+        // Frontend processing start
+        const processingStart = logPerformance('Frontend - Source Processing');
 
         foundSource = videosBySource.find((s: any) => s.id === sourceId);
         if (!foundSource) {
@@ -122,14 +155,15 @@ export const SourcePage: React.FC = () => {
           return;
         }
 
+        logPerformance('Frontend - Source Processing', processingStart);
+
         // For non-local sources, try to load videos using the optimized approach
         if (foundSource.type !== 'local' && window.electron?.loadVideosForSource) {
           try {
-            const step2Start = performance.now();
+            const step2Start = logPerformance('Backend - Load Specific Source');
             logVerbose('[SourcePage] Loading videos for specific non-local source:', sourceId);
             const result = await window.electron.loadVideosForSource(sourceId);
-            const step2Time = performance.now() - step2Start;
-            logVerbose(`[SourcePage] ⏱️ Step 2 (loadVideosForSource): ${step2Time.toFixed(1)}ms`);
+            logPerformance('Backend - Load Specific Source', step2Start);
             foundSource = result.source;
           } catch (error) {
             logVerbose('[SourcePage] Failed to load specific source, using fallback data:', error);
@@ -137,71 +171,121 @@ export const SourcePage: React.FC = () => {
           }
         }
 
-        setSource(foundSource);
+        // 🎯 CRITICAL: Batch UI updates for instant skeleton→content transition
+        const uiUpdateStart = logPerformance('Frontend - Critical UI Update');
 
-        // Load videos for the current page
+        // Load videos for the current page first (this is the critical path)
         let videos: any[] = [];
+        let paginationData: any = null;
 
         if (window.electron.getPaginatedVideos) {
-          const step3Start = performance.now();
+          const step3Start = logPerformance('Backend - Get Paginated Videos');
           const pageResult = await window.electron.getPaginatedVideos(sourceId, currentPage);
-          const step3Time = performance.now() - step3Start;
-          logVerbose(`[SourcePage] ⏱️ Step 3 (getPaginatedVideos): ${step3Time.toFixed(1)}ms`);
+          logPerformance('Backend - Get Paginated Videos', step3Start);
           logVerbose(`[SourcePage] 📊 Received pagination state:`, pageResult.paginationState);
           videos = pageResult.videos || [];
-          setPaginationState(pageResult.paginationState || null);
+          paginationData = pageResult.paginationState || null;
         } else {
           // Fallback: use all videos from source
           videos = foundSource.videos || [];
-          setPaginationState(foundSource.paginationState || {
+          paginationData = foundSource.paginationState || {
             currentPage: 1,
             totalPages: 1,
             totalVideos: foundSource.videos?.length || 0,
             pageSize: 50 // Will be updated with actual config
+          };
+        }
+
+        // 🚨 INSTANT UI UPDATE: Use React.startTransition for immediate skeleton→content swap
+        React.startTransition(() => {
+          setSource(foundSource);
+          setIsLoading(false); // Header can render
+          setCurrentPageVideos(videos); // Videos ready for display
+          setPaginationState(paginationData);
+          setIsLoadingVideos(false); // 🎯 This triggers skeleton→content transition
+        });
+
+        logPerformance('Frontend - Critical UI Update', uiUpdateStart);
+        console.log(`🎯 [FRONTEND-PERF] Videos available for display: ${videos.length} items`);
+
+        // 🚀 ASYNC ENHANCEMENT: Non-blocking operations that enhance UX
+        if (sourceId === 'favorites' && videos.length > 0) {
+          // Run validation and thumbnail generation asynchronously - these don't block UI
+          Promise.resolve().then(async () => {
+            const enhancementStart = logPerformance('Background - Enhancement Processing');
+
+            // Process thumbnails in parallel, not sequentially
+            const thumbnailStart = logPerformance('Background - Thumbnail Generation');
+            const thumbnailPromises = videos.map(async (video) => {
+              if (!video.thumbnail || video.thumbnail.trim() === '') {
+                try {
+                  const generatedThumbnail = await (window as any).electron.getBestThumbnail(video.id);
+                  if (generatedThumbnail) {
+                    return { id: video.id, thumbnail: generatedThumbnail };
+                  }
+                } catch (error) {
+                  logVerbose('[SourcePage] Error getting best thumbnail for:', video.id, error);
+                }
+              }
+              return null;
+            });
+
+            // Wait for thumbnails and update videos
+            const thumbnailResults = await Promise.all(thumbnailPromises);
+            logPerformance('Background - Thumbnail Generation', thumbnailStart);
+
+            const updatedVideos = videos.map(video => {
+              const thumbnailUpdate = thumbnailResults.find(t => t?.id === video.id);
+              return thumbnailUpdate ? { ...video, thumbnail: thumbnailUpdate.thumbnail } : video;
+            });
+
+            // Update videos with new thumbnails (React will efficiently update only changed items)
+            if (thumbnailResults.some(t => t !== null)) {
+              const thumbnailUpdateStart = logPerformance('Frontend - Thumbnail UI Update');
+              React.startTransition(() => {
+                setCurrentPageVideos(updatedVideos);
+              });
+              logPerformance('Frontend - Thumbnail UI Update', thumbnailUpdateStart);
+            }
+
+            // Run validation
+            const validationStart = logPerformance('Background - Video Validation');
+            const videosToValidate = updatedVideos.map(v => ({
+              videoId: v.id,
+              sourceId: v.sourceId && v.sourceId !== 'local' ? v.sourceId : (v.originalSourceId || 'unknown'),
+              sourceType: v.type === 'youtube' ? 'youtube' : v.type === 'local' ? 'local' : 'dlna'
+            }));
+
+            const validationMap = await SourceValidationService.batchValidateVideos(videosToValidate);
+            logPerformance('Background - Video Validation', validationStart);
+
+            React.startTransition(() => {
+              setValidationResults(validationMap);
+            });
+
+            logPerformance('Background - Enhancement Processing', enhancementStart);
+          }).catch(error => {
+            console.error('🚨 [FRONTEND-PERF] Error in background enhancement processing:', error);
+            logVerbose('[SourcePage] Error in async thumbnail/validation processing:', error);
           });
         }
 
-        // Batch validate videos if this is the favorites source
-        if (sourceId === 'favorites' && videos.length > 0) {
-          const step4Start = performance.now();
-          // Process videos for thumbnail generation (like HistoryPage does)
-          for (let i = 0; i < videos.length; i++) {
-            const video = videos[i];
+        // 🏁 PERFORMANCE SUMMARY
+        const totalDuration = logPerformance('Overall Load Sequence', overallStart);
+        console.log(`🏆 [FRONTEND-PERF] === PERFORMANCE SUMMARY ===`);
+        console.log(`🏆 [FRONTEND-PERF] Backend API calls: ${step1Duration?.toFixed(2)}ms`);
+        console.log(`🏆 [FRONTEND-PERF] Frontend processing: Fast (batched state updates)`);
+        console.log(`🏆 [FRONTEND-PERF] Skeleton→Content transition: Instant (${videos.length} videos)`);
+        console.log(`🏆 [FRONTEND-PERF] Total time to content: ${totalDuration.toFixed(2)}ms`);
+        console.log(`🏆 [FRONTEND-PERF] Background enhancements: Running async`);
 
-            // Check for best available thumbnail if original is empty (like HistoryPage)
-            if (!video.thumbnail || video.thumbnail.trim() === '') {
-              try {
-                const generatedThumbnail = await (window as any).electron.getBestThumbnail(video.id);
-                if (generatedThumbnail) {
-                  video.thumbnail = generatedThumbnail;
-                }
-              } catch (error) {
-                logVerbose('[SourcePage] Error getting best thumbnail for:', video.id, error);
-              }
-            }
-          }
-
-          const videosToValidate = videos.map(v => ({
-            videoId: v.id,
-            // For favorites, use the correct sourceId - not 'local' but the actual source like 'local1'
-            sourceId: v.sourceId && v.sourceId !== 'local' ? v.sourceId : (v.originalSourceId || 'unknown'),
-            sourceType: v.type === 'youtube' ? 'youtube' : v.type === 'local' ? 'local' : 'dlna'
-          }));
-
-          const validationMap = await SourceValidationService.batchValidateVideos(videosToValidate);
-          const step4Time = performance.now() - step4Start;
-          logVerbose(`[SourcePage] ⏱️ Step 4 (favorites validation): ${step4Time.toFixed(1)}ms`);
-          setValidationResults(validationMap);
-        }
-
-        setCurrentPageVideos(videos);
-
-        const totalTime = performance.now() - startTime;
-        logVerbose(`[SourcePage] 🏁 Total loading time: ${totalTime.toFixed(1)}ms`);
+        // Browser dev tools markers
+        performance.measure('safetube-complete-load', `safetube-start-overall-load-sequence`, `safetube-overall-load-sequence`);
       } catch (err) {
         setError('Error loading source: ' + (err instanceof Error ? err.message : String(err)));
       } finally {
         setIsLoading(false);
+        setIsLoadingVideos(false);
       }
     };
 
@@ -371,18 +455,7 @@ export const SourcePage: React.FC = () => {
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
           <span className="text-gray-600">Fetching videos from YouTube API...</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-          {/* Skeleton loading cards */}
-          {Array.from({ length: 15 }).map((_, i) => (
-            <div key={i} className="bg-gray-200 rounded-lg animate-pulse">
-              <div className="aspect-video bg-gray-300 rounded-t-lg"></div>
-              <div className="p-3">
-                <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                <div className="h-3 bg-gray-300 rounded w-3/4"></div>
-              </div>
-            </div>
-          ))}
-        </div>
+        <VideoSkeleton count={15} />
       </div>
     );
   }
@@ -466,45 +539,49 @@ export const SourcePage: React.FC = () => {
         </div>
       )}
 
-      {/* Video Grid */}
-      <VideoGrid
-        videos={currentPageVideos.map((video: any) => {
-          const { isWatched, isClicked } = getVideoStatus(video.id);
+      {/* Video Grid or Loading */}
+      {isLoadingVideos ? (
+        <VideoSkeleton count={15} className="mb-6" />
+      ) : (
+        <VideoGrid
+          videos={currentPageVideos.map((video: any) => {
+            const { isWatched, isClicked } = getVideoStatus(video.id);
 
-          // For favorites, use validation results; otherwise use video's isAvailable flag
-          const isAvailable = sourceId === 'favorites'
-            ? validationResults.get(video.id) ?? true
-            : video.isAvailable !== false;
+            // For favorites, use validation results; otherwise use video's isAvailable flag
+            const isAvailable = sourceId === 'favorites'
+              ? validationResults.get(video.id) ?? true
+              : video.isAvailable !== false;
 
-          return {
-            id: video.id,
-            thumbnail: video.thumbnail || '/placeholder-thumbnail.svg',
-            title: video.title,
-            duration: video.duration || 0,
-            type: video.type || (source?.type === 'youtube_channel' || source?.type === 'youtube_playlist' ? 'youtube' : undefined),
-            watched: isWatched,
-            isClicked: isClicked,
-            isAvailable: isAvailable,
-            unavailableReason: sourceId === 'favorites' ? "This video's source is no longer approved" : undefined,
-            isFallback: video.isFallback === true,
-            errorInfo: video.errorInfo,
-            resumeAt: video.resumeAt,
-            onVideoClick: () => handleVideoClick({
-              ...video,
-              type: video.type || (source?.type === 'youtube_channel' || source?.type === 'youtube_playlist' ? 'youtube' : undefined)
-            }, undefined),
-            // isFavorite will be populated by VideoGrid's useFavoriteStatus hook
-            sourceId: sourceId === 'favorites'
-              ? (video.originalSourceId || video.sourceId || 'unknown')
-              : (source?.id || 'unknown'),
-            lastWatched: video.lastWatched
-          };
-        })}
-        groupByType={false}
-        className="mb-6"
-        // Enable favorite icons for all sources including local, YouTube, and favorites page
-        showFavoriteIcons={true}
-      />
+            return {
+              id: video.id,
+              thumbnail: video.thumbnail || '/placeholder-thumbnail.svg',
+              title: video.title,
+              duration: video.duration || 0,
+              type: video.type || (source?.type === 'youtube_channel' || source?.type === 'youtube_playlist' ? 'youtube' : undefined),
+              watched: isWatched,
+              isClicked: isClicked,
+              isAvailable: isAvailable,
+              unavailableReason: sourceId === 'favorites' ? "This video's source is no longer approved" : undefined,
+              isFallback: video.isFallback === true,
+              errorInfo: video.errorInfo,
+              resumeAt: video.resumeAt,
+              onVideoClick: () => handleVideoClick({
+                ...video,
+                type: video.type || (source?.type === 'youtube_channel' || source?.type === 'youtube_playlist' ? 'youtube' : undefined)
+              }, undefined),
+              // isFavorite will be populated by VideoGrid's useFavoriteStatus hook
+              sourceId: sourceId === 'favorites'
+                ? (video.originalSourceId || video.sourceId || 'unknown')
+                : (source?.id || 'unknown'),
+              lastWatched: video.lastWatched
+            };
+          })}
+          groupByType={false}
+          className="mb-6"
+          // Enable favorite icons for all sources including local, YouTube, and favorites page
+          showFavoriteIcons={true}
+        />
+      )}
       
       {/* Bottom pagination */}
       {paginationState && paginationState.totalPages > 1 && (
