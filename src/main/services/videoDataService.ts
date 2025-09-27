@@ -514,5 +514,116 @@ export async function loadVideosForSpecificSource(sourceId: string, apiKey?: str
   }
 }
 
+/**
+ * Optimized function to load only source metadata for Kid Screen startup
+ * Avoids loading any video data, just source info needed for tiles
+ */
+export async function loadSourcesForKidScreen() {
+  try {
+    const DatabaseService = await import('./DatabaseService');
+    const dbService = DatabaseService.default.getInstance();
+    const healthStatus = await dbService.getHealthStatus();
+
+    if (!healthStatus.initialized) {
+      throw new Error('Database not initialized');
+    }
+
+    // Single query to get all source metadata needed for Kid Screen
+    const sources = await dbService.all<any>(`
+      SELECT
+        id, type, title, sort_order, url, channel_id, path, max_depth,
+        total_videos, thumbnail, updated_at
+      FROM sources
+      ORDER BY sort_order ASC, title ASC
+    `);
+
+    logVerbose(`[VideoDataService] Loaded ${sources.length} sources for Kid Screen (metadata only)`);
+
+    // Transform to expected format for Kid Screen
+    const sourcesByType = sources.map(source => {
+      // Calculate display video count
+      let videoCount = 0;
+      if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
+        videoCount = source.total_videos || 0;
+      } else if (source.type === 'local') {
+        // For local sources, we'll need to calculate or use cached count
+        videoCount = 0; // Will be calculated on-demand when source is clicked
+      }
+
+      return {
+        id: source.id,
+        type: source.type,
+        title: source.title,
+        thumbnail: source.thumbnail || '',
+        videoCount: videoCount,
+        videos: [], // Empty for Kid Screen - videos loaded on-demand
+        paginationState: {
+          currentPage: 1,
+          totalPages: Math.ceil(videoCount / 50),
+          totalVideos: videoCount,
+          pageSize: 50
+        },
+        // Source-specific fields
+        url: source.url,
+        channelId: source.channel_id,
+        path: source.path,
+        maxDepth: source.max_depth,
+        // Optimization flags
+        usingCachedData: false,
+        fetchedNewData: false,
+        apiErrorFallback: false,
+        isKidScreenOptimized: true // Flag to indicate this is optimized loading
+      };
+    });
+
+    // Always add favorites and downloaded as special sources
+    sourcesByType.push(
+      {
+        id: 'favorites',
+        type: 'favorites',
+        title: 'Favorites',
+        thumbnail: '⭐',
+        videoCount: 0, // Will be loaded on-demand
+        videos: [],
+        paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
+        // Source-specific fields
+        url: null,
+        channelId: null,
+        path: null,
+        maxDepth: null,
+        // Optimization flags
+        usingCachedData: false,
+        fetchedNewData: false,
+        apiErrorFallback: false,
+        isKidScreenOptimized: true
+      },
+      {
+        id: 'downloaded',
+        type: 'downloaded',
+        title: 'Downloaded Videos',
+        thumbnail: '',
+        videoCount: 0, // Will be loaded on-demand
+        videos: [],
+        paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
+        // Source-specific fields
+        url: null,
+        channelId: null,
+        path: null,
+        maxDepth: null,
+        // Optimization flags
+        usingCachedData: false,
+        fetchedNewData: false,
+        apiErrorFallback: false,
+        isKidScreenOptimized: true
+      }
+    );
+
+    return { videosBySource: sourcesByType };
+  } catch (error) {
+    log.error('[VideoDataService] Error loading sources for Kid Screen:', error);
+    throw error;
+  }
+}
+
 // Export the writeVideosToDatabase function for use by other modules
 export { writeVideosToDatabase };

@@ -1502,6 +1502,20 @@ ipcMain.handle('load-videos-from-sources', async () => {
   }
 });
 
+// Optimized IPC handler for Kid Screen startup - only loads source metadata
+ipcMain.handle('load-sources-for-kid-screen', async () => {
+  try {
+    const { loadSourcesForKidScreen } = await import('./services/videoDataService');
+    const result = await loadSourcesForKidScreen();
+
+    logVerbose('[Main] Kid Screen sources loaded with minimal queries');
+    return result;
+  } catch (error) {
+    log.error('[Main] Error loading sources for Kid Screen:', error);
+    throw error;
+  }
+});
+
 
 
 // Helper function to parse ISO duration
