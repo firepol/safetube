@@ -32,20 +32,18 @@ async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<vo
     // Insert or update view record
     await dbService.run(`
       INSERT OR REPLACE INTO view_records (
-        video_id, position, time_watched, duration, watched_at,
-        first_watched, watched, title, thumbnail, source_id
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        video_id, source_id, position, time_watched, duration, watched,
+        first_watched, last_watched
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       watchedEntry.videoId,
+      watchedEntry.source || '',
       watchedEntry.position,
       watchedEntry.timeWatched,
       watchedEntry.duration,
-      watchedEntry.lastWatched,
-      watchedEntry.firstWatched,
       watchedEntry.watched ? 1 : 0,
-      watchedEntry.title || '',
-      watchedEntry.thumbnail || '',
-      watchedEntry.source || ''
+      watchedEntry.firstWatched,
+      watchedEntry.lastWatched
     ]);
 
     logVerbose(`[TimeTracking] Written view record for ${watchedEntry.videoId} to database`);
