@@ -148,7 +148,6 @@ export const SourcePage: React.FC = () => {
 
         const { videosBySource } = allSourcesResult;
 
-
         foundSource = videosBySource.find((s: any) => s.id === sourceId);
         if (!foundSource) {
           setError(`Source not found: ${sourceId}`);
