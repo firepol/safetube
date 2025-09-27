@@ -26,6 +26,30 @@ export class LightweightSourceResolver {
       const { DatabaseService } = await import('./DatabaseService');
       const dbService = DatabaseService.getInstance();
 
+      // Handle special "favorites" source
+      if (sourceId === 'favorites') {
+        const favoritesCount = await dbService.get<{ count: number }>(`
+          SELECT COUNT(*) as count FROM favorites
+        `);
+
+        const favoritesSource = {
+          id: 'favorites',
+          type: 'favorites',
+          title: 'Favorites',
+          sortOrder: 'newestFirst',
+          url: null,
+          channelId: null,
+          path: null,
+          maxDepth: null,
+          thumbnail: '⭐',
+          videoCount: favoritesCount?.count || 0
+        };
+
+        this.sourceCache.set('favorites', favoritesSource);
+        this.cacheTimestamp = now;
+        return favoritesSource;
+      }
+
       // Single source query - not batch loading
       const source = await dbService.get<any>(`
         SELECT id, type, title, sort_order, url, channel_id, path, max_depth, thumbnail, total_videos
@@ -101,6 +125,27 @@ export class LightweightSourceResolver {
         this.sourceCache.set(source.id, resolved);
         return resolved;
       });
+
+      // Add favorites as a special source
+      const favoritesCount = await dbService.get<{ count: number }>(`
+        SELECT COUNT(*) as count FROM favorites
+      `);
+
+      const favoritesSource = {
+        id: 'favorites',
+        type: 'favorites',
+        title: 'Favorites',
+        sortOrder: 'newestFirst',
+        url: null,
+        channelId: null,
+        path: null,
+        maxDepth: null,
+        thumbnail: '⭐',
+        videoCount: favoritesCount?.count || 0
+      };
+
+      resolvedSources.push(favoritesSource);
+      this.sourceCache.set('favorites', favoritesSource);
 
       this.cacheTimestamp = now;
       return resolvedSources;
