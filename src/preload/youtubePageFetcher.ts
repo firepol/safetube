@@ -23,18 +23,24 @@ export class YouTubePageFetcher {
     }
 
     const sourceId = source.id;
-    logVerbose(`[YouTubePageFetcher] Fetching page ${pageNumber} for ${sourceId} (${source.type})`);
+    const startTime = performance.now();
+    logVerbose(`[YouTubePageFetcher] 🚀 Fetching page ${pageNumber} for ${sourceId} (${source.type})`);
 
     // Use PaginationService for cache config
     const cacheDurationMinutes = PaginationService.getInstance().getConfig().cacheDurationMinutes;
 
     // Check for valid cache first
+    const cacheCheckStart = performance.now();
     const cachedPage = await YouTubePageCache.getCachedPage(sourceId, pageNumber);
+    const cacheCheckTime = performance.now() - cacheCheckStart;
+    logVerbose(`[YouTubePageFetcher] ⏱️ Cache check: ${cacheCheckTime.toFixed(1)}ms`);
+
     if (cachedPage && cachedPage.timestamp) {
       const cacheAge = Date.now() - cachedPage.timestamp;
       const cacheDurationMs = cacheDurationMinutes * 60 * 1000;
       if (cacheAge < cacheDurationMs) {
-        logVerbose(`[YouTubePageFetcher] Using valid cache for ${sourceId} page ${pageNumber} (age: ${Math.round(cacheAge / 60000)} minutes)`);
+        const totalTime = performance.now() - startTime;
+        logVerbose(`[YouTubePageFetcher] 🏁 Using valid cache for ${sourceId} page ${pageNumber} (age: ${Math.round(cacheAge / 60000)} minutes) - total: ${totalTime.toFixed(1)}ms`);
         return {
           videos: cachedPage.videos,
           pageNumber: cachedPage.pageNumber,
@@ -51,6 +57,7 @@ export class YouTubePageFetcher {
     try {
       let result: { videos: any[], totalResults: number, pageNumber: number };
 
+      const apiStart = performance.now();
       if (source.type === 'youtube_channel') {
         const channelId = this.extractChannelId(source.url);
         let actualChannelId = channelId;
@@ -71,6 +78,8 @@ export class YouTubePageFetcher {
         const playlistId = this.extractPlaylistId(source.url);
         result = await YouTubeAPI.getPlaylistVideosPage(playlistId, pageNumber, pageSize);
       }
+      const apiTime = performance.now() - apiStart;
+      logVerbose(`[YouTubePageFetcher] ⏱️ YouTube API call: ${apiTime.toFixed(1)}ms`);
 
       // Add sourceId to each video for database insertion
       const videosWithSourceId = result.videos.map(video => ({
@@ -79,6 +88,7 @@ export class YouTubePageFetcher {
       }));
 
       // Insert videos into database first (required for foreign key constraints)
+      const dbInsertStart = performance.now();
       try {
         if (typeof process !== 'undefined' && process.type === 'browser') {
           // Main process: direct database access
@@ -92,11 +102,17 @@ export class YouTubePageFetcher {
       } catch (error) {
         logVerbose(`[YouTubePageFetcher] Error inserting videos into database: ${error}`);
       }
+      const dbInsertTime = performance.now() - dbInsertStart;
+      logVerbose(`[YouTubePageFetcher] ⏱️ Database insert: ${dbInsertTime.toFixed(1)}ms`);
 
       // Cache the successful result
+      const cacheWriteStart = performance.now();
       YouTubePageCache.cachePage(sourceId, pageNumber, result.videos, result.totalResults, source.type);
+      const cacheWriteTime = performance.now() - cacheWriteStart;
+      logVerbose(`[YouTubePageFetcher] ⏱️ Cache write: ${cacheWriteTime.toFixed(1)}ms`);
 
-      logVerbose(`[YouTubePageFetcher] Successfully fetched page ${pageNumber} for ${sourceId} (${result.videos.length} videos)`);
+      const totalTime = performance.now() - startTime;
+      logVerbose(`[YouTubePageFetcher] 🏁 Successfully fetched page ${pageNumber} for ${sourceId} (${result.videos.length} videos) - total: ${totalTime.toFixed(1)}ms`);
 
       return {
         videos: result.videos,

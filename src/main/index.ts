@@ -806,9 +806,12 @@ ipcMain.handle('load-videos-for-source', async (_, sourceId: string) => {
 // Handle getting paginated videos from a specific source
 ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumber: number) => {
   try {
+    const startTime = performance.now();
+    logVerbose(`[Main] 🚀 get-paginated-videos starting for ${sourceId} page ${pageNumber}`);
 
     // Read page size from pagination config first (needed for downloaded source)
     let pageSize = 50; // Default fallback
+    const configStart = performance.now();
     try {
       const { readPaginationConfig } = await import('./fileUtils');
       const paginationConfig = await readPaginationConfig();
@@ -816,9 +819,12 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     } catch (error) {
       log.warn('[Main] Could not read pagination config, using default page size:', error);
     }
+    const configTime = performance.now() - configStart;
+    logVerbose(`[Main] ⏱️ Config read: ${configTime.toFixed(1)}ms`);
 
     // Read API key from mainSettings.json
     let apiKey = '';
+    const apiKeyStart = performance.now();
     try {
       const { readMainSettings } = await import('./fileUtils');
       const mainSettings = await readMainSettings();
@@ -826,9 +832,12 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     } catch (error) {
       log.warn('[Main] Could not read mainSettings for pagination:', error);
     }
+    const apiKeyTime = performance.now() - apiKeyStart;
+    logVerbose(`[Main] ⏱️ API key read: ${apiKeyTime.toFixed(1)}ms`);
 
     // Fetch source from database
     let source = null;
+    const dbStart = performance.now();
     try {
   const DatabaseService = (await import('./services/DatabaseService')).DatabaseService;
   const dbService = DatabaseService.getInstance();
@@ -844,6 +853,8 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       log.error('[Main] Error reading source from database:', error);
       throw new Error('Failed to read video sources configuration');
     }
+    const dbTime = performance.now() - dbStart;
+    logVerbose(`[Main] ⏱️ Database source lookup: ${dbTime.toFixed(1)}ms`);
 
     // Handle special "downloaded" source
     if (sourceId === 'downloaded') {
@@ -1245,6 +1256,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       }
     } else if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
       // For YouTube sources, check DB cache first, then fall back to smart page fetching
+      const youtubeStart = performance.now();
       if (!apiKey) {
         throw new Error('YouTube API key not configured for pagination');
       }
@@ -1252,6 +1264,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       // Check for valid DB cache (only for page 1, as DB caches first 50 videos)
       let pageResult;
       if (pageNumber === 1) {
+        const cacheCheckStart = performance.now();
         try {
           const { CachedYouTubeSources } = await import('../preload/cached-youtube-sources');
           const dbSource: VideoSource = {
@@ -1261,6 +1274,8 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
             url: source.url || '',
           };
           const cache = await CachedYouTubeSources.loadSourceVideos(dbSource);
+          const cacheCheckTime = performance.now() - cacheCheckStart;
+          logVerbose(`[Main] ⏱️ Cache check: ${cacheCheckTime.toFixed(1)}ms`);
 
           // Check if cache is valid
           if (cache && cache.videos && cache.videos.length > 0) {
@@ -1283,6 +1298,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       }
 
       if (!pageResult) {
+        const apiFetchStart = performance.now();
         const { YouTubeAPI } = await import('../preload/youtube');
         const { YouTubePageFetcher } = await import('../preload/youtubePageFetcher');
 
@@ -1290,6 +1306,8 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         await YouTubeAPI.loadCacheConfig(); // Load cache configuration
 
         pageResult = await YouTubePageFetcher.fetchPage(source, pageNumber, pageSize);
+        const apiFetchTime = performance.now() - apiFetchStart;
+        logVerbose(`[Main] ⏱️ API fetch: ${apiFetchTime.toFixed(1)}ms`);
       }
 
       // Calculate total pages from total results
@@ -1322,6 +1340,11 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         }
       });
 
+      const youtubeTime = performance.now() - youtubeStart;
+      logVerbose(`[Main] ⏱️ YouTube processing: ${youtubeTime.toFixed(1)}ms`);
+
+      const totalTime = performance.now() - startTime;
+      logVerbose(`[Main] 🏁 get-paginated-videos total: ${totalTime.toFixed(1)}ms`);
 
       return {
         videos: videosWithMetadata,

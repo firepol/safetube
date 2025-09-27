@@ -94,20 +94,25 @@ export const SourcePage: React.FC = () => {
       }
 
       try {
+        const startTime = performance.now();
         setIsLoading(true);
         setError(null);
 
         let foundSource: any;
 
         // First, get the source info to check if it's a local source
-        logVerbose('[SourcePage] Loading all sources to find source info:', sourceId);
+        logVerbose('[SourcePage] 🚀 Starting load sequence for:', sourceId);
         if (!window.electron?.loadVideosFromSources) {
           setError('Required dependencies not available');
           setIsLoading(false);
           return;
         }
 
+        const step1Start = performance.now();
         const allSourcesResult = await window.electron.loadVideosFromSources();
+        const step1Time = performance.now() - step1Start;
+        logVerbose(`[SourcePage] ⏱️ Step 1 (loadVideosFromSources): ${step1Time.toFixed(1)}ms`);
+
         const { videosBySource } = allSourcesResult;
 
         foundSource = videosBySource.find((s: any) => s.id === sourceId);
@@ -120,8 +125,11 @@ export const SourcePage: React.FC = () => {
         // For non-local sources, try to load videos using the optimized approach
         if (foundSource.type !== 'local' && window.electron?.loadVideosForSource) {
           try {
+            const step2Start = performance.now();
             logVerbose('[SourcePage] Loading videos for specific non-local source:', sourceId);
             const result = await window.electron.loadVideosForSource(sourceId);
+            const step2Time = performance.now() - step2Start;
+            logVerbose(`[SourcePage] ⏱️ Step 2 (loadVideosForSource): ${step2Time.toFixed(1)}ms`);
             foundSource = result.source;
           } catch (error) {
             logVerbose('[SourcePage] Failed to load specific source, using fallback data:', error);
@@ -135,7 +143,10 @@ export const SourcePage: React.FC = () => {
         let videos: any[] = [];
 
         if (window.electron.getPaginatedVideos) {
+          const step3Start = performance.now();
           const pageResult = await window.electron.getPaginatedVideos(sourceId, currentPage);
+          const step3Time = performance.now() - step3Start;
+          logVerbose(`[SourcePage] ⏱️ Step 3 (getPaginatedVideos): ${step3Time.toFixed(1)}ms`);
           videos = pageResult.videos || [];
           setPaginationState(pageResult.paginationState || null);
         } else {
@@ -151,6 +162,7 @@ export const SourcePage: React.FC = () => {
 
         // Batch validate videos if this is the favorites source
         if (sourceId === 'favorites' && videos.length > 0) {
+          const step4Start = performance.now();
           // Process videos for thumbnail generation (like HistoryPage does)
           for (let i = 0; i < videos.length; i++) {
             const video = videos[i];
@@ -176,10 +188,15 @@ export const SourcePage: React.FC = () => {
           }));
 
           const validationMap = await SourceValidationService.batchValidateVideos(videosToValidate);
+          const step4Time = performance.now() - step4Start;
+          logVerbose(`[SourcePage] ⏱️ Step 4 (favorites validation): ${step4Time.toFixed(1)}ms`);
           setValidationResults(validationMap);
         }
 
         setCurrentPageVideos(videos);
+
+        const totalTime = performance.now() - startTime;
+        logVerbose(`[SourcePage] 🏁 Total loading time: ${totalTime.toFixed(1)}ms`);
       } catch (err) {
         setError('Error loading source: ' + (err instanceof Error ? err.message : String(err)));
       } finally {

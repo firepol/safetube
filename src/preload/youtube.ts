@@ -451,7 +451,7 @@ export class YouTubeAPI {
 
   static async getPlaylistVideosPage(playlistId: string, pageNumber: number, pageSize: number = 50): Promise<{ videos: any[], totalResults: number, pageNumber: number }> {
 
-    const startTime = Date.now();
+    const startTime = performance.now();
 
     // Calculate how many items to skip for the requested page
     const itemsToSkip = (pageNumber - 1) * pageSize;
@@ -461,9 +461,15 @@ export class YouTubeAPI {
     let allVideoIds: string[] = [];
 
     // Fetch batches until we have enough videos for the requested page
+    const fetchStart = performance.now();
+    let batchCount = 0;
     while (allVideoIds.length <= itemsToSkip + pageSize) {
+      batchCount++;
+      const batchStart = performance.now();
 
       const result = await this.getPlaylistVideos(playlistId, 50, currentPageToken);
+      const batchTime = performance.now() - batchStart;
+      logVerbose(`[YouTubeAPI] ⏱️ Batch ${batchCount} (${result.videoIds.length} IDs): ${batchTime.toFixed(1)}ms`);
 
       if (result.videoIds.length === 0) {
         break;
@@ -483,6 +489,8 @@ export class YouTubeAPI {
         break;
       }
     }
+    const fetchTime = performance.now() - fetchStart;
+    logVerbose(`[YouTubeAPI] ⏱️ Video ID fetch (${batchCount} batches): ${fetchTime.toFixed(1)}ms`);
 
     // Extract the videos for the requested page
     const startIndex = itemsToSkip;
@@ -498,6 +506,8 @@ export class YouTubeAPI {
     }
 
     // Enhanced batch processing with Promise.allSettled for graceful failure handling
+    const detailsStart = performance.now();
+    logVerbose(`[YouTubeAPI] 🔍 Fetching details for ${pageVideoIds.length} videos...`);
     const videoResults = await Promise.allSettled(
       pageVideoIds.map(async (videoId): Promise<{ success: boolean; video?: YouTubeVideo; videoId: string; error?: any }> => {
         const video = await this.getVideoDetails(videoId);
@@ -508,6 +518,8 @@ export class YouTubeAPI {
         }
       })
     );
+    const detailsTime = performance.now() - detailsStart;
+    logVerbose(`[YouTubeAPI] ⏱️ Video details fetch: ${detailsTime.toFixed(1)}ms`);
 
     // Process results and create fallback entries for failed videos
     const videos = videoResults.map((result, index) => {
@@ -538,10 +550,10 @@ export class YouTubeAPI {
     });
 
     // Calculate and log metrics
-    const loadTimeMs = Date.now() - startTime;
+    const loadTimeMs = performance.now() - startTime;
     const successfulLoads = videos.filter(v => v.isAvailable !== false).length;
     const failedLoads = videos.length - successfulLoads;
-    
+
     // Create error breakdown
     const errorBreakdown = {
       deleted: 0,
@@ -564,6 +576,8 @@ export class YouTubeAPI {
       pageNumber
     );
     VideoErrorLogger.logVideoLoadMetrics(metrics);
+
+    logVerbose(`[YouTubeAPI] 🏁 getPlaylistVideosPage total: ${loadTimeMs.toFixed(1)}ms (${successfulLoads}/${videos.length} successful)`);
 
     return { videos, totalResults, pageNumber };
   }
