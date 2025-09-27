@@ -113,28 +113,32 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
     }
 
     if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
-      // For YouTube sources, use the cached version directly in main process
+      // For YouTube sources, use the batch-loaded cache results if available
       try {
-        const { CachedYouTubeSources } = await import('../../preload/cached-youtube-sources');
+        let cache = batchCacheMap.get(source.id);
 
-        // Set up YouTube API using the preload context (matching the expected pattern)
-        logVerbose('[VideoDataService] Loading YouTube source:', source.id, source.title);
+        if (cache) {
+          // Use batch-loaded cache results
+          logVerbose('[VideoDataService] Using batch-loaded cache for source:', source.id, 'total videos:', cache.totalVideos || 0, 'cached videos:', cache.videos?.length || 0);
+        } else {
+          // Fallback to individual loading if not in batch results
+          const { CachedYouTubeSources } = await import('../../preload/cached-youtube-sources');
 
-        let cache;
-        if (apiKey) {
-          const { YouTubeAPI } = await import('../../preload/youtube');
-          YouTubeAPI.setApiKey(apiKey);
-          await YouTubeAPI.loadCacheConfig();
-          logVerbose('[VideoDataService] YouTube API configured for source:', source.id);
+          logVerbose('[VideoDataService] Loading YouTube source individually (not in batch):', source.id, source.title);
+
+          if (apiKey) {
+            const { YouTubeAPI } = await import('../../preload/youtube');
+            YouTubeAPI.setApiKey(apiKey);
+            await YouTubeAPI.loadCacheConfig();
+            logVerbose('[VideoDataService] YouTube API configured for source:', source.id);
+          } else {
+            log.warn('[VideoDataService] No API key provided for YouTube source:', source.id);
+          }
+
           // Use basic info only for initial load to save API calls
           cache = await CachedYouTubeSources.loadSourceBasicInfo(source);
-        } else {
-          log.warn('[VideoDataService] No API key provided for YouTube source:', source.id);
-          // Try to load basic info from cache without API key (cache-only mode)
-          cache = await CachedYouTubeSources.loadSourceBasicInfo(source);
+          logVerbose('[VideoDataService] Basic info loaded for source:', source.id, 'total videos:', cache.totalVideos || 0, 'cached videos:', cache.videos?.length || 0);
         }
-
-        logVerbose('[VideoDataService] Basic info loaded for source:', source.id, 'total videos:', cache.totalVideos || 0, 'cached videos:', cache.videos?.length || 0);
 
         // For initial load, we only get basic source info (no videos fetched from API)
         // Videos will be loaded on-demand when user clicks the source
