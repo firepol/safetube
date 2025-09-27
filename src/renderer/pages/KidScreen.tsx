@@ -64,12 +64,12 @@ export const KidScreen: React.FC = () => {
           setLoaderDebug(debug || []);
           setLoaderError(null);
           
-          // Check if any sources are using cached data due to API failures
-          const hasCachedData = videosBySource?.some((source: any) => source.usingCachedData);
-          if (hasCachedData && !warningShownRef.current) {
-            const cachedSource = videosBySource.find((source: any) => source.usingCachedData);
-            if (cachedSource?.lastFetched) {
-              showWarning(cachedSource.lastFetched);
+          // Check if any sources are using cached data due to API failures (not normal cache usage)
+          const hasApiErrorFallback = videosBySource?.some((source: any) => source.apiErrorFallback);
+          if (hasApiErrorFallback && !warningShownRef.current) {
+            const errorSource = videosBySource.find((source: any) => source.apiErrorFallback);
+            if (errorSource?.lastFetched) {
+              showWarning(errorSource.lastFetched);
             } else {
               showWarning();
             }

@@ -49,6 +49,7 @@ export interface YouTubeSourceCache {
   title?: string; // Title for the source (from channel/playlist details)
   usingCachedData?: boolean; // Flag indicating if we're using cached data due to API failure
   fetchedNewData?: boolean; // Flag indicating if new data was fetched from API (not cache hit)
+  apiErrorFallback?: boolean; // Flag indicating if we're using cached data due to API error/rate limit
 }
 
 // Pagination configuration

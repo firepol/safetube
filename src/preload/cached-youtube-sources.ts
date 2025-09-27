@@ -155,7 +155,8 @@ async function loadCacheFromDatabase(sourceId: string): Promise<YouTubeSourceCac
               totalVideos: totalVideosFromSource,
               thumbnail: videos[0].thumbnail || '',
               usingCachedData: false,
-              fetchedNewData: false
+              fetchedNewData: false,
+              apiErrorFallback: false  // Normal cache usage, no API error
             };
 
             logVerbose(`[CachedYouTubeSources] Loaded cache for ${sourceId} from database (main process): ${cache.videos.length} videos`);
@@ -346,7 +347,8 @@ export class CachedYouTubeSources {
       thumbnail: sourceThumbnail,
       title: sourceTitle,
       usingCachedData,
-      fetchedNewData: fetchedNewInfo
+      fetchedNewData: fetchedNewInfo,
+      apiErrorFallback: false  // Basic info loading doesn't trigger API errors
     };
 
     // Write to database
@@ -481,7 +483,8 @@ export class CachedYouTubeSources {
       totalVideos,
       thumbnail: sourceThumbnail,
       usingCachedData, // This flag indicates if we're using cached data as fallback (API failed)
-      fetchedNewData: fetchedNewInfo // Flag to indicate if we fetched new data from API
+      fetchedNewData: fetchedNewInfo, // Flag to indicate if we fetched new data from API
+      apiErrorFallback: usingCachedData && !fetchedNewInfo // Only true if using cache due to API error
     };
     // Write to database
     try {
@@ -650,7 +653,8 @@ export class CachedYouTubeSources {
                   thumbnail: sourceData ? sourceData.thumbnail || firstVideo.thumbnail || '' : firstVideo.thumbnail || '',
                   title: source.title,
                   usingCachedData: true,
-                  fetchedNewData: false
+                  fetchedNewData: false,
+                  apiErrorFallback: false  // This is reconstruction, not API error
                 };
                 cacheMap.set(source.id, cache);
                 logVerbose(`[CachedYouTubeSources] Reconstructed cache for ${source.id} in batch load: ${sourceVideos.length > 50 ? 50 : sourceVideos.length} videos`);
@@ -666,7 +670,8 @@ export class CachedYouTubeSources {
                   thumbnail: sourceData ? sourceData.thumbnail || '' : sourceVideos[0].thumbnail || '',
                   title: source.title,
                   usingCachedData: false,
-                  fetchedNewData: false
+                  fetchedNewData: false,
+                  apiErrorFallback: false  // Normal cache usage, no API error
                 };
                 cacheMap.set(source.id, cache);
               }
