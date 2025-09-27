@@ -1487,6 +1487,45 @@ async function fetchVideosForPage(source: any, pageNumber: number, pageSize: num
 // Handle loading videos from new source system
 ipcMain.handle('load-videos-from-sources', async () => {
   try {
+    const startTime = performance.now();
+    console.log('🚀 [Main] load-videos-from-sources: Using optimized lightweight resolver');
+
+    // Use lightweight source resolver instead of full batch loading
+    const { LightweightSourceResolver } = await import('./services/lightweightSourceResolver');
+    const sources = await LightweightSourceResolver.getAllSourcesMetadata();
+
+    // Transform to expected format without loading videos
+    const videosBySource = sources.map(source => ({
+      id: source.id,
+      type: source.type,
+      title: source.title,
+      thumbnail: source.thumbnail || '',
+      videoCount: source.videoCount || 0,
+      videos: [], // Don't preload videos - they'll be loaded on-demand
+      paginationState: {
+        currentPage: 1,
+        totalPages: Math.ceil((source.videoCount || 0) / 50),
+        totalVideos: source.videoCount || 0,
+        pageSize: 50
+      },
+      path: source.path,
+      maxDepth: source.maxDepth,
+      usingCachedData: true
+    }));
+
+    const result = { videosBySource };
+
+    // Store minimal data globally (just source metadata)
+    global.currentVideos = [];
+
+    const duration = performance.now() - startTime;
+    console.log(`🚀 [Main] load-videos-from-sources completed in ${duration.toFixed(2)}ms (optimized)`);
+
+    return result;
+  } catch (error) {
+    log.error('[Main] Error loading videos from sources:', error);
+    // Fallback to original implementation
+    console.log('🚀 [Main] Falling back to original implementation');
 
     // Read API key from mainSettings.json
     let apiKey = '';
@@ -1498,11 +1537,7 @@ ipcMain.handle('load-videos-from-sources', async () => {
       log.warn('[Main] Could not read mainSettings, trying environment variables:', error);
       apiKey = '';
     }
-    if (!apiKey) {
-      log.warn('[Main] YouTube API key not configured');
-    }
 
-    // Import and use the main process version that has the encoded IDs
     const result = await loadAllVideosFromSources(apiKey);
 
     // Extract all videos from the grouped structure and store them globally
@@ -1515,14 +1550,8 @@ ipcMain.handle('load-videos-from-sources', async () => {
       }
     }
 
-    // Store videos globally so the player can access them
     global.currentVideos = allVideos;
-
-
     return result;
-  } catch (error) {
-    log.error('[Main] Error loading videos from sources:', error);
-    throw error;
   }
 });
 

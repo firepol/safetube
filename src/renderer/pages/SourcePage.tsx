@@ -9,6 +9,7 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
 import { logVerbose } from '../lib/logging';
 import { SourceValidationService } from '../services/sourceValidationService';
+import { NavigationCache } from '../services/navigationCache';
 
 export const SourcePage: React.FC = () => {
   const navigate = useNavigate();
@@ -33,12 +34,20 @@ export const SourcePage: React.FC = () => {
     if (startTime) {
       const duration = now - startTime;
       console.log(`🚀 [FRONTEND-PERF] ${label}: ${duration.toFixed(2)}ms`);
-      performance.mark(`safetube-${label.toLowerCase().replace(/\s+/g, '-')}`);
+      try {
+        performance.mark(`safetube-${label.toLowerCase().replace(/\s+/g, '-')}`);
+      } catch (error) {
+        // Ignore performance mark errors
+      }
       return duration;
     } else {
       performanceMarkers.set(label, now);
       console.log(`⏱️ [FRONTEND-PERF] Starting: ${label}`);
-      performance.mark(`safetube-start-${label.toLowerCase().replace(/\s+/g, '-')}`);
+      try {
+        performance.mark(`safetube-start-${label.toLowerCase().replace(/\s+/g, '-')}`);
+      } catch (error) {
+        // Ignore performance mark errors
+      }
       return now;
     }
   };
@@ -115,8 +124,36 @@ export const SourcePage: React.FC = () => {
       }
 
       try {
-        // 🚀 FRONTEND PERFORMANCE TRACKING START
-        const overallStart = logPerformance('Overall Load Sequence');
+        // 🚀 INSTANT CACHE CHECK: Try cache first for sub-100ms navigation
+        const cachedPageData = NavigationCache.getCachedPageData(sourceId, currentPage);
+
+        if (cachedPageData) {
+          console.log(`🚀 [SourcePage] INSTANT navigation from cache for ${sourceId}, page ${currentPage}`);
+
+          // Ultra-fast state update from cache
+          React.startTransition(() => {
+            setSource(cachedPageData.source);
+            setIsLoading(false);
+            setCurrentPageVideos(cachedPageData.videos);
+            setPaginationState(cachedPageData.paginationState);
+            setIsLoadingVideos(false);
+            setError(null);
+          });
+
+          // Start background prefetch for adjacent pages
+          if (cachedPageData.paginationState) {
+            NavigationCache.prefetchAdjacentPages(
+              sourceId,
+              currentPage,
+              cachedPageData.paginationState.totalPages
+            );
+          }
+
+          return; // Exit early - cached data is sufficient
+        }
+
+        // 🚀 FRONTEND PERFORMANCE TRACKING START (cache miss)
+        const overallStart = logPerformance('Overall Load Sequence (Cache Miss)');
         const renderStart = logPerformance('React State Init');
 
         // Batch initial state updates for better performance
@@ -195,14 +232,25 @@ export const SourcePage: React.FC = () => {
           };
         }
 
-        // 🚨 INSTANT UI UPDATE: Use React.startTransition for immediate skeleton→content swap
-        React.startTransition(() => {
+        // 🚨 ULTRA-FAST UI UPDATE: Batch all state changes into single atomic update
+        const batchedUpdate = () => {
           setSource(foundSource);
-          setIsLoading(false); // Header can render
+          setIsLoading(false); // Header can render immediately
           setCurrentPageVideos(videos); // Videos ready for display
           setPaginationState(paginationData);
-          setIsLoadingVideos(false); // 🎯 This triggers skeleton→content transition
-        });
+          setIsLoadingVideos(false); // Triggers instant skeleton→content transition
+        };
+
+        // Use React.startTransition for non-blocking update
+        React.startTransition(batchedUpdate);
+
+        // 🚀 CACHE THE RESULTS: Store for instant future navigation
+        NavigationCache.cachePageData(sourceId, currentPage, foundSource, videos, paginationData);
+
+        // 🚀 BACKGROUND PREFETCH: Start prefetching adjacent pages
+        if (paginationData && paginationData.totalPages > 1) {
+          NavigationCache.prefetchAdjacentPages(sourceId, currentPage, paginationData.totalPages);
+        }
 
         logPerformance('Frontend - Critical UI Update', uiUpdateStart);
         console.log(`🎯 [FRONTEND-PERF] Videos available for display: ${videos.length} items`);
@@ -279,7 +327,11 @@ export const SourcePage: React.FC = () => {
         console.log(`🏆 [FRONTEND-PERF] Background enhancements: Running async`);
 
         // Browser dev tools markers
-        performance.measure('safetube-complete-load', `safetube-start-overall-load-sequence`, `safetube-overall-load-sequence`);
+        try {
+          performance.measure('safetube-complete-load', `safetube-start-overall-load-sequence`, `safetube-overall-load-sequence`);
+        } catch (error) {
+          // Ignore performance measurement errors
+        }
       } catch (err) {
         setError('Error loading source: ' + (err instanceof Error ? err.message : String(err)));
       } finally {

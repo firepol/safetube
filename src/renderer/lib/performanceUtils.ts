@@ -22,8 +22,12 @@ class PerformanceMonitor {
     const startTime = performance.now();
     this.markers.set(label, startTime);
 
-    // Browser dev tools markers
-    performance.mark(`safetube-start-${label.toLowerCase().replace(/\s+/g, '-')}`);
+    // Browser dev tools markers (with error handling)
+    try {
+      performance.mark(`safetube-start-${label.toLowerCase().replace(/\s+/g, '-')}`);
+    } catch (error) {
+      // Ignore performance mark errors
+    }
 
     console.log(`⏱️ [${category.toUpperCase()}-PERF] Starting: ${label}`);
 
@@ -53,10 +57,14 @@ class PerformanceMonitor {
       category
     });
 
-    // Browser dev tools markers
-    const markName = label.toLowerCase().replace(/\s+/g, '-');
-    performance.mark(`safetube-end-${markName}`);
-    performance.measure(`safetube-${markName}`, `safetube-start-${markName}`, `safetube-end-${markName}`);
+    // Browser dev tools markers (with error handling)
+    try {
+      const markName = label.toLowerCase().replace(/\s+/g, '-');
+      performance.mark(`safetube-end-${markName}`);
+      performance.measure(`safetube-${markName}`, `safetube-start-${markName}`, `safetube-end-${markName}`);
+    } catch (error) {
+      // Ignore performance measurement errors in case marks don't exist
+    }
 
     // Console logging with category-specific emoji
     const emoji = this.getCategoryEmoji(category);

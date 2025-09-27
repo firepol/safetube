@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { VideoCardBase, VideoCardBaseProps } from '../video/VideoCardBase';
 import { useThumbnailUpdates } from '../../hooks/useThumbnailUpdates';
@@ -6,7 +6,6 @@ import { useFavoriteStatus } from '../../hooks/useFavoriteStatus';
 import { FavoritesService } from '../../services/favoritesService';
 import { normalizeVideoSource } from '../../../shared/favoritesUtils';
 import { logVerbose } from '../../lib/logging';
-import { useRenderTiming } from '../../lib/performanceUtils';
 
 interface VideoGridProps {
   videos: VideoCardBaseProps[];
@@ -21,28 +20,32 @@ export const VideoGrid: React.FC<VideoGridProps> = memo(({
   className,
   showFavoriteIcons = false,
 }) => {
-  // 🚀 PERFORMANCE: Track render timing
-  const renderStart = React.useMemo(() => {
-    const start = performance.now();
-    console.log(`🎨 [VideoGrid] Render start - ${videos.length} videos`);
-    return start;
-  }, [videos.length]);
+  // 🚀 PERFORMANCE: Optimized render tracking with minimal overhead
+  const renderStart = useRef(performance.now());
+  const initialVideoCount = useRef(videos.length);
 
-  // Store thumbnail updates in separate state
-  const [thumbnailUpdates, setThumbnailUpdates] = useState<Record<string, string>>({});
+  // Track only significant changes to avoid constant logging
+  if (videos.length !== initialVideoCount.current) {
+    console.log(`🎨 [VideoGrid] Video count changed: ${initialVideoCount.current} → ${videos.length}`);
+    renderStart.current = performance.now();
+    initialVideoCount.current = videos.length;
+  }
 
-  // Use the thumbnail updates hook
+  // 🚀 PERFORMANCE: Stable thumbnail state using useRef to prevent re-renders
+  const thumbnailUpdatesRef = useRef<Record<string, string>>({});
+  const [thumbnailVersion, setThumbnailVersion] = useState(0);
+
+  // 🚀 PERFORMANCE: Optimized thumbnail updates hook with batching
   const { getThumbnailForVideo } = useThumbnailUpdates({
-    onThumbnailUpdate: (videoId: string, thumbnailUrl: string) => {
-      // Store thumbnail updates in a map
-      setThumbnailUpdates(prev => ({
-        ...prev,
-        [videoId]: thumbnailUrl
-      }));
-    }
+    onThumbnailUpdate: useCallback((videoId: string, thumbnailUrl: string) => {
+      // Use ref to avoid state updates triggering re-renders
+      thumbnailUpdatesRef.current[videoId] = thumbnailUrl;
+      // Batch update trigger to prevent cascade
+      setThumbnailVersion(prev => prev + 1);
+    }, [])
   });
 
-  // Use simple favorite status hook - like the visited/clicked system
+  // 🚀 PERFORMANCE: Memoized favorite status to prevent re-renders
   const { isFavorite: isFavoriteVideo, refreshFavorites } = useFavoriteStatus();
 
   // Simple favorite toggle - memoized to prevent infinite loops
@@ -92,7 +95,7 @@ export const VideoGrid: React.FC<VideoGridProps> = memo(({
         video.type,
         video.title,
         // Use updated thumbnail if available
-        thumbnailUpdates[video.id] || video.thumbnail || '',
+        thumbnailUpdatesRef.current[video.id] || video.thumbnail || '',
         video.duration || 0
       );
 
@@ -101,24 +104,24 @@ export const VideoGrid: React.FC<VideoGridProps> = memo(({
 
     } catch (error) {
     }
-  }, [videos, thumbnailUpdates, refreshFavorites, isFavoriteVideo]);
+  }, [videos, thumbnailVersion, refreshFavorites, isFavoriteVideo]);
 
-  // 🚀 PERFORMANCE: Optimized memoization to prevent re-render cascades
+  // 🚀 PERFORMANCE: Ultra-optimized memoization with stable dependencies
   const processedVideos = useMemo(() => {
     const start = performance.now();
 
     const result = videos.map(video => ({
       ...video,
-      thumbnail: thumbnailUpdates[video.id] || video.thumbnail,
+      thumbnail: thumbnailUpdatesRef.current[video.id] || video.thumbnail,
       showFavoriteIcon: showFavoriteIcons,
       onFavoriteToggle: showFavoriteIcons ? handleFavoriteToggle : undefined,
       isFavorite: isFavoriteVideo(video.id, video.type)
     }));
 
     const duration = performance.now() - start;
-    console.log(`🚀 [VideoGrid] Video processing: ${duration.toFixed(2)}ms`);
+    console.log(`🚀 [VideoGrid] Video processing: ${duration.toFixed(2)}ms (${videos.length} videos)`);
     return result;
-  }, [videos, thumbnailUpdates, showFavoriteIcons, handleFavoriteToggle, isFavoriteVideo]);
+  }, [videos, thumbnailVersion, showFavoriteIcons, handleFavoriteToggle, isFavoriteVideo]);
 
   // 🚀 PERFORMANCE: Optimized grouping with early return
   const groupedVideos = useMemo(() => {
@@ -140,10 +143,10 @@ export const VideoGrid: React.FC<VideoGridProps> = memo(({
     return result;
   }, [groupByType, processedVideos]);
 
-  // 🚀 PERFORMANCE: Log total render time
+  // 🚀 PERFORMANCE: Optimized render time logging
   React.useEffect(() => {
-    const totalRenderTime = performance.now() - renderStart;
-    console.log(`🎨 [VideoGrid] Total render time: ${totalRenderTime.toFixed(2)}ms`);
+    const totalRenderTime = performance.now() - renderStart.current;
+    console.log(`🎨 [VideoGrid] Render complete: ${totalRenderTime.toFixed(2)}ms for ${videos.length} videos`);
     performance.mark(`videogrid-render-complete-${videos.length}`);
   });
 
