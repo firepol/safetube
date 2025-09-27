@@ -1266,8 +1266,8 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
           if (cache && cache.videos && cache.videos.length > 0) {
             const cacheAge = Date.now() - new Date(cache.lastFetched).getTime();
             const cacheDurationMs = 90 * 60 * 1000; // 90 minutes
-            if (cacheAge < cacheDurationMs && !cache.fetchedNewData) {
-              logVerbose(`[Main] Using valid DB cache for page ${pageNumber} of ${sourceId} (age: ${Math.round(cacheAge / 60000)} minutes)`);
+            if (cacheAge < cacheDurationMs) {
+              logVerbose(`[Main] Using valid DB cache for page ${pageNumber} of ${sourceId} (age: ${Math.round(cacheAge / 60000)} minutes)${cache.fetchedNewData ? ' [fresh]' : ''}`);
               pageResult = {
                 videos: cache.videos.slice(0, pageSize), // Slice for page size
                 pageNumber,
