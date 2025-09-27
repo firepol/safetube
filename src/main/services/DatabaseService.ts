@@ -551,6 +551,124 @@ export class DatabaseService {
   }
 
   /**
+   * Batch query videos by IDs to reduce individual SELECT queries
+   */
+  async batchGetVideosByIds(videoIds: string[]): Promise<Map<string, any>> {
+    if (videoIds.length === 0) return new Map();
+
+    const placeholders = videoIds.map(() => '?').join(',');
+    const sql = `SELECT id, title, thumbnail, duration, url, published_at, description, created_at, updated_at FROM videos WHERE id IN (${placeholders})`;
+
+    const rows = await this.all<any>(sql, videoIds);
+    const videoMap = new Map<string, any>();
+
+    for (const row of rows) {
+      videoMap.set(row.id, row);
+    }
+
+    return videoMap;
+  }
+
+  /**
+   * Batch query sources data to reduce repeated queries
+   */
+  async batchGetSourcesData(sourceIds: string[]): Promise<Map<string, any>> {
+    if (sourceIds.length === 0) return new Map();
+
+    const placeholders = sourceIds.map(() => '?').join(',');
+    const sql = `SELECT id, total_videos, thumbnail, type, title FROM sources WHERE id IN (${placeholders})`;
+
+    const rows = await this.all<any>(sql, sourceIds);
+    const sourceMap = new Map<string, any>();
+
+    for (const row of rows) {
+      sourceMap.set(row.id, row);
+    }
+
+    return sourceMap;
+  }
+
+  /**
+   * Batch query YouTube API results by source IDs
+   */
+  async batchGetYouTubeApiResultsCount(sourceIds: string[]): Promise<Map<string, number>> {
+    if (sourceIds.length === 0) return new Map();
+
+    const placeholders = sourceIds.map(() => '?').join(',');
+    const sql = `SELECT source_id, COUNT(*) as count FROM youtube_api_results WHERE source_id IN (${placeholders}) GROUP BY source_id`;
+
+    const rows = await this.all<any>(sql, sourceIds);
+    const countMap = new Map<string, number>();
+
+    for (const row of rows) {
+      countMap.set(row.source_id, row.count);
+    }
+
+    return countMap;
+  }
+
+  /**
+   * Batch insert or update videos to reduce database calls
+   */
+  async batchUpsertVideos(videos: any[]): Promise<void> {
+    if (videos.length === 0) return;
+
+    const connection = await this.acquireConnection();
+
+    try {
+      await new Promise<void>((resolve, reject) => {
+        connection.serialize(() => {
+          connection.run('BEGIN TRANSACTION');
+
+          const stmt = connection.prepare(`
+            INSERT OR REPLACE INTO videos (
+              id, title, thumbnail, duration, source_id,
+              url, published_at, description, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?,
+              COALESCE((SELECT created_at FROM videos WHERE id = ?), datetime('now')),
+              datetime('now'))
+          `);
+
+          let errors: any[] = [];
+          let completed = 0;
+
+          for (const video of videos) {
+            stmt.run([
+              video.id,
+              video.title || '',
+              video.thumbnail || '',
+              video.duration || 0,
+              video.sourceId || '',
+              video.url || '',
+              video.publishedAt || video.published_at || null,
+              video.description || null,
+              video.id // for the COALESCE check
+            ], (err: any) => {
+              if (err) errors.push(err);
+              completed++;
+
+              if (completed === videos.length) {
+                stmt.finalize();
+                if (errors.length > 0) {
+                  connection.run('ROLLBACK');
+                  reject(errors[0]);
+                } else {
+                  connection.run('COMMIT', (commitErr: any) => {
+                    if (commitErr) reject(commitErr);
+                    else resolve();
+                  });
+                }
+              }
+            });
+          }
+        });
+      });
+    } finally {
+      this.releaseConnection(connection);
+    }
+  }
+
+  /**
    * Close the database and clean up connections
    */
   async close(): Promise<void> {

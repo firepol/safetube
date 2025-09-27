@@ -64,19 +64,28 @@ export class YouTubePageCache {
           const fetchTimestamps = rows.map(r => new Date(r.fetch_timestamp).getTime());
           const timestamp = fetchTimestamps.length > 0 ? Math.max(...fetchTimestamps) : Date.now();
 
-          // Fetch totalResults for the source
-          const totalResultsRow = await dbService.get<{ count: number }>(
-            `SELECT COUNT(*) as count FROM youtube_api_results WHERE source_id = ?`,
-            [sourceId]
-          );
-          const totalResults = totalResultsRow?.count || 0;
+          // Use cached data and batch operations for better performance
+          const { DataCacheService } = await import('../main/services/DataCacheService');
+          const cacheService = DataCacheService.getInstance();
 
-          // Fetch sourceType from sources table
-          const sourceRow = await dbService.get<{ type: string }>(
-            `SELECT type FROM sources WHERE id = ?`,
-            [sourceId]
-          );
-          const sourceType = sourceRow?.type || 'youtube_channel';
+          // Get cached YouTube result count
+          let totalResults = cacheService.getYouTubeResultCount(sourceId);
+          if (totalResults === null) {
+            const countMap = await dbService.batchGetYouTubeApiResultsCount([sourceId]);
+            totalResults = countMap.get(sourceId) || 0;
+            cacheService.setYouTubeResultCount(sourceId, totalResults);
+          }
+
+          // Get cached source data
+          let sourceData = cacheService.getSource(sourceId);
+          if (!sourceData) {
+            const sourceMap = await dbService.batchGetSourcesData([sourceId]);
+            sourceData = sourceMap.get(sourceId);
+            if (sourceData) {
+              cacheService.setSource(sourceId, sourceData);
+            }
+          }
+          const sourceType = sourceData?.type || 'youtube_channel';
 
           logVerbose(`[YouTubePageCache] Using database cache for ${sourceId} page ${pageNumber} (main process)`);
 

@@ -104,23 +104,40 @@ async function loadCacheFromDatabase(sourceId: string): Promise<YouTubeSourceCac
         `, [sourceId]);
 
         if (cacheResults && cacheResults.length > 0) {
-          // Get video details from videos table
+          // Use batch operations for better performance
           const videoIds = cacheResults.map(r => r.video_id);
-          const videoPlaceholders = videoIds.map(() => '?').join(',');
-          const videos = await dbService.all(`
-            SELECT id, title, published_at, thumbnail, duration, url
-            FROM videos
-            WHERE id IN (${videoPlaceholders})
-            ORDER BY published_at DESC
-          `, videoIds);
+          const { DataCacheService } = await import('../main/services/DataCacheService');
+          const cacheService = DataCacheService.getInstance();
 
-          if (videos && videos.length > 0) {
-            // Get total_videos from sources table if reconstructing
-            const sourceData = await dbService.get(
-              'SELECT total_videos FROM sources WHERE id = ?',
-              [sourceId]
+          // Check cache first for videos
+          const { found: cachedVideos, missing: missingVideoIds } = cacheService.batchGetVideos(videoIds);
+
+          // Get missing videos from database
+          let allVideos = new Map(cachedVideos);
+          if (missingVideoIds.length > 0) {
+            const dbVideos = await dbService.batchGetVideosByIds(missingVideoIds);
+            cacheService.batchSetVideos(dbVideos);
+            for (const [id, video] of dbVideos) {
+              allVideos.set(id, video);
+            }
+          }
+
+          if (allVideos.size > 0) {
+            // Get source data with caching
+            let sourceData = cacheService.getSource(sourceId);
+            if (!sourceData) {
+              const sourceMap = await dbService.batchGetSourcesData([sourceId]);
+              sourceData = sourceMap.get(sourceId);
+              if (sourceData) {
+                cacheService.setSource(sourceId, sourceData);
+              }
+            }
+            const totalVideosFromSource = sourceData ? sourceData.total_videos : allVideos.size;
+
+            // Convert to array and sort
+            const videos = Array.from(allVideos.values()).sort((a, b) =>
+              new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime()
             );
-            const totalVideosFromSource = sourceData ? sourceData.total_videos : videos.length;
 
             const cache: YouTubeSourceCache = {
               sourceId: sourceId,
@@ -518,14 +535,31 @@ export class CachedYouTubeSources {
         // Main process: use direct database access for batch operations
         try {
           const { DatabaseService } = await import('../main/services/DatabaseService');
+          const { DataCacheService } = await import('../main/services/DataCacheService');
           const dbService = DatabaseService.getInstance();
+          const cacheService = DataCacheService.getInstance();
 
-          // Batch load sources data
-          const sourcesData = await dbService.all(`
-            SELECT id, total_videos, thumbnail, updated_at
-            FROM sources
-            WHERE id IN (${placeholders})
-          `, sourceIds);
+          // Check cache first, then batch load missing sources data
+          const { found: cachedSources, missing: missingSources } = cacheService.batchGetSources(sourceIds);
+
+          let sourcesData: any[] = Array.from(cachedSources.values());
+          if (missingSources.length > 0) {
+            const missingPlaceholders = missingSources.map(() => '?').join(',');
+            const dbSourcesData = await dbService.all(`
+              SELECT id, total_videos, thumbnail, updated_at
+              FROM sources
+              WHERE id IN (${missingPlaceholders})
+            `, missingSources);
+
+            // Update cache with fetched data
+            const sourceMap = new Map();
+            for (const source of dbSourcesData) {
+              sourceMap.set(source.id, source);
+            }
+            cacheService.batchSetSources(sourceMap);
+
+            sourcesData = [...sourcesData, ...dbSourcesData];
+          }
 
           // Batch load cache data
           const cacheResults = await dbService.all(`
@@ -555,16 +589,24 @@ export class CachedYouTubeSources {
             }
           }
 
-          // Batch load video details if we have cached videos
+          // Batch load video details if we have cached videos, using cache first
           let videosBySource = new Map<string, any[]>();
           if (allVideoIds.length > 0) {
-            const videoPlaceholders = allVideoIds.map(() => '?').join(',');
-            const videos = await dbService.all(`
-              SELECT id, title, published_at, thumbnail, duration, url
-              FROM videos
-              WHERE id IN (${videoPlaceholders})
-              ORDER BY published_at DESC
-            `, allVideoIds);
+            const { found: cachedVideos, missing: missingVideoIds } = cacheService.batchGetVideos(allVideoIds);
+
+            // Get missing videos from database
+            let allVideos = new Map(cachedVideos);
+            if (missingVideoIds.length > 0) {
+              const dbVideos = await dbService.batchGetVideosByIds(missingVideoIds);
+              cacheService.batchSetVideos(dbVideos);
+              for (const [id, video] of dbVideos) {
+                allVideos.set(id, video);
+              }
+            }
+
+            const videos = Array.from(allVideos.values()).sort((a, b) =>
+              new Date(b.published_at || 0).getTime() - new Date(a.published_at || 0).getTime()
+            );
 
             // Group videos by source
             for (const video of videos) {

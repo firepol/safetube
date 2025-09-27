@@ -8,63 +8,38 @@ import { countVideosInFolder } from './localVideoService';
 
 /**
  * Write video metadata to database for persistence and search
+ * Now uses batch operations for better performance
  */
 async function writeVideosToDatabase(videos: any[]): Promise<void> {
   try {
     const DatabaseService = await import('./DatabaseService');
+    const { DataCacheService } = await import('./DataCacheService');
     const dbService = DatabaseService.default.getInstance();
+    const cacheService = DataCacheService.getInstance();
 
+    if (videos.length === 0) return;
+
+    // Use batch upsert for better performance
+    logVerbose(`[VideoDataService] Batch writing ${videos.length} videos to database`);
+    await dbService.batchUpsertVideos(videos);
+
+    // Update cache with new video data
+    const videoMap = new Map();
     for (const video of videos) {
-      try {
-        logVerbose(`[VideoDataService] Checking if video exists in DB: ${video.id}`);
-        // Check if video already exists
-        const existing = await dbService.get(`
-          SELECT id FROM videos WHERE id = ?
-        `, [video.id]);
-
-        if (!existing) {
-          logVerbose(`[VideoDataService] Inserting new video into DB: ${video.id}`);
-          // Insert new video
-          await dbService.run(`
-            INSERT OR REPLACE INTO videos (
-              id, title, thumbnail, duration, source_id,
-              url, published_at, description, created_at, updated_at
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))
-          `, [
-            video.id,
-            video.title || '',
-            video.thumbnail || '',
-            video.duration || 0,
-            video.sourceId || '',
-            video.url || '',
-            video.publishedAt || video.published_at || null,
-            video.description || null
-          ]);
-        } else {
-          logVerbose(`[VideoDataService] Updating existing video in DB: ${video.id}`);
-          // Update existing video metadata
-          await dbService.run(`
-            UPDATE videos SET
-              title = ?, thumbnail = ?, duration = ?, url = ?,
-              published_at = ?, description = ?, updated_at = datetime('now')
-            WHERE id = ?
-          `, [
-            video.title || '',
-            video.thumbnail || '',
-            video.duration || 0,
-            video.url || '',
-            video.publishedAt || video.published_at || null,
-            video.description || null,
-            video.id
-          ]);
-        }
-      } catch (error) {
-        log.warn(`[VideoDataService] Warning: Could not write video ${video.id} to database:`, error);
-        // Continue with other videos
-      }
+      videoMap.set(video.id, {
+        id: video.id,
+        title: video.title || '',
+        thumbnail: video.thumbnail || '',
+        duration: video.duration || 0,
+        source_id: video.sourceId || '',
+        url: video.url || '',
+        published_at: video.publishedAt || video.published_at || null,
+        description: video.description || null
+      });
     }
+    cacheService.batchSetVideos(videoMap);
 
-    logVerbose(`[VideoDataService] Written ${videos.length} videos to database`);
+    logVerbose(`[VideoDataService] Batch written ${videos.length} videos to database`);
   } catch (dbError) {
     log.error('[VideoDataService] Database not available for video writing:', dbError);
   }
