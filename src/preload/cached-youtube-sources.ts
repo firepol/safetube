@@ -150,7 +150,8 @@ async function loadCacheFromDatabase(sourceId: string): Promise<YouTubeSourceCac
                 publishedAt: v.published_at,
                 thumbnail: v.thumbnail,
                 duration: v.duration,
-                url: v.url
+                url: v.url,
+                description: v.description || ''
               })),
               totalVideos: totalVideosFromSource,
               thumbnail: videos[0].thumbnail || '',
@@ -234,7 +235,7 @@ export class CachedYouTubeSources {
           const { DatabaseService } = await import('../main/services/DatabaseService');
           const dbService = DatabaseService.getInstance();
           const videos = await dbService.all(`
-            SELECT id, title, published_at, thumbnail, duration, url
+            SELECT id, title, published_at, thumbnail, duration, url, description
             FROM videos
             WHERE source_id = ?
             ORDER BY published_at DESC
@@ -253,7 +254,8 @@ export class CachedYouTubeSources {
                 publishedAt: v.published_at,
                 thumbnail: v.thumbnail,
                 duration: v.duration,
-                url: v.url
+                url: v.url,
+                description: v.description || ''
               })),
               totalVideos: videos.length, // Use count or from sources table
               thumbnail: videos[0].thumbnail || '',
@@ -624,7 +626,8 @@ export class CachedYouTubeSources {
                   publishedAt: video.published_at,
                   thumbnail: video.thumbnail,
                   duration: video.duration,
-                  url: video.url
+                  url: video.url,
+                  description: video.description || ''
                 });
               }
             }
@@ -724,7 +727,8 @@ async function fetchNewYouTubeVideos(allVideoIds: string[], cachedVideos: any[])
     publishedAt: ((v.snippet as any).publishedAt || ''),
     thumbnail: v.snippet.thumbnails.high.url,
     duration: parseISODuration(v.contentDetails.duration),
-    url: `https://www.youtube.com/watch?v=${v.id}`
+    url: `https://www.youtube.com/watch?v=${v.id}`,
+    description: v.snippet.description || ''
   }));
 }
 function parseISODuration(iso: string): number {

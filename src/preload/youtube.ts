@@ -520,6 +520,7 @@ export class YouTubeAPI {
           id: video.id,
           type: 'youtube',
           title: video.snippet.title,
+          description: video.snippet.description || '',
           publishedAt: ((video.snippet as any).publishedAt || ''),
           thumbnail: video.snippet.thumbnails.high.url,
           duration: YouTubeAPI.parseDuration(video.contentDetails.duration),
