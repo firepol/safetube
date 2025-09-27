@@ -416,6 +416,64 @@ export async function loadVideosForSpecificSource(sourceId: string, apiKey?: str
       throw new Error('Database not initialized');
     }
 
+    // Handle special "favorites" source
+    if (sourceId === 'favorites') {
+      // Get all favorites with video metadata from database
+      const favorites = await dbService.all(`
+        SELECT
+          f.video_id,
+          f.source_id,
+          f.date_added,
+          v.title,
+          v.thumbnail,
+          v.duration,
+          v.url,
+          v.published_at,
+          v.description,
+          s.title as source_title,
+          s.type as source_type
+        FROM favorites f
+        LEFT JOIN videos v ON f.video_id = v.id
+        LEFT JOIN sources s ON f.source_id = s.id
+        ORDER BY f.date_added DESC
+      `);
+
+      // Convert database favorites to video objects
+      const favoriteVideos = favorites.map(favorite => ({
+        id: favorite.video_id,
+        title: favorite.title || 'Unknown Title',
+        thumbnail: favorite.thumbnail || '/placeholder-thumbnail.svg',
+        duration: favorite.duration || 0,
+        url: favorite.url || '',
+        type: favorite.source_type === 'youtube_channel' || favorite.source_type === 'youtube_playlist' ? 'youtube' : favorite.source_type,
+        published_at: favorite.published_at || null,
+        description: favorite.description || '',
+        sourceId: favorite.source_id,
+        sourceTitle: favorite.source_title || 'Unknown Source',
+        sourceType: 'favorites',
+        originalSourceId: favorite.source_id,
+        dateAdded: favorite.date_added,
+        resumeAt: undefined as number | undefined,
+      }));
+
+      return {
+        videosBySource: [{
+          id: 'favorites',
+          type: 'favorites',
+          title: 'Favorites',
+          thumbnail: '⭐',
+          videoCount: favorites.length,
+          videos: favoriteVideos,
+          paginationState: {
+            currentPage: 1,
+            totalPages: Math.ceil(favorites.length / 50),
+            totalVideos: favorites.length,
+            pageSize: 50
+          }
+        }]
+      };
+    }
+
     // Get the specific source from database
     const sourceRow = await dbService.get<any>(`
       SELECT id, type, title, sort_order, url, channel_id, path, max_depth

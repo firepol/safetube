@@ -793,8 +793,8 @@ ipcMain.handle('load-videos-for-source', async (_, sourceId: string) => {
     const { loadVideosForSpecificSource } = await import('./services/videoDataService');
     const result = await loadVideosForSpecificSource(sourceId, apiKey);
     console.log('[Main] Videos loaded for specific source:', sourceId, {
-      videoCount: result.source.videos?.length || 0,
-      fetchedNewData: result.source.fetchedNewData
+      videoCount: result.videosBySource?.[0]?.videos?.length || 0,
+      sourceType: result.videosBySource?.[0]?.type
     });
     return result;
   } catch (error) {
@@ -835,26 +835,37 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     const apiKeyTime = performance.now() - apiKeyStart;
     logVerbose(`[Main] ⏱️ API key read: ${apiKeyTime.toFixed(1)}ms`);
 
-    // Fetch source from database
+    // Handle special "favorites" source before database lookup
     let source = null;
-    const dbStart = performance.now();
-    try {
-  const DatabaseService = (await import('./services/DatabaseService')).DatabaseService;
-  const dbService = DatabaseService.getInstance();
-      source = await dbService.get(
-        'SELECT * FROM sources WHERE id = ?',
-        [sourceId]
-      );
-      if (!source) {
-        log.error('[Main] Source not found in database:', sourceId);
-        throw new Error('Source not found');
+    if (sourceId === 'favorites') {
+      // Skip database lookup for virtual favorites source - will be handled later
+      source = {
+        id: 'favorites',
+        type: 'favorites',
+        title: 'Favorites',
+        sort_order: 999
+      };
+    } else {
+      // Fetch source from database
+      const dbStart = performance.now();
+      try {
+    const DatabaseService = (await import('./services/DatabaseService')).DatabaseService;
+    const dbService = DatabaseService.getInstance();
+        source = await dbService.get(
+          'SELECT * FROM sources WHERE id = ?',
+          [sourceId]
+        );
+        if (!source) {
+          log.error('[Main] Source not found in database:', sourceId);
+          throw new Error('Source not found');
+        }
+      } catch (error) {
+        log.error('[Main] Error reading source from database:', error);
+        throw new Error('Failed to read video sources configuration');
       }
-    } catch (error) {
-      log.error('[Main] Error reading source from database:', error);
-      throw new Error('Failed to read video sources configuration');
+      const dbTime = performance.now() - dbStart;
+      logVerbose(`[Main] ⏱️ Database source lookup: ${dbTime.toFixed(1)}ms`);
     }
-    const dbTime = performance.now() - dbStart;
-    logVerbose(`[Main] ⏱️ Database source lookup: ${dbTime.toFixed(1)}ms`);
 
     // Handle special "downloaded" source
     if (sourceId === 'downloaded') {
