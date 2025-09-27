@@ -68,15 +68,8 @@ export class YouTubePageCache {
           const { DataCacheService } = await import('../main/services/DataCacheService');
           const cacheService = DataCacheService.getInstance();
 
-          // Get cached YouTube result count
-          let totalResults = cacheService.getYouTubeResultCount(sourceId);
-          if (totalResults === null) {
-            const countMap = await dbService.batchGetYouTubeApiResultsCount([sourceId]);
-            totalResults = countMap.get(sourceId) || 0;
-            cacheService.setYouTubeResultCount(sourceId, totalResults);
-          }
-
-          // Get cached source data
+          // Get total video count from source (not cached count)
+          let totalResults: number;
           let sourceData = cacheService.getSource(sourceId);
           if (!sourceData) {
             const sourceMap = await dbService.batchGetSourcesData([sourceId]);
@@ -85,6 +78,8 @@ export class YouTubePageCache {
               cacheService.setSource(sourceId, sourceData);
             }
           }
+          totalResults = sourceData?.total_videos || 0;
+
           const sourceType = sourceData?.type || 'youtube_channel';
 
           logVerbose(`[YouTubePageCache] Using database cache for ${sourceId} page ${pageNumber} (main process)`);

@@ -1312,6 +1312,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
 
       // Calculate total pages from total results
       const totalPages = Math.ceil((pageResult.totalResults ?? 0) / pageSize);
+      logVerbose(`[Main] 📊 Pagination calculation: totalResults=${pageResult.totalResults}, pageSize=${pageSize}, totalPages=${totalPages}, currentPage=${pageNumber}`);
 
       // Add source metadata to videos for compatibility
       const videosWithMetadata = pageResult.videos.map(video => ({

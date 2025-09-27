@@ -147,6 +147,7 @@ export const SourcePage: React.FC = () => {
           const pageResult = await window.electron.getPaginatedVideos(sourceId, currentPage);
           const step3Time = performance.now() - step3Start;
           logVerbose(`[SourcePage] ⏱️ Step 3 (getPaginatedVideos): ${step3Time.toFixed(1)}ms`);
+          logVerbose(`[SourcePage] 📊 Received pagination state:`, pageResult.paginationState);
           videos = pageResult.videos || [];
           setPaginationState(pageResult.paginationState || null);
         } else {
