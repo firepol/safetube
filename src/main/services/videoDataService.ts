@@ -12,9 +12,9 @@ import { countVideosInFolder } from './localVideoService';
  */
 async function writeVideosToDatabase(videos: any[]): Promise<void> {
   try {
-    const DatabaseService = await import('./DatabaseService');
+    const { DatabaseService } = await import('./DatabaseService');
     const { DataCacheService } = await import('./DataCacheService');
-    const dbService = DatabaseService.default.getInstance();
+    const dbService = DatabaseService.getInstance();
     const cacheService = DataCacheService.getInstance();
 
     if (videos.length === 0) return;
@@ -51,8 +51,8 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
 
   // Try to load sources from database first
   try {
-    const DatabaseService = await import('./DatabaseService');
-    const dbService = DatabaseService.default.getInstance();
+    const { DatabaseService } = await import('./DatabaseService');
+    const dbService = DatabaseService.getInstance();
     const healthStatus = await dbService.getHealthStatus();
 
     if (healthStatus.initialized) {
@@ -262,73 +262,54 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
     log.error('[VideoDataService] ERROR loading downloaded videos:', err);
   }
 
-  // Add favorites as a special source
+  // Add favorites as a special source (using database)
   try {
-    const { getFavorites } = await import('../fileUtils');
-    const favorites = await getFavorites();
+    const { DatabaseService } = await import('./DatabaseService');
+    const dbService = DatabaseService.getInstance();
+
+    // Get all favorites with video metadata from database
+    const favorites = await dbService.all(`
+      SELECT
+        f.video_id,
+        f.source_id,
+        f.date_added,
+        v.title,
+        v.thumbnail,
+        v.duration,
+        v.url,
+        v.published_at,
+        v.description,
+        s.title as source_title,
+        s.type as source_type
+      FROM favorites f
+      LEFT JOIN videos v ON f.video_id = v.id
+      LEFT JOIN sources s ON f.source_id = s.id
+      ORDER BY f.date_added DESC
+    `);
 
     if (favorites.length > 0) {
-      // Convert favorites to video objects with proper metadata
+      // Convert database favorites to video objects
       const favoriteVideos = [];
 
       for (const favorite of favorites) {
-        // Generate appropriate URL based on video type
-        let videoUrl = '';
-        const videoId = favorite.videoId;
+        // Use existing thumbnail or placeholder
+        const bestThumbnail = favorite.thumbnail || '/placeholder-thumbnail.svg';
 
-        if (favorite.sourceType === 'youtube') {
-          // For YouTube videos, extract the actual video ID (remove any prefix)
-          const actualVideoId = videoId.startsWith('youtube:') ? videoId.substring(8) : videoId;
-          videoUrl = `https://www.youtube.com/watch?v=${actualVideoId}`;
-        } else if (favorite.sourceType === 'local') {
-          // For local videos, the videoId contains the file path after "local:" prefix
-          const filePath = videoId.startsWith('local:') ? videoId.substring(6) : videoId;
-          videoUrl = `file://${filePath}`;
-        } else if (favorite.sourceType === 'dlna') {
-          // For DLNA videos, the videoId contains the URL after "dlna:" prefix
-          const dlnaUrl = videoId.startsWith('dlna:') ? videoId.substring(5) : videoId;
-          videoUrl = dlnaUrl;
-        }
-
-        // Check for best available thumbnail if original is empty (like History page does)
-        let bestThumbnail = favorite.thumbnail;
-        if (!bestThumbnail || bestThumbnail.trim() === '') {
-          try {
-            const { parseVideoId } = await import('../../shared/fileUtils');
-            const { getThumbnailCacheKey } = await import('../../shared/thumbnailUtils');
-            const parsed = parseVideoId(favorite.videoId);
-
-            if (parsed.success && parsed.parsed?.type === 'local') {
-              const cacheKey = getThumbnailCacheKey(favorite.videoId, 'local');
-              const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
-
-              if (fs.existsSync(cachedThumbnailPath)) {
-                const thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
-                bestThumbnail = thumbnailUrl;
-              }
-            }
-          } catch (error) {
-            logVerbose('[VideoDataService] Error getting best thumbnail for favorite:', favorite.videoId, error);
-          }
-        }
-
-        // Create video object compatible with existing video structure
         const favoriteVideo = {
-          id: favorite.videoId,
-          type: favorite.sourceType || 'youtube', // Use sourceType from FavoriteVideo interface
-          title: favorite.title,
+          id: favorite.video_id,
+          title: favorite.title || 'Unknown Title',
           thumbnail: bestThumbnail,
-          duration: favorite.duration,
-          url: videoUrl,
-          sourceId: favorite.sourceId, // Use actual sourceId from favorites.json
-          originalSourceId: favorite.sourceId, // Keep for compatibility
-          sourceTitle: 'Favorites',
+          duration: favorite.duration || 0,
+          url: favorite.url || '',
+          type: favorite.source_type === 'youtube_channel' || favorite.source_type === 'youtube_playlist' ? 'youtube' : favorite.source_type,
+          published_at: favorite.published_at || null,
+          description: favorite.description || '',
+          sourceId: favorite.source_id,
+          sourceTitle: favorite.source_title || 'Unknown Source',
           sourceType: 'favorites',
-          sourceThumbnail: '⭐',
-          favoriteId: favorite.videoId,
-          addedAt: favorite.dateAdded, // Use dateAdded from FavoriteVideo interface
-          isAvailable: true, // Will be validated in renderer
-          isFallback: false // Never show fallback UI for favorites
+          originalSourceId: favorite.source_id,
+          dateAdded: favorite.date_added,
+          resumeAt: undefined as number | undefined,
         };
 
         favoriteVideos.push(favoriteVideo);
@@ -367,7 +348,7 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
       });
     }
   } catch (err) {
-    log.error('[VideoDataService] ERROR loading favorites:', err);
+    log.error('[VideoDataService] ERROR loading favorites from database:', err);
 
     // Still add empty favorites source on error
     videosBySource.push({
@@ -427,8 +408,8 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
 // Load videos for a specific source (called when user clicks on a source)
 export async function loadVideosForSpecificSource(sourceId: string, apiKey?: string | null) {
   try {
-    const DatabaseService = await import('./DatabaseService');
-    const dbService = DatabaseService.default.getInstance();
+    const { DatabaseService } = await import('./DatabaseService');
+    const dbService = DatabaseService.getInstance();
     const healthStatus = await dbService.getHealthStatus();
 
     if (!healthStatus.initialized) {
@@ -523,8 +504,8 @@ export async function loadVideosForSpecificSource(sourceId: string, apiKey?: str
  */
 export async function loadSourcesForKidScreen() {
   try {
-    const DatabaseService = await import('./DatabaseService');
-    const dbService = DatabaseService.default.getInstance();
+    const { DatabaseService } = await import('./DatabaseService');
+    const dbService = DatabaseService.getInstance();
     const healthStatus = await dbService.getHealthStatus();
 
     if (!healthStatus.initialized) {
@@ -579,6 +560,11 @@ export async function loadSourcesForKidScreen() {
       };
     });
 
+    // Add favorites count from database
+    const favoritesCount = await dbService.get<{ count: number }>(`
+      SELECT COUNT(*) as count FROM favorites
+    `);
+
     // Always add favorites and downloaded as special sources
     sourcesByType.push(
       {
@@ -586,7 +572,7 @@ export async function loadSourcesForKidScreen() {
         type: 'favorites',
         title: 'Favorites',
         thumbnail: '⭐',
-        videoCount: 0, // Will be loaded on-demand
+        videoCount: favoritesCount?.count || 0, // Actual count from database
         videos: [],
         paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
         // Source-specific fields

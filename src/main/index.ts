@@ -928,197 +928,50 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       }
     }
 
-    // Handle special "favorites" source like History page does
+    // Handle special "favorites" source using database
     if (sourceId === 'favorites') {
-
       try {
-        const { getFavorites } = await import('./fileUtils');
-        const favorites = await getFavorites();
+        const dbService = DatabaseService.getInstance();
 
+        // Get all favorites with video metadata from database
+        const favorites = await dbService.all(`
+          SELECT
+            f.video_id,
+            f.source_id,
+            f.date_added,
+            v.title,
+            v.thumbnail,
+            v.duration,
+            v.url,
+            v.published_at,
+            v.description,
+            s.title as source_title,
+            s.type as source_type
+          FROM favorites f
+          LEFT JOIN videos v ON f.video_id = v.id
+          LEFT JOIN sources s ON f.source_id = s.id
+          ORDER BY f.date_added DESC
+        `);
 
-        // Convert favorites to video objects using getVideoData like History page
         const videosWithMetadata = [];
+
         for (const favorite of favorites) {
-          try {
-            // Use getVideoData to get proper video data with sourceId and thumbnail like History page
-            const videoData = await (async (videoId: string) => {
-              // This is the same logic from the get-video-data handler
-              try {
-                // Parse the video ID to determine its type
-                const { parseVideoId, extractPathFromVideoId } = await import('../shared/fileUtils');
-                const parseResult = parseVideoId(videoId);
+          const video = {
+            id: favorite.video_id,
+            title: favorite.title || 'Unknown Title',
+            thumbnail: favorite.thumbnail || '/placeholder-thumbnail.svg',
+            duration: favorite.duration || 0,
+            type: favorite.source_type === 'youtube_channel' || favorite.source_type === 'youtube_playlist' ? 'youtube' : favorite.source_type,
+            url: favorite.url || '',
+            sourceId: favorite.source_id,
+            sourceTitle: favorite.source_title || 'Unknown Source',
+            isAvailable: true,
+            isFallback: false,
+            originalSourceId: favorite.source_id,
+            dateAdded: favorite.date_added
+          };
 
-                // Handle local videos
-                let localFilePath: string | null = null;
-
-                if (parseResult.success && parseResult.parsed?.type === 'local') {
-                  localFilePath = extractPathFromVideoId(videoId);
-                } else if (videoId.includes('/') && favorite.sourceType === 'local') {
-                  // For favorites, videoId might be the raw path like History page
-                  localFilePath = videoId.startsWith('local:') ? videoId.substring(6) : videoId;
-                }
-
-                // If we have a local file path, process it
-                if (localFilePath && fs.existsSync(localFilePath)) {
-                  const { extractVideoDuration } = await import('../shared/videoDurationUtils');
-                  const duration = await extractVideoDuration(localFilePath);
-
-                  const video = {
-                    id: videoId,
-                    type: 'local',
-                    title: path.basename(localFilePath, path.extname(localFilePath)),
-                    thumbnail: '',
-                    duration,
-                    url: localFilePath,
-                    video: localFilePath,
-                    audio: undefined,
-                    preferredLanguages: ['en'],
-                    sourceId: favorite.sourceId, // Use the actual sourceId from favorites.json
-                    sourceTitle: 'Local Video',
-                    sourceThumbnail: '',
-                    resumeAt: undefined as number | undefined,
-                  };
-
-                  // Merge with watched data
-                  const { mergeWatchedData } = await import('./fileUtils');
-                  const videosWithWatchedData = await mergeWatchedData([video]);
-                  return videosWithWatchedData[0];
-                }
-
-                // For non-local videos, check global.currentVideos
-                if (global.currentVideos) {
-                  const video = global.currentVideos.find((v: any) => v.id === videoId);
-                  if (video) {
-                    const { mergeWatchedData } = await import('./fileUtils');
-                    const videosWithWatchedData = await mergeWatchedData([video]);
-                    return videosWithWatchedData[0];
-                  }
-                }
-
-                // Fallback: create video from favorite data with proper thumbnail processing
-                let bestThumbnail = favorite.thumbnail || '';
-
-                // Check for cached thumbnail for local videos (same logic as videoDataService.ts)
-                if ((!bestThumbnail || bestThumbnail.trim() === '') && favorite.sourceType === 'local') {
-                  try {
-                    const { parseVideoId } = await import('../shared/fileUtils');
-                    const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
-                    const { getThumbnailUrl } = await import('./services/thumbnailService');
-                    const parsed = parseVideoId(favorite.videoId);
-
-                    if (parsed.success && parsed.parsed?.type === 'local') {
-                      const cacheKey = getThumbnailCacheKey(favorite.videoId, 'local');
-                      const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
-
-                      if (fs.existsSync(cachedThumbnailPath)) {
-                        const thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
-                        bestThumbnail = thumbnailUrl;
-                        logVerbose('[Main] Using cached thumbnail for getPaginatedVideos favorite:', favorite.videoId, '->', thumbnailUrl);
-                      }
-                    }
-                  } catch (error) {
-                    logVerbose('[Main] Error getting cached thumbnail for getPaginatedVideos favorite:', favorite.videoId, error);
-                  }
-                }
-
-                return {
-                  id: favorite.videoId,
-                  title: favorite.title,
-                  thumbnail: bestThumbnail,
-                  type: favorite.sourceType,
-                  duration: favorite.duration || 0,
-                  sourceId: favorite.sourceId,
-                  sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
-                  isAvailable: true, // Favorites should always be available
-                  isFallback: false // Never show fallback UI for favorites
-                };
-              } catch (error) {
-                logVerbose('[Main] Error in getVideoData for favorite:', videoId, error);
-                return null;
-              }
-            })(favorite.videoId);
-
-            if (videoData) {
-              videosWithMetadata.push(videoData);
-            } else {
-              // Fallback video object for videos that can't be loaded like History page does
-              let bestThumbnail = favorite.thumbnail || '';
-
-              // Check for cached thumbnail for local videos (same logic as videoDataService.ts)
-              if ((!bestThumbnail || bestThumbnail.trim() === '') && favorite.sourceType === 'local') {
-                try {
-                  const { parseVideoId } = await import('../shared/fileUtils');
-                  const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
-                  const { getThumbnailUrl } = await import('./services/thumbnailService');
-                  const parsed = parseVideoId(favorite.videoId);
-
-                  if (parsed.success && parsed.parsed?.type === 'local') {
-                    const cacheKey = getThumbnailCacheKey(favorite.videoId, 'local');
-                    const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
-
-                    if (fs.existsSync(cachedThumbnailPath)) {
-                      const thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
-                      bestThumbnail = thumbnailUrl;
-                      logVerbose('[Main] Using cached thumbnail for getPaginatedVideos fallback favorite:', favorite.videoId, '->', thumbnailUrl);
-                    }
-                  }
-                } catch (error) {
-                  logVerbose('[Main] Error getting cached thumbnail for getPaginatedVideos fallback favorite:', favorite.videoId, error);
-                }
-              }
-
-              videosWithMetadata.push({
-                id: favorite.videoId,
-                title: favorite.title,
-                thumbnail: bestThumbnail,
-                duration: favorite.duration || 0,
-                type: favorite.sourceType,
-                sourceId: favorite.sourceId, // Use the actual sourceId from favorites.json
-                sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
-                isAvailable: true, // Favorites should always be available
-                isFallback: false // Never show fallback UI for favorites
-              });
-            }
-          } catch (error) {
-            logVerbose('[Main] Error loading video data for favorite:', favorite.videoId, error);
-            // Create fallback entry like History page does
-            let bestThumbnail = favorite.thumbnail || '';
-
-            // Check for cached thumbnail for local videos (same logic as videoDataService.ts)
-            if ((!bestThumbnail || bestThumbnail.trim() === '') && favorite.sourceType === 'local') {
-              try {
-                const { parseVideoId } = await import('../shared/fileUtils');
-                const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
-                const { getThumbnailUrl } = await import('./services/thumbnailService');
-                const parsed = parseVideoId(favorite.videoId);
-
-                if (parsed.success && parsed.parsed?.type === 'local') {
-                  const cacheKey = getThumbnailCacheKey(favorite.videoId, 'local');
-                  const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
-
-                  if (fs.existsSync(cachedThumbnailPath)) {
-                    const thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
-                    bestThumbnail = thumbnailUrl;
-                    logVerbose('[Main] Using cached thumbnail for getPaginatedVideos error fallback favorite:', favorite.videoId, '->', thumbnailUrl);
-                  }
-                }
-              } catch (thumbnailError) {
-                logVerbose('[Main] Error getting cached thumbnail for getPaginatedVideos error fallback favorite:', favorite.videoId, thumbnailError);
-              }
-            }
-
-            videosWithMetadata.push({
-              id: favorite.videoId,
-              title: favorite.title,
-              thumbnail: bestThumbnail,
-              duration: favorite.duration || 0,
-              type: favorite.sourceType,
-              sourceId: favorite.sourceId,
-              sourceTitle: `${favorite.sourceType.charAt(0).toUpperCase() + favorite.sourceType.slice(1)} Video`,
-              isAvailable: true, // Favorites should always be available
-              isFallback: false // Never show fallback UI for favorites
-            });
-          }
+          videosWithMetadata.push(video);
         }
 
         // Store videos in global.currentVideos so the player can access them
@@ -1143,7 +996,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         const endIndex = startIndex + pageSize;
         const paginatedVideos = videosWithMetadata.slice(startIndex, endIndex);
 
-        logVerbose('[Main] Favorites videos paginated:', {
+        logVerbose('[Main] Favorites videos paginated from database:', {
           totalVideos,
           totalPages,
           currentPage: pageNumber,
@@ -1161,7 +1014,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
           }
         };
       } catch (error) {
-        log.error('[Main] Error loading favorites for pagination:', error);
+        log.error('[Main] Error loading favorites from database:', error);
         // Return empty result instead of throwing
         return {
           videos: [],
@@ -1174,7 +1027,6 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         };
       }
     }
-
 
 
 
@@ -1955,9 +1807,9 @@ app.on('ready', async () => {
 
   // Initialize SQLite database with automatic videoSources migration FIRST
   try {
-    const DatabaseService = await import('./services/DatabaseService');
+    const { default: DatabaseService } = await import('./services/DatabaseService');
     const { SimpleSchemaManager } = await import('./database/SimpleSchemaManager');
-    const dbService = DatabaseService.default.getInstance();
+    const dbService = DatabaseService.getInstance();
 
     log.info('[Main] Initializing SQLite database...');
     await dbService.initialize();
