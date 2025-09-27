@@ -114,6 +114,16 @@ export class YouTubePageFetcher {
       const totalTime = performance.now() - startTime;
       logVerbose(`[YouTubePageFetcher] 🏁 Successfully fetched page ${pageNumber} for ${sourceId} (${result.videos.length} videos) - total: ${totalTime.toFixed(1)}ms`);
 
+      // Prefetch next page in background for better user experience (only for page 1)
+      if (pageNumber === 1 && result.totalResults > pageSize) {
+        setTimeout(() => {
+          logVerbose(`[YouTubePageFetcher] 🔮 Background prefetching page 2 for ${sourceId}`);
+          this.fetchPage(source, 2, pageSize).catch(error => {
+            logVerbose(`[YouTubePageFetcher] Background prefetch failed for page 2: ${error}`);
+          });
+        }, 100); // Small delay to not interfere with current request
+      }
+
       return {
         videos: result.videos,
         pageNumber: result.pageNumber,

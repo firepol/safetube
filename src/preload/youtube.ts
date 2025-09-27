@@ -463,11 +463,14 @@ export class YouTubeAPI {
     // Fetch batches until we have enough videos for the requested page
     const fetchStart = performance.now();
     let batchCount = 0;
+    // Use larger batch size for faster fetching (YouTube API max is 50)
+    const batchSize = 50;
+
     while (allVideoIds.length <= itemsToSkip + pageSize) {
       batchCount++;
       const batchStart = performance.now();
 
-      const result = await this.getPlaylistVideos(playlistId, 50, currentPageToken);
+      const result = await this.getPlaylistVideos(playlistId, batchSize, currentPageToken);
       const batchTime = performance.now() - batchStart;
       logVerbose(`[YouTubeAPI] ⏱️ Batch ${batchCount} (${result.videoIds.length} IDs): ${batchTime.toFixed(1)}ms`);
 
@@ -484,8 +487,8 @@ export class YouTubeAPI {
         break;
       }
 
-      // If we have enough videos for the requested page, we can stop
-      if (allVideoIds.length > itemsToSkip + pageSize - 1) {
+      // Early exit optimization: stop as soon as we have enough
+      if (allVideoIds.length >= itemsToSkip + pageSize) {
         break;
       }
     }

@@ -361,8 +361,26 @@ export const SourcePage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="p-4">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-lg">Loading source...</div>
+        <div className="flex items-center justify-between mb-6">
+          <BreadcrumbNavigation items={getBreadcrumbItems()} />
+          <TimeIndicator initialState={timeTrackingState} />
+        </div>
+        <h1 className="text-2xl font-bold mb-2">{sourceId ? `Loading ${sourceId}...` : 'Loading source...'}</h1>
+        <div className="flex items-center space-x-3 mb-6">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+          <span className="text-gray-600">Fetching videos from YouTube API...</span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+          {/* Skeleton loading cards */}
+          {Array.from({ length: 15 }).map((_, i) => (
+            <div key={i} className="bg-gray-200 rounded-lg animate-pulse">
+              <div className="aspect-video bg-gray-300 rounded-t-lg"></div>
+              <div className="p-3">
+                <div className="h-4 bg-gray-300 rounded mb-2"></div>
+                <div className="h-3 bg-gray-300 rounded w-3/4"></div>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
