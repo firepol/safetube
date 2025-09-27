@@ -146,20 +146,28 @@ export class YouTubePageCache {
           const endPosition = startPosition + videos.length - 1;
           const pageRange = `${startPosition}-${endPosition}`;
 
-          // Clear existing cache for this source and page range
-          await dbService.run(`
-            DELETE FROM youtube_api_results WHERE source_id = ? AND page_range = ?
-          `, [sourceId, pageRange]);
+          // Prepare batch transaction for better performance
+          const queries = [];
+          const timestamp = new Date().toISOString();
 
-          // Insert new cache entries
+          // First, clear existing cache for this source and page range
+          queries.push({
+            sql: 'DELETE FROM youtube_api_results WHERE source_id = ? AND page_range = ?',
+            params: [sourceId, pageRange]
+          });
+
+          // Then, batch insert all new cache entries
           for (let i = 0; i < videos.length; i++) {
             const video = videos[i];
             const position = startPosition + i;
-            await dbService.run(`
-              INSERT INTO youtube_api_results (source_id, video_id, position, page_range, fetch_timestamp)
-              VALUES (?, ?, ?, ?, ?)
-            `, [sourceId, video.id, position, pageRange, new Date().toISOString()]);
+            queries.push({
+              sql: 'INSERT INTO youtube_api_results (source_id, video_id, position, page_range, fetch_timestamp) VALUES (?, ?, ?, ?, ?)',
+              params: [sourceId, video.id, position, pageRange, timestamp]
+            });
           }
+
+          // Execute all operations in a single transaction
+          await dbService.executeTransaction(queries, { silent: true });
 
           logVerbose(`[YouTubePageCache] Cached page ${pageNumber} for ${sourceId} (${videos.length} videos) in database via main process`);
         } catch (error) {
