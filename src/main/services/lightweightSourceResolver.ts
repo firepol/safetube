@@ -94,7 +94,15 @@ export class LightweightSourceResolver {
 
     // Check if we have cached all sources
     if (this.sourceCache.size > 0 && (now - this.cacheTimestamp) < this.CACHE_TTL) {
-      return Array.from(this.sourceCache.values());
+      const cachedSources = Array.from(this.sourceCache.values());
+      // Ensure favorites is always included in cached results
+      if (!cachedSources.find(s => s.id === 'favorites')) {
+        const favoritesSource = await this.getSourceMetadata('favorites');
+        if (favoritesSource) {
+          cachedSources.push(favoritesSource);
+        }
+      }
+      return cachedSources;
     }
 
     try {
@@ -126,6 +134,8 @@ export class LightweightSourceResolver {
         return resolved;
       });
 
+      // CRITICAL: Always ensure favorites source is added to resolved sources
+
       // Add favorites as a special source
       const favoritesCount = await dbService.get<{ count: number }>(`
         SELECT COUNT(*) as count FROM favorites
@@ -148,6 +158,13 @@ export class LightweightSourceResolver {
       this.sourceCache.set('favorites', favoritesSource);
 
       this.cacheTimestamp = now;
+
+      // Double-check that favorites is in the final array
+      if (!resolvedSources.find(s => s.id === 'favorites')) {
+        logVerbose('[LightweightSourceResolver] WARNING: Favorites source missing from final array, adding it');
+        resolvedSources.push(favoritesSource);
+      }
+
       return resolvedSources;
     } catch (error) {
       log.error('[LightweightSourceResolver] Error loading sources:', error);
