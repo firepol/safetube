@@ -26,7 +26,10 @@ export class FavoritesService {
         return this.favoritesCache;
       }
 
-      const favorites = await window.electron.favoritesGetAll();
+      const result = await window.electron.favoritesGetAll();
+
+      // Handle database response format
+      const favorites = result.success ? result.data : [];
 
       // Update cache
       this.favoritesCache = favorites;
@@ -139,7 +142,10 @@ export class FavoritesService {
         return isFav;
       }
 
-      const isFav = await window.electron.favoritesIsFavorite(originalVideoId);
+      const result = await window.electron.favoritesIsFavorite(originalVideoId);
+
+      // Handle database response format
+      const isFav = result.success ? result.data : false;
 
       // Update cache
       this.favoriteStatusCache.set(originalVideoId, isFav);
@@ -173,21 +179,32 @@ export class FavoritesService {
       // Optimistic update using original ID
       this.favoriteStatusCache.set(originalVideoId, !currentState);
 
-      const favorite = await window.electron.favoritesToggle(
+      const result = await window.electron.favoritesToggle(
         videoId, sourceId, type, title, thumbnail, duration, lastWatched
       );
 
+      // Handle new database response format
+      const newState = result.success ? result.data.isFavorite : !currentState;
 
-      const newState = !currentState;
+      // Create a fake favorite object for cache consistency
+      const favorite = newState ? {
+        videoId: originalVideoId,
+        sourceId,
+        sourceType: type,
+        title,
+        thumbnail,
+        duration,
+        dateAdded: new Date().toISOString()
+      } : null;
 
       // Update cache based on new state using original ID
       if (this.favoritesCache) {
         if (newState) {
           // Added to favorites
           const existingIndex = this.favoritesCache.findIndex(f => f.videoId === originalVideoId);
-          if (existingIndex >= 0) {
+          if (existingIndex >= 0 && favorite) {
             this.favoritesCache[existingIndex] = favorite;
-          } else {
+          } else if (favorite) {
             this.favoritesCache.push(favorite);
           }
         } else {

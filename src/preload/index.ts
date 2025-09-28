@@ -157,13 +157,13 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.off('show-validation-error', wrappedCallback);
     },
     // Favorites management
-    favoritesGetAll: () => ipcRenderer.invoke('favorites:get-all'),
+    favoritesGetAll: () => ipcRenderer.invoke('database:favorites:get-all'),
     favoritesAdd: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) =>
-      ipcRenderer.invoke('favorites:add', { id: videoId, sourceId, type, title, thumbnail, duration }),
-    favoritesRemove: (videoId: string) => ipcRenderer.invoke('favorites:remove', videoId),
-    favoritesIsFavorite: (videoId: string) => ipcRenderer.invoke('favorites:is-favorite', videoId),
+      ipcRenderer.invoke('database:favorites:add', videoId, sourceId),
+    favoritesRemove: (videoId: string) => ipcRenderer.invoke('database:favorites:remove', videoId),
+    favoritesIsFavorite: (videoId: string) => ipcRenderer.invoke('database:favorites:is-favorite', videoId),
     favoritesToggle: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) =>
-      ipcRenderer.invoke('favorites:toggle', videoId, sourceId, type, title, thumbnail, duration, lastWatched),
+      ipcRenderer.invoke('database:favorites:toggle', videoId, sourceId),
     favoritesUpdateMetadata: (videoId: string, metadata: any) => ipcRenderer.invoke('favorites:update-metadata', videoId, metadata),
     favoritesGetBySource: (sourceId: string) => ipcRenderer.invoke('favorites:get-by-source', sourceId),
     favoritesGetConfig: () => ipcRenderer.invoke('favorites:get-config'),

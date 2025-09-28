@@ -432,15 +432,27 @@ export function registerDatabaseHandlers() {
   });
 
   // Favorites Operations
-  ipcMain.handle('database:favorites:get-all', async (): Promise<DatabaseResponse<(FavoriteRecord & VideoRecord)[]>> => {
+  ipcMain.handle('database:favorites:get-all', async (): Promise<DatabaseResponse<any[]>> => {
     try {
       const dbService = DatabaseService.getInstance();
-      const favorites = await dbService.all<FavoriteRecord & VideoRecord>(`
-        SELECT f.*, v.title, v.thumbnail, v.duration, v.is_available
+      const rawFavorites = await dbService.all<any>(`
+        SELECT f.*, v.title, v.thumbnail, v.duration, v.is_available, s.type as source_type
         FROM favorites f
         JOIN videos v ON f.video_id = v.id
+        LEFT JOIN sources s ON f.source_id = s.id
         ORDER BY f.date_added DESC
       `);
+
+      // Transform to expected FavoriteVideo format
+      const favorites = rawFavorites.map((fav: any) => ({
+        videoId: fav.video_id,
+        dateAdded: fav.date_added,
+        sourceType: fav.source_type === 'youtube_channel' || fav.source_type === 'youtube_playlist' ? 'youtube' : fav.source_type,
+        sourceId: fav.source_id,
+        title: fav.title,
+        thumbnail: fav.thumbnail,
+        duration: fav.duration
+      }));
 
       return {
         success: true,
