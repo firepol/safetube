@@ -83,6 +83,15 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
       );
     }
 
+    // For favorites source, show special star background
+    if (source.type === 'favorites') {
+      return (
+        <div className="w-full h-full bg-yellow-100 flex items-center justify-center">
+          <div className="text-6xl text-yellow-500">⭐</div>
+        </div>
+      );
+    }
+
     // Default fallback
     return (
       <div className="w-full h-full bg-gray-300 flex items-center justify-center">
@@ -103,6 +112,8 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
         return '🌐';
       case 'history':
         return '📚';
+      case 'favorites':
+        return '⭐';
       default:
         return '📹';
     }
@@ -120,6 +131,8 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
         return 'DLNA Server';
       case 'history':
         return 'Video History';
+      case 'favorites':
+        return 'Favorites';
       default:
         return 'Video Source';
     }
