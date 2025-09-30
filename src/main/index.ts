@@ -1017,7 +1017,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
 
         return {
           videos: paginatedVideos,
-          pagination: {
+          paginationState: {
             currentPage: pageNumber,
             totalPages: totalPages,
             totalVideos: totalVideos,
@@ -1029,7 +1029,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         // Return empty result instead of throwing
         return {
           videos: [],
-          pagination: {
+          paginationState: {
             currentPage: 1,
             totalPages: 1,
             totalVideos: 0,

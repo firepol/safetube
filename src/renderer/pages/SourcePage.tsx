@@ -148,12 +148,19 @@ export const SourcePage: React.FC = () => {
 
         const { videosBySource } = allSourcesResult;
 
+        logVerbose(`[SourcePage] 📋 loadVideosFromSources returned ${videosBySource?.length || 0} sources:`,
+          videosBySource?.map((s: any) => s.id).join(', ') || 'none');
+        logVerbose(`[SourcePage] 🔍 Looking for sourceId: ${sourceId}`);
+
         foundSource = videosBySource.find((s: any) => s.id === sourceId);
         if (!foundSource) {
+          logVerbose(`[SourcePage] ❌ Source ${sourceId} not found in videosBySource array`);
           setError(`Source not found (SourcePage): ${sourceId}`);
           setIsLoading(false);
           return;
         }
+
+        logVerbose(`[SourcePage] ✅ Found source: ${foundSource.id} (${foundSource.title}) with ${foundSource.videoCount} videos`);
 
 
         // For non-local sources, try to load videos using the optimized approach
