@@ -1940,8 +1940,10 @@ app.on('ready', async () => {
 
     // Refresh stale YouTube sources in the background
     try {
+      log.info('[Main] Attempting to refresh stale YouTube sources...');
       const { readMainSettings } = await import('./fileUtils');
       const settings = await readMainSettings();
+      log.info(`[Main] API key configured: ${settings.youtubeApiKey ? 'YES' : 'NO'}`);
       if (settings.youtubeApiKey) {
         const { refreshStaleYouTubeSources } = await import('./services/videoDataService');
         // Run in background, don't await
@@ -1949,6 +1951,8 @@ app.on('ready', async () => {
           log.error('[Main] Error refreshing stale YouTube sources:', error);
         });
         log.info('[Main] Started background refresh of stale YouTube sources');
+      } else {
+        log.warn('[Main] No YouTube API key configured, skipping source refresh');
       }
     } catch (error) {
       log.warn('[Main] Could not start background source refresh:', error);

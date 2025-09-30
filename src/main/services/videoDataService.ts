@@ -690,8 +690,10 @@ export async function loadSourcesForKidScreen() {
  * This runs in the background on app startup
  */
 export async function refreshStaleYouTubeSources(apiKey?: string | null) {
+  log.info('[VideoDataService] refreshStaleYouTubeSources called');
+
   if (!apiKey) {
-    logVerbose('[VideoDataService] No API key provided, skipping stale source refresh');
+    log.warn('[VideoDataService] No API key provided, skipping stale source refresh');
     return;
   }
 
@@ -701,13 +703,14 @@ export async function refreshStaleYouTubeSources(apiKey?: string | null) {
     const healthStatus = await dbService.getHealthStatus();
 
     if (!healthStatus.initialized) {
-      logVerbose('[VideoDataService] Database not initialized, skipping refresh');
+      log.warn('[VideoDataService] Database not initialized, skipping refresh');
       return;
     }
 
     // Get cache TTL from config (default 6 hours)
     const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
     const staleThreshold = new Date(Date.now() - CACHE_TTL_MS).toISOString();
+    log.info(`[VideoDataService] Stale threshold: ${staleThreshold}`);
 
     // Find YouTube sources that need refreshing
     const staleSources = await dbService.all<any>(`
@@ -717,12 +720,14 @@ export async function refreshStaleYouTubeSources(apiKey?: string | null) {
         AND (updated_at IS NULL OR updated_at < ?)
     `, [staleThreshold]);
 
+    log.info(`[VideoDataService] Found ${staleSources.length} stale YouTube sources`);
+
     if (staleSources.length === 0) {
-      logVerbose('[VideoDataService] No stale YouTube sources found');
+      log.info('[VideoDataService] No stale YouTube sources found');
       return;
     }
 
-    logVerbose(`[VideoDataService] Refreshing ${staleSources.length} stale YouTube sources`);
+    log.info(`[VideoDataService] Refreshing ${staleSources.length} stale YouTube sources`);
 
     const { YouTubeAPI } = await import('../youtube-api');
     const youtubeApi = new YouTubeAPI(apiKey);

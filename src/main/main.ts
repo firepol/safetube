@@ -427,10 +427,24 @@ app.whenReady().then(async () => {
     if (allVideos.length > 0) {
       const sampleVideos = allVideos.slice(0, 5);
     }
+
+    // Refresh stale YouTube sources in the background
+    if (apiKey) {
+      try {
+        const { refreshStaleYouTubeSources } = await import('./services/videoDataService');
+        // Run in background, don't await
+        refreshStaleYouTubeSources(apiKey).catch((error) => {
+          log.error('[Main] Error refreshing stale YouTube sources:', error);
+        });
+        log.info('[Main] Started background refresh of stale YouTube sources');
+      } catch (refreshError) {
+        log.warn('[Main] Could not start background source refresh:', refreshError);
+      }
+    }
   } catch (error) {
     console.error('[Main] Error loading videos on startup:', error);
   }
-  
+
   // Then create the window
   createWindow();
 

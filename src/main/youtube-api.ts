@@ -64,24 +64,25 @@ export class YouTubeAPI {
     }
   }
   
-  // Get channel details (title, description, thumbnail)
+  // Get channel details (title, description, thumbnail, videoCount)
   async getChannelDetails(channelId: string): Promise<any> {
     try {
       const response = await this.makeRequest(
-        `${this.baseUrl}/channels?part=snippet&id=${channelId}&key=${this.apiKey}`
+        `${this.baseUrl}/channels?part=snippet,statistics&id=${channelId}&key=${this.apiKey}`
       );
-      
+
       if (!response.items || response.items.length === 0) {
         throw new Error(`Channel not found: ${channelId}`);
       }
-      
-      const channel = response.items[0].snippet;
+
+      const channel = response.items[0];
       return {
-        title: channel.title,
-        description: channel.description,
-        thumbnail: channel.thumbnails?.high?.url || channel.thumbnails?.medium?.url || channel.thumbnails?.default?.url
+        title: channel.snippet.title,
+        description: channel.snippet.description,
+        thumbnail: channel.snippet.thumbnails?.high?.url || channel.snippet.thumbnails?.medium?.url || channel.snippet.thumbnails?.default?.url,
+        videoCount: channel.statistics?.videoCount ? parseInt(channel.statistics.videoCount) : 0
       };
-      
+
     } catch (error) {
       console.error('[YouTubeAPI] Error fetching channel details:', error);
       throw error;
@@ -113,24 +114,25 @@ export class YouTubeAPI {
     }
   }
   
-  // Get playlist details (title, description, thumbnail)
+  // Get playlist details (title, description, thumbnail, videoCount)
   async getPlaylistDetails(playlistId: string): Promise<any> {
     try {
       const response = await this.makeRequest(
-        `${this.baseUrl}/playlists?part=snippet&id=${playlistId}&key=${this.apiKey}`
+        `${this.baseUrl}/playlists?part=snippet,contentDetails&id=${playlistId}&key=${this.apiKey}`
       );
-      
+
       if (!response.items || response.items.length === 0) {
         throw new Error(`Playlist not found: ${playlistId}`);
       }
-      
-      const playlist = response.items[0].snippet;
+
+      const playlist = response.items[0];
       return {
-        title: playlist.title,
-        description: playlist.description,
-        thumbnail: playlist.thumbnails?.high?.url || playlist.thumbnails?.medium?.url || playlist.thumbnails?.default?.url
+        title: playlist.snippet.title,
+        description: playlist.snippet.description,
+        thumbnail: playlist.snippet.thumbnails?.high?.url || playlist.snippet.thumbnails?.medium?.url || playlist.snippet.thumbnails?.default?.url,
+        videoCount: playlist.contentDetails?.itemCount || 0
       };
-      
+
     } catch (error) {
       console.error('[YouTubeAPI] Error fetching playlist details:', error);
       throw error;
