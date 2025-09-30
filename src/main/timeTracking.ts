@@ -170,9 +170,6 @@ export async function recordVideoWatching(
   duration?: number
 ): Promise<void> {
   try {
-    const watchedVideos = await readWatchedVideos();
-    const existingIndex = watchedVideos.findIndex(v => v.videoId === videoId);
-
     // Get video metadata for enhanced history storage
     const videoMetadata = await getVideoMetadata(videoId);
 
@@ -190,28 +187,20 @@ export async function recordVideoWatching(
       firstWatched: new Date().toISOString() // Will be overridden for existing entries
     };
 
-    if (existingIndex >= 0) {
-      // Preserve existing data, but update with new info
-      const existing = watchedVideos[existingIndex];
-      watchedVideos[existingIndex] = {
-        ...existing,
-        ...watchedEntry,
-        // Preserve original first watched date if available
-        firstWatched: existing.firstWatched || existing.lastWatched,
-      };
-    } else {
-      watchedVideos.push(watchedEntry);
-    }
-
-    await writeWatchedVideos(watchedVideos);
-
-    // Also write to database
+    // Check if this video already exists in the database
     try {
-      await writeViewRecordToDatabase(watchedEntry);
-    } catch (dbError) {
-      logVerbose(`[TimeTracking] Warning: Could not write view record to database: ${dbError}`);
-      // Continue - JSON fallback is still available
+      const { DatabaseService } = await import('./services/DatabaseService');
+      const dbService = DatabaseService.getInstance();
+      const existing = await dbService.get<any>('SELECT first_watched FROM view_records WHERE video_id = ?', [videoId]);
+      if (existing && existing.first_watched) {
+        watchedEntry.firstWatched = existing.first_watched;
+      }
+    } catch (error) {
+      logVerbose(`[TimeTracking] Could not check existing first_watched date: ${error}`);
     }
+
+    // Write to database (primary storage)
+    await writeViewRecordToDatabase(watchedEntry);
 
     // Also record in usage log
     await recordUsageTime(timeWatched);

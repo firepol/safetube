@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+// Database response type
+interface DatabaseResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  code?: string;
+}
+
 // Debug: Log what environment variables are available (only when verbose logging is enabled)
 // Note: We'll get the verbose setting from the main process via IPC instead
 // console.log('[Preload] Preload process starting...');
@@ -157,12 +165,12 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.off('show-validation-error', wrappedCallback);
     },
     // Favorites management
-    favoritesGetAll: () => ipcRenderer.invoke('database:favorites:get-all'),
-    favoritesAdd: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) =>
+    favoritesGetAll: (): Promise<DatabaseResponse<any[]>> => ipcRenderer.invoke('database:favorites:get-all'),
+    favoritesAdd: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string): Promise<DatabaseResponse<boolean>> =>
       ipcRenderer.invoke('database:favorites:add', videoId, sourceId),
-    favoritesRemove: (videoId: string) => ipcRenderer.invoke('database:favorites:remove', videoId),
-    favoritesIsFavorite: (videoId: string) => ipcRenderer.invoke('database:favorites:is-favorite', videoId),
-    favoritesToggle: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) =>
+    favoritesRemove: (videoId: string): Promise<DatabaseResponse<boolean>> => ipcRenderer.invoke('database:favorites:remove', videoId),
+    favoritesIsFavorite: (videoId: string): Promise<DatabaseResponse<boolean>> => ipcRenderer.invoke('database:favorites:is-favorite', videoId),
+    favoritesToggle: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string): Promise<DatabaseResponse<{ isFavorite: boolean }>> =>
       ipcRenderer.invoke('database:favorites:toggle', videoId, sourceId),
     favoritesUpdateMetadata: (videoId: string, metadata: any) => ipcRenderer.invoke('favorites:update-metadata', videoId, metadata),
     favoritesGetBySource: (sourceId: string) => ipcRenderer.invoke('favorites:get-by-source', sourceId),

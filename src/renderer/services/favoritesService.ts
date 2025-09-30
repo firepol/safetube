@@ -29,7 +29,7 @@ export class FavoritesService {
       const result = await window.electron.favoritesGetAll();
 
       // Handle database response format
-      const favorites = result.success ? result.data : [];
+      const favorites = result.success && result.data ? result.data : [];
 
       // Update cache
       this.favoritesCache = favorites;
@@ -37,7 +37,7 @@ export class FavoritesService {
 
       // Update status cache
       this.favoriteStatusCache.clear();
-      favorites.forEach(favorite => {
+      favorites.forEach((favorite: any) => {
         this.favoriteStatusCache.set(favorite.videoId, true);
       });
 
@@ -69,10 +69,24 @@ export class FavoritesService {
       // Optimistic update
       this.favoriteStatusCache.set(videoId, true);
 
-      const favorite = await window.electron.favoritesAdd(
+      const result = await window.electron.favoritesAdd(
         videoId, sourceId, type, title, thumbnail, duration, lastWatched
       );
 
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to add favorite');
+      }
+
+      // Create the favorite object for cache and return value
+      const favorite: FavoriteVideo = {
+        videoId,
+        dateAdded: new Date().toISOString(),
+        sourceType: type,
+        sourceId,
+        title,
+        thumbnail,
+        duration
+      };
 
       // Update cache if present
       if (this.favoritesCache) {
@@ -99,20 +113,34 @@ export class FavoritesService {
    */
   static async removeFavorite(videoId: string): Promise<FavoriteVideo> {
     try {
-      // Store previous state for rollback
+      // Store previous state for rollback and the favorite object
       const wasFavorite = this.favoriteStatusCache.get(videoId) || false;
+      const removedFavorite = this.favoritesCache?.find(f => f.videoId === videoId);
 
       // Optimistic update
       this.favoriteStatusCache.set(videoId, false);
 
-      const removedFavorite = await window.electron.favoritesRemove(videoId);
+      const result = await window.electron.favoritesRemove(videoId);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to remove favorite');
+      }
 
       // Update cache if present
       if (this.favoritesCache) {
         this.favoritesCache = this.favoritesCache.filter(f => f.videoId !== videoId);
       }
 
-      return removedFavorite;
+      // Return the removed favorite (or a placeholder if not found)
+      return removedFavorite || {
+        videoId,
+        dateAdded: '',
+        sourceType: 'youtube',
+        sourceId: '',
+        title: '',
+        thumbnail: '',
+        duration: 0
+      };
     } catch (error) {
       // Rollback optimistic update
       this.favoriteStatusCache.set(videoId, true);
@@ -145,7 +173,7 @@ export class FavoritesService {
       const result = await window.electron.favoritesIsFavorite(originalVideoId);
 
       // Handle database response format
-      const isFav = result.success ? result.data : false;
+      const isFav = result.success && result.data !== undefined ? result.data : false;
 
       // Update cache
       this.favoriteStatusCache.set(originalVideoId, isFav);
@@ -183,8 +211,12 @@ export class FavoritesService {
         videoId, sourceId, type, title, thumbnail, duration, lastWatched
       );
 
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to toggle favorite');
+      }
+
       // Handle new database response format
-      const newState = result.success ? result.data.isFavorite : !currentState;
+      const newState = result.data?.isFavorite ?? !currentState;
 
       // Create a fake favorite object for cache consistency
       const favorite = newState ? {

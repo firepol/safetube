@@ -1,5 +1,13 @@
 import { VideoLoadError } from '../shared/videoErrorHandling';
 
+// Database response type
+export interface DatabaseResponse<T = any> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  code?: string;
+}
+
 export interface Video {
   id: string;
   type: 'local' | 'dlna' | 'youtube' | 'downloaded';
@@ -219,11 +227,11 @@ export interface ElectronAPI {
   onShowValidationError: (callback: (data: { message: string }) => void) => any;
   offShowValidationError: (wrappedCallback: any) => void;
   // Favorites management
-  favoritesGetAll: () => Promise<any[]>;
-  favoritesAdd: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) => Promise<any>;
-  favoritesRemove: (videoId: string) => Promise<any>;
-  favoritesIsFavorite: (videoId: string) => Promise<boolean>;
-  favoritesToggle: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) => Promise<any>;
+  favoritesGetAll: () => Promise<DatabaseResponse<any[]>>;
+  favoritesAdd: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) => Promise<DatabaseResponse<boolean>>;
+  favoritesRemove: (videoId: string) => Promise<DatabaseResponse<boolean>>;
+  favoritesIsFavorite: (videoId: string) => Promise<DatabaseResponse<boolean>>;
+  favoritesToggle: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) => Promise<DatabaseResponse<{ isFavorite: boolean }>>;
   favoritesUpdateMetadata: (videoId: string, metadata: any) => Promise<any>;
   favoritesGetBySource: (sourceId: string) => Promise<any[]>;
   favoritesGetConfig: () => Promise<any>;

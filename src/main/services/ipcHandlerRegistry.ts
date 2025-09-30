@@ -112,17 +112,43 @@ export function registerTimeTrackingHandlers() {
     }
   });
 
-  // Get watched videos
+  // Get watched videos - read from database
   ipcMain.handle('get-watched-videos', async () => {
     try {
-      const watchedPath = AppPaths.getConfigPath('watched.json');
-      if (fs.existsSync(watchedPath)) {
-        return JSON.parse(fs.readFileSync(watchedPath, 'utf8'));
-      }
-      return {};
+      const { DatabaseService } = await import('./DatabaseService');
+      const dbService = DatabaseService.getInstance();
+
+      // Get all view records from database
+      const viewRecords = await dbService.all<any>(`
+        SELECT
+          vr.video_id as videoId,
+          vr.position,
+          vr.last_watched as lastWatched,
+          vr.time_watched as timeWatched,
+          vr.duration,
+          vr.watched,
+          vr.first_watched as firstWatched,
+          v.title,
+          v.thumbnail,
+          vr.source_id as source
+        FROM view_records vr
+        LEFT JOIN videos v ON vr.video_id = v.id
+        ORDER BY vr.last_watched DESC
+      `);
+
+      return viewRecords || [];
     } catch (error) {
-      log.error('[IPC] Error reading watched videos:', error);
-      return {};
+      log.error('[IPC] Error reading watched videos from database:', error);
+      // Fallback to JSON file
+      try {
+        const watchedPath = AppPaths.getConfigPath('watched.json');
+        if (fs.existsSync(watchedPath)) {
+          return JSON.parse(fs.readFileSync(watchedPath, 'utf8'));
+        }
+      } catch (jsonError) {
+        log.error('[IPC] Error reading watched.json fallback:', jsonError);
+      }
+      return [];
     }
   });
 
