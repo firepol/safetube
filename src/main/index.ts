@@ -1407,12 +1407,13 @@ ipcMain.handle('load-videos-from-sources', async () => {
     // CRITICAL: Ensure downloaded is always present for SourcePage compatibility
     if (!sources.find(s => s.id === 'downloaded')) {
       console.log('🚀 [Main] Adding missing downloaded source to results');
-      // Count videos in download folder
+      // Get download path and count videos
       let downloadedCount = 0;
+      let downloadPath = '';
       try {
         const { readMainSettings, getDefaultDownloadPath } = await import('./fileUtils');
         const settings = await readMainSettings();
-        const downloadPath = settings.downloadPath || await getDefaultDownloadPath();
+        downloadPath = settings.downloadPath || await getDefaultDownloadPath();
         const { countVideosInFolder } = await import('./services/localVideoService');
         downloadedCount = await countVideosInFolder(downloadPath, 2);
       } catch (error) {
@@ -1425,7 +1426,7 @@ ipcMain.handle('load-videos-from-sources', async () => {
         sortOrder: 'newestFirst',
         url: null,
         channelId: null,
-        path: null,
+        path: downloadPath,
         maxDepth: 2,
         thumbnail: '💾',
         videoCount: downloadedCount

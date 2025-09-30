@@ -623,6 +623,19 @@ export async function loadSourcesForKidScreen() {
       SELECT COUNT(*) as count FROM favorites
     `);
 
+    // Get download path for downloaded source
+    let downloadPath = '';
+    let downloadedCount = 0;
+    try {
+      const { readMainSettings, getDefaultDownloadPath } = await import('../fileUtils');
+      const settings = await readMainSettings();
+      downloadPath = settings.downloadPath || await getDefaultDownloadPath();
+      const { countVideosInFolder } = await import('./localVideoService');
+      downloadedCount = await countVideosInFolder(downloadPath, 2);
+    } catch (error) {
+      logVerbose('[VideoDataService] Could not get download path or count:', error);
+    }
+
     // Always add favorites and downloaded as special sources
     sourcesByType.push(
       {
@@ -649,13 +662,13 @@ export async function loadSourcesForKidScreen() {
         type: 'local',
         title: 'Downloaded Videos',
         thumbnail: '💾',
-        videoCount: 0, // Will be loaded on-demand
+        videoCount: downloadedCount,
         videos: [],
         paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
         // Source-specific fields
         url: null,
         channelId: null,
-        path: null,
+        path: downloadPath,
         maxDepth: 2,
         // Optimization flags
         usingCachedData: false,
