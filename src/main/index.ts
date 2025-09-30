@@ -808,6 +808,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
   try {
     const startTime = performance.now();
     logVerbose(`[Main] 🚀 get-paginated-videos starting for ${sourceId} page ${pageNumber}`);
+    logVerbose(`[Main] 🔍 get-paginated-videos: sourceId='${sourceId}', type=${typeof sourceId}`);
 
     // Read page size from pagination config first (needed for downloaded source)
     let pageSize = 50; // Default fallback
@@ -847,6 +848,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       };
     } else {
       // Fetch source from database
+      logVerbose(`[Main] 🔍 get-paginated-videos: Fetching sourceId '${sourceId}' from database`);
       const dbStart = performance.now();
       try {
     const DatabaseService = (await import('./services/DatabaseService')).DatabaseService;
@@ -855,9 +857,10 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
           'SELECT * FROM sources WHERE id = ?',
           [sourceId]
         );
+        logVerbose(`[Main] 🔍 get-paginated-videos: Database query result:`, source ? `found ${source.id}` : 'NULL');
         if (!source) {
           log.error('[Main] Source not found in database:', sourceId);
-          throw new Error('Source not found (src/main/index');
+          throw new Error('Source not found (main/index.ts:get-paginated-videos)');
         }
       } catch (error) {
         log.error('[Main] Error reading source from database:', error);
