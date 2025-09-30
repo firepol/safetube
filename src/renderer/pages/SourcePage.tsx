@@ -165,18 +165,16 @@ export const SourcePage: React.FC = () => {
 
         // For non-local sources, try to load videos using the optimized approach
         if (foundSource.type !== 'local' && window.electron?.loadVideosForSource) {
-          logVerbose(`[SourcePage] 🔄 Calling loadVideosForSource for ${sourceId} (type: ${foundSource.type})`);
           try {
             const result = await window.electron.loadVideosForSource(sourceId);
-            logVerbose(`[SourcePage] ✅ loadVideosForSource succeeded for ${sourceId}`);
-            foundSource = result.source;
+            // Only overwrite if result.source exists (some sources like favorites may not return a source object)
+            if (result.source) {
+              foundSource = result.source;
+            }
           } catch (error) {
-            logVerbose(`[SourcePage] ❌ loadVideosForSource failed for ${sourceId}:`, error);
-            logVerbose('[SourcePage] Using fallback data from loadVideosFromSources');
+            logVerbose('[SourcePage] Failed to load specific source, using fallback data:', error);
             // Continue with foundSource from loadVideosFromSources
           }
-        } else {
-          logVerbose(`[SourcePage] ⏭️ Skipping loadVideosForSource for ${sourceId} (type: ${foundSource.type}, local or no handler)`);
         }
 
         // 🎯 CRITICAL: Batch UI updates for instant skeleton→content transition
