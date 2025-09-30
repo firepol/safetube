@@ -397,10 +397,11 @@ export function registerVideoSourceHandlers() {
           for (const source of sources) {
             // Count videos for local sources
             let totalVideos = null;
-            if (source.type === 'local' && source.path && source.maxDepth) {
+            if (source.type === 'local' && source.path) {
               try {
                 const { countVideosInFolder } = await import('./localVideoService');
-                totalVideos = await countVideosInFolder(source.path, source.maxDepth, 1);
+                const maxDepth = source.maxDepth || 2; // Default to 2 if not specified
+                totalVideos = await countVideosInFolder(source.path, maxDepth, 1);
                 log.info(`[IPC] Counted ${totalVideos} videos for local source ${source.id}`);
               } catch (countError) {
                 log.error('[IPC] Error counting videos for local source:', countError);
