@@ -60,8 +60,6 @@ export const KidScreen: React.FC = () => {
       window.electron.loadSourcesForKidScreen()
         .then((result: any) => {
           const { videosBySource, debug } = result;
-          logVerbose(`[KidScreen] 📊 Loaded ${videosBySource?.length || 0} sources from backend:`,
-            videosBySource?.map((s: any) => `${s.id} (${s.title})`).join(', ') || 'none');
           setSources(videosBySource || []);
           setLoaderDebug(debug || []);
           setLoaderError(null);
@@ -97,7 +95,6 @@ export const KidScreen: React.FC = () => {
   }, []);
 
   const handleSourceClick = (source: any) => {
-    logVerbose(`[KidScreen] 🚀 Navigating to source: ${source.id} (${source.title}) -> /source/${source.id}`);
     navigate(`/source/${source.id}`);
   };
 

@@ -21,7 +21,6 @@ export const BreadcrumbNavigation: React.FC<BreadcrumbNavigationProps> = ({
 
   const handleItemClick = (item: BreadcrumbItem) => {
     if (item.path && !item.isActive) {
-      logVerbose('[BreadcrumbNavigation] Navigating to:', item.path);
       navigate(item.path);
     } else {
       logVerbose('[BreadcrumbNavigation] Click ignored - no path or item is active:', { path: item.path, isActive: item.isActive });

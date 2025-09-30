@@ -208,7 +208,6 @@ export const SourcePage: React.FC = () => {
 
         // 🚨 ULTRA-FAST UI UPDATE: Batch all state changes into single atomic update
         const batchedUpdate = () => {
-          logVerbose(`[SourcePage] 🎯 Setting state with ${videos.length} videos`);
           setSource(foundSource);
           setIsLoading(false); // Header can render immediately
           setCurrentPageVideos(videos); // Videos ready for display
