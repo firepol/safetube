@@ -100,30 +100,33 @@ export const SourcePage: React.FC = () => {
 
       try {
         // 🚀 INSTANT CACHE CHECK: Try cache first for sub-100ms navigation
-        const cachedPageData = NavigationCache.getCachedPageData(sourceId, currentPage);
+        // Skip cache for favorites source since favorites data changes frequently
+        if (sourceId !== 'favorites') {
+          const cachedPageData = NavigationCache.getCachedPageData(sourceId, currentPage);
 
-        if (cachedPageData) {
-  
-          // Ultra-fast state update from cache
-          React.startTransition(() => {
-            setSource(cachedPageData.source);
-            setIsLoading(false);
-            setCurrentPageVideos(cachedPageData.videos);
-            setPaginationState(cachedPageData.paginationState);
-            setIsLoadingVideos(false);
-            setError(null);
-          });
+          if (cachedPageData) {
 
-          // Start background prefetch for adjacent pages
-          if (cachedPageData.paginationState) {
-            NavigationCache.prefetchAdjacentPages(
-              sourceId,
-              currentPage,
-              cachedPageData.paginationState.totalPages
-            );
+            // Ultra-fast state update from cache
+            React.startTransition(() => {
+              setSource(cachedPageData.source);
+              setIsLoading(false);
+              setCurrentPageVideos(cachedPageData.videos);
+              setPaginationState(cachedPageData.paginationState);
+              setIsLoadingVideos(false);
+              setError(null);
+            });
+
+            // Start background prefetch for adjacent pages
+            if (cachedPageData.paginationState) {
+              NavigationCache.prefetchAdjacentPages(
+                sourceId,
+                currentPage,
+                cachedPageData.paginationState.totalPages
+              );
+            }
+
+            return; // Exit early - cached data is sufficient
           }
-
-          return; // Exit early - cached data is sufficient
         }
 
 
@@ -216,12 +219,14 @@ export const SourcePage: React.FC = () => {
         // Use React.startTransition for non-blocking update
         React.startTransition(batchedUpdate);
 
-        // 🚀 CACHE THE RESULTS: Store for instant future navigation
-        NavigationCache.cachePageData(sourceId, currentPage, foundSource, videos, paginationData);
+        // 🚀 CACHE THE RESULTS: Store for instant future navigation (skip for favorites)
+        if (sourceId !== 'favorites') {
+          NavigationCache.cachePageData(sourceId, currentPage, foundSource, videos, paginationData);
 
-        // 🚀 BACKGROUND PREFETCH: Start prefetching adjacent pages
-        if (paginationData && paginationData.totalPages > 1) {
-          NavigationCache.prefetchAdjacentPages(sourceId, currentPage, paginationData.totalPages);
+          // 🚀 BACKGROUND PREFETCH: Start prefetching adjacent pages
+          if (paginationData && paginationData.totalPages > 1) {
+            NavigationCache.prefetchAdjacentPages(sourceId, currentPage, paginationData.totalPages);
+          }
         }
 
 

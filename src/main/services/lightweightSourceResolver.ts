@@ -17,8 +17,11 @@ export class LightweightSourceResolver {
   static async getSourceMetadata(sourceId: string): Promise<any | null> {
     const now = Date.now();
 
-    // Return cached source if available and fresh
-    if (this.sourceCache.has(sourceId) && (now - this.cacheTimestamp) < this.CACHE_TTL) {
+    // Skip cache for favorites since it changes frequently
+    const useCache = sourceId !== 'favorites';
+
+    // Return cached source if available and fresh (except for favorites)
+    if (useCache && this.sourceCache.has(sourceId) && (now - this.cacheTimestamp) < this.CACHE_TTL) {
       return this.sourceCache.get(sourceId);
     }
 
@@ -155,7 +158,8 @@ export class LightweightSourceResolver {
       };
 
       resolvedSources.push(favoritesSource);
-      this.sourceCache.set('favorites', favoritesSource);
+      // Don't cache favorites since the count changes frequently
+      // this.sourceCache.set('favorites', favoritesSource);
 
       this.cacheTimestamp = now;
 
