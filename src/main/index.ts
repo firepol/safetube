@@ -1937,6 +1937,22 @@ app.on('ready', async () => {
     } else {
       log.info(`[Main] Database already contains ${sourceCount?.count || 0} sources`);
     }
+
+    // Refresh stale YouTube sources in the background
+    try {
+      const { readMainSettings } = await import('./fileUtils');
+      const settings = await readMainSettings();
+      if (settings.youtubeApiKey) {
+        const { refreshStaleYouTubeSources } = await import('./services/videoDataService');
+        // Run in background, don't await
+        refreshStaleYouTubeSources(settings.youtubeApiKey).catch((error) => {
+          log.error('[Main] Error refreshing stale YouTube sources:', error);
+        });
+        log.info('[Main] Started background refresh of stale YouTube sources');
+      }
+    } catch (error) {
+      log.warn('[Main] Could not start background source refresh:', error);
+    }
   } catch (error) {
     log.error('[Main] Error initializing database:', error);
     log.warn('[Main] Continuing without database - will use JSON fallback');

@@ -390,14 +390,25 @@ export function registerVideoSourceHandlers() {
       const dbService = DatabaseService.default.getInstance();
       const status = await dbService.getHealthStatus();
       if (dbService && status.initialized) {
+        // Get existing sources to preserve metadata like total_videos and updated_at
+        const existingSourcesQuery = await dbService.all<any>(`
+          SELECT id, total_videos, thumbnail, updated_at FROM sources
+        `);
+        const existingSourcesMap = new Map(
+          existingSourcesQuery.map(s => [s.id, s])
+        );
+
         // Clear existing sources and insert new ones in a transaction
         await dbService.run('BEGIN TRANSACTION');
         try {
           await dbService.run('DELETE FROM sources');
           for (const source of sources) {
-            // Count videos for local sources
+            const existingSource = existingSourcesMap.get(source.id);
+
+            // Determine total_videos based on source type
             let totalVideos = null;
             if (source.type === 'local' && source.path) {
+              // Count videos for local sources
               try {
                 const { countVideosInFolder } = await import('./localVideoService');
                 const maxDepth = source.maxDepth || 2; // Default to 2 if not specified
@@ -407,11 +418,18 @@ export function registerVideoSourceHandlers() {
                 log.error('[IPC] Error counting videos for local source:', countError);
                 totalVideos = 0;
               }
+            } else if (existingSource) {
+              // Preserve existing total_videos for YouTube sources
+              totalVideos = existingSource.total_videos;
             }
 
+            // Preserve thumbnail and updated_at if they exist
+            const thumbnail = existingSource?.thumbnail || null;
+            const updatedAt = existingSource?.updated_at || null;
+
             await dbService.run(`
-              INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth, total_videos)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth, total_videos, thumbnail, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
               source.id,
               source.type,
@@ -421,7 +439,9 @@ export function registerVideoSourceHandlers() {
               source.channelId || null,
               source.path || null,
               source.maxDepth || null,
-              totalVideos
+              totalVideos,
+              thumbnail,
+              updatedAt
             ]);
           }
           await dbService.run('COMMIT');

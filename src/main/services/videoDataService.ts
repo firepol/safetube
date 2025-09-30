@@ -685,5 +685,93 @@ export async function loadSourcesForKidScreen() {
   }
 }
 
+/**
+ * Refresh YouTube sources that are stale (updated_at is NULL or older than cache TTL)
+ * This runs in the background on app startup
+ */
+export async function refreshStaleYouTubeSources(apiKey?: string | null) {
+  if (!apiKey) {
+    logVerbose('[VideoDataService] No API key provided, skipping stale source refresh');
+    return;
+  }
+
+  try {
+    const { DatabaseService } = await import('./DatabaseService');
+    const dbService = DatabaseService.getInstance();
+    const healthStatus = await dbService.getHealthStatus();
+
+    if (!healthStatus.initialized) {
+      logVerbose('[VideoDataService] Database not initialized, skipping refresh');
+      return;
+    }
+
+    // Get cache TTL from config (default 6 hours)
+    const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
+    const staleThreshold = new Date(Date.now() - CACHE_TTL_MS).toISOString();
+
+    // Find YouTube sources that need refreshing
+    const staleSources = await dbService.all<any>(`
+      SELECT id, type, url, channel_id
+      FROM sources
+      WHERE (type = 'youtube_channel' OR type = 'youtube_playlist')
+        AND (updated_at IS NULL OR updated_at < ?)
+    `, [staleThreshold]);
+
+    if (staleSources.length === 0) {
+      logVerbose('[VideoDataService] No stale YouTube sources found');
+      return;
+    }
+
+    logVerbose(`[VideoDataService] Refreshing ${staleSources.length} stale YouTube sources`);
+
+    const { YouTubeAPI } = await import('../youtube-api');
+    const youtubeApi = new YouTubeAPI(apiKey);
+
+    // Refresh each source in the background
+    for (const source of staleSources) {
+      try {
+        let totalVideos = 0;
+        let thumbnail = '';
+
+        if (source.type === 'youtube_channel') {
+          // Get channel details
+          const channelData = await youtubeApi.getChannelDetails(source.channel_id);
+          if (channelData) {
+            totalVideos = channelData.videoCount || 0;
+            thumbnail = channelData.thumbnail || '';
+          }
+        } else if (source.type === 'youtube_playlist') {
+          // Get playlist details
+          const playlistId = source.url?.split('list=')[1] || '';
+          if (playlistId) {
+            const playlistData = await youtubeApi.getPlaylistDetails(playlistId);
+            if (playlistData) {
+              totalVideos = playlistData.videoCount || 0;
+              thumbnail = playlistData.thumbnail || '';
+            }
+          }
+        }
+
+        // Update source in database
+        const now = new Date().toISOString();
+        await dbService.run(`
+          UPDATE sources
+          SET total_videos = ?, thumbnail = ?, updated_at = ?
+          WHERE id = ?
+        `, [totalVideos, thumbnail, now, source.id]);
+
+        logVerbose(`[VideoDataService] Refreshed source ${source.id}: ${totalVideos} videos`);
+      } catch (error) {
+        log.error(`[VideoDataService] Error refreshing source ${source.id}:`, error);
+        // Continue with next source even if this one fails
+      }
+    }
+
+    logVerbose('[VideoDataService] Stale source refresh complete');
+  } catch (error) {
+    log.error('[VideoDataService] Error in refreshStaleYouTubeSources:', error);
+  }
+}
+
 // Export the writeVideosToDatabase function for use by other modules
 export { writeVideosToDatabase };
