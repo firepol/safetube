@@ -76,7 +76,7 @@ export const WatchedVideosPage: React.FC = () => {
         const sources = await (window as any).electron.loadVideosFromSources();
         const sourceData = sources.videosBySource?.find((s: any) => s.id === sourceId);
         if (!sourceData) {
-          throw new Error('Source not found');
+          throw new Error('Source not found (WatchedVideosPage)');
         }
         setSource(sourceData);
 

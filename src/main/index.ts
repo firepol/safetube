@@ -857,7 +857,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         );
         if (!source) {
           log.error('[Main] Source not found in database:', sourceId);
-          throw new Error('Source not found');
+          throw new Error('Source not found (src/main/index');
         }
       } catch (error) {
         log.error('[Main] Error reading source from database:', error);
@@ -1356,6 +1356,7 @@ ipcMain.handle('load-videos-from-sources', async () => {
     // Use lightweight source resolver instead of full batch loading
     const { LightweightSourceResolver } = await import('./services/lightweightSourceResolver');
     const sources = await LightweightSourceResolver.getAllSourcesMetadata();
+    console.log('🚀 [Main] LightweightSourceResolver returned sources:', sources.map(s => s.id));
 
     // Transform to expected format without loading videos
     const videosBySource = sources.map(source => ({

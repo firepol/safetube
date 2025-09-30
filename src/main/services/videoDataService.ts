@@ -482,7 +482,7 @@ export async function loadVideosForSpecificSource(sourceId: string, apiKey?: str
     `, [sourceId]);
 
     if (!sourceRow) {
-      throw new Error(`Source not found: ${sourceId}`);
+      throw new Error(`Source not found videoDataService: ${sourceId}`);
     }
 
     const source = {

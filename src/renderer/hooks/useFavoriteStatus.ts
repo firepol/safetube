@@ -23,8 +23,10 @@ export const useFavoriteStatus = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const favoriteData = await (window as any).electron.favoritesGetAll();
-      setFavoriteVideos(favoriteData || []);
+      const favoriteResponse = await (window as any).electron.favoritesGetAll();
+      // Handle database response format: { success: true, data: [...] }
+      const favoriteData = favoriteResponse?.data || favoriteResponse || [];
+      setFavoriteVideos(Array.isArray(favoriteData) ? favoriteData : []);
     } catch (err) {
       console.error('Error loading favorite videos:', err);
       setError('Failed to load favorite videos');
