@@ -836,7 +836,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
     const apiKeyTime = performance.now() - apiKeyStart;
     logVerbose(`[Main] ⏱️ API key read: ${apiKeyTime.toFixed(1)}ms`);
 
-    // Handle special "favorites" source before database lookup
+    // Handle special sources before database lookup
     let source = null;
     if (sourceId === 'favorites') {
       // Skip database lookup for virtual favorites source - will be handled later
@@ -844,6 +844,14 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         id: 'favorites',
         type: 'favorites',
         title: 'Favorites',
+        sort_order: 999
+      };
+    } else if (sourceId === 'downloaded') {
+      // Skip database lookup for virtual downloaded source - will be handled later
+      source = {
+        id: 'downloaded',
+        type: 'local',
+        title: 'Downloaded Videos',
         sort_order: 999
       };
     } else {
@@ -1393,6 +1401,34 @@ ipcMain.handle('load-videos-from-sources', async () => {
         maxDepth: null,
         thumbnail: '⭐',
         videoCount: favoritesCount?.count || 0
+      });
+    }
+
+    // CRITICAL: Ensure downloaded is always present for SourcePage compatibility
+    if (!sources.find(s => s.id === 'downloaded')) {
+      console.log('🚀 [Main] Adding missing downloaded source to results');
+      // Count videos in download folder
+      let downloadedCount = 0;
+      try {
+        const { readMainSettings, getDefaultDownloadPath } = await import('./fileUtils');
+        const settings = await readMainSettings();
+        const downloadPath = settings.downloadPath || await getDefaultDownloadPath();
+        const { countVideosInFolder } = await import('./services/localVideoService');
+        downloadedCount = await countVideosInFolder(downloadPath, 2);
+      } catch (error) {
+        console.warn('🚀 [Main] Could not count downloaded videos:', error);
+      }
+      sources.push({
+        id: 'downloaded',
+        type: 'local',
+        title: 'Downloaded Videos',
+        sortOrder: 'newestFirst',
+        url: null,
+        channelId: null,
+        path: null,
+        maxDepth: 2,
+        thumbnail: '💾',
+        videoCount: downloadedCount
       });
     }
 

@@ -646,9 +646,9 @@ export async function loadSourcesForKidScreen() {
       },
       {
         id: 'downloaded',
-        type: 'downloaded',
+        type: 'local',
         title: 'Downloaded Videos',
-        thumbnail: '',
+        thumbnail: '💾',
         videoCount: 0, // Will be loaded on-demand
         videos: [],
         paginationState: { currentPage: 1, totalPages: 1, totalVideos: 0, pageSize: 50 },
@@ -656,7 +656,7 @@ export async function loadSourcesForKidScreen() {
         url: null,
         channelId: null,
         path: null,
-        maxDepth: null,
+        maxDepth: 2,
         // Optimization flags
         usingCachedData: false,
         fetchedNewData: false,
