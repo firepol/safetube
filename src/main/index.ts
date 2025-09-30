@@ -1358,6 +1358,26 @@ ipcMain.handle('load-videos-from-sources', async () => {
     const sources = await LightweightSourceResolver.getAllSourcesMetadata();
     console.log('🚀 [Main] LightweightSourceResolver returned sources:', sources.map(s => s.id));
 
+    // CRITICAL: Ensure favorites is always present for SourcePage compatibility
+    if (!sources.find(s => s.id === 'favorites')) {
+      console.log('🚀 [Main] Adding missing favorites source to results');
+      const { DatabaseService } = await import('./services/DatabaseService');
+      const dbService = DatabaseService.getInstance();
+      const favoritesCount = await dbService.get<{ count: number }>(`SELECT COUNT(*) as count FROM favorites`);
+      sources.push({
+        id: 'favorites',
+        type: 'favorites',
+        title: 'Favorites',
+        sortOrder: 'newestFirst',
+        url: null,
+        channelId: null,
+        path: null,
+        maxDepth: null,
+        thumbnail: '⭐',
+        videoCount: favoritesCount?.count || 0
+      });
+    }
+
     // Transform to expected format without loading videos
     const videosBySource = sources.map(source => ({
       id: source.id,
