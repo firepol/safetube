@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { logVerbose } from '../../lib/logging';
 
 interface VideoSource {
   id: string;
@@ -46,6 +47,7 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
   }, [sources, videoCounts, loadingCounts]);
 
   const handleSourceClick = (source: VideoSource) => {
+    logVerbose(`[SourceGrid] 🔗 Source clicked: ${source.id} (${source.title}) -> will navigate to /source/${source.id}`);
     if (onSourceClick) {
       onSourceClick(source);
     }
@@ -137,6 +139,14 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
         return 'Video Source';
     }
   };
+
+  // Log all sources being rendered
+  React.useEffect(() => {
+    logVerbose(`[SourceGrid] 📋 Rendering ${sources.length} sources:`, sources.map(s => `${s.id} (${s.title})`).join(', '));
+    sources.forEach(source => {
+      logVerbose(`[SourceGrid] 📋 Source: ${source.id} -> route will be /source/${source.id}`);
+    });
+  }, [sources]);
 
   return (
     <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
