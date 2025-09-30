@@ -588,8 +588,8 @@ export async function loadSourcesForKidScreen() {
       if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
         videoCount = source.total_videos || 0;
       } else if (source.type === 'local') {
-        // For local sources, we'll need to calculate or use cached count
-        videoCount = 0; // Will be calculated on-demand when source is clicked
+        // For local sources, use cached total_videos from database
+        videoCount = source.total_videos || 0;
       }
 
       return {

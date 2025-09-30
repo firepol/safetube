@@ -395,9 +395,22 @@ export function registerVideoSourceHandlers() {
         try {
           await dbService.run('DELETE FROM sources');
           for (const source of sources) {
+            // Count videos for local sources
+            let totalVideos = null;
+            if (source.type === 'local' && source.path && source.maxDepth) {
+              try {
+                const { countVideosInFolder } = await import('./localVideoService');
+                totalVideos = await countVideosInFolder(source.path, source.maxDepth, 1);
+                log.info(`[IPC] Counted ${totalVideos} videos for local source ${source.id}`);
+              } catch (countError) {
+                log.error('[IPC] Error counting videos for local source:', countError);
+                totalVideos = 0;
+              }
+            }
+
             await dbService.run(`
-              INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth, total_videos)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
               source.id,
               source.type,
@@ -406,7 +419,8 @@ export function registerVideoSourceHandlers() {
               source.url || null,
               source.channelId || null,
               source.path || null,
-              source.maxDepth || null
+              source.maxDepth || null,
+              totalVideos
             ]);
           }
           await dbService.run('COMMIT');
