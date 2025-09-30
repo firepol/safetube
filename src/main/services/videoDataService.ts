@@ -570,6 +570,13 @@ export async function loadSourcesForKidScreen() {
       throw new Error('Database not initialized');
     }
 
+    // Check for stale YouTube sources and refresh them before loading
+    const { readMainSettings } = await import('../fileUtils');
+    const settings = await readMainSettings();
+    if (settings.youtubeApiKey) {
+      await refreshStaleYouTubeSources(settings.youtubeApiKey);
+    }
+
     // Single query to get all source metadata needed for Kid Screen
     const sources = await dbService.all<any>(`
       SELECT
