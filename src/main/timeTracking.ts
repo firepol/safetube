@@ -2,8 +2,6 @@ import {
   readTimeLimits,
   readUsageLog,
   writeUsageLog,
-  readWatchedVideos,
-  writeWatchedVideos,
   readTimeExtra,
   writeTimeExtra,
   readVideoSources
@@ -296,67 +294,3 @@ export async function addExtraTime(minutes: number): Promise<void> {
   }
 }
 
-/**
- * Get watched videos with source information
- */
-export async function getWatchedVideosWithSource(): Promise<Array<{
-  video: WatchedVideo;
-  sourceId: string;
-  sourceTitle: string;
-  sourceType: string;
-}>> {
-  try {
-    const [watchedVideos, videoSources] = await Promise.all([
-      readWatchedVideos(),
-      readVideoSources()
-    ]);
-    
-    const watchedWithSource = watchedVideos.map(video => {
-      // Try to find the source for this video
-      // For YouTube videos, we might need to match by video ID pattern
-      // For local videos, we might need to match by file path
-      
-      let sourceId = 'unknown';
-      let sourceTitle = 'Unknown Source';
-      let sourceType = 'unknown';
-      
-      // This is a simplified implementation - in practice, you might need more sophisticated matching
-      if (video.videoId.startsWith('yt_')) {
-        // YouTube video - try to find matching source
-        const youtubeSource = videoSources.find(source => 
-          source.type === 'youtube_channel' || source.type === 'youtube_playlist'
-        );
-        if (youtubeSource) {
-          sourceId = youtubeSource.id;
-          sourceTitle = youtubeSource.title;
-          sourceType = youtubeSource.type;
-        }
-      } else {
-        // Local video - try to find matching source
-        const localSource = videoSources.find(source => source.type === 'local');
-        if (localSource) {
-          sourceId = localSource.id;
-          sourceTitle = localSource.title;
-          sourceType = localSource.type;
-        }
-      }
-      
-      return {
-        video,
-        sourceId,
-        sourceTitle,
-        sourceType
-      };
-    });
-    
-    // Sort by last watched date (most recent first)
-    const sorted = watchedWithSource.sort((a, b) =>
-      new Date(b.video.lastWatched).getTime() - new Date(a.video.lastWatched).getTime()
-    );
-    
-    return sorted;
-  } catch (error) {
-    logVerbose(`[TimeTracking] Error getting watched videos with source: ${error}`);
-    throw error;
-  }
-}

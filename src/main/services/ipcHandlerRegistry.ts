@@ -301,30 +301,57 @@ export function registerAdminHandlers() {
     }
   });
 
-  // Get last watched video with source
+  // Get last watched video with source - read from database
   ipcMain.handle('admin:get-last-watched-video-with-source', async () => {
     try {
-      const watchedPath = AppPaths.getConfigPath('watched.json');
-      if (!fs.existsSync(watchedPath)) {
+      const { DatabaseService } = await import('../services/DatabaseService');
+      const dbService = DatabaseService.getInstance();
+
+      // Get the most recently watched video
+      const result = await dbService.get<any>(`
+        SELECT
+          vr.video_id as videoId,
+          vr.position,
+          vr.last_watched as lastWatched,
+          vr.time_watched as timeWatched,
+          vr.duration,
+          vr.watched,
+          vr.source_id as source,
+          v.title,
+          v.thumbnail
+        FROM view_records vr
+        LEFT JOIN videos v ON vr.video_id = v.id
+        ORDER BY vr.last_watched DESC
+        LIMIT 1
+      `);
+
+      return result || null;
+    } catch (error) {
+      log.error('[IPC] Error getting last watched video from database:', error);
+      // Fallback to JSON file
+      try {
+        const watchedPath = AppPaths.getConfigPath('watched.json');
+        if (!fs.existsSync(watchedPath)) {
+          return null;
+        }
+
+        const watched = JSON.parse(fs.readFileSync(watchedPath, 'utf8'));
+        let lastWatched = null;
+        let lastTime = 0;
+
+        for (const [videoId, data] of Object.entries(watched)) {
+          const videoData = data as any;
+          if (videoData.lastWatched && videoData.lastWatched > lastTime) {
+            lastTime = videoData.lastWatched;
+            lastWatched = { videoId, ...videoData };
+          }
+        }
+
+        return lastWatched;
+      } catch (jsonError) {
+        log.error('[IPC] Error reading watched.json fallback:', jsonError);
         return null;
       }
-
-      const watched = JSON.parse(fs.readFileSync(watchedPath, 'utf8'));
-      let lastWatched = null;
-      let lastTime = 0;
-
-      for (const [videoId, data] of Object.entries(watched)) {
-        const videoData = data as any;
-        if (videoData.lastWatched && videoData.lastWatched > lastTime) {
-          lastTime = videoData.lastWatched;
-          lastWatched = { videoId, ...videoData };
-        }
-      }
-
-      return lastWatched;
-    } catch (error) {
-      log.error('[IPC] Error getting last watched video:', error);
-      return null;
     }
   });
 }

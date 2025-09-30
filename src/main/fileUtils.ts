@@ -69,10 +69,9 @@ async function readJsonFile<T>(filename: string): Promise<T> {
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       // File doesn't exist, return default value based on filename
-      if (filename.includes('downloadStatus.json') || 
-          filename.includes('downloadedVideos.json') || 
-          filename.includes('videoSources.json') || 
-          filename.includes('watched.json')) {
+      if (filename.includes('downloadStatus.json') ||
+          filename.includes('downloadedVideos.json') ||
+          filename.includes('videoSources.json')) {
         return [] as T; // Return empty array for array-type files
       }
       return {} as T; // Return empty object for object-type files
@@ -124,10 +123,16 @@ export async function writeVideoSources(videoSources: VideoSource[]): Promise<vo
 }
 
 // Watched Videos Functions
+// @deprecated - Use database view_records table instead. These functions are kept only for migration and testing purposes.
 export async function readWatchedVideos(): Promise<WatchedVideo[]> {
-  return readJsonFile<WatchedVideo[]>('watched.json');
+  try {
+    return await readJsonFile<WatchedVideo[]>('watched.json');
+  } catch (error) {
+    return []; // Return empty array if file doesn't exist
+  }
 }
 
+// @deprecated - Use database view_records table instead. This function is kept only for migration and testing purposes.
 export async function writeWatchedVideos(watchedVideos: WatchedVideo[]): Promise<void> {
   return writeJsonFile('watched.json', watchedVideos);
 }

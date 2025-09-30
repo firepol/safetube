@@ -19,7 +19,6 @@ export class FirstRunSetup {
     'usageLog.json',
     'videoSources.json',
     'youtubePlayer.json',
-    'watched.json',
     'timeExtra.json',
     'pagination.json',
     'mainSettings.json'
@@ -214,9 +213,6 @@ export class FirstRunSetup {
           volume: 0.8,
           quality: 'auto'
         };
-        break;
-      case 'watched.json':
-        defaultContent = [];
         break;
       case 'timeExtra.json':
         defaultContent = {};
