@@ -426,6 +426,23 @@ export function registerVideoSourceHandlers() {
           }
           await dbService.run('COMMIT');
           log.info('[IPC] Saved sources to database:', sources.length);
+
+          // Clear all relevant caches so changes take effect immediately
+          try {
+            const { DataCacheService } = await import('./DataCacheService');
+            const cacheService = DataCacheService.getInstance();
+            const { YouTubePageCache } = await import('../../preload/youtubePageCache');
+
+            // Clear cache for each source
+            for (const source of sources) {
+              cacheService.clearSourceCache(source.id);
+              YouTubePageCache.clearSourcePages(source.id);
+            }
+            logVerbose('[IPC] Cleared caches for all updated sources');
+          } catch (cacheError) {
+            log.error('[IPC] Error clearing caches after save:', cacheError);
+          }
+
           return { success: true };
         } catch (dbError) {
           await dbService.run('ROLLBACK');
