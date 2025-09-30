@@ -186,6 +186,10 @@ export const SourcePage: React.FC = () => {
         if (window.electron.getPaginatedVideos) {
           const pageResult = await window.electron.getPaginatedVideos(sourceId, currentPage);
           logVerbose(`[SourcePage] 📊 Received pagination state:`, pageResult.paginationState);
+          logVerbose(`[SourcePage] 📊 Received ${pageResult.videos?.length || 0} videos`);
+          if (pageResult.videos && pageResult.videos.length > 0) {
+            logVerbose(`[SourcePage] 📊 First video:`, pageResult.videos[0]);
+          }
           videos = pageResult.videos || [];
           paginationData = pageResult.paginationState || null;
         } else {
@@ -201,6 +205,7 @@ export const SourcePage: React.FC = () => {
 
         // 🚨 ULTRA-FAST UI UPDATE: Batch all state changes into single atomic update
         const batchedUpdate = () => {
+          logVerbose(`[SourcePage] 🎯 Setting state with ${videos.length} videos`);
           setSource(foundSource);
           setIsLoading(false); // Header can render immediately
           setCurrentPageVideos(videos); // Videos ready for display

@@ -947,6 +947,8 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
       try {
         const dbService = DatabaseService.getInstance();
 
+        logVerbose(`[Main] 🔍 get-paginated-videos: Loading favorites from database...`);
+
         // Get all favorites with video metadata from database
         const favorites = await dbService.all(`
           SELECT
@@ -966,6 +968,8 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
           LEFT JOIN sources s ON f.source_id = s.id
           ORDER BY f.date_added DESC
         `);
+
+        logVerbose(`[Main] 🔍 get-paginated-videos: Found ${favorites.length} favorites in database`);
 
         const videosWithMetadata = [];
 
@@ -1003,6 +1007,8 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
           }
         });
 
+        logVerbose(`[Main] 🔍 get-paginated-videos: Processing ${videosWithMetadata.length} favorites for pagination...`);
+
         // Apply pagination
         const totalVideos = videosWithMetadata.length;
         const totalPages = Math.ceil(totalVideos / pageSize);
@@ -1017,6 +1023,15 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
           pageSize,
           returnedVideos: paginatedVideos.length
         });
+
+        logVerbose(`[Main] 🔍 get-paginated-videos: Returning ${paginatedVideos.length} videos for page ${pageNumber}`);
+        if (paginatedVideos.length > 0) {
+          logVerbose(`[Main] 🔍 get-paginated-videos: First video:`, {
+            id: paginatedVideos[0].id,
+            title: paginatedVideos[0].title,
+            type: paginatedVideos[0].type
+          });
+        }
 
         return {
           videos: paginatedVideos,
