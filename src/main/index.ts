@@ -524,7 +524,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
     // Step 1: Load video sources from database
     let videoSources: any[] = [];
     try {
-      const dbSources = await DatabaseService.getInstance().all('SELECT * FROM sources ORDER BY sort_order');
+      const dbSources = await DatabaseService.getInstance().all('SELECT * FROM sources ORDER BY position');
 
       if (!dbSources || dbSources.length === 0) {
         log.warn('[Main] No video sources found in database');
@@ -547,7 +547,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
         channelId: source.channel_id,
         path: source.path,
         maxDepth: source.max_depth,
-        sortOrder: source.sort_order
+        sortOrder: source.sort_preference
       }));
 
     } catch (dbError) {
@@ -844,7 +844,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         id: 'favorites',
         type: 'favorites',
         title: 'Favorites',
-        sort_order: 999
+        position: 999
       };
     } else if (sourceId === 'downloaded') {
       // Skip database lookup for virtual downloaded source - will be handled later
@@ -852,7 +852,7 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         id: 'downloaded',
         type: 'local',
         title: 'Downloaded Videos',
-        sort_order: 999
+        position: 999
       };
     } else {
       // Fetch source from database
@@ -1918,13 +1918,14 @@ app.on('ready', async () => {
         // Migrate sources to database
         for (const source of sourcesData) {
           await dbService.run(`
-            INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO sources (id, type, title, sort_preference, position, url, channel_id, path, max_depth)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           `, [
             source.id,
             source.type,
             source.title,
-            source.sortOrder || 0,
+            source.sortOrder || 'newestFirst',
+            null, // position
             source.url || null,
             source.channelId || null,
             source.path || null,

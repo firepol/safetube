@@ -57,9 +57,9 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
 
     if (healthStatus.initialized) {
       const dbSources = await dbService.all<any>(`
-        SELECT id, type, title, sort_order, url, channel_id, path, max_depth
+        SELECT id, type, title, sort_preference, position, url, channel_id, path, max_depth
         FROM sources
-        ORDER BY sort_order ASC, title ASC
+        ORDER BY position ASC, title ASC
       `);
 
       if (dbSources && dbSources.length > 0) {
@@ -68,7 +68,7 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
           id: source.id,
           type: source.type,
           title: source.title,
-          sortOrder: source.sort_order || 'newestFirst',
+          sortOrder: source.sort_preference || 'newestFirst',
           url: source.url,
           channelId: source.channel_id,
           path: source.path,
@@ -476,7 +476,7 @@ export async function loadVideosForSpecificSource(sourceId: string, apiKey?: str
 
     // Get the specific source from database
     const sourceRow = await dbService.get<any>(`
-      SELECT id, type, title, sort_order, url, channel_id, path, max_depth
+      SELECT id, type, title, sort_preference, position, url, channel_id, path, max_depth
       FROM sources
       WHERE id = ?
     `, [sourceId]);
@@ -489,7 +489,7 @@ export async function loadVideosForSpecificSource(sourceId: string, apiKey?: str
       id: sourceRow.id,
       type: sourceRow.type,
       title: sourceRow.title,
-      sortOrder: sourceRow.sort_order || 'newestFirst',
+      sortOrder: sourceRow.sort_preference || 'newestFirst',
       url: sourceRow.url,
       channelId: sourceRow.channel_id,
       path: sourceRow.path,
@@ -580,10 +580,10 @@ export async function loadSourcesForKidScreen() {
     // Single query to get all source metadata needed for Kid Screen
     const sources = await dbService.all<any>(`
       SELECT
-        id, type, title, sort_order, url, channel_id, path, max_depth,
+        id, type, title, sort_preference, position, url, channel_id, path, max_depth,
         total_videos, thumbnail, updated_at
       FROM sources
-      ORDER BY sort_order ASC, title ASC
+      ORDER BY position ASC, title ASC
     `);
 
     logVerbose(`[VideoDataService] Loaded ${sources.length} sources for Kid Screen (metadata only)`);

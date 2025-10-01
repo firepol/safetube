@@ -127,13 +127,14 @@ export class FirstRunSetup {
                     const sources = JSON.parse(fsSync.readFileSync(sourcesPath, 'utf-8'));
                     for (const source of sources) {
                       await dbService.run(`
-                        INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                        INSERT OR REPLACE INTO sources (id, type, title, sort_preference, position, url, channel_id, path, max_depth)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                       `, [
                         source.id,
                         source.type,
                         source.title,
-                        source.sortOrder || 0,
+                        source.sortOrder || 'newestFirst',
+                        null, // position
                         source.url || null,
                         source.channelId || null,
                         source.path || null,

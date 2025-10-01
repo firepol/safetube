@@ -120,7 +120,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
           channelId: source.channel_id,
           path: source.path,
           maxDepth: source.max_depth,
-          sortOrder: source.sort_order
+          sortOrder: source.sort_preference
         }));
         debug.push(`[Loader] Loaded ${sources.length} sources from database.`);
         logVerbose(`[Loader] Loaded ${sources.length} sources from database.`);

@@ -55,7 +55,7 @@ export class LightweightSourceResolver {
 
       // Single source query - not batch loading
       const source = await dbService.get<any>(`
-        SELECT id, type, title, sort_order, url, channel_id, path, max_depth, thumbnail, total_videos
+        SELECT id, type, title, sort_preference, position, url, channel_id, path, max_depth, thumbnail, total_videos
         FROM sources
         WHERE id = ?
       `, [sourceId]);
@@ -65,7 +65,7 @@ export class LightweightSourceResolver {
           id: source.id,
           type: source.type,
           title: source.title,
-          sortOrder: source.sort_order || 'newestFirst',
+          sortOrder: source.sort_preference || 'newestFirst',
           url: source.url,
           channelId: source.channel_id,
           path: source.path,
@@ -113,9 +113,9 @@ export class LightweightSourceResolver {
       const dbService = DatabaseService.getInstance();
 
       const sources = await dbService.all<any>(`
-        SELECT id, type, title, sort_order, url, channel_id, path, max_depth, thumbnail, total_videos
+        SELECT id, type, title, sort_preference, position, url, channel_id, path, max_depth, thumbnail, total_videos
         FROM sources
-        ORDER BY sort_order ASC, title ASC
+        ORDER BY position ASC, title ASC
       `);
 
       // Cache all sources
@@ -125,7 +125,7 @@ export class LightweightSourceResolver {
           id: source.id,
           type: source.type,
           title: source.title,
-          sortOrder: source.sort_order || 'newestFirst',
+          sortOrder: source.sort_preference || 'newestFirst',
           url: source.url,
           channelId: source.channel_id,
           path: source.path,

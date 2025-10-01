@@ -190,7 +190,7 @@ export class MigrationService {
     const queries = sources.map(source => ({
       sql: `
         INSERT OR REPLACE INTO sources (
-          id, type, title, sort_order, url, channel_id, path, max_depth
+          id, type, title, sort_preference, position, url, channel_id, path, max_depth
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `,
       params: [

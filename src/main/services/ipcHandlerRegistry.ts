@@ -367,9 +367,9 @@ export function registerVideoSourceHandlers() {
       const status = await dbService.getHealthStatus();
       if (dbService && status.initialized) {
         const sources = await dbService.all<any>(`
-          SELECT id, type, title, sort_order, url, channel_id, path, max_depth
+          SELECT id, type, title, sort_preference, position, url, channel_id, path, max_depth
           FROM sources
-          ORDER BY sort_order ASC, title ASC
+          ORDER BY position ASC, title ASC
         `);
         log.info('[IPC] Retrieved sources from database:', sources.length);
         return sources || [];
@@ -428,13 +428,14 @@ export function registerVideoSourceHandlers() {
             const updatedAt = existingSource?.updated_at || null;
 
             await dbService.run(`
-              INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth, total_videos, thumbnail, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT OR REPLACE INTO sources (id, type, title, sort_preference, position, url, channel_id, path, max_depth, total_videos, thumbnail, updated_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
               source.id,
               source.type,
               source.title,
-              source.sortOrder || 0,
+              source.sortOrder || 'newestFirst',
+              null, // position will be set by admin panel
               source.url || null,
               source.channelId || null,
               source.path || null,
@@ -1502,7 +1503,7 @@ export function registerFavoritesHandlers() {
       let sources = [];
       if (dbService && status.initialized) {
         sources = await dbService.all<any>(
-          'SELECT id, type, title, sort_order, url, channel_id, path, max_depth FROM sources ORDER BY sort_order ASC, title ASC'
+          'SELECT id, type, title, sort_preference, position, url, channel_id, path, max_depth FROM sources ORDER BY position ASC, title ASC'
         );
       }
       const sourceIds = new Set(sources.map((s: any) => s.id));
@@ -1536,7 +1537,7 @@ export function registerFavoritesHandlers() {
       let sources = [];
       if (dbService && status.initialized) {
         sources = await dbService.all<any>(
-          'SELECT id, type, title, sort_order, url, channel_id, path, max_depth FROM sources ORDER BY sort_order ASC, title ASC'
+          'SELECT id, type, title, sort_preference, position, url, channel_id, path, max_depth FROM sources ORDER BY position ASC, title ASC'
         );
       }
       const sourceIds = new Set(sources.map((s: any) => s.id));
