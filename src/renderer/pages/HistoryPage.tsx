@@ -14,6 +14,10 @@ interface WatchedVideo {
   timeWatched: number;
   duration?: number;
   watched?: boolean;
+  // Enhanced metadata from database
+  title?: string;
+  thumbnail?: string;
+  source?: string;
 }
 
 interface VideoWithDetails {
@@ -76,100 +80,27 @@ export const HistoryPage: React.FC = () => {
           return w.videoId; // Only filter out entries without videoId
         });
 
-        // Get video details for watched videos
-        const videosWithDetails: VideoWithDetails[] = [];
-        for (const watchedVideo of validWatchedVideos) {
-          try {
-            const videoData = await (window as any).electron.getVideoData(watchedVideo.videoId);
-            if (videoData) {
-              // Check for best available thumbnail if original is empty
-              let bestThumbnail = videoData.thumbnail;
-              if (!bestThumbnail || bestThumbnail.trim() === '') {
-                try {
-                  const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
-                  if (generatedThumbnail) {
-                    bestThumbnail = generatedThumbnail;
-                  }
-                } catch (error) {
-                  logVerbose('[HistoryPage] Error getting best thumbnail for:', watchedVideo.videoId, error);
-                }
-              }
-
-              videosWithDetails.push({
-                ...videoData,
-                thumbnail: bestThumbnail,
-                watchedData: watchedVideo
-              });
-            } else {
-              // If video data is not available, create a fallback entry
-              // Try to determine video type based on video ID format
-              let videoType: 'youtube' | 'local' | 'dlna' = 'local';
-              if (watchedVideo.videoId.length === 11) {
-                // YouTube video IDs are typically 11 characters
-                videoType = 'youtube';
-              } else if (watchedVideo.videoId.includes('/') || watchedVideo.videoId.startsWith('_')) {
-                // Local video paths contain '/' or start with '_'
-                videoType = 'local';
-              }
-
-              // Check for best available thumbnail for fallback entry
-              let bestThumbnail = '';
-              try {
-                const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
-                if (generatedThumbnail) {
-                  bestThumbnail = generatedThumbnail;
-                }
-              } catch (error) {
-                logVerbose('[HistoryPage] Error getting best thumbnail for fallback video:', watchedVideo.videoId, error);
-              }
-
-              videosWithDetails.push({
-                id: watchedVideo.videoId,
-                title: `Video (${watchedVideo.videoId})`,
-                thumbnail: bestThumbnail,
-                type: videoType, // Detected type based on ID format
-                duration: watchedVideo.duration || 0,
-                sourceId: watchedVideo.source || 'unknown', // Use source from watchedData
-                sourceTitle: 'Unknown Source',
-                watchedData: watchedVideo
-              });
-            }
-          } catch (error) {
-            logVerbose('[HistoryPage] Error loading video data for:', watchedVideo.videoId, error);
-            // Create a fallback entry for videos that can't be loaded
-            // Try to determine video type based on video ID format
-            let videoType: 'youtube' | 'local' | 'dlna' = 'local';
-            if (watchedVideo.videoId.length === 11) {
-              // YouTube video IDs are typically 11 characters
-              videoType = 'youtube';
-            } else if (watchedVideo.videoId.includes('/') || watchedVideo.videoId.startsWith('_')) {
-              // Local video paths contain '/' or start with '_'
-              videoType = 'local';
-            }
-
-            // Check for best available thumbnail for error fallback entry
-            let bestThumbnail = '';
-            try {
-              const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
-              if (generatedThumbnail) {
-                bestThumbnail = generatedThumbnail;
-              }
-            } catch (error) {
-              logVerbose('[HistoryPage] Error getting best thumbnail for error fallback video:', watchedVideo.videoId, error);
-            }
-
-            videosWithDetails.push({
-              id: watchedVideo.videoId,
-              title: `Video (${watchedVideo.videoId})`,
-              thumbnail: bestThumbnail,
-              type: videoType, // Detected type based on ID format
-              duration: watchedVideo.duration || 0,
-              sourceId: watchedVideo.source || 'unknown', // Use source from watchedData
-              sourceTitle: 'Unknown Source',
-              watchedData: watchedVideo
-            });
+        // Build video details from watched data (no need to call getVideoData)
+        const videosWithDetails: VideoWithDetails[] = validWatchedVideos.map((watchedVideo: WatchedVideo) => {
+          // Determine video type based on video ID format
+          let videoType: 'youtube' | 'local' | 'dlna' = 'local';
+          if (watchedVideo.videoId.length === 11 && /^[A-Za-z0-9_-]{11}$/.test(watchedVideo.videoId)) {
+            videoType = 'youtube';
+          } else if (watchedVideo.videoId.includes('/') || watchedVideo.videoId.startsWith('local:')) {
+            videoType = 'local';
           }
-        }
+
+          return {
+            id: watchedVideo.videoId,
+            title: watchedVideo.title || `Video (${watchedVideo.videoId})`,
+            thumbnail: watchedVideo.thumbnail || '',
+            type: videoType,
+            duration: watchedVideo.duration || 0,
+            sourceId: watchedVideo.source || 'unknown',
+            sourceTitle: 'Unknown Source',
+            watchedData: watchedVideo
+          };
+        });
 
         // Sort by last watched date (newest first)
         videosWithDetails.sort((a, b) =>
