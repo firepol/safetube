@@ -300,6 +300,7 @@ export const WatchedVideosPage: React.FC = () => {
                 watched: isWatched,
                 isClicked: isClicked,
                 progress: progress,
+                resumeAt: video.watchedData.position,
                 onVideoClick: () => handleVideoClick(video),
                 source: 'watched',
                 isFavorite: false // Will be updated by VideoGrid's favorite sync

@@ -305,6 +305,7 @@ export const HistoryPage: React.FC = () => {
                 watched: !!video.watchedData.watched, // Convert to boolean (handles both 1/0 and true/false)
                 isClicked: true, // All videos in history have been clicked
                 progress: progress,
+                resumeAt: video.watchedData.position,
                 onVideoClick: () => handleVideoClick(video),
                 sourceId: video.sourceId || 'unknown',
                 lastWatched: video.watchedData.lastWatched,
