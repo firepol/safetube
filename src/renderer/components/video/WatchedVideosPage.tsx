@@ -85,7 +85,7 @@ export const WatchedVideosPage: React.FC = () => {
         
         // Filter watched videos for this source - only show actually watched videos
         const sourceWatchedVideos = watchedData.filter((w: WatchedVideo) => {
-          return w.videoId && w.watched === true; // Only show videos that are actually watched
+          return w.videoId && !!w.watched; // Only show videos that are actually watched (handles both 1/0 and true/false)
         });
 
         // Get video details for watched videos
@@ -283,7 +283,7 @@ export const WatchedVideosPage: React.FC = () => {
         <>
           <VideoGrid
             videos={watchedVideos.map((video) => {
-              const isWatched = video.watchedData.watched === true;
+              const isWatched = !!video.watchedData.watched; // Convert to boolean (handles both 1/0 and true/false)
               const isClicked = true; // All videos in watched videos page have been clicked
 
               return {

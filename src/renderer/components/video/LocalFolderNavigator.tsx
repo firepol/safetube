@@ -129,9 +129,9 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   const getVideoStatus = (videoId: string) => {
     const watchedData = watchedVideos.find(w => w.videoId === videoId);
     if (!watchedData) return { isWatched: false, isClicked: false };
-    
+
     const status = {
-      isWatched: watchedData.watched === true,
+      isWatched: !!watchedData.watched, // Convert to boolean (handles both 1/0 and true/false)
       isClicked: true // If it's in watched.json, it was clicked
     };
     

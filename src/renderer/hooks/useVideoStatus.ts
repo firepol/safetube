@@ -56,7 +56,7 @@ export const useVideoStatus = () => {
     }
 
     return {
-      isWatched: watchedData.watched === true,
+      isWatched: !!watchedData.watched, // Convert to boolean (handles both 1/0 and true/false)
       isClicked: true // If it's in watched.json, it was clicked
     };
   };
