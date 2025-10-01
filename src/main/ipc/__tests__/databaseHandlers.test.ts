@@ -396,7 +396,7 @@ describe('Database IPC Handlers', () => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual(mockSources);
       expect(mockDatabaseService.all).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT * FROM sources ORDER BY sort_order')
+        expect.stringContaining('SELECT * FROM sources ORDER BY position')
       );
     });
 

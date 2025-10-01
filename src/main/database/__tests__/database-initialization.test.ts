@@ -119,13 +119,14 @@ describe('Database Initialization', () => {
     };
 
     await dbService.run(`
-      INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO sources (id, type, title, sort_preference, position, url, channel_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [
       testSource.id,
       testSource.type,
       testSource.title,
-      0,
+      'newestFirst',
+      1,
       testSource.url,
       testSource.channelId
     ]);
@@ -154,8 +155,8 @@ describe('Database Initialization', () => {
 
     // Insert a test source first
     await dbService.run(`
-      INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id)
-      VALUES ('test_source', 'youtube_channel', 'Test', 0, 'https://test.com', 'UC123')
+      INSERT OR REPLACE INTO sources (id, type, title, sort_preference, position, url, channel_id)
+      VALUES ('test_source', 'youtube_channel', 'Test', 'newestFirst', 1, 'https://test.com', 'UC123')
     `);
 
     // Insert a video for the source
@@ -214,15 +215,19 @@ describe('Database Initialization', () => {
     ];
 
     // Insert all sources
+    let position = 1;
     for (const source of testSources) {
+      const sortPref = source.type === 'youtube_channel' ? 'newestFirst' :
+                       source.type === 'youtube_playlist' ? 'playlistOrder' : 'alphabetical';
       await dbService.run(`
-        INSERT OR REPLACE INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT OR REPLACE INTO sources (id, type, title, sort_preference, position, url, channel_id, path, max_depth)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         source.id,
         source.type,
         source.title,
-        0,
+        sortPref,
+        position++,
         (source as any).url || null,
         (source as any).channelId || null,
         (source as any).path || null,
