@@ -286,6 +286,11 @@ export const WatchedVideosPage: React.FC = () => {
               const isWatched = !!video.watchedData.watched; // Convert to boolean (handles both 1/0 and true/false)
               const isClicked = true; // All videos in watched videos page have been clicked
 
+              // Calculate progress percentage for watched videos
+              const progress = video.watchedData.duration
+                ? (video.watchedData.position / video.watchedData.duration) * 100
+                : 0;
+
               return {
                 id: video.id,
                 thumbnail: video.thumbnail || '',
@@ -294,6 +299,7 @@ export const WatchedVideosPage: React.FC = () => {
                 type: video.type,
                 watched: isWatched,
                 isClicked: isClicked,
+                progress: progress,
                 onVideoClick: () => handleVideoClick(video),
                 source: 'watched',
                 isFavorite: false // Will be updated by VideoGrid's favorite sync

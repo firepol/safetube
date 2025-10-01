@@ -290,23 +290,31 @@ export const HistoryPage: React.FC = () => {
       ) : (
         <>
           <VideoGrid
-            videos={watchedVideos.map((video) => ({
-              id: video.id,
-              thumbnail: video.thumbnail || '',
-              title: video.title,
-              duration: video.duration || 0,
-              type: video.type,
-              watched: !!video.watchedData.watched, // Convert to boolean (handles both 1/0 and true/false)
-              isClicked: true, // All videos in history have been clicked
-              onVideoClick: () => handleVideoClick(video),
-              sourceId: video.sourceId || 'unknown',
-              lastWatched: video.watchedData.lastWatched,
-              // Will be checked by VideoGrid using simple favorites hook
-              isFavorite: false,
-              // Source validation
-              isAvailable: validationResults.get(video.id) ?? true,
-              unavailableReason: "This video's source is no longer approved"
-            }))}
+            videos={watchedVideos.map((video) => {
+              // Calculate progress percentage for watched videos
+              const progress = video.watchedData.duration
+                ? (video.watchedData.position / video.watchedData.duration) * 100
+                : 0;
+
+              return {
+                id: video.id,
+                thumbnail: video.thumbnail || '',
+                title: video.title,
+                duration: video.duration || 0,
+                type: video.type,
+                watched: !!video.watchedData.watched, // Convert to boolean (handles both 1/0 and true/false)
+                isClicked: true, // All videos in history have been clicked
+                progress: progress,
+                onVideoClick: () => handleVideoClick(video),
+                sourceId: video.sourceId || 'unknown',
+                lastWatched: video.watchedData.lastWatched,
+                // Will be checked by VideoGrid using simple favorites hook
+                isFavorite: false,
+                // Source validation
+                isAvailable: validationResults.get(video.id) ?? true,
+                unavailableReason: "This video's source is no longer approved"
+              };
+            })}
             groupByType={false}
             className="mb-6"
             // Enable favorite icons for YouTube videos in history
