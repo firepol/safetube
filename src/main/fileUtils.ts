@@ -126,9 +126,32 @@ export async function writeVideoSources(videoSources: VideoSource[]): Promise<vo
 // @deprecated - Use database view_records table instead. These functions are kept only for migration and testing purposes.
 export async function readWatchedVideos(): Promise<WatchedVideo[]> {
   try {
-    return await readJsonFile<WatchedVideo[]>('watched.json');
+    // Read from database first (primary storage)
+    const { DatabaseService } = await import('./services/DatabaseService');
+    const dbService = DatabaseService.getInstance();
+
+    const viewRecords = await dbService.all<any>(`
+      SELECT
+        video_id as videoId,
+        source_id as source,
+        position,
+        time_watched as timeWatched,
+        duration,
+        watched,
+        first_watched as firstWatched,
+        last_watched as lastWatched
+      FROM view_records
+    `);
+
+    return viewRecords as WatchedVideo[];
   } catch (error) {
-    return []; // Return empty array if file doesn't exist
+    console.warn('[FileUtils] Error reading watched videos from database, falling back to JSON:', error);
+    // Fallback to JSON file for backwards compatibility
+    try {
+      return await readJsonFile<WatchedVideo[]>('watched.json');
+    } catch (jsonError) {
+      return []; // Return empty array if neither source exists
+    }
   }
 }
 

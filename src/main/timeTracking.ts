@@ -27,6 +27,47 @@ async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<vo
     const { DatabaseService } = await import('./services/DatabaseService');
     const dbService = DatabaseService.getInstance();
 
+    // Ensure video exists in videos table before creating view record
+    const sourceId = watchedEntry.source || 'unknown';
+
+    // Check if video exists
+    const videoExists = await dbService.get<any>(
+      'SELECT id FROM videos WHERE id = ?',
+      [watchedEntry.videoId]
+    );
+
+    if (!videoExists) {
+      // Insert video into videos table
+      await dbService.run(`
+        INSERT INTO videos (
+          id, title, thumbnail, duration, url, source_id, is_available
+        ) VALUES (?, ?, ?, ?, ?, ?, 1)
+      `, [
+        watchedEntry.videoId,
+        watchedEntry.title || `Video ${watchedEntry.videoId}`,
+        watchedEntry.thumbnail || '',
+        watchedEntry.duration || 0,
+        watchedEntry.videoId, // URL is the video ID for local videos
+        sourceId
+      ]);
+      logVerbose(`[TimeTracking] Created video entry for ${watchedEntry.videoId}`);
+    }
+
+    // Ensure source exists
+    const sourceExists = await dbService.get<any>(
+      'SELECT id FROM sources WHERE id = ?',
+      [sourceId]
+    );
+
+    if (!sourceExists) {
+      // Create a placeholder source for unknown videos
+      await dbService.run(`
+        INSERT INTO sources (id, type, title, position)
+        VALUES (?, 'local', ?, 999)
+      `, [sourceId, sourceId]);
+      logVerbose(`[TimeTracking] Created placeholder source for ${sourceId}`);
+    }
+
     // Insert or update view record
     await dbService.run(`
       INSERT OR REPLACE INTO view_records (
@@ -35,7 +76,7 @@ async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<vo
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       watchedEntry.videoId,
-      watchedEntry.source || '',
+      sourceId,
       watchedEntry.position,
       watchedEntry.timeWatched,
       watchedEntry.duration,
