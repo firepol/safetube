@@ -83,7 +83,8 @@ export class SimpleSchemaManager {
       thumbnail TEXT,
       channel_id TEXT,
       path TEXT,
-      sort_order TEXT,
+      sort_preference TEXT,
+      position INTEGER,
       total_videos INTEGER,
       max_depth INTEGER,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -354,7 +355,7 @@ export class SimpleSchemaManager {
   }
 
   /**
-   * Fix sources table columns that may have been added manually
+   * Fix sources table columns that may have been added manually or have wrong types
    */
   private async fixSourcesTableColumns(): Promise<void> {
     try {
@@ -365,18 +366,21 @@ export class SimpleSchemaManager {
 
       const hasValidThumbnail = tableInfo.some(col => col.name === 'thumbnail' && col.type === 'TEXT');
       const hasValidTotalVideos = tableInfo.some(col => col.name === 'total_videos' && col.type === 'INTEGER');
+      const hasOldSortOrder = tableInfo.some(col => col.name === 'sort_order');
+      const hasNewColumns = tableInfo.some(col => col.name === 'position' && col.type === 'INTEGER') && tableInfo.some(col => col.name === 'sort_preference');
 
-      if (hasValidThumbnail && hasValidTotalVideos) {
+      // Check if migration is needed
+      if (hasValidThumbnail && hasValidTotalVideos && !hasOldSortOrder && hasNewColumns) {
         log.debug('[SimpleSchemaManager] Sources table columns are already properly formatted');
         return;
       }
 
-      log.info('[SimpleSchemaManager] Fixing sources table columns...');
+      log.info('[SimpleSchemaManager] Fixing sources table columns (renaming sort_order → position, adding sort_preference)...');
 
       // Backup existing data
       const existingSources = await this.databaseService.all(`SELECT * FROM sources`);
 
-      // Create new table with proper schema (optimized column order)
+      // Create new table with proper schema (optimized column order with correct types)
       await this.databaseService.run(`
         CREATE TABLE sources_new (
           id TEXT PRIMARY KEY,
@@ -386,7 +390,8 @@ export class SimpleSchemaManager {
           thumbnail TEXT,
           channel_id TEXT,
           path TEXT,
-          sort_order TEXT,
+          sort_preference TEXT,
+          position INTEGER,
           total_videos INTEGER,
           max_depth INTEGER,
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -398,17 +403,37 @@ export class SimpleSchemaManager {
         )
       `);
 
-      // Copy data to new table (matching optimized column order)
+      // Copy data to new table with proper type conversion and defaults
       for (const source of existingSources) {
+        // Determine default sort_preference based on source type if not available
+        let sortPreference = source.sort_preference || null;
+        if (!sortPreference) {
+          if (source.type === 'youtube_channel') {
+            sortPreference = 'newestFirst';
+          } else if (source.type === 'youtube_playlist') {
+            sortPreference = 'playlistOrder';
+          } else if (source.type === 'local') {
+            sortPreference = 'alphabetical';
+          }
+        }
+
+        // Convert old sort_order (TEXT) to position (INTEGER)
+        // If sort_order was a number stored as text, parse it; otherwise use null
+        let position = source.position || null;
+        if (!position && source.sort_order !== undefined && source.sort_order !== null) {
+          const parsedOrder = typeof source.sort_order === 'number' ? source.sort_order : parseInt(source.sort_order, 10);
+          position = isNaN(parsedOrder) ? null : parsedOrder;
+        }
+
         await this.databaseService.run(`
           INSERT INTO sources_new (
-            id, type, title, url, thumbnail, channel_id, path, sort_order,
-            total_videos, max_depth, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            id, type, title, url, thumbnail, channel_id, path, sort_preference,
+            position, total_videos, max_depth, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           source.id, source.type, source.title, source.url,
-          source.thumbnail, source.channel_id, source.path, source.sort_order,
-          source.total_videos, source.max_depth,
+          source.thumbnail, source.channel_id, source.path, sortPreference,
+          position, source.total_videos, source.max_depth,
           source.created_at, source.updated_at
         ]);
       }

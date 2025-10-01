@@ -176,9 +176,10 @@ CREATE TABLE sources (
     thumbnail TEXT,                        -- Source thumbnail URL
     channel_id TEXT,                       -- YouTube channel ID
     path TEXT,                             -- Local folder path
-    sort_order TEXT,                       -- Sort preference
+    sort_preference TEXT,                  -- Video sorting preference ('newestFirst', 'playlistOrder', 'alphabetical', etc.)
 
     -- Numeric metadata (INTEGER fields grouped)
+    position INTEGER,                      -- UI display position (1, 2, 3...) for drag-and-drop ordering
     total_videos INTEGER,                  -- Total video count for source
     max_depth INTEGER,                     -- Scan depth for local folders
 
@@ -196,6 +197,7 @@ CREATE TABLE sources (
 -- Indexes for performance
 CREATE INDEX idx_sources_type ON sources(type);
 CREATE INDEX idx_sources_title ON sources(title);
+CREATE INDEX idx_sources_position ON sources(position);
 ```
 
 #### 5. YouTube API Results Table (Replaces .cache folder)

@@ -73,8 +73,8 @@ export const VideoSourcesManager: React.FC = () => {
       await DatabaseClient.deleteSource(sourceId);
       // Remove from local state
       const updatedSources = state.sources.filter(s => s.id !== sourceId);
-      // Reassign sort_order and persist
-      await persistSortOrder(updatedSources);
+      // Reassign position and persist
+      await persistPosition(updatedSources);
       setState(prev => ({ ...prev, sources: updatedSources }));
       SourceValidationService.clearCache();
     } catch (error) {
@@ -96,8 +96,8 @@ export const VideoSourcesManager: React.FC = () => {
     try {
       const updatedSources = [...state.sources];
       [updatedSources[currentIndex], updatedSources[newIndex]] = [updatedSources[newIndex], updatedSources[currentIndex]];
-      // Reassign sort_order and persist
-      await persistSortOrder(updatedSources);
+      // Reassign position and persist
+      await persistPosition(updatedSources);
       setState(prev => ({ ...prev, sources: updatedSources }));
     } catch (error) {
       console.error('Error moving video source:', error);
@@ -108,14 +108,14 @@ export const VideoSourcesManager: React.FC = () => {
     }
   };
 
-  // Helper to reassign and persist sort_order for all sources
-  const persistSortOrder = async (sources: VideoSource[]) => {
+  // Helper to reassign and persist position for all sources
+  const persistPosition = async (sources: VideoSource[]) => {
     for (let i = 0; i < sources.length; i++) {
       const s = sources[i];
-      // Only update if sort_order is different or missing (assume undefined for new/migrated sources)
-      if ((s as any).sort_order !== i + 1) {
-        await DatabaseClient.updateSource(s.id, { sort_order: i + 1 });
-        // Do not assign to s.sort_order, keep UI type clean
+      // Only update if position is different or missing (assume undefined for new/migrated sources)
+      if ((s as any).position !== i + 1) {
+        await DatabaseClient.updateSource(s.id, { position: i + 1 });
+        // Do not assign to s.position, keep UI type clean
       }
     }
   };

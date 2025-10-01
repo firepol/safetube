@@ -46,7 +46,8 @@ interface SourceRecord {
   id: string;
   type: string;
   title: string;
-  sort_order?: number;
+  sort_preference?: string;
+  position?: number;
   url?: string;
   channel_id?: string;
   path?: string;
@@ -576,7 +577,7 @@ export function registerDatabaseHandlers() {
     try {
       const dbService = DatabaseService.getInstance();
       const sources = await dbService.all<SourceRecord>(`
-        SELECT * FROM sources ORDER BY sort_order ASC, title ASC
+        SELECT * FROM sources ORDER BY position ASC, title ASC
       `);
 
       return {
@@ -620,13 +621,14 @@ export function registerDatabaseHandlers() {
       const sourceId = `source_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
       await dbService.run(`
-        INSERT INTO sources (id, type, title, sort_order, url, channel_id, path, max_depth, thumbnail, total_videos)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO sources (id, type, title, sort_preference, position, url, channel_id, path, max_depth, thumbnail, total_videos)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         sourceId,
         source.type,
         source.title,
-        source.sort_order || null,
+        source.sort_preference || null,
+        source.position || null,
         source.url || null,
         source.channel_id || null,
         source.path || null,

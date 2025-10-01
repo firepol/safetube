@@ -55,7 +55,8 @@ export interface SourceRecord {
   id: string;
   type: string;
   title: string;
-  sort_order?: number;
+  sort_preference?: string;
+  position?: number;
   url?: string;
   channel_id?: string;
   path?: string;
