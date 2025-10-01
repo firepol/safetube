@@ -986,17 +986,23 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
           let thumbnail = favorite.thumbnail || '';
           const videoType = favorite.source_type === 'youtube_channel' || favorite.source_type === 'youtube_playlist' ? 'youtube' : favorite.source_type;
 
-          if (!thumbnail && videoType === 'local' && favorite.url) {
-            // Generate thumbnail for local video
-            const { findThumbnailForVideo } = await import('./services/thumbnailService');
-            // Strip 'local:' prefix from URL to get file path
-            const filePath = favorite.url.replace(/^local:/, '');
-            logVerbose(`[Main] Favorites: Looking for thumbnail for ${favorite.video_id}`);
-            logVerbose(`[Main] Favorites: URL: ${favorite.url}, FilePath: ${filePath}`);
-            const foundThumbnail = findThumbnailForVideo(filePath);
-            logVerbose(`[Main] Favorites: Found thumbnail: ${foundThumbnail || 'NONE'}`);
-            // For local videos, use empty string instead of placeholder (VideoCardBase will show 🎬 icon)
-            thumbnail = foundThumbnail || '';
+          if (!thumbnail && videoType === 'local' && favorite.video_id) {
+            // Get cached thumbnail for local video (same logic as getBestThumbnail handler)
+            const { parseVideoId } = await import('../shared/fileUtils');
+            const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
+
+            const parsed = parseVideoId(favorite.video_id);
+            if (parsed.success && parsed.parsed?.type === 'local') {
+              const cacheKey = getThumbnailCacheKey(favorite.video_id, 'local');
+              const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
+
+              if (fs.existsSync(cachedThumbnailPath)) {
+                thumbnail = getThumbnailUrl(cachedThumbnailPath);
+                logVerbose(`[Main] Favorites: Found cached thumbnail for ${favorite.video_id}: ${thumbnail}`);
+              } else {
+                logVerbose(`[Main] Favorites: No cached thumbnail found at ${cachedThumbnailPath}`);
+              }
+            }
           } else if (!thumbnail && videoType !== 'local') {
             // Only use placeholder for non-local videos (YouTube)
             thumbnail = '/placeholder-thumbnail.svg';
