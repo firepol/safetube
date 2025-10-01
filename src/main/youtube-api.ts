@@ -64,6 +64,28 @@ export class YouTubeAPI {
     }
   }
   
+  // Resolve channel ID from @handle URL
+  async getChannelIdFromHandle(handle: string): Promise<string | null> {
+    try {
+      // Remove @ prefix if present
+      const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
+
+      const response = await this.makeRequest(
+        `${this.baseUrl}/channels?part=id&forHandle=${cleanHandle}&key=${this.apiKey}`
+      );
+
+      if (!response.items || response.items.length === 0) {
+        console.warn(`[YouTubeAPI] No channel found for handle: ${handle}`);
+        return null;
+      }
+
+      return response.items[0].id;
+    } catch (error) {
+      console.error(`[YouTubeAPI] Error resolving handle ${handle}:`, error);
+      return null;
+    }
+  }
+
   // Get channel details (title, description, thumbnail, videoCount)
   async getChannelDetails(channelId: string): Promise<any> {
     try {
@@ -77,6 +99,7 @@ export class YouTubeAPI {
 
       const channel = response.items[0];
       return {
+        channelId: channel.id, // Include channel ID in response
         title: channel.snippet.title,
         description: channel.snippet.description,
         thumbnail: channel.snippet.thumbnails?.high?.url || channel.snippet.thumbnails?.medium?.url || channel.snippet.thumbnails?.default?.url,

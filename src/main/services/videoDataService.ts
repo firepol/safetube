@@ -746,8 +746,36 @@ export async function refreshStaleYouTubeSources(apiKey?: string | null) {
         let thumbnail = '';
 
         if (source.type === 'youtube_channel') {
+          let channelId = source.channel_id;
+
+          // If channel_id is missing, try to resolve from @handle URL
+          if (!channelId && source.url) {
+            const handleMatch = source.url.match(/@([^/?]+)/);
+            if (handleMatch) {
+              const handle = handleMatch[1];
+              log.info(`[VideoDataService] Resolving channel ID for handle @${handle}`);
+              channelId = await youtubeApi.getChannelIdFromHandle(handle);
+
+              // Update the database with the resolved channel_id
+              if (channelId) {
+                await dbService.run(`
+                  UPDATE sources
+                  SET channel_id = ?
+                  WHERE id = ?
+                `, [channelId, source.id]);
+                log.info(`[VideoDataService] Updated source ${source.id} with channel_id: ${channelId}`);
+              }
+            }
+          }
+
+          // Skip if still no channel_id
+          if (!channelId) {
+            log.warn(`[VideoDataService] Skipping source ${source.id} - could not resolve channel_id (URL: ${source.url})`);
+            continue;
+          }
+
           // Get channel details
-          const channelData = await youtubeApi.getChannelDetails(source.channel_id);
+          const channelData = await youtubeApi.getChannelDetails(channelId);
           if (channelData) {
             totalVideos = channelData.videoCount || 0;
             thumbnail = channelData.thumbnail || '';
