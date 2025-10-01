@@ -42,7 +42,7 @@ export const VideoSourcesManager: React.FC = () => {
         type: 'youtube',
         title: '',
         url: '',
-        sortOrder: 'newestFirst'
+        sortPreference: 'newestFirst'
       }
     }));
   };
@@ -57,7 +57,7 @@ export const VideoSourcesManager: React.FC = () => {
         title: source.title,
         url: 'url' in source ? source.url : '',
         path: 'path' in source ? source.path : '',
-        sortOrder: source.sortOrder || 'newestFirst',
+        sortPreference: source.sortPreference || 'newestFirst',
         maxDepth: 'maxDepth' in source ? source.maxDepth : undefined
       }
     }));
@@ -135,7 +135,7 @@ export const VideoSourcesManager: React.FC = () => {
             title: formData.title,
             path: formData.path!,
             maxDepth: formData.maxDepth || 2,
-            sortOrder: (formData.sortOrder as 'alphabetical' | 'dateAdded' | 'manual') || 'alphabetical'
+            sortPreference: (formData.sortPreference as 'alphabetical' | 'dateAdded' | 'manual') || 'alphabetical'
           };
         } else if (formData.type === 'youtube_channel') {
           newSource = {
@@ -143,7 +143,7 @@ export const VideoSourcesManager: React.FC = () => {
             type: 'youtube_channel',
             title: formData.title,
             url: formData.url!,
-            sortOrder: (formData.sortOrder as 'newestFirst' | 'oldestFirst') || 'newestFirst',
+            sortPreference: (formData.sortPreference as 'newestFirst' | 'oldestFirst') || 'newestFirst',
             channelId: formData.channelId
           };
         } else if (formData.type === 'youtube_playlist') {
@@ -152,7 +152,7 @@ export const VideoSourcesManager: React.FC = () => {
             type: 'youtube_playlist',
             title: formData.title,
             url: formData.url!,
-            sortOrder: (formData.sortOrder as 'playlistOrder' | 'newestFirst' | 'oldestFirst') || 'playlistOrder'
+            sortPreference: (formData.sortPreference as 'playlistOrder' | 'newestFirst' | 'oldestFirst') || 'playlistOrder'
           };
         } else {
           // Handle the case where type is still 'youtube' (shouldn't happen with proper validation)
@@ -170,7 +170,7 @@ export const VideoSourcesManager: React.FC = () => {
                 title: formData.title,
                 path: formData.path!,
                 maxDepth: formData.maxDepth || 2,
-                sortOrder: (formData.sortOrder as 'alphabetical' | 'dateAdded' | 'manual') || 'alphabetical'
+                sortPreference: (formData.sortPreference as 'alphabetical' | 'dateAdded' | 'manual') || 'alphabetical'
               };
             } else if (formData.type === 'youtube_channel') {
               return {
@@ -178,7 +178,7 @@ export const VideoSourcesManager: React.FC = () => {
                 type: 'youtube_channel' as const,
                 title: formData.title,
                 url: formData.url!,
-                sortOrder: (formData.sortOrder as 'newestFirst' | 'oldestFirst') || 'newestFirst',
+                sortPreference: (formData.sortPreference as 'newestFirst' | 'oldestFirst') || 'newestFirst',
                 channelId: formData.channelId
               };
             } else {
@@ -187,7 +187,7 @@ export const VideoSourcesManager: React.FC = () => {
                 type: 'youtube_playlist' as const,
                 title: formData.title,
                 url: formData.url!,
-                sortOrder: (formData.sortOrder as 'playlistOrder' | 'newestFirst' | 'oldestFirst') || 'playlistOrder'
+                sortPreference: (formData.sortPreference as 'playlistOrder' | 'newestFirst' | 'oldestFirst') || 'playlistOrder'
               };
             }
           }

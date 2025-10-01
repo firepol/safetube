@@ -197,7 +197,7 @@ export class MigrationService {
         source.id,
         source.type,
         source.title,
-        source.sortOrder || null,
+        source.sortPreference || null,
         source.url || null,
         source.channelId || null,
         source.path || null,

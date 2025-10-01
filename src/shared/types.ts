@@ -74,7 +74,7 @@ export interface YouTubeChannelSource {
   url: string; // e.g. https://www.youtube.com/channel/UCxxxxx
   title: string;
   channelId?: string; // YouTube channel ID for validation (fetched from YouTube API)
-  sortOrder?: 'newestFirst' | 'oldestFirst';
+  sortPreference?: 'newestFirst' | 'oldestFirst';
 }
 
 export interface YouTubePlaylistSource {
@@ -82,7 +82,7 @@ export interface YouTubePlaylistSource {
   type: 'youtube_playlist';
   url: string; // e.g. https://www.youtube.com/playlist?list=PLxxxxxx
   title: string;
-  sortOrder?: 'playlistOrder' | 'newestFirst' | 'oldestFirst';
+  sortPreference?: 'playlistOrder' | 'newestFirst' | 'oldestFirst';
 }
 
 export interface LocalFolderSource {
@@ -90,7 +90,7 @@ export interface LocalFolderSource {
   type: 'local';
   path: string;
   title: string;
-  sortOrder?: 'alphabetical' | 'dateAdded' | 'manual';
+  sortPreference?: 'alphabetical' | 'dateAdded' | 'manual';
   maxDepth?: number; // default 2
 }
 
@@ -103,7 +103,7 @@ export interface VideoSourceFormData {
   url?: string;
   path?: string;
   title: string;
-  sortOrder?: string;
+  sortPreference?: string;
   maxDepth?: number;
   channelId?: string; // For YouTube channel sources
 }

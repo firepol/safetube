@@ -51,7 +51,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
       type,
       url: type === 'local' ? undefined : formData.url,
       path: type === 'local' ? formData.path : undefined,
-      sortOrder: type === 'local' ? getDefaultSortOrder('local') : 'newestFirst' // Default for YouTube
+      sortPreference: type === 'local' ? getDefaultSortOrder('local') : 'newestFirst' // Default for YouTube
     };
     setFormData(newFormData);
     setValidation({ isValid: true, errors: [] });
@@ -442,13 +442,13 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
 
         {/* Sort Order */}
         <div>
-          <label htmlFor="sortOrder" className="block text-sm font-medium text-gray-700 mb-2">
+          <label htmlFor="sortPreference" className="block text-sm font-medium text-gray-700 mb-2">
             Sort Order
           </label>
           <select
-            id="sortOrder"
-            value={formData.sortOrder || (formData.type === 'local' ? getDefaultSortOrder('local') : 'newestFirst')}
-            onChange={(e) => handleInputChange('sortOrder', e.target.value)}
+            id="sortPreference"
+            value={formData.sortPreference || (formData.type === 'local' ? getDefaultSortOrder('local') : 'newestFirst')}
+            onChange={(e) => handleInputChange('sortPreference', e.target.value)}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             {getSortOrderOptions(formData.type).map(option => (

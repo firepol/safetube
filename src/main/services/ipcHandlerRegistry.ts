@@ -434,7 +434,7 @@ export function registerVideoSourceHandlers() {
               source.id,
               source.type,
               source.title,
-              source.sortOrder || 'newestFirst',
+              source.sortPreference || 'newestFirst',
               null, // position will be set by admin panel
               source.url || null,
               source.channelId || null,

@@ -547,7 +547,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
         channelId: source.channel_id,
         path: source.path,
         maxDepth: source.max_depth,
-        sortOrder: source.sort_preference
+        sortPreference: source.sort_preference
       }));
 
     } catch (dbError) {
@@ -569,7 +569,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
         id: source.id,
         type: source.type,
         title: source.title,
-        sortOrder: source.sortOrder
+        sortPreference: source.sortPreference
       };
 
       // Parse type-specific fields
@@ -1924,7 +1924,7 @@ app.on('ready', async () => {
             source.id,
             source.type,
             source.title,
-            source.sortOrder || 'newestFirst',
+            source.sortPreference || 'newestFirst',
             null, // position
             source.url || null,
             source.channelId || null,

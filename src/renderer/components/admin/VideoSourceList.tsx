@@ -81,9 +81,9 @@ export const VideoSourceList: React.FC<VideoSourceListProps> = ({
                 <p className="text-sm text-gray-500 truncate">
                   {getSourceDisplayValue(source)}
                 </p>
-                {source.sortOrder && (
+                {source.sortPreference && (
                   <p className="text-xs text-gray-400">
-                    Sort: {source.sortOrder}
+                    Sort: {source.sortPreference}
                   </p>
                 )}
               </div>

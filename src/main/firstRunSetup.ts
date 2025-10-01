@@ -133,7 +133,7 @@ export class FirstRunSetup {
                         source.id,
                         source.type,
                         source.title,
-                        source.sortOrder || 'newestFirst',
+                        source.sortPreference || 'newestFirst',
                         null, // position
                         source.url || null,
                         source.channelId || null,
