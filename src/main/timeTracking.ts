@@ -30,14 +30,36 @@ async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<vo
     // Ensure video exists in videos table before creating view record
     const sourceId = watchedEntry.source || 'unknown';
 
+    logVerbose(`[TimeTracking] writeViewRecordToDatabase called for videoId: ${watchedEntry.videoId}, sourceId: ${sourceId}`);
+    logVerbose(`[TimeTracking] watchedEntry:`, JSON.stringify(watchedEntry, null, 2));
+
+    // Ensure source exists FIRST (because videos table has FK to sources)
+    const sourceExists = await dbService.get<any>(
+      'SELECT id FROM sources WHERE id = ?',
+      [sourceId]
+    );
+    logVerbose(`[TimeTracking] Source exists check for ${sourceId}:`, sourceExists);
+
+    if (!sourceExists) {
+      // Create a placeholder source for unknown videos
+      logVerbose(`[TimeTracking] Creating placeholder source for ${sourceId}`);
+      await dbService.run(`
+        INSERT INTO sources (id, type, title, position)
+        VALUES (?, 'local', ?, 999)
+      `, [sourceId, sourceId]);
+      logVerbose(`[TimeTracking] Created placeholder source for ${sourceId}`);
+    }
+
     // Check if video exists
     const videoExists = await dbService.get<any>(
       'SELECT id FROM videos WHERE id = ?',
       [watchedEntry.videoId]
     );
+    logVerbose(`[TimeTracking] Video exists check for ${watchedEntry.videoId}:`, videoExists);
 
     if (!videoExists) {
       // Insert video into videos table
+      logVerbose(`[TimeTracking] Creating video entry for ${watchedEntry.videoId} with sourceId: ${sourceId}`);
       await dbService.run(`
         INSERT INTO videos (
           id, title, thumbnail, duration, url, source_id, is_available
@@ -53,22 +75,8 @@ async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<vo
       logVerbose(`[TimeTracking] Created video entry for ${watchedEntry.videoId}`);
     }
 
-    // Ensure source exists
-    const sourceExists = await dbService.get<any>(
-      'SELECT id FROM sources WHERE id = ?',
-      [sourceId]
-    );
-
-    if (!sourceExists) {
-      // Create a placeholder source for unknown videos
-      await dbService.run(`
-        INSERT INTO sources (id, type, title, position)
-        VALUES (?, 'local', ?, 999)
-      `, [sourceId, sourceId]);
-      logVerbose(`[TimeTracking] Created placeholder source for ${sourceId}`);
-    }
-
     // Insert or update view record
+    logVerbose(`[TimeTracking] Inserting/updating view record for ${watchedEntry.videoId}`);
     await dbService.run(`
       INSERT OR REPLACE INTO view_records (
         video_id, source_id, position, time_watched, duration, watched,
@@ -88,6 +96,7 @@ async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<vo
     logVerbose(`[TimeTracking] Written view record for ${watchedEntry.videoId} to database`);
   } catch (error) {
     logVerbose(`[TimeTracking] Error writing view record to database: ${error}`);
+    logVerbose(`[TimeTracking] Error stack:`, error);
     throw error;
   }
 }
@@ -187,14 +196,38 @@ function findThumbnailForLocalVideo(videoPath: string): string {
  */
 async function findSourceForLocalVideo(videoPath: string): Promise<string | null> {
   try {
+    // Try database first (new system)
+    try {
+      const { DatabaseService } = await import('./services/DatabaseService');
+      const dbService = DatabaseService.getInstance();
+
+      const sources = await dbService.all<any>(`
+        SELECT id, path FROM sources WHERE type = 'local' ORDER BY LENGTH(path) DESC
+      `);
+
+      for (const source of sources) {
+        if (source.path && videoPath.startsWith(source.path)) {
+          logVerbose(`[TimeTracking] Found source ${source.id} for ${videoPath}`);
+          return source.id;
+        }
+      }
+    } catch (dbError) {
+      logVerbose(`[TimeTracking] Database query failed, falling back to JSON:`, dbError);
+    }
+
+    // Fallback to JSON file (old system)
     const sources = await readVideoSources();
     for (const source of sources) {
-      if (source.type === 'local' && videoPath.startsWith(source.path)) {
+      if (source.type === 'local' && source.path && videoPath.startsWith(source.path)) {
+        logVerbose(`[TimeTracking] Found source ${source.id} for ${videoPath} (from JSON)`);
         return source.id;
       }
     }
+
+    logVerbose(`[TimeTracking] No source found for ${videoPath}`);
     return null;
   } catch (error) {
+    logVerbose(`[TimeTracking] Error finding source for local video:`, error);
     return null;
   }
 }
