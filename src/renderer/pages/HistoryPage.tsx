@@ -129,7 +129,7 @@ export const HistoryPage: React.FC = () => {
                 thumbnail: bestThumbnail,
                 type: videoType, // Detected type based on ID format
                 duration: watchedVideo.duration || 0,
-                sourceId: 'unknown',
+                sourceId: watchedVideo.source || 'unknown', // Use source from watchedData
                 sourceTitle: 'Unknown Source',
                 watchedData: watchedVideo
               });
@@ -164,7 +164,7 @@ export const HistoryPage: React.FC = () => {
               thumbnail: bestThumbnail,
               type: videoType, // Detected type based on ID format
               duration: watchedVideo.duration || 0,
-              sourceId: 'unknown',
+              sourceId: watchedVideo.source || 'unknown', // Use source from watchedData
               sourceTitle: 'Unknown Source',
               watchedData: watchedVideo
             });
