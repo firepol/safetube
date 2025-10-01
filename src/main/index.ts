@@ -989,7 +989,9 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
           if (!thumbnail && videoType === 'local' && favorite.url) {
             // Generate thumbnail for local video
             const { findThumbnailForVideo } = await import('./services/thumbnailService');
-            thumbnail = findThumbnailForVideo(favorite.url) || '/placeholder-thumbnail.svg';
+            // Strip 'local:' prefix from URL to get file path
+            const filePath = favorite.url.replace(/^local:/, '');
+            thumbnail = findThumbnailForVideo(filePath) || '/placeholder-thumbnail.svg';
           } else if (!thumbnail) {
             thumbnail = '/placeholder-thumbnail.svg';
           }

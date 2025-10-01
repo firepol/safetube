@@ -81,26 +81,39 @@ export const HistoryPage: React.FC = () => {
         });
 
         // Build video details from watched data (no need to call getVideoData)
-        const videosWithDetails: VideoWithDetails[] = validWatchedVideos.map((watchedVideo: WatchedVideo) => {
-          // Determine video type based on video ID format
-          let videoType: 'youtube' | 'local' | 'dlna' = 'local';
-          if (watchedVideo.videoId.length === 11 && /^[A-Za-z0-9_-]{11}$/.test(watchedVideo.videoId)) {
-            videoType = 'youtube';
-          } else if (watchedVideo.videoId.includes('/') || watchedVideo.videoId.startsWith('local:')) {
-            videoType = 'local';
-          }
+        const videosWithDetails: VideoWithDetails[] = await Promise.all(
+          validWatchedVideos.map(async (watchedVideo: WatchedVideo) => {
+            // Determine video type based on video ID format
+            let videoType: 'youtube' | 'local' | 'dlna' = 'local';
+            if (watchedVideo.videoId.length === 11 && /^[A-Za-z0-9_-]{11}$/.test(watchedVideo.videoId)) {
+              videoType = 'youtube';
+            } else if (watchedVideo.videoId.includes('/') || watchedVideo.videoId.startsWith('local:')) {
+              videoType = 'local';
+            }
 
-          return {
-            id: watchedVideo.videoId,
-            title: watchedVideo.title || `Video (${watchedVideo.videoId})`,
-            thumbnail: watchedVideo.thumbnail || '',
-            type: videoType,
-            duration: watchedVideo.duration || 0,
-            sourceId: watchedVideo.source || 'unknown',
-            sourceTitle: 'Unknown Source',
-            watchedData: watchedVideo
-          };
-        });
+            // Get thumbnail - generate for local videos if missing
+            let thumbnail = watchedVideo.thumbnail || '';
+            if (!thumbnail && videoType === 'local') {
+              try {
+                const generated = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
+                thumbnail = generated || '';
+              } catch (error) {
+                logVerbose('[HistoryPage] Error getting thumbnail for:', watchedVideo.videoId, error);
+              }
+            }
+
+            return {
+              id: watchedVideo.videoId,
+              title: watchedVideo.title || `Video (${watchedVideo.videoId})`,
+              thumbnail,
+              type: videoType,
+              duration: watchedVideo.duration || 0,
+              sourceId: watchedVideo.source || 'unknown',
+              sourceTitle: 'Unknown Source',
+              watchedData: watchedVideo
+            };
+          })
+        );
 
         // Sort by last watched date (newest first)
         videosWithDetails.sort((a, b) =>
