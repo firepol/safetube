@@ -991,10 +991,18 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
             const { findThumbnailForVideo } = await import('./services/thumbnailService');
             // Strip 'local:' prefix from URL to get file path
             const filePath = favorite.url.replace(/^local:/, '');
-            thumbnail = findThumbnailForVideo(filePath) || '/placeholder-thumbnail.svg';
-          } else if (!thumbnail) {
+            logVerbose(`[Main] Favorites: Looking for thumbnail for ${favorite.video_id}`);
+            logVerbose(`[Main] Favorites: URL: ${favorite.url}, FilePath: ${filePath}`);
+            const foundThumbnail = findThumbnailForVideo(filePath);
+            logVerbose(`[Main] Favorites: Found thumbnail: ${foundThumbnail || 'NONE'}`);
+            // For local videos, use empty string instead of placeholder (VideoCardBase will show 🎬 icon)
+            thumbnail = foundThumbnail || '';
+          } else if (!thumbnail && videoType !== 'local') {
+            // Only use placeholder for non-local videos (YouTube)
             thumbnail = '/placeholder-thumbnail.svg';
           }
+
+          logVerbose(`[Main] Favorites: Final thumbnail for ${favorite.video_id}: ${thumbnail || 'EMPTY'}`);
 
           const video = {
             id: favorite.video_id,
