@@ -982,12 +982,24 @@ ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumbe
         const videosWithMetadata = [];
 
         for (const favorite of favorites) {
+          // Determine thumbnail - generate for local videos if missing
+          let thumbnail = favorite.thumbnail || '';
+          const videoType = favorite.source_type === 'youtube_channel' || favorite.source_type === 'youtube_playlist' ? 'youtube' : favorite.source_type;
+
+          if (!thumbnail && videoType === 'local' && favorite.url) {
+            // Generate thumbnail for local video
+            const { findThumbnailForVideo } = await import('./services/thumbnailService');
+            thumbnail = findThumbnailForVideo(favorite.url) || '/placeholder-thumbnail.svg';
+          } else if (!thumbnail) {
+            thumbnail = '/placeholder-thumbnail.svg';
+          }
+
           const video = {
             id: favorite.video_id,
             title: favorite.title || 'Unknown Title',
-            thumbnail: favorite.thumbnail || '/placeholder-thumbnail.svg',
+            thumbnail,
             duration: favorite.duration || 0,
-            type: favorite.source_type === 'youtube_channel' || favorite.source_type === 'youtube_playlist' ? 'youtube' : favorite.source_type,
+            type: videoType,
             url: favorite.url || '',
             sourceId: favorite.source_id,
             sourceTitle: favorite.source_title || 'Unknown Source',
