@@ -170,16 +170,19 @@ CREATE TABLE sources (
     id TEXT PRIMARY KEY,                    -- Source ID (user-defined)
     type TEXT NOT NULL,                     -- 'youtube_channel' | 'youtube_playlist' | 'local'
     title TEXT NOT NULL,                    -- Display title
-    sort_order TEXT,                        -- Sort preference
 
-    -- YouTube-specific fields
-    url TEXT,                              -- YouTube URL
+    -- Display metadata (TEXT fields grouped)
+    url TEXT,                              -- YouTube URL or source identifier
+    thumbnail TEXT,                        -- Source thumbnail URL
     channel_id TEXT,                       -- YouTube channel ID
-
-    -- Local-specific fields
     path TEXT,                             -- Local folder path
+    sort_order TEXT,                       -- Sort preference
+
+    -- Numeric metadata (INTEGER fields grouped)
+    total_videos INTEGER,                  -- Total video count for source
     max_depth INTEGER,                     -- Scan depth for local folders
 
+    -- Audit timestamps
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

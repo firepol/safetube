@@ -79,13 +79,13 @@ export class SimpleSchemaManager {
       id TEXT PRIMARY KEY,
       type TEXT NOT NULL,
       title TEXT NOT NULL,
-      sort_order TEXT,
       url TEXT,
+      thumbnail TEXT,
       channel_id TEXT,
       path TEXT,
-      max_depth INTEGER,
-      thumbnail TEXT,
+      sort_order TEXT,
       total_videos INTEGER,
+      max_depth INTEGER,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CHECK (
@@ -376,19 +376,19 @@ export class SimpleSchemaManager {
       // Backup existing data
       const existingSources = await this.databaseService.all(`SELECT * FROM sources`);
 
-      // Create new table with proper schema
+      // Create new table with proper schema (optimized column order)
       await this.databaseService.run(`
         CREATE TABLE sources_new (
           id TEXT PRIMARY KEY,
           type TEXT NOT NULL,
           title TEXT NOT NULL,
-          sort_order TEXT,
           url TEXT,
+          thumbnail TEXT,
           channel_id TEXT,
           path TEXT,
-          max_depth INTEGER,
-          thumbnail TEXT,
+          sort_order TEXT,
           total_videos INTEGER,
+          max_depth INTEGER,
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           CHECK (
@@ -398,17 +398,17 @@ export class SimpleSchemaManager {
         )
       `);
 
-      // Copy data to new table
+      // Copy data to new table (matching optimized column order)
       for (const source of existingSources) {
         await this.databaseService.run(`
           INSERT INTO sources_new (
-            id, type, title, sort_order, url, channel_id, path, max_depth,
-            thumbnail, total_videos, created_at, updated_at
+            id, type, title, url, thumbnail, channel_id, path, sort_order,
+            total_videos, max_depth, created_at, updated_at
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
-          source.id, source.type, source.title, source.sort_order,
-          source.url, source.channel_id, source.path, source.max_depth,
-          source.thumbnail, source.total_videos,
+          source.id, source.type, source.title, source.url,
+          source.thumbnail, source.channel_id, source.path, source.sort_order,
+          source.total_videos, source.max_depth,
           source.created_at, source.updated_at
         ]);
       }
