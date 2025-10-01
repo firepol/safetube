@@ -555,6 +555,12 @@ export const SourcePage: React.FC = () => {
               ? validationResults.get(video.id) ?? true
               : video.isAvailable !== false;
 
+            // Calculate progress percentage for watched videos
+            const watchedData = watchedVideos.find(w => w.videoId === video.id);
+            const progress = watchedData && watchedData.duration
+              ? (watchedData.position / watchedData.duration) * 100
+              : 0;
+
             return {
               id: video.id,
               thumbnail: video.thumbnail || '/placeholder-thumbnail.svg',
@@ -563,6 +569,7 @@ export const SourcePage: React.FC = () => {
               type: video.type || (source?.type === 'youtube_channel' || source?.type === 'youtube_playlist' ? 'youtube' : undefined),
               watched: isWatched,
               isClicked: isClicked,
+              progress: progress,
               isAvailable: isAvailable,
               unavailableReason: sourceId === 'favorites' ? "This video's source is no longer approved" : undefined,
               isFallback: video.isFallback === true,
