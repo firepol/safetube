@@ -159,7 +159,7 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
           videos: videosWithMetadata,  // Use videos with added metadata
           paginationState: {
             currentPage: 1,
-            totalPages: Math.ceil((cache.totalVideos || cache.videos.length) / 50),
+            totalPages: Math.min(Math.ceil((cache.totalVideos || cache.videos.length) / 50), 100), // Cap at 100 pages max
             totalVideos: cache.totalVideos || cache.videos.length,
             pageSize: 50
           },
@@ -194,7 +194,7 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
           thumbnail: '',
           videoCount: videoCount,
           videos: [], // Empty - videos will be loaded when source is clicked
-          paginationState: { currentPage: 1, totalPages: Math.ceil(videoCount / 50), totalVideos: videoCount, pageSize: 50 },
+          paginationState: { currentPage: 1, totalPages: Math.min(Math.ceil(videoCount / 50), 100), totalVideos: videoCount, pageSize: 50 }, // Cap at 100 pages max
           maxDepth: source.maxDepth,
           path: source.path
         });
@@ -538,7 +538,7 @@ export async function loadVideosForSpecificSource(sourceId: string, apiKey?: str
           videos: videosWithMetadata,
           paginationState: {
             currentPage: 1,
-            totalPages: Math.ceil((cache.totalVideos || cache.videos.length) / 50),
+            totalPages: Math.min(Math.ceil((cache.totalVideos || cache.videos.length) / 50), 100), // Cap at 100 pages max
             totalVideos: cache.totalVideos || cache.videos.length,
             pageSize: 50
           },
