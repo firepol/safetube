@@ -55,9 +55,13 @@ export class YouTubePageFetcher {
 
     // Cache is expired or missing, try to fetch from API
     try {
-      let result: { videos: any[], totalResults: number, pageNumber: number };
+      let result: { videos: any[], totalResults: number, pageNumber: number, nextPageToken?: string };
 
       const apiStart = performance.now();
+
+      // Get the page token for this page (if we have it cached)
+      const pageToken = YouTubePageCache.getPageToken(sourceId, pageNumber);
+
       if (source.type === 'youtube_channel') {
         const channelId = this.extractChannelId(source.url);
         let actualChannelId = channelId;
@@ -73,10 +77,10 @@ export class YouTubePageFetcher {
           }
         }
 
-        result = await YouTubeAPI.getChannelVideosPage(actualChannelId, pageNumber, pageSize);
+        result = await YouTubeAPI.getChannelVideosPage(actualChannelId, pageNumber, pageSize, undefined, pageToken);
       } else {
         const playlistId = this.extractPlaylistId(source.url);
-        result = await YouTubeAPI.getPlaylistVideosPage(playlistId, pageNumber, pageSize);
+        result = await YouTubeAPI.getPlaylistVideosPage(playlistId, pageNumber, pageSize, undefined, pageToken);
       }
       const apiTime = performance.now() - apiStart;
       logVerbose(`[YouTubePageFetcher] ⏱️ YouTube API call: ${apiTime.toFixed(1)}ms`);
@@ -108,6 +112,12 @@ export class YouTubePageFetcher {
       // Cache the successful result
       const cacheWriteStart = performance.now();
       YouTubePageCache.cachePage(sourceId, pageNumber, result.videos, result.totalResults, source.type);
+
+      // Cache the next page token if available
+      if (result.nextPageToken) {
+        YouTubePageCache.setPageToken(sourceId, pageNumber + 1, result.nextPageToken);
+      }
+
       const cacheWriteTime = performance.now() - cacheWriteStart;
       logVerbose(`[YouTubePageFetcher] ⏱️ Cache write: ${cacheWriteTime.toFixed(1)}ms`);
 

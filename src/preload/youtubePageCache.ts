@@ -7,10 +7,37 @@ interface CachedYouTubePage {
   timestamp: number;
   sourceId: string;
   sourceType: 'youtube_channel' | 'youtube_playlist';
+  nextPageToken?: string; // Token to fetch the next page
 }
+
+// In-memory cache for page tokens to enable direct page jumping
+const pageTokenCache = new Map<string, Map<number, string>>(); // sourceId -> (pageNumber -> token for that page)
 
 
 export class YouTubePageCache {
+  /**
+   * Get the page token for a specific page (to enable direct page access)
+   */
+  static getPageToken(sourceId: string, pageNumber: number): string | undefined {
+    return pageTokenCache.get(sourceId)?.get(pageNumber);
+  }
+
+  /**
+   * Set the page token for a specific page
+   */
+  static setPageToken(sourceId: string, pageNumber: number, token: string): void {
+    if (!pageTokenCache.has(sourceId)) {
+      pageTokenCache.set(sourceId, new Map());
+    }
+    pageTokenCache.get(sourceId)!.set(pageNumber, token);
+  }
+
+  /**
+   * Clear page tokens for a source
+   */
+  static clearPageTokens(sourceId: string): void {
+    pageTokenCache.delete(sourceId);
+  }
   /**
    * Get cached page from database
    */

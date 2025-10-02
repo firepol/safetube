@@ -219,30 +219,35 @@ export class YouTubeAPI {
     }
   }
   
-  private static async fetch<T>(endpoint: string, params: Record<string, string>): Promise<T> {
+  private static async fetch<T>(endpoint: string, params: Record<string, string>, signal?: AbortSignal): Promise<T> {
     if (!API_KEY) {
       throw new Error('YouTube API key not set. Call YouTubeAPI.setApiKey() first.');
     }
-    
+
     const queryParams = new URLSearchParams({
       key: API_KEY,
       ...params,
     });
-    
+
     const url = `${BASE_URL}/${endpoint}?${queryParams}`;
-    
+
     // Check cache first
     const cacheKey = getCacheKey(endpoint, params);
     const cachedResult = await getCachedResult(cacheKey);
     if (cachedResult) {
       return cachedResult;
     }
+
+    // Check if aborted
+    if (signal?.aborted) {
+      throw new Error('Request aborted');
+    }
     
     try {
       // Use Node.js fetch if available, fallback to global fetch
       let response: Response;
       if (typeof globalThis.fetch === 'function') {
-        response = await globalThis.fetch(url);
+        response = await globalThis.fetch(url, { signal });
       } else {
         // Fallback for older Node.js versions
         const https = require('https');
@@ -362,18 +367,18 @@ export class YouTubeAPI {
     throw new Error('getVideoStreams is not available in preload/browser context');
   }
 
-  static async getPlaylistVideos(playlistId: string, maxResults?: number, pageToken?: string): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {
+  static async getPlaylistVideos(playlistId: string, maxResults?: number, pageToken?: string, signal?: AbortSignal): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {
     const params: Record<string, string> = {
       part: 'snippet',
       playlistId,
       maxResults: (maxResults || 50).toString(),
     };
-    
+
     if (pageToken) {
       params.pageToken = pageToken;
     }
-    
-    const data = await YouTubeAPI.fetch<YouTubePlaylist>('playlistItems', params);
+
+    const data = await YouTubeAPI.fetch<YouTubePlaylist>('playlistItems', params, signal);
     return {
       videoIds: data.items.map(item => item.snippet.resourceId.videoId),
       totalResults: data.pageInfo.totalResults,
@@ -439,66 +444,46 @@ export class YouTubeAPI {
     return this.getPlaylistVideos(channel.contentDetails.relatedPlaylists.uploads, maxResults, pageToken);
   }
 
-  static async getChannelVideosPage(channelId: string, pageNumber: number, pageSize: number = 50): Promise<{ videos: any[], totalResults: number, pageNumber: number }> {
+  static async getChannelVideosPage(channelId: string, pageNumber: number, pageSize: number = 50, signal?: AbortSignal, pageToken?: string): Promise<{ videos: any[], totalResults: number, pageNumber: number, nextPageToken?: string }> {
     try {
       const channel = await this.getChannelDetails(channelId);
-      return this.getPlaylistVideosPage(channel.contentDetails.relatedPlaylists.uploads, pageNumber, pageSize);
+      return this.getPlaylistVideosPage(channel.contentDetails.relatedPlaylists.uploads, pageNumber, pageSize, signal, pageToken);
     } catch (error) {
       console.error(`[YouTubeAPI] Error in getChannelVideosPage for channelId ${channelId}:`, error);
       throw error;
     }
   }
 
-  static async getPlaylistVideosPage(playlistId: string, pageNumber: number, pageSize: number = 50): Promise<{ videos: any[], totalResults: number, pageNumber: number }> {
+  static async getPlaylistVideosPage(playlistId: string, pageNumber: number, pageSize: number = 50, signal?: AbortSignal, pageToken?: string): Promise<{ videos: any[], totalResults: number, pageNumber: number, nextPageToken?: string }> {
 
     const startTime = performance.now();
 
-    // Calculate how many items to skip for the requested page
-    const itemsToSkip = (pageNumber - 1) * pageSize;
-
-    let currentPageToken: string | undefined = undefined;
-    let totalResults = 0;
-    let allVideoIds: string[] = [];
-
-    // Fetch batches until we have enough videos for the requested page
-    const fetchStart = performance.now();
-    let batchCount = 0;
-    // Use larger batch size for faster fetching (YouTube API max is 50)
-    const batchSize = 50;
-
-    while (allVideoIds.length <= itemsToSkip + pageSize) {
-      batchCount++;
-      const batchStart = performance.now();
-
-      const result = await this.getPlaylistVideos(playlistId, batchSize, currentPageToken);
-      const batchTime = performance.now() - batchStart;
-      logVerbose(`[YouTubeAPI] ⏱️ Batch ${batchCount} (${result.videoIds.length} IDs): ${batchTime.toFixed(1)}ms`);
-
-      if (result.videoIds.length === 0) {
-        break;
-      }
-
-      totalResults = result.totalResults;
-      allVideoIds.push(...result.videoIds);
-      currentPageToken = result.nextPageToken;
-
-      // If no more pages available, break
-      if (!currentPageToken) {
-        break;
-      }
-
-      // Early exit optimization: stop as soon as we have enough
-      if (allVideoIds.length >= itemsToSkip + pageSize) {
-        break;
-      }
+    // Limit maximum page number to prevent excessive API usage
+    const MAX_PAGE = 100; // 5,000 videos max (100 pages * 50 per page)
+    if (pageNumber > MAX_PAGE) {
+      throw new Error(`Page number ${pageNumber} exceeds maximum allowed page ${MAX_PAGE}. This limit prevents excessive API usage.`);
     }
-    const fetchTime = performance.now() - fetchStart;
-    logVerbose(`[YouTubeAPI] ⏱️ Video ID fetch (${batchCount} batches): ${fetchTime.toFixed(1)}ms`);
 
-    // Extract the videos for the requested page
-    const startIndex = itemsToSkip;
-    const endIndex = Math.min(startIndex + pageSize, allVideoIds.length);
-    const pageVideoIds = allVideoIds.slice(startIndex, endIndex);
+    // Check if aborted before starting
+    if (signal?.aborted) {
+      throw new Error('Request aborted');
+    }
+
+    // OPTIMIZED: Only fetch the requested page using the page token
+    // If no page token provided and pageNumber > 1, we can't fetch the page directly
+    if (!pageToken && pageNumber > 1) {
+      throw new Error(`Cannot fetch page ${pageNumber} without a page token. Please navigate sequentially from page 1 or from a previously cached page.`);
+    }
+
+    const fetchStart = performance.now();
+
+    const result = await this.getPlaylistVideos(playlistId, pageSize, pageToken, signal);
+    const fetchTime = performance.now() - fetchStart;
+    logVerbose(`[YouTubeAPI] ⏱️ Video ID fetch (page ${pageNumber}): ${fetchTime.toFixed(1)}ms`);
+
+    const pageVideoIds = result.videoIds;
+    const totalResults = result.totalResults;
+    const nextPageToken = result.nextPageToken;
 
     if (pageVideoIds.length === 0) {
       return {
@@ -582,7 +567,7 @@ export class YouTubeAPI {
 
     logVerbose(`[YouTubeAPI] 🏁 getPlaylistVideosPage total: ${loadTimeMs.toFixed(1)}ms (${successfulLoads}/${videos.length} successful)`);
 
-    return { videos, totalResults, pageNumber };
+    return { videos, totalResults, pageNumber, nextPageToken };
   }
 
 
