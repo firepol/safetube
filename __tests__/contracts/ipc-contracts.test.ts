@@ -77,10 +77,18 @@ vi.mock('path', () => {
 });
 
 // Mock other Node modules that main process files might import
-vi.mock('child_process', () => ({
-  spawn: vi.fn(),
-  exec: vi.fn(),
-}));
+vi.mock('child_process', () => {
+  const mockChildProcess = {
+    spawn: vi.fn(),
+    exec: vi.fn(),
+    execFile: vi.fn(),
+    fork: vi.fn(),
+  };
+  return {
+    default: mockChildProcess,
+    ...mockChildProcess,
+  };
+});
 
 vi.mock('crypto', () => ({
   default: {
@@ -303,7 +311,6 @@ describe('IPC Contract Tests', () => {
       const databaseCategories = [
         'DATABASE',
         'FAVORITES',
-        'FAVORITES_LEGACY',
         'VIEW_RECORDS',
         'VIDEOS',
         'SOURCES',

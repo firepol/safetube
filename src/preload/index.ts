@@ -26,26 +26,6 @@ const IPC = {
   },
 
   // ============================================================================
-  // FAVORITES (Legacy - File-backed operations)
-  // ============================================================================
-
-  FAVORITES_LEGACY: {
-    GET_ALL: 'favorites:get-all',
-    ADD: 'favorites:add',
-    REMOVE: 'favorites:remove',
-    IS_FAVORITE: 'favorites:is-favorite',
-    TOGGLE: 'favorites:toggle',
-    UPDATE_METADATA: 'favorites:update-metadata',
-    GET_BY_SOURCE: 'favorites:get-by-source',
-    GET_CONFIG: 'favorites:get-config',
-    UPDATE_CONFIG: 'favorites:update-config',
-    CLEANUP_ORPHANED: 'favorites:cleanup-orphaned',
-    SYNC_WATCH_HISTORY: 'favorites:sync-watch-history',
-    GET_UNAVAILABLE: 'favorites:get-unavailable',
-    CLEAR_UNAVAILABLE: 'favorites:clear-unavailable',
-  },
-
-  // ============================================================================
   // VIEW RECORDS (Watch history & resume positions)
   // ============================================================================
 
@@ -454,14 +434,6 @@ contextBridge.exposeInMainWorld(
     favoritesIsFavorite: (videoId: string): Promise<DatabaseResponse<boolean>> => ipcRenderer.invoke(IPC.FAVORITES.IS_FAVORITE, videoId),
     favoritesToggle: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string): Promise<DatabaseResponse<{ isFavorite: boolean }>> =>
       ipcRenderer.invoke(IPC.FAVORITES.TOGGLE, videoId, sourceId),
-    favoritesUpdateMetadata: (videoId: string, metadata: any) => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.UPDATE_METADATA, videoId, metadata),
-    favoritesGetBySource: (sourceId: string) => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.GET_BY_SOURCE, sourceId),
-    favoritesGetConfig: () => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.GET_CONFIG),
-    favoritesUpdateConfig: (config: any) => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.UPDATE_CONFIG, config),
-    favoritesCleanupOrphaned: () => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.CLEANUP_ORPHANED),
-    favoritesSyncWatchHistory: () => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.SYNC_WATCH_HISTORY),
-    favoritesGetUnavailable: () => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.GET_UNAVAILABLE),
-    favoritesClearUnavailable: () => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.CLEAR_UNAVAILABLE),
     // Path utilities for cross-platform compatibility
     pathJoin: (...paths: string[]) => ipcRenderer.invoke(IPC.UTILS.PATH_JOIN, ...paths)
   }

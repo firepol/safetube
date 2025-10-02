@@ -39,26 +39,6 @@ export const IPC = {
   },
 
   // ============================================================================
-  // FAVORITES (Legacy - File-backed operations)
-  // ============================================================================
-
-  FAVORITES_LEGACY: {
-    GET_ALL: 'favorites:get-all',
-    ADD: 'favorites:add',
-    REMOVE: 'favorites:remove',
-    IS_FAVORITE: 'favorites:is-favorite',
-    TOGGLE: 'favorites:toggle',
-    UPDATE_METADATA: 'favorites:update-metadata',
-    GET_BY_SOURCE: 'favorites:get-by-source',
-    GET_CONFIG: 'favorites:get-config',
-    UPDATE_CONFIG: 'favorites:update-config',
-    CLEANUP_ORPHANED: 'favorites:cleanup-orphaned',
-    SYNC_WATCH_HISTORY: 'favorites:sync-watch-history',
-    GET_UNAVAILABLE: 'favorites:get-unavailable',
-    CLEAR_UNAVAILABLE: 'favorites:clear-unavailable',
-  },
-
-  // ============================================================================
   // VIEW RECORDS (Watch history & resume positions)
   // ============================================================================
 

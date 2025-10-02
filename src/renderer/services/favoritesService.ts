@@ -264,35 +264,24 @@ export class FavoritesService {
 
   /**
    * Update favorite metadata
+   * @deprecated No longer needed - metadata is stored in videos table via foreign key.
+   * Use DatabaseClient.updateVideoMetadata() to update video metadata instead.
    */
   static async updateFavoriteMetadata(
     videoId: string,
     metadata: Partial<FavoriteVideo>
   ): Promise<FavoriteVideo> {
-    try {
-      const updatedFavorite = await window.electron.favoritesUpdateMetadata(videoId, metadata);
-
-      // Update cache if present
-      if (this.favoritesCache) {
-        const index = this.favoritesCache.findIndex(f => f.videoId === videoId);
-        if (index >= 0) {
-          this.favoritesCache[index] = updatedFavorite;
-        }
-      }
-
-      return updatedFavorite;
-    } catch (error) {
-      logVerbose('[FavoritesService] Error updating favorite metadata:', error);
-      throw error;
-    }
+    throw new Error('updateFavoriteMetadata is deprecated. Use DatabaseClient.updateVideoMetadata() instead.');
   }
 
   /**
    * Get favorites by source
+   * Filters favorites in-memory by sourceId
    */
   static async getFavoritesBySource(sourceId: string): Promise<FavoriteVideo[]> {
     try {
-      return await window.electron.favoritesGetBySource(sourceId);
+      const allFavorites = await this.getFavorites();
+      return allFavorites.filter(f => f.sourceId === sourceId);
     } catch (error) {
       logVerbose('[FavoritesService] Error getting favorites by source:', error);
       throw error;
@@ -301,60 +290,34 @@ export class FavoritesService {
 
   /**
    * Get favorites configuration
+   * @deprecated No longer needed with database-backed favorites
    */
   static async getFavoritesConfig(): Promise<FavoritesConfig> {
-    try {
-      return await window.electron.favoritesGetConfig();
-    } catch (error) {
-      logVerbose('[FavoritesService] Error getting favorites config:', error);
-      throw error;
-    }
+    throw new Error('getFavoritesConfig is deprecated. Favorites config no longer needed with database.');
   }
 
   /**
    * Update favorites configuration
+   * @deprecated No longer needed with database-backed favorites
    */
   static async updateFavoritesConfig(config: Partial<FavoritesConfig>): Promise<FavoritesConfig> {
-    try {
-      return await window.electron.favoritesUpdateConfig(config);
-    } catch (error) {
-      logVerbose('[FavoritesService] Error updating favorites config:', error);
-      throw error;
-    }
+    throw new Error('updateFavoritesConfig is deprecated. Favorites config no longer needed with database.');
   }
 
   /**
    * Cleanup orphaned favorites
+   * @deprecated No longer needed - database foreign keys handle orphan cleanup automatically
    */
   static async cleanupOrphanedFavorites(): Promise<FavoriteVideo[]> {
-    try {
-      const result = await window.electron.favoritesCleanupOrphaned();
-
-      // Clear cache to force refresh
-      this.clearCache();
-
-      return result;
-    } catch (error) {
-      logVerbose('[FavoritesService] Error cleaning up orphaned favorites:', error);
-      throw error;
-    }
+    throw new Error('cleanupOrphanedFavorites is deprecated. Database foreign keys handle this automatically.');
   }
 
   /**
    * Sync with watch history
+   * @deprecated No longer needed - watch history is in view_records table, not favorites
    */
   static async syncWithWatchHistory(): Promise<FavoriteVideo[]> {
-    try {
-      const result = await window.electron.favoritesSyncWatchHistory();
-
-      // Clear cache to force refresh
-      this.clearCache();
-
-      return result;
-    } catch (error) {
-      logVerbose('[FavoritesService] Error syncing with watch history:', error);
-      throw error;
-    }
+    throw new Error('syncWithWatchHistory is deprecated. Watch history is in view_records table.');
   }
 
   /**
