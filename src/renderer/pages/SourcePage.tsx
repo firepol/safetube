@@ -538,6 +538,7 @@ export const SourcePage: React.FC = () => {
             currentPage={paginationState.currentPage}
             totalPages={paginationState.totalPages}
             onPageChange={handlePageChange}
+            maxPages={paginationState.maxPages}
           />
         </div>
       )}
@@ -600,6 +601,7 @@ export const SourcePage: React.FC = () => {
             currentPage={paginationState.currentPage}
             totalPages={paginationState.totalPages}
             onPageChange={handlePageChange}
+            maxPages={paginationState.maxPages}
           />
         </div>
       )}
