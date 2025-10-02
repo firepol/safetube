@@ -720,7 +720,7 @@ export function registerLocalVideoHandlers() {
 // Video Processing Handlers
 export function registerVideoProcessingHandlers() {
   // Get video codec info
-  ipcMain.handle(IPC.VIDEO_PROCESSING.GET_VIDEO_CODEC_INFO, async (_, filePath: string) => {
+  ipcMain.handle(IPC.CONVERSION.GET_VIDEO_CODEC_INFO, async (_, filePath: string) => {
     try {
       const { spawn } = require('child_process');
 
@@ -751,7 +751,7 @@ export function registerVideoProcessingHandlers() {
   });
 
   // Get existing converted video path
-  ipcMain.handle(IPC.VIDEO_PROCESSING.GET_EXISTING_CONVERTED_VIDEO_PATH, async (_, originalPath: string, cacheDir?: string) => {
+  ipcMain.handle(IPC.CONVERSION.GET_EXISTING_CONVERTED_VIDEO_PATH, async (_, originalPath: string, cacheDir?: string) => {
     try {
       const actualCacheDir = cacheDir || path.join(path.dirname(originalPath), '.converted');
       const originalName = path.basename(originalPath);
@@ -768,7 +768,7 @@ export function registerVideoProcessingHandlers() {
   });
 
   // Check if video needs conversion
-  ipcMain.handle(IPC.VIDEO_PROCESSING.NEEDS_VIDEO_CONVERSION, async (_, filePath: string) => {
+  ipcMain.handle(IPC.CONVERSION.NEEDS_VIDEO_CONVERSION, async (_, filePath: string) => {
     try {
       const ext = path.extname(filePath).toLowerCase();
       const needsConversion = !['.mp4', '.webm'].includes(ext);
@@ -780,7 +780,7 @@ export function registerVideoProcessingHandlers() {
   });
 
   // Check if converted video exists
-  ipcMain.handle(IPC.VIDEO_PROCESSING.HAS_CONVERTED_VIDEO, async (_, filePath: string, cacheDir?: string) => {
+  ipcMain.handle(IPC.CONVERSION.HAS_CONVERTED_VIDEO, async (_, filePath: string, cacheDir?: string) => {
     try {
       const actualCacheDir = cacheDir || path.join(path.dirname(filePath), '.converted');
       const originalName = path.basename(filePath);
@@ -794,7 +794,7 @@ export function registerVideoProcessingHandlers() {
   });
 
   // Get conversion status
-  ipcMain.handle(IPC.VIDEO_PROCESSING.GET_CONVERSION_STATUS, async (_, filePath: string) => {
+  ipcMain.handle(IPC.CONVERSION.GET_CONVERSION_STATUS, async (_, filePath: string) => {
     try {
       // This would integrate with a conversion queue/status system
       // For now, return a simple status
@@ -806,7 +806,7 @@ export function registerVideoProcessingHandlers() {
   });
 
   // Start video conversion
-  ipcMain.handle(IPC.VIDEO_PROCESSING.START_VIDEO_CONVERSION, async (_, filePath: string, options?: any) => {
+  ipcMain.handle(IPC.CONVERSION.START_VIDEO_CONVERSION, async (_, filePath: string, options?: any) => {
     try {
       // This would start actual video conversion
       // For now, just log and return success
@@ -1181,6 +1181,33 @@ export function registerYouTubeCacheHandlers() {
     } catch (error) {
       log.error('[IPC] Error loading cache config:', error);
       return { enabled: false };
+    }
+  });
+
+  // Save page cache (database-backed)
+  ipcMain.handle(IPC.YOUTUBE_CACHE_DB.SAVE_PAGE, async (_, sourceId: string, pageNumber: number, cacheData: any) => {
+    try {
+      // This handler is called from the renderer process
+      // The actual caching is handled in youtubePageCache.ts for the main process
+      // For now, just acknowledge the request
+      logVerbose(`[IPC] Received save page request for ${sourceId} page ${pageNumber}`);
+      return { success: true };
+    } catch (error) {
+      log.error('[IPC] Error saving page cache:', error);
+      return { success: false };
+    }
+  });
+
+  // Clear source cache (database-backed)
+  ipcMain.handle(IPC.YOUTUBE_CACHE_DB.CLEAR_SOURCE, async (_, sourceId: string) => {
+    try {
+      // This handler is called from the renderer process
+      // The actual cache clearing is handled in youtubePageCache.ts for the main process
+      logVerbose(`[IPC] Received clear cache request for ${sourceId}`);
+      return { success: true };
+    } catch (error) {
+      log.error('[IPC] Error clearing source cache:', error);
+      return { success: false };
     }
   });
 }

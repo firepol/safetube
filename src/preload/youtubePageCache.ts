@@ -4,16 +4,13 @@ import { logVerbose } from './logging';
 const IPC = {
   YOUTUBE_CACHE_DB: {
     GET_PAGE: 'youtube-cache:get-page',
+    SAVE_PAGE: 'youtube-cache:save-page',
+    CLEAR_SOURCE: 'youtube-cache:clear-source',
   },
   YOUTUBE_CACHE: {
     CLEAR_EXPIRED: 'youtube-cache:clear-expired',
   },
 } as const;
-
-// Note: 'youtube-cache:save-page' and 'youtube-cache:clear-source' are not in the IPC constants yet
-// They should be added to src/shared/ipc-channels.ts
-const YOUTUBE_CACHE_SAVE_PAGE = 'youtube-cache:save-page';
-const YOUTUBE_CACHE_CLEAR_SOURCE = 'youtube-cache:clear-source';
 
 interface CachedYouTubePage {
   videos: any[];
@@ -170,7 +167,7 @@ export class YouTubePageCache {
 
       if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
         // Renderer process: use IPC
-        await (window as any).electron.invoke(YOUTUBE_CACHE_SAVE_PAGE, sourceId, pageNumber, cacheData);
+        await (window as any).electron.invoke(IPC.YOUTUBE_CACHE_DB.SAVE_PAGE, sourceId, pageNumber, cacheData);
         logVerbose(`[YouTubePageCache] Cached page ${pageNumber} for ${sourceId} (${videos.length} videos) in database via IPC`);
       } else if (typeof process !== 'undefined' && process.type === 'browser') {
         // Main process: use direct database access
@@ -222,7 +219,7 @@ export class YouTubePageCache {
   static async clearSourcePages(sourceId: string): Promise<void> {
     try {
       if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
-        await (window as any).electron.invoke(YOUTUBE_CACHE_CLEAR_SOURCE, sourceId);
+        await (window as any).electron.invoke(IPC.YOUTUBE_CACHE_DB.CLEAR_SOURCE, sourceId);
         logVerbose(`[YouTubePageCache] Cleared all page cache for source ${sourceId} from database`);
       }
     } catch (error) {
