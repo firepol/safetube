@@ -3,6 +3,21 @@ import { YouTubeSourceCache, VideoSource } from './types';
 import { logVerbose } from './logging';
 
 /**
+ * Local IPC constants for preload context
+ * (Preload scripts cannot import from shared modules, so constants are duplicated here)
+ */
+const IPC = {
+  YOUTUBE_CACHE_DB: {
+    SET_CACHED_RESULTS: 'database:youtube-cache:set-cached-results',
+    GET_PAGE: 'youtube-cache:get-page',
+  },
+  SOURCES: {
+    GET_BY_ID: 'database:sources:get-by-id',
+    UPDATE: 'database:sources:update',
+  },
+} as const;
+
+/**
  * Write YouTube cache to database using youtube_api_results table
  */
 async function writeCacheToDatabase(sourceId: string, cache: YouTubeSourceCache): Promise<void> {
@@ -12,7 +27,7 @@ async function writeCacheToDatabase(sourceId: string, cache: YouTubeSourceCache)
       // Use the existing database:youtube-cache:set-cached-results handler
       if (cache.videos && cache.videos.length > 0) {
         const videoIds = cache.videos.map(v => v.id);
-        await (window as any).electron.invoke('database:youtube-cache:set-cached-results', sourceId, 1, videoIds);
+        await (window as any).electron.invoke(IPC.YOUTUBE_CACHE_DB.SET_CACHED_RESULTS, sourceId, 1, videoIds);
         logVerbose(`[CachedYouTubeSources] Written cache for ${sourceId} to database: ${videoIds.length} videos`);
       }
     } else if (typeof process !== 'undefined' && process.type === 'browser') {
@@ -69,7 +84,7 @@ async function loadCacheFromDatabase(sourceId: string): Promise<YouTubeSourceCac
   try {
     if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
       // Renderer process: use IPC
-      const result = await (window as any).electron.invoke('youtube-cache:get-page', sourceId, 1);
+      const result = await (window as any).electron.invoke(IPC.YOUTUBE_CACHE_DB.GET_PAGE, sourceId, 1);
       if (result && result.success && result.data && result.data.videos) {
         const pageData = result.data;
 
@@ -189,7 +204,7 @@ export class CachedYouTubeSources {
     try {
       if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
         // Renderer process: use IPC
-        const sourceResult = await (window as any).electron.invoke('database:sources:get-by-id', source.id);
+        const sourceResult = await (window as any).electron.invoke(IPC.SOURCES.GET_BY_ID, source.id);
         if (sourceResult && sourceResult.success && sourceResult.data) {
           const sourceData = sourceResult.data;
           hasExistingData = sourceData.total_videos != null && sourceData.thumbnail != null;
@@ -359,7 +374,7 @@ export class CachedYouTubeSources {
       if (fetchedNewInfo) {
         if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
           // Renderer process: use IPC
-          await (window as any).electron.invoke('database:sources:update', source.id, {
+          await (window as any).electron.invoke(IPC.SOURCES.UPDATE, source.id, {
             thumbnail: sourceThumbnail,
             total_videos: totalVideos,
             updated_at: now
@@ -495,7 +510,7 @@ export class CachedYouTubeSources {
       if (fetchedNewInfo) {
         if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
           // Renderer process: use IPC
-          await (window as any).electron.invoke('database:sources:update', source.id, {
+          await (window as any).electron.invoke(IPC.SOURCES.UPDATE, source.id, {
             thumbnail: sourceThumbnail,
             total_videos: totalVideos,
             updated_at: now

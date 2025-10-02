@@ -1,4 +1,5 @@
 import { logVerbose } from '../lib/logging';
+import { IPC } from '../../shared/ipc-channels';
 
 /**
  * Database response interface matching the main process response format
@@ -81,7 +82,7 @@ export class DatabaseClient {
    */
   static async healthCheck(): Promise<{ isHealthy: boolean; version?: string } | null> {
     try {
-      const response = await (window.electron as any).invoke('database:health-check') as DatabaseResponse<{ isHealthy: boolean; version?: string }>;
+      const response = await (window.electron as any).invoke(IPC.DATABASE.HEALTH_CHECK) as DatabaseResponse<{ isHealthy: boolean; version?: string }>;
 
       if (response.success) {
         return response.data || null;
@@ -102,7 +103,7 @@ export class DatabaseClient {
    */
   static async migratePhase1(): Promise<{ summary: any } | null> {
     try {
-      const response = await (window.electron as any).invoke('database:migrate-phase1') as DatabaseResponse<{ summary: any }>;
+      const response = await (window.electron as any).invoke(IPC.DATABASE.MIGRATE_PHASE1) as DatabaseResponse<{ summary: any }>;
 
       if (response.success) {
         logVerbose('[DatabaseClient] Phase 1 migration completed successfully');
@@ -122,7 +123,7 @@ export class DatabaseClient {
    */
   static async verifyMigration(): Promise<{ integrity: any } | null> {
     try {
-      const response = await (window.electron as any).invoke('database:verify-migration') as DatabaseResponse<{ integrity: any }>;
+      const response = await (window.electron as any).invoke(IPC.DATABASE.VERIFY_MIGRATION) as DatabaseResponse<{ integrity: any }>;
 
       if (response.success) {
         return response.data || null;
@@ -143,7 +144,7 @@ export class DatabaseClient {
    */
   static async getVideosBySource(sourceId: string): Promise<VideoRecord[]> {
     try {
-      const response = await (window.electron as any).invoke('database:videos:get-by-source', sourceId) as DatabaseResponse<VideoRecord[]>;
+      const response = await (window.electron as any).invoke(IPC.VIDEOS.GET_BY_SOURCE, sourceId) as DatabaseResponse<VideoRecord[]>;
 
       if (response.success) {
         return response.data || [];
@@ -162,7 +163,7 @@ export class DatabaseClient {
    */
   static async getVideoById(videoId: string): Promise<VideoRecord | null> {
     try {
-      const response = await (window.electron as any).invoke('database:videos:get-by-id', videoId) as DatabaseResponse<VideoRecord | null>;
+      const response = await (window.electron as any).invoke(IPC.VIDEOS.GET_BY_ID, videoId) as DatabaseResponse<VideoRecord | null>;
 
       if (response.success) {
         return response.data || null;
@@ -181,7 +182,7 @@ export class DatabaseClient {
    */
   static async searchVideos(query: string, sourceId?: string): Promise<VideoRecord[]> {
     try {
-      const response = await (window.electron as any).invoke('database:videos:search', query, sourceId) as DatabaseResponse<VideoRecord[]>;
+      const response = await (window.electron as any).invoke(IPC.VIDEOS.SEARCH, query, sourceId) as DatabaseResponse<VideoRecord[]>;
 
       if (response.success) {
         return response.data || [];
@@ -200,7 +201,7 @@ export class DatabaseClient {
    */
   static async updateVideoMetadata(videoId: string, metadata: Partial<VideoRecord>): Promise<boolean> {
     try {
-      const response = await (window.electron as any).invoke('database:videos:update-metadata', videoId, metadata) as DatabaseResponse<boolean>;
+      const response = await (window.electron as any).invoke(IPC.VIDEOS.UPDATE_METADATA, videoId, metadata) as DatabaseResponse<boolean>;
 
       if (response.success) {
         return response.data || false;
@@ -219,7 +220,7 @@ export class DatabaseClient {
    */
   static async updateVideoAvailability(videoId: string, isAvailable: boolean): Promise<boolean> {
     try {
-      const response = await (window.electron as any).invoke('database:videos:update-availability', videoId, isAvailable) as DatabaseResponse<boolean>;
+      const response = await (window.electron as any).invoke(IPC.VIDEOS.UPDATE_AVAILABILITY, videoId, isAvailable) as DatabaseResponse<boolean>;
 
       if (response.success) {
         return response.data || false;
@@ -240,7 +241,7 @@ export class DatabaseClient {
    */
   static async getViewRecord(videoId: string): Promise<ViewRecord | null> {
     try {
-      const response = await (window.electron as any).invoke('database:view-records:get', videoId) as DatabaseResponse<ViewRecord | null>;
+      const response = await (window.electron as any).invoke(IPC.VIEW_RECORDS.GET, videoId) as DatabaseResponse<ViewRecord | null>;
 
       if (response.success) {
         return response.data || null;
@@ -259,7 +260,7 @@ export class DatabaseClient {
    */
   static async updateViewRecord(videoId: string, update: Partial<ViewRecord>): Promise<boolean> {
     try {
-      const response = await (window.electron as any).invoke('database:view-records:update', videoId, update) as DatabaseResponse<boolean>;
+      const response = await (window.electron as any).invoke(IPC.VIEW_RECORDS.UPDATE, videoId, update) as DatabaseResponse<boolean>;
 
       if (response.success) {
         return response.data || false;
@@ -278,7 +279,7 @@ export class DatabaseClient {
    */
   static async getViewingHistory(limit: number = 50): Promise<(ViewRecord & VideoRecord)[]> {
     try {
-      const response = await (window.electron as any).invoke('database:view-records:get-history', limit) as DatabaseResponse<(ViewRecord & VideoRecord)[]>;
+      const response = await (window.electron as any).invoke(IPC.VIEW_RECORDS.GET_HISTORY, limit) as DatabaseResponse<(ViewRecord & VideoRecord)[]>;
 
       if (response.success) {
         return response.data || [];
@@ -297,7 +298,7 @@ export class DatabaseClient {
    */
   static async getRecentlyWatched(limit: number = 20): Promise<(ViewRecord & VideoRecord)[]> {
     try {
-      const response = await (window.electron as any).invoke('database:view-records:get-recently-watched', limit) as DatabaseResponse<(ViewRecord & VideoRecord)[]>;
+      const response = await (window.electron as any).invoke(IPC.VIEW_RECORDS.GET_RECENTLY_WATCHED, limit) as DatabaseResponse<(ViewRecord & VideoRecord)[]>;
 
       if (response.success) {
         return response.data || [];
@@ -318,7 +319,7 @@ export class DatabaseClient {
    */
   static async getFavorites(): Promise<(FavoriteRecord & VideoRecord)[]> {
     try {
-      const response = await (window.electron as any).invoke('database:favorites:get-all') as DatabaseResponse<(FavoriteRecord & VideoRecord)[]>;
+      const response = await (window.electron as any).invoke(IPC.FAVORITES.GET_ALL) as DatabaseResponse<(FavoriteRecord & VideoRecord)[]>;
 
       if (response.success) {
         return response.data || [];
@@ -337,7 +338,7 @@ export class DatabaseClient {
    */
   static async addFavorite(videoId: string, sourceId: string): Promise<boolean> {
     try {
-      const response = await (window.electron as any).invoke('database:favorites:add', videoId, sourceId) as DatabaseResponse<boolean>;
+      const response = await (window.electron as any).invoke(IPC.FAVORITES.ADD, videoId, sourceId) as DatabaseResponse<boolean>;
 
       if (response.success) {
         logVerbose('[DatabaseClient] Added favorite:', videoId);
@@ -357,7 +358,7 @@ export class DatabaseClient {
    */
   static async removeFavorite(videoId: string): Promise<boolean> {
     try {
-      const response = await (window.electron as any).invoke('database:favorites:remove', videoId) as DatabaseResponse<boolean>;
+      const response = await (window.electron as any).invoke(IPC.FAVORITES.REMOVE, videoId) as DatabaseResponse<boolean>;
 
       if (response.success) {
         logVerbose('[DatabaseClient] Removed favorite:', videoId);
@@ -377,7 +378,7 @@ export class DatabaseClient {
    */
   static async isFavorite(videoId: string): Promise<boolean> {
     try {
-      const response = await (window.electron as any).invoke('database:favorites:is-favorite', videoId) as DatabaseResponse<boolean>;
+      const response = await (window.electron as any).invoke(IPC.FAVORITES.IS_FAVORITE, videoId) as DatabaseResponse<boolean>;
 
       if (response.success) {
         return response.data || false;
@@ -396,7 +397,7 @@ export class DatabaseClient {
    */
   static async toggleFavorite(videoId: string, sourceId: string): Promise<{ isFavorite: boolean } | null> {
     try {
-      const response = await (window.electron as any).invoke('database:favorites:toggle', videoId, sourceId) as DatabaseResponse<{ isFavorite: boolean }>;
+      const response = await (window.electron as any).invoke(IPC.FAVORITES.TOGGLE, videoId, sourceId) as DatabaseResponse<{ isFavorite: boolean }>;
 
       if (response.success) {
         const result = response.data || { isFavorite: false };
@@ -419,7 +420,7 @@ export class DatabaseClient {
    */
   static async getSources(): Promise<SourceRecord[]> {
     try {
-      const response = await (window.electron as any).invoke('database:sources:get-all') as DatabaseResponse<SourceRecord[]>;
+      const response = await (window.electron as any).invoke(IPC.SOURCES.GET_ALL) as DatabaseResponse<SourceRecord[]>;
 
       if (response.success) {
         return response.data || [];
@@ -438,7 +439,7 @@ export class DatabaseClient {
    */
   static async getSourceById(sourceId: string): Promise<SourceRecord | null> {
     try {
-      const response = await (window.electron as any).invoke('database:sources:get-by-id', sourceId) as DatabaseResponse<SourceRecord | null>;
+      const response = await (window.electron as any).invoke(IPC.SOURCES.GET_BY_ID, sourceId) as DatabaseResponse<SourceRecord | null>;
 
       if (response.success) {
         return response.data || null;
@@ -457,7 +458,7 @@ export class DatabaseClient {
    */
   static async createSource(source: Omit<SourceRecord, 'id'>): Promise<string | null> {
     try {
-      const response = await (window.electron as any).invoke('database:sources:create', source) as DatabaseResponse<string>;
+      const response = await (window.electron as any).invoke(IPC.SOURCES.CREATE, source) as DatabaseResponse<string>;
 
       if (response.success) {
         logVerbose('[DatabaseClient] Created source:', response.data);
@@ -477,7 +478,7 @@ export class DatabaseClient {
    */
   static async updateSource(sourceId: string, updates: Partial<SourceRecord>): Promise<boolean> {
     try {
-      const response = await (window.electron as any).invoke('database:sources:update', sourceId, updates) as DatabaseResponse<boolean>;
+      const response = await (window.electron as any).invoke(IPC.SOURCES.UPDATE, sourceId, updates) as DatabaseResponse<boolean>;
 
       if (response.success) {
         return response.data || false;
@@ -496,7 +497,7 @@ export class DatabaseClient {
    */
   static async deleteSource(sourceId: string): Promise<boolean> {
     try {
-      const response = await (window.electron as any).invoke('database:sources:delete', sourceId) as DatabaseResponse<boolean>;
+      const response = await (window.electron as any).invoke(IPC.SOURCES.DELETE, sourceId) as DatabaseResponse<boolean>;
 
       if (response.success) {
         logVerbose('[DatabaseClient] Deleted source:', sourceId);
@@ -518,7 +519,7 @@ export class DatabaseClient {
    */
   static async getCachedResults(sourceId: string, page: number = 1): Promise<string[]> {
     try {
-      const response = await (window.electron as any).invoke('database:youtube-cache:get-cached-results', sourceId, page) as DatabaseResponse<string[]>;
+      const response = await (window.electron as any).invoke(IPC.YOUTUBE_CACHE_DB.GET_CACHED_RESULTS, sourceId, page) as DatabaseResponse<string[]>;
 
       if (response.success) {
         return response.data || [];
@@ -537,7 +538,7 @@ export class DatabaseClient {
    */
   static async setCachedResults(sourceId: string, page: number, videoIds: string[]): Promise<boolean> {
     try {
-      const response = await (window.electron as any).invoke('database:youtube-cache:set-cached-results', sourceId, page, videoIds) as DatabaseResponse<boolean>;
+      const response = await (window.electron as any).invoke(IPC.YOUTUBE_CACHE_DB.SET_CACHED_RESULTS, sourceId, page, videoIds) as DatabaseResponse<boolean>;
 
       if (response.success) {
         logVerbose('[DatabaseClient] Set cached results:', sourceId, 'page', page, videoIds.length, 'videos');
@@ -557,7 +558,7 @@ export class DatabaseClient {
    */
   static async clearCache(sourceId: string): Promise<boolean> {
     try {
-      const response = await (window.electron as any).invoke('database:youtube-cache:clear-cache', sourceId) as DatabaseResponse<boolean>;
+      const response = await (window.electron as any).invoke(IPC.YOUTUBE_CACHE_DB.CLEAR_CACHE, sourceId) as DatabaseResponse<boolean>;
 
       if (response.success) {
         logVerbose('[DatabaseClient] Cleared cache for source:', sourceId);
