@@ -22,6 +22,7 @@ import {
 } from './localVideoService';
 import { getDlnaFile } from './networkService';
 import { IPC } from '../../shared/ipc-channels';
+import * as videoCodecUtils from '../videoCodecUtils';
 
 // Video Data Handlers
 export function registerVideoDataHandlers() {
@@ -722,28 +723,7 @@ export function registerVideoProcessingHandlers() {
   // Get video codec info
   ipcMain.handle(IPC.CONVERSION.GET_VIDEO_CODEC_INFO, async (_, filePath: string) => {
     try {
-      const { spawn } = require('child_process');
-
-      return new Promise((resolve) => {
-        const ffprobe = spawn('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_streams', filePath]);
-
-        let output = '';
-        ffprobe.stdout.on('data', (data: any) => {
-          output += data.toString();
-        });
-
-        ffprobe.on('close', () => {
-          try {
-            const data = JSON.parse(output);
-            const videoStream = data.streams?.find((stream: any) => stream.codec_type === 'video');
-            resolve(videoStream || null);
-          } catch {
-            resolve(null);
-          }
-        });
-
-        ffprobe.on('error', () => resolve(null));
-      });
+      return await videoCodecUtils.getVideoCodecInfo(filePath);
     } catch (error) {
       log.error('[IPC] Error getting codec info:', error);
       return null;
@@ -753,14 +733,7 @@ export function registerVideoProcessingHandlers() {
   // Get existing converted video path
   ipcMain.handle(IPC.CONVERSION.GET_EXISTING_CONVERTED_VIDEO_PATH, async (_, originalPath: string, cacheDir?: string) => {
     try {
-      const actualCacheDir = cacheDir || path.join(path.dirname(originalPath), '.converted');
-      const originalName = path.basename(originalPath);
-      const convertedPath = path.join(actualCacheDir, `${originalName}.mp4`);
-
-      if (fs.existsSync(convertedPath)) {
-        return convertedPath;
-      }
-      return null;
+      return await videoCodecUtils.getExistingConvertedVideoPath(originalPath, cacheDir);
     } catch (error) {
       log.error('[IPC] Error checking converted video path:', error);
       return null;
@@ -770,9 +743,7 @@ export function registerVideoProcessingHandlers() {
   // Check if video needs conversion
   ipcMain.handle(IPC.CONVERSION.NEEDS_VIDEO_CONVERSION, async (_, filePath: string) => {
     try {
-      const ext = path.extname(filePath).toLowerCase();
-      const needsConversion = !['.mp4', '.webm'].includes(ext);
-      return needsConversion;
+      return await videoCodecUtils.needsVideoConversion(filePath);
     } catch (error) {
       log.error('[IPC] Error checking if conversion needed:', error);
       return false;
@@ -782,11 +753,7 @@ export function registerVideoProcessingHandlers() {
   // Check if converted video exists
   ipcMain.handle(IPC.CONVERSION.HAS_CONVERTED_VIDEO, async (_, filePath: string, cacheDir?: string) => {
     try {
-      const actualCacheDir = cacheDir || path.join(path.dirname(filePath), '.converted');
-      const originalName = path.basename(filePath);
-      const convertedPath = path.join(actualCacheDir, `${originalName}.mp4`);
-
-      return fs.existsSync(convertedPath);
+      return await videoCodecUtils.hasConvertedVideo(filePath, cacheDir);
     } catch (error) {
       log.error('[IPC] Error checking converted video:', error);
       return false;
@@ -796,9 +763,7 @@ export function registerVideoProcessingHandlers() {
   // Get conversion status
   ipcMain.handle(IPC.CONVERSION.GET_CONVERSION_STATUS, async (_, filePath: string) => {
     try {
-      // This would integrate with a conversion queue/status system
-      // For now, return a simple status
-      return { status: 'idle', progress: 0 };
+      return videoCodecUtils.getConversionStatus(filePath);
     } catch (error) {
       log.error('[IPC] Error getting conversion status:', error);
       return { status: 'error', progress: 0 };
@@ -808,12 +773,11 @@ export function registerVideoProcessingHandlers() {
   // Start video conversion
   ipcMain.handle(IPC.CONVERSION.START_VIDEO_CONVERSION, async (_, filePath: string, options?: any) => {
     try {
-      // This would start actual video conversion
-      // For now, just log and return success
+      await videoCodecUtils.startVideoConversion(filePath, options);
       return { success: true, message: 'Conversion started' };
     } catch (error) {
       log.error('[IPC] Error starting video conversion:', error);
-      return { success: false, error: 'Conversion failed to start' };
+      return { success: false, error: error instanceof Error ? error.message : 'Conversion failed to start' };
     }
   });
 }
