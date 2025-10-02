@@ -6,6 +6,7 @@ import { CountdownOverlay } from '../components/video/CountdownOverlay';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
 import { audioWarningService } from '../services/audioWarning';
 import { logVerbose } from '../lib/logging';
+import { NavigationCache } from '../services/navigationCache';
 
 export interface BasePlayerPageProps {
   video: Video | null;
@@ -90,9 +91,15 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
 
     if (breadcrumbData?.sourceName) {
       if (breadcrumbData.sourceId) {
+        // Use the last visited page for this source, or page 1 as fallback
+        const lastPage = NavigationCache.getLastVisitedPage(breadcrumbData.sourceId);
+        const sourcePath = lastPage > 1
+          ? `/source/${breadcrumbData.sourceId}/page/${lastPage}`
+          : `/source/${breadcrumbData.sourceId}`;
+
         items.push({
           label: breadcrumbData.sourceName,
-          path: `/source/${breadcrumbData.sourceId}`
+          path: sourcePath
         });
       } else if (breadcrumbData.historyPath) {
         // Special handling for History page

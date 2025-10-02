@@ -90,6 +90,13 @@ export const SourcePage: React.FC = () => {
     checkTimeLimits();
   }, [navigate]);
 
+  // Track the last visited page for this source
+  useEffect(() => {
+    if (sourceId && currentPage) {
+      NavigationCache.setLastVisitedPage(sourceId, currentPage);
+    }
+  }, [sourceId, currentPage]);
+
   useEffect(() => {
     const loadSourceAndVideos = async () => {
       if (!sourceId) {

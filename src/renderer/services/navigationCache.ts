@@ -24,6 +24,7 @@ export class NavigationCache {
   private static pageCache = new Map<string, CachedPageData>();
   private static sourceCache = new Map<string, CachedSourceMetadata>();
   private static prefetchQueue = new Set<string>();
+  private static lastVisitedPage = new Map<string, number>(); // Track last visited page per source
 
   /**
    * Generate cache key for page data
@@ -211,5 +212,19 @@ export class NavigationCache {
       sources: this.sourceCache.size,
       prefetching: this.prefetchQueue.size
     };
+  }
+
+  /**
+   * Set the last visited page for a source
+   */
+  static setLastVisitedPage(sourceId: string, page: number): void {
+    this.lastVisitedPage.set(sourceId, page);
+  }
+
+  /**
+   * Get the last visited page for a source (defaults to 1 if not set)
+   */
+  static getLastVisitedPage(sourceId: string): number {
+    return this.lastVisitedPage.get(sourceId) || 1;
   }
 }
