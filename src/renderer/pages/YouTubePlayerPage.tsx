@@ -290,10 +290,8 @@ export const YouTubePlayerPage: React.FC = () => {
   useEffect(() => {
     let cleanup = () => {};
     if (containerRef.current && videoId && !isLoading) {
-      // Use requestAnimationFrame to ensure DOM is painted before mounting
-      requestAnimationFrame(() => {
-        playerRef.current = new YouTubeIframePlayer(PLAYER_CONTAINER_ID);
-      
+      playerRef.current = new YouTubeIframePlayer(PLAYER_CONTAINER_ID);
+
       // Prepare player options with resume time if available
       const playerOptions: any = {
         width: '100%',
@@ -359,18 +357,17 @@ export const YouTubePlayerPage: React.FC = () => {
       };
 
         // Add start time if resumeAt is available
-        if (video?.resumeAt && video.resumeAt > 0) {
-          playerOptions.startSeconds = video.resumeAt;
-        }
+      if (video?.resumeAt && video.resumeAt > 0) {
+        playerOptions.startSeconds = video.resumeAt;
+      }
 
-        playerRef.current.mount(videoId, playerOptions);
-        cleanup = () => {
-          if (playerRef.current) {
-            playerRef.current.destroy();
-            playerRef.current = null;
-          }
-        };
-      });
+      playerRef.current.mount(videoId, playerOptions);
+      cleanup = () => {
+        if (playerRef.current) {
+          playerRef.current.destroy();
+          playerRef.current = null;
+        }
+      };
     }
     return cleanup;
   }, [videoId, isLoading, startTimeTracking, stopTimeTracking, video?.resumeAt]);

@@ -49,6 +49,22 @@ export class YouTubeIframePlayer {
   }
 
   /**
+   * Wait for an element to be available in the DOM
+   */
+  private async waitForElement(elementId: string, timeout: number = 3000): Promise<HTMLElement | null> {
+    const startTime = Date.now();
+    while (Date.now() - startTime < timeout) {
+      const element = document.getElementById(elementId);
+      if (element) {
+        return element;
+      }
+      // Wait a bit before checking again
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return null;
+  }
+
+  /**
    * Initializes the YouTube player and loads the given videoId.
    */
   async mount(videoId: string, options: any = {}): Promise<void> {   
@@ -61,8 +77,8 @@ export class YouTubeIframePlayer {
         if (!(window as any).YT || !(window as any).YT.Player) {
           throw new Error('YouTube IFrame API not available after loading');
         }
-        
-        const el = document.getElementById(this.elementId);
+
+        const el = await this.waitForElement(this.elementId);
         if (!el) {
           throw new Error('YouTube player container element not found');
         }
@@ -91,9 +107,9 @@ export class YouTubeIframePlayer {
         });
       } catch (apiError) {
         console.warn('[YouTube] API approach failed, using direct iframe:', apiError);
-        
+
         // Fallback to direct iframe
-        const element = document.getElementById(this.elementId);
+        const element = await this.waitForElement(this.elementId);
         if (!element) {
           throw new Error('Player element not found');
         }

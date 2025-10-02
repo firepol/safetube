@@ -245,6 +245,7 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_VIDEO_DATA, async (_, videoId: string, navi
         sourceType: navigationContext.videoMetadata.sourceType || 'youtube_channel',
         sourceThumbnail: navigationContext.videoMetadata.sourceThumbnail || '',
         resumeAt: undefined as number | undefined,
+        navigationContext: navigationContext.videoMetadata.navigationContext || undefined,
       };
 
       // Merge with watched data to populate resumeAt
