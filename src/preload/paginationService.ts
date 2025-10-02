@@ -131,19 +131,14 @@ export class PaginationService {
   }
 
   public getPaginationState(sourceId: string, totalVideos: number, currentPage: number = 1): PaginationState {
-    // Default to 10 pages visible, max 100 pages available (5,000 videos) to prevent excessive API usage
-    const DEFAULT_PAGES = 10;
-    const MAX_PAGES = 100;
+    // Full page count - UI handles progressive display (10 pages at a time, expandable in 100-page chunks)
     const calculatedPages = Math.ceil(totalVideos / this.config.pageSize);
-    const totalPages = Math.min(calculatedPages, DEFAULT_PAGES);
-    const maxPages = Math.min(calculatedPages, MAX_PAGES);
 
     return {
       currentPage,
-      totalPages,
+      totalPages: calculatedPages,
       totalVideos,
-      pageSize: this.config.pageSize,
-      maxPages
+      pageSize: this.config.pageSize
     };
   }
 

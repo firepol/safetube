@@ -111,6 +111,7 @@ export const SourcePage: React.FC = () => {
               setSource(cachedPageData.source);
               setIsLoading(false);
               setCurrentPageVideos(cachedPageData.videos);
+              console.log('[SourcePage] 🔍 DEBUG Cached pagination:', cachedPageData.paginationState);
               setPaginationState(cachedPageData.paginationState);
               setIsLoadingVideos(false);
               setError(null);
@@ -211,6 +212,7 @@ export const SourcePage: React.FC = () => {
           setSource(foundSource);
           setIsLoading(false); // Header can render immediately
           setCurrentPageVideos(videos); // Videos ready for display
+          console.log('[SourcePage] 🔍 DEBUG Fresh pagination:', paginationData);
           setPaginationState(paginationData);
           setIsLoadingVideos(false); // Triggers instant skeleton→content transition
         };
@@ -538,7 +540,6 @@ export const SourcePage: React.FC = () => {
             currentPage={paginationState.currentPage}
             totalPages={paginationState.totalPages}
             onPageChange={handlePageChange}
-            maxPages={paginationState.maxPages}
           />
         </div>
       )}
@@ -601,7 +602,6 @@ export const SourcePage: React.FC = () => {
             currentPage={paginationState.currentPage}
             totalPages={paginationState.totalPages}
             onPageChange={handlePageChange}
-            maxPages={paginationState.maxPages}
           />
         </div>
       )}

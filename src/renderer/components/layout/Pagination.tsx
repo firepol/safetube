@@ -2,19 +2,19 @@ import React, { useState, useRef, useEffect } from 'react';
 
 export interface PaginationProps {
   currentPage: number;
-  totalPages: number;
+  totalPages: number; // Already capped at 100 by backend
   onPageChange: (pageNumber: number) => void;
   className?: string;
-  maxPages?: number; // Maximum pages available for expansion
 }
 
 export const Pagination: React.FC<PaginationProps> = ({
   currentPage,
   totalPages,
   onPageChange,
-  className = '',
-  maxPages
+  className = ''
 }) => {
+  console.log('[Pagination] 🔍 DEBUG Props:', { currentPage, totalPages });
+
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -38,39 +38,50 @@ export const Pagination: React.FC<PaginationProps> = ({
     return null;
   }
 
-  const effectiveMaxPages = maxPages || totalPages;
-  const hasMorePages = effectiveMaxPages > totalPages;
+  // Progressive pagination: Show pages in 100-page chunks, 10 pages at a time
+  const PAGES_PER_CHUNK = 100; // Show up to 100 pages per "more" expansion
+  const PAGES_PER_GROUP = 10; // Show 10 pages in dropdown groups
+
+  // Determine the current chunk (0-based: 0-99, 100-199, 200-299, etc.)
+  const currentChunk = Math.floor((currentPage - 1) / PAGES_PER_CHUNK);
+  const chunkStart = currentChunk * PAGES_PER_CHUNK + 1;
+  const chunkEnd = Math.min((currentChunk + 1) * PAGES_PER_CHUNK, totalPages);
+
+  // Show first 10 pages of current chunk by default
+  const defaultDisplayEnd = Math.min(chunkStart + PAGES_PER_GROUP - 1, chunkEnd);
+
+  const hasMoreInChunk = chunkEnd > defaultDisplayEnd;
+  const hasNextChunk = totalPages > chunkEnd;
 
   const getVisiblePages = () => {
-    const delta = 2; // Show 2 pages before and after current page
+    const delta = 2;
     const range = [];
     const rangeWithDots = [];
 
-    // Determine the display range based on current page
-    let displayMax = totalPages;
+    // Show pages around current page (within current visible range)
+    let displayMax = defaultDisplayEnd;
 
-    // If current page is beyond default totalPages, expand the display range
-    if (currentPage > totalPages && currentPage <= effectiveMaxPages) {
-      // Show the current range (in groups of 10)
-      const currentGroup = Math.floor((currentPage - 1) / 10);
-      displayMax = Math.min((currentGroup + 1) * 10, effectiveMaxPages);
+    // If current page is beyond default display, expand to show current page's group
+    if (currentPage > defaultDisplayEnd) {
+      const currentGroup = Math.floor((currentPage - chunkStart) / PAGES_PER_GROUP);
+      displayMax = Math.min(chunkStart + (currentGroup + 1) * PAGES_PER_GROUP - 1, chunkEnd);
     }
 
-    for (let i = Math.max(2, currentPage - delta); i <= Math.min(displayMax - 1, currentPage + delta); i++) {
+    for (let i = Math.max(chunkStart + 1, currentPage - delta); i <= Math.min(displayMax - 1, currentPage + delta); i++) {
       range.push(i);
     }
 
-    if (currentPage - delta > 2) {
-      rangeWithDots.push(1, '...');
+    if (currentPage - delta > chunkStart + 1) {
+      rangeWithDots.push(chunkStart, '...');
     } else {
-      rangeWithDots.push(1);
+      rangeWithDots.push(chunkStart);
     }
 
     rangeWithDots.push(...range);
 
     if (currentPage + delta < displayMax - 1) {
       rangeWithDots.push('...', displayMax);
-    } else if (displayMax > 1) {
+    } else if (displayMax > chunkStart) {
       rangeWithDots.push(displayMax);
     }
 
@@ -79,17 +90,26 @@ export const Pagination: React.FC<PaginationProps> = ({
 
   const visiblePages = getVisiblePages();
 
-  // Generate page range groups for dropdown
+  // Generate page range groups for dropdown (within current chunk)
   const getPageRanges = () => {
     const ranges = [];
-    const currentDisplayMax = currentPage > totalPages
-      ? Math.min(Math.floor((currentPage - 1) / 10 + 1) * 10, effectiveMaxPages)
-      : totalPages;
+    const currentDisplayMax = currentPage > defaultDisplayEnd
+      ? Math.min(chunkStart + Math.floor((currentPage - chunkStart) / PAGES_PER_GROUP + 1) * PAGES_PER_GROUP - 1, chunkEnd)
+      : defaultDisplayEnd;
 
-    for (let start = currentDisplayMax + 1; start <= effectiveMaxPages; start += 10) {
-      const end = Math.min(start + 9, effectiveMaxPages);
-      ranges.push({ start, end });
+    // Show remaining groups in current chunk
+    for (let start = currentDisplayMax + 1; start <= chunkEnd; start += PAGES_PER_GROUP) {
+      const end = Math.min(start + PAGES_PER_GROUP - 1, chunkEnd);
+      ranges.push({ start, end, label: `Pages ${start}-${end}` });
     }
+
+    // Add next chunk option
+    if (hasNextChunk) {
+      const nextChunkStart = chunkEnd + 1;
+      const nextChunkEnd = Math.min(nextChunkStart + PAGES_PER_CHUNK - 1, totalPages);
+      ranges.push({ start: nextChunkStart, end: nextChunkEnd, label: `Pages ${nextChunkStart}-${nextChunkEnd} (+${PAGES_PER_CHUNK})` });
+    }
+
     return ranges;
   };
 
@@ -98,7 +118,7 @@ export const Pagination: React.FC<PaginationProps> = ({
     setShowDropdown(false);
   };
 
-  const pageRanges = hasMorePages ? getPageRanges() : [];
+  const pageRanges = (hasMoreInChunk || hasNextChunk) ? getPageRanges() : [];
 
   return (
     <div className={`flex items-center justify-center space-x-2 ${className}`}>
@@ -137,7 +157,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         ))}
 
         {/* More Pages Dropdown */}
-        {hasMorePages && pageRanges.length > 0 && (
+        {(hasMoreInChunk || hasNextChunk) && pageRanges.length > 0 && (
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setShowDropdown(!showDropdown)}
@@ -178,9 +198,9 @@ export const Pagination: React.FC<PaginationProps> = ({
       {/* Next button */}
       <button
         onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage >= effectiveMaxPages}
+        disabled={currentPage >= totalPages}
         className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-          currentPage >= effectiveMaxPages
+          currentPage >= totalPages
             ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
             : 'bg-blue-600 text-white hover:bg-blue-700'
         }`}
