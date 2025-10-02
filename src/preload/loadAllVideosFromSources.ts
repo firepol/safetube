@@ -6,6 +6,13 @@ import path from 'path';
 import { logVerbose } from './utils';
 import { createLocalVideoId } from '../shared/fileUtils';
 
+// Import IPC constants
+const IPC = {
+  VIDEO_SOURCES: {
+    GET_ALL: 'video-sources:get-all',
+  },
+} as const;
+
 // Helper to scan local folders recursively up to maxDepth
 async function scanLocalFolder(folderPath: string, maxDepth: number, currentDepth = 1): Promise<any[]> {
   let videos: any[] = [];
@@ -108,7 +115,7 @@ export async function loadAllVideosFromSources(configPath = 'config/videoSources
     // Load sources from database via IPC
     debug.push(`[Loader] Loading video sources from database`);
     if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
-      const dbSources = await (window as any).electron.invoke('video-sources:get-all');
+      const dbSources = await (window as any).electron.invoke(IPC.VIDEO_SOURCES.GET_ALL);
 
       if (dbSources && Array.isArray(dbSources)) {
         // Convert database format to VideoSource format

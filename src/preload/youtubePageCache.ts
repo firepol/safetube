@@ -1,5 +1,20 @@
 import { logVerbose } from './logging';
 
+// Import IPC constants
+const IPC = {
+  YOUTUBE_CACHE_DB: {
+    GET_PAGE: 'youtube-cache:get-page',
+  },
+  YOUTUBE_CACHE: {
+    CLEAR_EXPIRED: 'youtube-cache:clear-expired',
+  },
+} as const;
+
+// Note: 'youtube-cache:save-page' and 'youtube-cache:clear-source' are not in the IPC constants yet
+// They should be added to src/shared/ipc-channels.ts
+const YOUTUBE_CACHE_SAVE_PAGE = 'youtube-cache:save-page';
+const YOUTUBE_CACHE_CLEAR_SOURCE = 'youtube-cache:clear-source';
+
 interface CachedYouTubePage {
   videos: any[];
   pageNumber: number;
@@ -45,7 +60,7 @@ export class YouTubePageCache {
     try {
       if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
         // Renderer process: use IPC
-        const result = await (window as any).electron.invoke('youtube-cache:get-page', sourceId, pageNumber);
+        const result = await (window as any).electron.invoke(IPC.YOUTUBE_CACHE_DB.GET_PAGE, sourceId, pageNumber);
         if (result && result.videos) {
           logVerbose(`[YouTubePageCache] Using database cache for ${sourceId} page ${pageNumber}`);
           return result;
@@ -155,7 +170,7 @@ export class YouTubePageCache {
 
       if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
         // Renderer process: use IPC
-        await (window as any).electron.invoke('youtube-cache:save-page', sourceId, pageNumber, cacheData);
+        await (window as any).electron.invoke(YOUTUBE_CACHE_SAVE_PAGE, sourceId, pageNumber, cacheData);
         logVerbose(`[YouTubePageCache] Cached page ${pageNumber} for ${sourceId} (${videos.length} videos) in database via IPC`);
       } else if (typeof process !== 'undefined' && process.type === 'browser') {
         // Main process: use direct database access
@@ -207,7 +222,7 @@ export class YouTubePageCache {
   static async clearSourcePages(sourceId: string): Promise<void> {
     try {
       if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
-        await (window as any).electron.invoke('youtube-cache:clear-source', sourceId);
+        await (window as any).electron.invoke(YOUTUBE_CACHE_CLEAR_SOURCE, sourceId);
         logVerbose(`[YouTubePageCache] Cleared all page cache for source ${sourceId} from database`);
       }
     } catch (error) {
@@ -221,7 +236,7 @@ export class YouTubePageCache {
   static async clearExpiredPages(): Promise<void> {
     try {
       if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
-        await (window as any).electron.invoke('youtube-cache:clear-expired');
+        await (window as any).electron.invoke(IPC.YOUTUBE_CACHE.CLEAR_EXPIRED);
         logVerbose(`[YouTubePageCache] Cleared expired page cache from database`);
       }
     } catch (error) {
