@@ -14,10 +14,50 @@ export interface YouTubePageResult {
 
 export class YouTubePageFetcher {
   /**
+   * Fetch and cache all pages from startPage to endPage
+   * More efficient than fetching individual pages when multiple pages are needed
+   */
+  private static async fetchAndCachePageRange(
+    source: VideoSource,
+    startPage: number,
+    endPage: number,
+    pageSize: number = 50
+  ): Promise<void> {
+    const sourceId = source.id;
+    logVerbose(`[YouTubePageFetcher] 📚 Fetching pages ${startPage}-${endPage} for ${sourceId}`);
+
+    let currentToken: string | undefined = undefined;
+
+    for (let page = startPage; page <= endPage; page++) {
+      // Check if this page is already cached
+      const cachedPage = await YouTubePageCache.getCachedPage(sourceId, page);
+      if (cachedPage && cachedPage.timestamp) {
+        const cacheDurationMinutes = PaginationService.getInstance().getConfig().cacheDurationMinutes;
+        const cacheAge = Date.now() - cachedPage.timestamp;
+        const cacheDurationMs = cacheDurationMinutes * 60 * 1000;
+
+        if (cacheAge < cacheDurationMs) {
+          logVerbose(`[YouTubePageFetcher] ⏭️  Skipping page ${page} (already cached)`);
+          // Get token for next page from cache
+          currentToken = YouTubePageCache.getPageToken(sourceId, page + 1);
+          continue;
+        }
+      }
+
+      // Fetch this page (don't fill intermediate pages to avoid recursion)
+      logVerbose(`[YouTubePageFetcher] 📄 Fetching page ${page}...`);
+      const result = await this.fetchPage(source, page, pageSize, false);
+
+      // The fetchPage already caches the page and token
+      currentToken = YouTubePageCache.getPageToken(sourceId, page + 1);
+    }
+  }
+
+  /**
    * Fetch a specific page for a YouTube source (channel or playlist)
    * Uses cache when valid, fetches from API when needed, falls back to expired cache on API failure
    */
-  static async fetchPage(source: VideoSource, pageNumber: number, pageSize: number = 50): Promise<YouTubePageResult> {
+  static async fetchPage(source: VideoSource, pageNumber: number, pageSize: number = 50, fillIntermediatePages: boolean = true): Promise<YouTubePageResult> {
     if (source.type !== 'youtube_channel' && source.type !== 'youtube_playlist') {
       throw new Error('Invalid source type for YouTube page fetching');
     }
@@ -50,6 +90,44 @@ export class YouTubePageFetcher {
         };
       } else {
         logVerbose(`[YouTubePageFetcher] Cache expired for ${sourceId} page ${pageNumber} (age: ${Math.round(cacheAge / 60000)} minutes), fetching fresh data`);
+      }
+    }
+
+    // If requesting page > 1 and we should fill intermediate pages, check which pages are missing
+    if (fillIntermediatePages && pageNumber > 1) {
+      // Find the first uncached page
+      let firstUncachedPage = 1;
+      for (let p = 1; p < pageNumber; p++) {
+        const cached = await YouTubePageCache.getCachedPage(sourceId, p);
+        if (!cached || !cached.timestamp) {
+          firstUncachedPage = p;
+          break;
+        }
+        const cacheAge = Date.now() - cached.timestamp;
+        const cacheDurationMs = cacheDurationMinutes * 60 * 1000;
+        if (cacheAge >= cacheDurationMs) {
+          firstUncachedPage = p;
+          break;
+        }
+        firstUncachedPage = p + 1;
+      }
+
+      // If there are uncached pages before our target, fetch them all
+      if (firstUncachedPage < pageNumber) {
+        logVerbose(`[YouTubePageFetcher] 🔄 Filling pages ${firstUncachedPage}-${pageNumber} to maximize cache benefit`);
+        await this.fetchAndCachePageRange(source, firstUncachedPage, pageNumber, pageSize);
+
+        // Now return the cached target page
+        const finalCached = await YouTubePageCache.getCachedPage(sourceId, pageNumber);
+        if (finalCached) {
+          return {
+            videos: finalCached.videos,
+            pageNumber: finalCached.pageNumber,
+            totalResults: finalCached.totalResults,
+            fromCache: true,
+            fallback: false
+          };
+        }
       }
     }
 
