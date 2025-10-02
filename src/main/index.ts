@@ -305,14 +305,18 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_VIDEO_DATA, async (_, videoId: string, navi
         const { extractVideoDuration } = await import('../shared/videoDurationUtils');
         const duration = await extractVideoDuration(localFilePath);
 
-        // Find the actual source ID for this local video
+        // Find the actual source ID for this local video from the database
         let sourceId = 'unknown';
         let sourceTitle = 'Local Video';
         try {
-          const { readVideoSources } = await import('./fileUtils');
-          const sources = await readVideoSources();
+          const DatabaseService = await import('./services/DatabaseService');
+          const dbService = DatabaseService.default.getInstance();
+          const sources = await dbService.all<{ id: string; type: string; title: string; path: string }>(`
+            SELECT id, type, title, path FROM sources WHERE type = 'local'
+          `);
+
           for (const source of sources) {
-            if (source.type === 'local' && localFilePath.startsWith(source.path)) {
+            if (source.path && localFilePath.startsWith(source.path)) {
               sourceId = source.id;
               sourceTitle = source.title;
               break;

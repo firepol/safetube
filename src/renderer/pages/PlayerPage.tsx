@@ -1008,22 +1008,18 @@ export const PlayerPage: React.FC = () => {
 
     // For local videos
     if (video.type === 'local') {
-      // Determine the correct sourceId, avoiding 'unknown' fallback (same logic as VideoGrid)
-      let sourceId = video.sourceId || 'local';
+      // IMPORTANT: Use the sourceId from the video object - it comes from the database
+      // and must match the source_id in the videos table for foreign key constraints
+      const sourceId = video.sourceId;
+
       if (!sourceId || sourceId === 'unknown') {
-        // For local videos, try to determine source from video path if available
-        if (video.id.includes('local:')) {
-          // Extract path from local video ID and try to match with known sources
-          const videoPath = video.id.replace('local:', '');
-          // Note: We could implement the full source matching logic here like VideoGrid does,
-          // but for now we'll use video.sourceId if available, with 'local' as fallback
-          sourceId = video.sourceId || 'local';
-        }
+        console.error('[PlayerPage] Cannot add favorite: video has invalid sourceId:', video.id, sourceId);
+        return null; // Cannot add to favorites without valid source
       }
 
       return {
         videoId: video.id,
-        source: sourceId, // Use the correct sourceId instead of hardcoded 'local'
+        source: sourceId,
         type: 'local' as const,
         title: video.title,
         thumbnail: video.thumbnail || '',
