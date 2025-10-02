@@ -1728,7 +1728,14 @@ const createWindow = (): void => {
                       sourceTitle: matchingSource.title,
                       sourceType: matchingSource.type as 'youtube_channel' | 'youtube_playlist',
                       sourceThumbnail: '',
-                      channelId: channelId
+                      channelId: channelId,
+                      navigationContext: {
+                        breadcrumb: {
+                          sourceName: matchingSource.title,
+                          sourceId: matchingSource.id
+                        },
+                        returnTo: `/source/${matchingSource.id}`
+                      }
                     };
 
                     logVerbose(`[Main] - Sending navigation with complete metadata`);
@@ -1805,7 +1812,14 @@ const createWindow = (): void => {
                   sourceTitle: matchingSource.title,
                   sourceType: matchingSource.type as 'youtube_channel' | 'youtube_playlist',
                   sourceThumbnail: '',
-                  channelId: channelId
+                  channelId: channelId,
+                  navigationContext: {
+                    breadcrumb: {
+                      sourceName: matchingSource.title,
+                      sourceId: matchingSource.id
+                    },
+                    returnTo: `/source/${matchingSource.id}`
+                  }
                 };
 
                 mainWindow.webContents.send('navigate-to-video', {
