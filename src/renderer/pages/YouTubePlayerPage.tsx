@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { YouTubeIframePlayer } from '../services/youtubeIframe';
 import { BasePlayerPage } from './BasePlayerPage';
 import { Video } from '../types';
@@ -15,6 +15,7 @@ const PLAYER_CONTAINER_ID = 'youtube-player-container';
 
 export const YouTubePlayerPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   // URL decode the video ID since it was encoded when creating navigation links
   const videoId = id ? decodeURIComponent(id) : id;
   const navigate = useNavigate();
@@ -50,7 +51,8 @@ export const YouTubePlayerPage: React.FC = () => {
       
       try {
         setIsLoading(true);
-        const videoData = await window.electron.getVideoData(videoId);
+        // Pass location.state to preserve navigation context from related video clicks
+        const videoData = await window.electron.getVideoData(videoId, location.state);
         setVideo(videoData);
         setError(null);
       } catch (err) {

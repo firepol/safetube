@@ -253,6 +253,8 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_VIDEO_DATA, async (_, videoId: string, navi
       const videosWithWatchedData = await mergeWatchedData([video]);
       const videoWithResume = videosWithWatchedData[0];
 
+      logVerbose('[Main] Returning video with navigationContext:', JSON.stringify(videoWithResume.navigationContext, null, 2));
+
       return videoWithResume;
     }
 
@@ -1692,9 +1694,13 @@ const createWindow = (): void => {
                   logVerbose(`[Main] - Loaded ${sources.length} sources from database`);
 
                   // First try to match channel sources by channelId
+                  logVerbose(`[Main] - Looking for channel ${channelId} among ${sources.filter((s: any) => s.type === 'youtube_channel').length} channel sources`);
                   let matchingSource: VideoSource | undefined = sources
                     .filter((s: any) => s.type === 'youtube_channel')
-                    .find((s: any) => s.channel_id === channelId);
+                    .find((s: any) => {
+                      logVerbose(`[Main] - Comparing source ${s.id} (channel_id: ${s.channel_id}) with ${channelId}`);
+                      return s.channel_id === channelId;
+                    });
 
                   // If no channel match, check if this video might belong to a playlist source
                   // by looking at the channel of videos already loaded from those playlists
