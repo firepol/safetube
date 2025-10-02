@@ -172,10 +172,10 @@ TEST                     1 channels
 
 ```bash
 # Run contract tests
-yarn test __tests__/contracts/ipc-contracts.test.ts
+yarn test:contract
 
 # Update snapshots after intentional changes
-yarn test __tests__/contracts/ipc-contracts.test.ts -u
+yarn test:contract -u
 
 # Run all tests
 yarn test
