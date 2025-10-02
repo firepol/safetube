@@ -44,8 +44,8 @@ vi.mock('fs', () => ({
 }));
 
 // Mock path module
-vi.mock('path', () => ({
-  default: {
+vi.mock('path', () => {
+  const mockPath = {
     join: vi.fn((...args) => args.join('/')),
     resolve: vi.fn((...args) => args.join('/')),
     dirname: vi.fn((p) => p.split('/').slice(0, -1).join('/')),
@@ -54,8 +54,27 @@ vi.mock('path', () => ({
       const parts = p.split('.');
       return parts.length > 1 ? '.' + parts.pop() : '';
     }),
-  },
-}));
+    sep: '/',
+    delimiter: ':',
+    parse: vi.fn((p) => ({
+      root: '',
+      dir: p.split('/').slice(0, -1).join('/'),
+      base: p.split('/').pop(),
+      ext: p.includes('.') ? '.' + p.split('.').pop() : '',
+      name: p.split('/').pop()?.split('.')[0] || '',
+    })),
+    format: vi.fn((pathObject) => pathObject.base || ''),
+    isAbsolute: vi.fn((p) => p.startsWith('/')),
+    normalize: vi.fn((p) => p),
+    relative: vi.fn((from, to) => to),
+    toNamespacedPath: vi.fn((p) => p),
+  };
+
+  return {
+    default: mockPath,
+    ...mockPath, // Export both as default and named exports
+  };
+});
 
 // Mock other Node modules that main process files might import
 vi.mock('child_process', () => ({
