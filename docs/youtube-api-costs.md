@@ -51,15 +51,19 @@ Based on the codebase analysis, SafeTube uses the following API calls:
    - Called once per playlist source during setup/refresh
    - Returns playlist title, description, thumbnail
 
-2. **`getPlaylistVideos(playlistId, maxResults)`** - 1 unit
+2. **`getPlaylistVideos(playlistId, maxResults)`** - 1 unit per call
    - Called when loading/refreshing playlist sources
    - Retrieves video IDs from playlist
+   - **Pagination**: Each page requires separate API call (1 unit each)
+   - **Token-based**: Uses `nextPageToken` for sequential page access
+   - **Cost scales with pages**: Page 10 requires 10 calls (10 units) if no tokens cached
 
 ### Video Operations
 1. **`getVideoDetails(videoId)`** - 1 unit per video
    - Called for individual video metadata (title, thumbnail, duration)
    - Used during video history and resume functionality
    - Called when videos are not in cache
+   - **Batching**: Can fetch up to 50 videos in one call (still 1 unit total)
 
 ### Username Resolution
 1. **`searchChannelByUsername(username)`** - 100 units
@@ -163,13 +167,38 @@ If using only one type of operation per day:
 - **Comprehensive**: Can search all video metadata fields
 - **Scalable**: Works with large video collections
 
+## Pagination and Token Management
+
+### How YouTube API Pagination Works
+- **Token-Based**: Uses `nextPageToken` to fetch subsequent pages
+- **Sequential Access**: Cannot jump directly to page N without fetching pages 1 to N-1
+- **Cost Per Page**: Each page fetch costs 1 unit, regardless of data requested
+- **Database Caching**: SafeTube caches page data to avoid re-fetching
+
+### Pagination Costs
+| Navigation | Without Cache | With Cache |
+|------------|---------------|------------|
+| Page 1 | 1 unit | 0 units (cached) |
+| Page 2 | 2 units | 0-1 units |
+| Page 10 | 10 units | 0-1 units |
+| Page 100 | 100 units | 0-1 units |
+
+### SafeTube's Pagination Strategy
+1. **Database Cache**: All fetched pages stored in SQLite
+2. **Token Cache**: In-memory storage of pagination tokens
+3. **Page Limit**: 100 pages max (5,000 videos) to prevent quota exhaustion
+4. **Smart Navigation**: Reuses cached tokens when available
+
+**Important**: Jumping to high page numbers (e.g., page 50) without cache requires fetching all intermediate pages, consuming 50 API units. Always navigate sequentially for best quota efficiency.
+
 ## Quota Management Best Practices
 
 ### Optimization Strategies
 1. **Caching**: Store all video metadata locally to minimize repeated API calls
-2. **Batch Processing**: Group API calls when possible
-3. **Rate Limiting**: Spread API calls throughout the day
-4. **Error Handling**: Implement backoff strategies for quota exceeded errors
+2. **Sequential Navigation**: Avoid jumping to high page numbers without cache
+3. **Batch Processing**: Group API calls when possible
+4. **Rate Limiting**: Spread API calls throughout the day
+5. **Error Handling**: Implement backoff strategies for quota exceeded errors
 
 ### Monitoring and Alerts
 1. **Quota Tracking**: Monitor daily API usage in Google Cloud Console
