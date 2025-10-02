@@ -13,8 +13,6 @@ export const Pagination: React.FC<PaginationProps> = ({
   onPageChange,
   className = ''
 }) => {
-  console.log('[Pagination] 🔍 DEBUG Props:', { currentPage, totalPages });
-
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
