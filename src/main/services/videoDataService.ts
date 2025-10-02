@@ -159,9 +159,10 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
           videos: videosWithMetadata,  // Use videos with added metadata
           paginationState: {
             currentPage: 1,
-            totalPages: Math.min(Math.ceil((cache.totalVideos || cache.videos.length) / 50), 100), // Cap at 100 pages max
+            totalPages: Math.min(Math.ceil((cache.totalVideos || cache.videos.length) / 50), 10), // Default 10 pages
             totalVideos: cache.totalVideos || cache.videos.length,
-            pageSize: 50
+            pageSize: 50,
+            maxPages: Math.min(Math.ceil((cache.totalVideos || cache.videos.length) / 50), 100) // Max 100 pages
           },
           usingCachedData: cache.usingCachedData,
           fetchedNewData: cache.fetchedNewData || false  // Flag to indicate if new data was fetched
@@ -194,7 +195,7 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
           thumbnail: '',
           videoCount: videoCount,
           videos: [], // Empty - videos will be loaded when source is clicked
-          paginationState: { currentPage: 1, totalPages: Math.min(Math.ceil(videoCount / 50), 100), totalVideos: videoCount, pageSize: 50 }, // Cap at 100 pages max
+          paginationState: { currentPage: 1, totalPages: Math.min(Math.ceil(videoCount / 50), 10), totalVideos: videoCount, pageSize: 50, maxPages: Math.min(Math.ceil(videoCount / 50), 100) }, // Default 10, max 100
           maxDepth: source.maxDepth,
           path: source.path
         });
@@ -538,9 +539,10 @@ export async function loadVideosForSpecificSource(sourceId: string, apiKey?: str
           videos: videosWithMetadata,
           paginationState: {
             currentPage: 1,
-            totalPages: Math.min(Math.ceil((cache.totalVideos || cache.videos.length) / 50), 100), // Cap at 100 pages max
+            totalPages: Math.min(Math.ceil((cache.totalVideos || cache.videos.length) / 50), 10), // Default 10 pages
             totalVideos: cache.totalVideos || cache.videos.length,
-            pageSize: 50
+            pageSize: 50,
+            maxPages: Math.min(Math.ceil((cache.totalVideos || cache.videos.length) / 50), 100) // Max 100 pages
           },
           usingCachedData: cache.usingCachedData,
           fetchedNewData: cache.fetchedNewData || false

@@ -65,6 +65,7 @@ export interface PaginationState {
   totalPages: number;
   totalVideos: number;
   pageSize: number;
+  maxPages?: number; // Maximum pages available (for expansion beyond default totalPages)
 }
 
 // Cached page data
