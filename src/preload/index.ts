@@ -1,5 +1,280 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+// IPC Channel Constants - AUTO-GENERATED from src/shared/ipc-channels.ts
+// DO NOT EDIT THIS SECTION MANUALLY - Run 'yarn sync-ipc' to update
+const IPC = {
+  // ============================================================================
+  // DATABASE OPERATIONS
+  // ============================================================================
+
+  DATABASE: {
+    HEALTH_CHECK: 'database:health-check',
+    MIGRATE_PHASE1: 'database:migrate-phase1',
+    VERIFY_MIGRATION: 'database:verify-migration',
+  },
+
+  // ============================================================================
+  // FAVORITES (Database-backed)
+  // ============================================================================
+
+  FAVORITES: {
+    GET_ALL: 'database:favorites:get-all',
+    ADD: 'database:favorites:add',
+    REMOVE: 'database:favorites:remove',
+    IS_FAVORITE: 'database:favorites:is-favorite',
+    TOGGLE: 'database:favorites:toggle',
+  },
+
+  // ============================================================================
+  // FAVORITES (Legacy - File-backed operations)
+  // ============================================================================
+
+  FAVORITES_LEGACY: {
+    UPDATE_METADATA: 'favorites:update-metadata',
+    GET_BY_SOURCE: 'favorites:get-by-source',
+    GET_CONFIG: 'favorites:get-config',
+    UPDATE_CONFIG: 'favorites:update-config',
+    CLEANUP_ORPHANED: 'favorites:cleanup-orphaned',
+    SYNC_WATCH_HISTORY: 'favorites:sync-watch-history',
+    GET_UNAVAILABLE: 'favorites:get-unavailable',
+    CLEAR_UNAVAILABLE: 'favorites:clear-unavailable',
+  },
+
+  // ============================================================================
+  // VIEW RECORDS (Watch history & resume positions)
+  // ============================================================================
+
+  VIEW_RECORDS: {
+    GET: 'database:view-records:get',
+    UPDATE: 'database:view-records:update',
+    GET_HISTORY: 'database:view-records:get-history',
+    GET_RECENTLY_WATCHED: 'database:view-records:get-recently-watched',
+  },
+
+  // ============================================================================
+  // VIDEOS (Database operations)
+  // ============================================================================
+
+  VIDEOS: {
+    GET_BY_ID: 'database:videos:get-by-id',
+    GET_BY_SOURCE: 'database:videos:get-by-source',
+    SEARCH: 'database:videos:search',
+    UPDATE_METADATA: 'database:videos:update-metadata',
+    UPDATE_AVAILABILITY: 'database:videos:update-availability',
+  },
+
+  // ============================================================================
+  // SOURCES (Video source management)
+  // ============================================================================
+
+  SOURCES: {
+    GET_ALL: 'database:sources:get-all',
+    GET_BY_ID: 'database:sources:get-by-id',
+    CREATE: 'database:sources:create',
+    UPDATE: 'database:sources:update',
+    DELETE: 'database:sources:delete',
+  },
+
+  // ============================================================================
+  // VIDEO SOURCES (Legacy - File-backed)
+  // ============================================================================
+
+  VIDEO_SOURCES: {
+    GET_ALL: 'video-sources:get-all',
+    SAVE_ALL: 'video-sources:save-all',
+    VALIDATE_YOUTUBE_URL: 'video-sources:validate-youtube-url',
+    VALIDATE_LOCAL_PATH: 'video-sources:validate-local-path',
+  },
+
+  // ============================================================================
+  // YOUTUBE CACHE (Database-backed)
+  // ============================================================================
+
+  YOUTUBE_CACHE_DB: {
+    GET_CACHED_RESULTS: 'database:youtube-cache:get-cached-results',
+    SET_CACHED_RESULTS: 'database:youtube-cache:set-cached-results',
+    CLEAR_CACHE: 'database:youtube-cache:clear-cache',
+    GET_PAGE: 'youtube-cache:get-page',
+  },
+
+  // ============================================================================
+  // YOUTUBE CACHE (Legacy - File-backed)
+  // ============================================================================
+
+  YOUTUBE_CACHE: {
+    GET: 'youtube-cache:get',
+    SET: 'youtube-cache:set',
+    CLEAR_EXPIRED: 'youtube-cache:clear-expired',
+    LOAD_CONFIG: 'youtube-cache:load-config',
+  },
+
+  // ============================================================================
+  // TIME TRACKING
+  // ============================================================================
+
+  TIME_TRACKING: {
+    RECORD_VIDEO_WATCHING: 'time-tracking:record-video-watching',
+    GET_TIME_TRACKING_STATE: 'time-tracking:get-time-tracking-state',
+    GET_TIME_LIMITS: 'time-tracking:get-time-limits',
+  },
+
+  // ============================================================================
+  // ADMIN / PARENT ACCESS
+  // ============================================================================
+
+  ADMIN: {
+    AUTHENTICATE: 'admin:authenticate',
+    CHANGE_PASSWORD: 'admin:change-password',
+    HASH_PASSWORD: 'admin:hash-password',
+    ADD_EXTRA_TIME: 'admin:add-extra-time',
+    GET_TIME_EXTRA: 'admin:get-time-extra',
+    WRITE_TIME_LIMITS: 'admin:write-time-limits',
+    GET_LAST_WATCHED_VIDEO_WITH_SOURCE: 'admin:get-last-watched-video-with-source',
+  },
+
+  // ============================================================================
+  // VIDEO LOADING & DATA
+  // ============================================================================
+
+  VIDEO_LOADING: {
+    LOAD_ALL_VIDEOS_FROM_SOURCES: 'load-all-videos-from-sources',
+    LOAD_VIDEOS_FROM_SOURCES: 'load-videos-from-sources',
+    LOAD_SOURCES_FOR_KID_SCREEN: 'load-sources-for-kid-screen',
+    LOAD_VIDEOS_FOR_SOURCE: 'load-videos-for-source',
+    GET_VIDEO_DATA: 'get-video-data',
+    GET_PAGINATED_VIDEOS: 'get-paginated-videos',
+    GET_WATCHED_VIDEOS: 'get-watched-videos',
+  },
+
+  // ============================================================================
+  // LOCAL FILE OPERATIONS
+  // ============================================================================
+
+  LOCAL_FILES: {
+    GET_LOCAL_FILE: 'get-local-file',
+    GET_LOCAL_FOLDER_CONTENTS: 'get-local-folder-contents',
+    GET_LOCAL_SOURCE_VIDEO_COUNT: 'get-local-source-video-count',
+    GET_FOLDER_VIDEO_COUNT: 'get-folder-video-count',
+    GET_LOCAL_VIDEO_DURATION: 'get-local-video-duration',
+  },
+
+  // ============================================================================
+  // DLNA OPERATIONS
+  // ============================================================================
+
+  DLNA: {
+    GET_DLNA_FILE: 'get-dlna-file',
+  },
+
+  // ============================================================================
+  // VIDEO PLAYBACK
+  // ============================================================================
+
+  PLAYBACK: {
+    GET_VIDEO_STREAMS: 'get-video-streams',
+    GET_PLAYER_CONFIG: 'get-player-config',
+  },
+
+  // ============================================================================
+  // VIDEO CONVERSION
+  // ============================================================================
+
+  CONVERSION: {
+    GET_VIDEO_CODEC_INFO: 'get-video-codec-info',
+    GET_COMPATIBLE_VIDEO_PATH: 'get-compatible-video-path',
+    NEEDS_VIDEO_CONVERSION: 'needs-video-conversion',
+    HAS_CONVERTED_VIDEO: 'has-converted-video',
+    GET_EXISTING_CONVERTED_VIDEO_PATH: 'get-existing-converted-video-path',
+    GET_CONVERSION_STATUS: 'get-conversion-status',
+    START_VIDEO_CONVERSION: 'start-video-conversion',
+  },
+
+  // ============================================================================
+  // DOWNLOADS
+  // ============================================================================
+
+  DOWNLOADS: {
+    START: 'download:start',
+    GET_STATUS: 'download:get-status',
+    CANCEL: 'download:cancel',
+    IS_DOWNLOADING: 'download:is-downloading',
+    RESET_STATUS: 'download:reset-status',
+    CHECK_DOWNLOADED: 'download:check-downloaded',
+  },
+
+  // ============================================================================
+  // DOWNLOADED VIDEOS
+  // ============================================================================
+
+  DOWNLOADED_VIDEOS: {
+    GET_ALL: 'downloaded-videos:get-all',
+    GET_BY_SOURCE: 'downloaded-videos:get-by-source',
+  },
+
+  // ============================================================================
+  // YOUTUBE API
+  // ============================================================================
+
+  YOUTUBE: {
+    GET_API_KEY: 'get-youtube-api-key',
+    GET_VIDEO_INFO: 'get-youtube-video-info',
+  },
+
+  // ============================================================================
+  // THUMBNAILS
+  // ============================================================================
+
+  THUMBNAILS: {
+    GET_BEST_THUMBNAIL: 'get-best-thumbnail',
+  },
+
+  // ============================================================================
+  // SETTINGS
+  // ============================================================================
+
+  SETTINGS: {
+    READ_MAIN_SETTINGS: 'main-settings:read',
+    WRITE_MAIN_SETTINGS: 'main-settings:write',
+    GET_DEFAULT_DOWNLOAD_PATH: 'main-settings:get-default-download-path',
+    GET_SETUP_STATUS: 'get-setup-status',
+  },
+
+  // ============================================================================
+  // LOGGING
+  // ============================================================================
+
+  LOGGING: {
+    SET_VERBOSE: 'logging:set-verbose',
+    GET_VERBOSE: 'logging:get-verbose',
+    LOG: 'logging:log',
+  },
+
+  // ============================================================================
+  // CACHE MANAGEMENT
+  // ============================================================================
+
+  CACHE: {
+    CLEAR_SOURCE_CACHE: 'clear-source-cache',
+  },
+
+  // ============================================================================
+  // UTILITIES
+  // ============================================================================
+
+  UTILS: {
+    PATH_JOIN: 'path-join',
+    GET_ENV_VAR: 'get-env-var',
+  },
+
+  // ============================================================================
+  // TESTING
+  // ============================================================================
+
+  TEST: {
+    TEST_HANDLER: 'test-handler',
+  },
+} as const;
+
 // Database response type
 interface DatabaseResponse<T = any> {
   success: boolean;
@@ -21,105 +296,105 @@ contextBridge.exposeInMainWorld(
   {
     // Generic invoke for DatabaseClient and other advanced usage
     invoke: (channel: string, ...args: any[]) => ipcRenderer.invoke(channel, ...args),
-    getLocalFile: (filePath: string) => ipcRenderer.invoke('get-local-file', filePath),
-    getDlnaFile: (server: string, port: number, path: string) => 
-      ipcRenderer.invoke('get-dlna-file', server, port, path),
-    getVideoStreams: (videoId: string) => ipcRenderer.invoke('get-video-streams', videoId),
+    getLocalFile: (filePath: string) => ipcRenderer.invoke(IPC.LOCAL_FILES.GET_LOCAL_FILE, filePath),
+    getDlnaFile: (server: string, port: number, path: string) =>
+      ipcRenderer.invoke(IPC.DLNA.GET_DLNA_FILE, server, port, path),
+    getVideoStreams: (videoId: string) => ipcRenderer.invoke(IPC.PLAYBACK.GET_VIDEO_STREAMS, videoId),
     recordVideoWatching: (videoId: string, position: number, timeWatched: number, duration?: number) =>
-      ipcRenderer.invoke('time-tracking:record-video-watching', videoId, position, timeWatched, duration),
-    getTimeTrackingState: () => ipcRenderer.invoke('time-tracking:get-time-tracking-state'),
-    getTimeLimits: () => ipcRenderer.invoke('time-tracking:get-time-limits'),
-    getWatchedVideos: () => ipcRenderer.invoke('get-watched-videos'),
-    getPlayerConfig: () => ipcRenderer.invoke('get-player-config'),
-    getVideoData: (videoId: string, navigationContext?: any) => ipcRenderer.invoke('get-video-data', videoId, navigationContext),
-    testHandler: () => ipcRenderer.invoke('test-handler'),
+      ipcRenderer.invoke(IPC.TIME_TRACKING.RECORD_VIDEO_WATCHING, videoId, position, timeWatched, duration),
+    getTimeTrackingState: () => ipcRenderer.invoke(IPC.TIME_TRACKING.GET_TIME_TRACKING_STATE),
+    getTimeLimits: () => ipcRenderer.invoke(IPC.TIME_TRACKING.GET_TIME_LIMITS),
+    getWatchedVideos: () => ipcRenderer.invoke(IPC.VIDEO_LOADING.GET_WATCHED_VIDEOS),
+    getPlayerConfig: () => ipcRenderer.invoke(IPC.PLAYBACK.GET_PLAYER_CONFIG),
+    getVideoData: (videoId: string, navigationContext?: any) => ipcRenderer.invoke(IPC.VIDEO_LOADING.GET_VIDEO_DATA, videoId, navigationContext),
+    testHandler: () => ipcRenderer.invoke(IPC.TEST.TEST_HANDLER),
     // New IPC handler for loading videos from sources
-    loadAllVideosFromSources: () => ipcRenderer.invoke('load-all-videos-from-sources'),
+    loadAllVideosFromSources: () => ipcRenderer.invoke(IPC.VIDEO_LOADING.LOAD_ALL_VIDEOS_FROM_SOURCES),
     // New IPC handler for loading videos from new source system
-    loadVideosFromSources: () => ipcRenderer.invoke('load-videos-from-sources'),
-    loadSourcesForKidScreen: () => ipcRenderer.invoke('load-sources-for-kid-screen'),
+    loadVideosFromSources: () => ipcRenderer.invoke(IPC.VIDEO_LOADING.LOAD_VIDEOS_FROM_SOURCES),
+    loadSourcesForKidScreen: () => ipcRenderer.invoke(IPC.VIDEO_LOADING.LOAD_SOURCES_FOR_KID_SCREEN),
     // New IPC handler for loading videos from a specific source
-    loadVideosForSource: (sourceId: string) => ipcRenderer.invoke('load-videos-for-source', sourceId),
+    loadVideosForSource: (sourceId: string) => ipcRenderer.invoke(IPC.VIDEO_LOADING.LOAD_VIDEOS_FOR_SOURCE, sourceId),
     // New IPC handler for getting YouTube API key
-    getYouTubeApiKey: () => ipcRenderer.invoke('get-youtube-api-key'),
+    getYouTubeApiKey: () => ipcRenderer.invoke(IPC.YOUTUBE.GET_API_KEY),
     // New IPC handler for getting YouTube video info (for source validation)
-    getYouTubeVideoInfo: (videoId: string) => ipcRenderer.invoke('get-youtube-video-info', videoId),
+    getYouTubeVideoInfo: (videoId: string) => ipcRenderer.invoke(IPC.YOUTUBE.GET_VIDEO_INFO, videoId),
     // New IPC handler for getting paginated videos from a specific source
-    getPaginatedVideos: (sourceId: string, pageNumber: number) => 
-      ipcRenderer.invoke('get-paginated-videos', sourceId, pageNumber),
+    getPaginatedVideos: (sourceId: string, pageNumber: number) =>
+      ipcRenderer.invoke(IPC.VIDEO_LOADING.GET_PAGINATED_VIDEOS, sourceId, pageNumber),
     // New IPC handler for getting local folder contents for navigation
-    getLocalFolderContents: (folderPath: string, maxDepth: number, currentDepth: number = 1) => 
-      ipcRenderer.invoke('get-local-folder-contents', folderPath, maxDepth, currentDepth),
+    getLocalFolderContents: (folderPath: string, maxDepth: number, currentDepth: number = 1) =>
+      ipcRenderer.invoke(IPC.LOCAL_FILES.GET_LOCAL_FOLDER_CONTENTS, folderPath, maxDepth, currentDepth),
     // New IPC handler for getting video count for local sources (lazy counting)
-    getLocalSourceVideoCount: (sourcePath: string, maxDepth: number) => 
-      ipcRenderer.invoke('get-local-source-video-count', sourcePath, maxDepth),
+    getLocalSourceVideoCount: (sourcePath: string, maxDepth: number) =>
+      ipcRenderer.invoke(IPC.LOCAL_FILES.GET_LOCAL_SOURCE_VIDEO_COUNT, sourcePath, maxDepth),
     // New IPC handler for getting video count for a specific folder (for subfolder counts)
-    getFolderVideoCount: (folderPath: string, maxDepth: number) => 
-      ipcRenderer.invoke('get-folder-video-count', folderPath, maxDepth),
+    getFolderVideoCount: (folderPath: string, maxDepth: number) =>
+      ipcRenderer.invoke(IPC.LOCAL_FILES.GET_FOLDER_VIDEO_COUNT, folderPath, maxDepth),
     // New IPC handler for getting video duration for local videos (lazy duration extraction)
-    getLocalVideoDuration: (videoPath: string) => 
-      ipcRenderer.invoke('get-local-video-duration', videoPath),
+    getLocalVideoDuration: (videoPath: string) =>
+      ipcRenderer.invoke(IPC.LOCAL_FILES.GET_LOCAL_VIDEO_DURATION, videoPath),
     // Admin IPC handlers
-    adminAuthenticate: (password: string) => ipcRenderer.invoke('admin:authenticate', password),
-    adminChangePassword: (currentPassword: string, newPassword: string) => ipcRenderer.invoke('admin:change-password', currentPassword, newPassword),
-    adminHashPassword: (password: string) => ipcRenderer.invoke('admin:hash-password', password),
-    adminAddExtraTime: (minutes: number) => ipcRenderer.invoke('admin:add-extra-time', minutes),
-    adminGetTimeExtra: () => ipcRenderer.invoke('admin:get-time-extra'),
-    adminWriteTimeLimits: (timeLimits: any) => ipcRenderer.invoke('admin:write-time-limits', timeLimits),
-    adminGetLastWatchedVideoWithSource: () => ipcRenderer.invoke('admin:get-last-watched-video-with-source'),
+    adminAuthenticate: (password: string) => ipcRenderer.invoke(IPC.ADMIN.AUTHENTICATE, password),
+    adminChangePassword: (currentPassword: string, newPassword: string) => ipcRenderer.invoke(IPC.ADMIN.CHANGE_PASSWORD, currentPassword, newPassword),
+    adminHashPassword: (password: string) => ipcRenderer.invoke(IPC.ADMIN.HASH_PASSWORD, password),
+    adminAddExtraTime: (minutes: number) => ipcRenderer.invoke(IPC.ADMIN.ADD_EXTRA_TIME, minutes),
+    adminGetTimeExtra: () => ipcRenderer.invoke(IPC.ADMIN.GET_TIME_EXTRA),
+    adminWriteTimeLimits: (timeLimits: any) => ipcRenderer.invoke(IPC.ADMIN.WRITE_TIME_LIMITS, timeLimits),
+    adminGetLastWatchedVideoWithSource: () => ipcRenderer.invoke(IPC.ADMIN.GET_LAST_WATCHED_VIDEO_WITH_SOURCE),
     // Video source management
-    videoSourcesGetAll: () => ipcRenderer.invoke('video-sources:get-all'),
-    videoSourcesSaveAll: (sources: any[]) => ipcRenderer.invoke('video-sources:save-all', sources),
-    videoSourcesValidateYouTubeUrl: (url: string, type: 'youtube_channel' | 'youtube_playlist') => 
-      ipcRenderer.invoke('video-sources:validate-youtube-url', url, type),
-    videoSourcesValidateLocalPath: (path: string) => 
-      ipcRenderer.invoke('video-sources:validate-local-path', path),
+    videoSourcesGetAll: () => ipcRenderer.invoke(IPC.VIDEO_SOURCES.GET_ALL),
+    videoSourcesSaveAll: (sources: any[]) => ipcRenderer.invoke(IPC.VIDEO_SOURCES.SAVE_ALL, sources),
+    videoSourcesValidateYouTubeUrl: (url: string, type: 'youtube_channel' | 'youtube_playlist') =>
+      ipcRenderer.invoke(IPC.VIDEO_SOURCES.VALIDATE_YOUTUBE_URL, url, type),
+    videoSourcesValidateLocalPath: (path: string) =>
+      ipcRenderer.invoke(IPC.VIDEO_SOURCES.VALIDATE_LOCAL_PATH, path),
     // Video codec detection and conversion
-    getVideoCodecInfo: (filePath: string) => ipcRenderer.invoke('get-video-codec-info', filePath),
-    getCompatibleVideoPath: (originalPath: string, cacheDir?: string) => 
-      ipcRenderer.invoke('get-compatible-video-path', originalPath, cacheDir),
-    needsVideoConversion: (filePath: string) => ipcRenderer.invoke('needs-video-conversion', filePath),
-    hasConvertedVideo: (filePath: string, cacheDir?: string) => 
-      ipcRenderer.invoke('has-converted-video', filePath, cacheDir),
-    getExistingConvertedVideoPath: (filePath: string, cacheDir?: string) => 
-      ipcRenderer.invoke('get-existing-converted-video-path', filePath, cacheDir),
-    getConversionStatus: (filePath: string) => ipcRenderer.invoke('get-conversion-status', filePath),
-    startVideoConversion: (filePath: string, options?: any) => 
-      ipcRenderer.invoke('start-video-conversion', filePath, options),
+    getVideoCodecInfo: (filePath: string) => ipcRenderer.invoke(IPC.CONVERSION.GET_VIDEO_CODEC_INFO, filePath),
+    getCompatibleVideoPath: (originalPath: string, cacheDir?: string) =>
+      ipcRenderer.invoke(IPC.CONVERSION.GET_COMPATIBLE_VIDEO_PATH, originalPath, cacheDir),
+    needsVideoConversion: (filePath: string) => ipcRenderer.invoke(IPC.CONVERSION.NEEDS_VIDEO_CONVERSION, filePath),
+    hasConvertedVideo: (filePath: string, cacheDir?: string) =>
+      ipcRenderer.invoke(IPC.CONVERSION.HAS_CONVERTED_VIDEO, filePath, cacheDir),
+    getExistingConvertedVideoPath: (filePath: string, cacheDir?: string) =>
+      ipcRenderer.invoke(IPC.CONVERSION.GET_EXISTING_CONVERTED_VIDEO_PATH, filePath, cacheDir),
+    getConversionStatus: (filePath: string) => ipcRenderer.invoke(IPC.CONVERSION.GET_CONVERSION_STATUS, filePath),
+    startVideoConversion: (filePath: string, options?: any) =>
+      ipcRenderer.invoke(IPC.CONVERSION.START_VIDEO_CONVERSION, filePath, options),
     // Setup status
-    getSetupStatus: () => ipcRenderer.invoke('get-setup-status'),
+    getSetupStatus: () => ipcRenderer.invoke(IPC.SETTINGS.GET_SETUP_STATUS),
     // Expose environment variables directly
     env: {
       ELECTRON_LOG_VERBOSE: process.env.ELECTRON_LOG_VERBOSE
     },
     // Logging configuration methods
-    setVerboseLogging: (enabled: boolean) => ipcRenderer.invoke('logging:set-verbose', enabled),
-    getVerboseLogging: () => ipcRenderer.invoke('logging:get-verbose'),
+    setVerboseLogging: (enabled: boolean) => ipcRenderer.invoke(IPC.LOGGING.SET_VERBOSE, enabled),
+    getVerboseLogging: () => ipcRenderer.invoke(IPC.LOGGING.GET_VERBOSE),
     // Logging methods
-    log: (level: string, ...args: any[]) => ipcRenderer.invoke('logging:log', level, ...args),
+    log: (level: string, ...args: any[]) => ipcRenderer.invoke(IPC.LOGGING.LOG, level, ...args),
     // Clear source cache
-    clearSourceCache: (sourceId: string) => ipcRenderer.invoke('clear-source-cache', sourceId),
+    clearSourceCache: (sourceId: string) => ipcRenderer.invoke(IPC.CACHE.CLEAR_SOURCE_CACHE, sourceId),
     // Download management
-    startDownload: (videoId: string, videoTitle: string, sourceInfo: any) => 
-      ipcRenderer.invoke('download:start', videoId, videoTitle, sourceInfo),
-    getDownloadStatus: (videoId: string) => ipcRenderer.invoke('download:get-status', videoId),
-    cancelDownload: (videoId: string) => ipcRenderer.invoke('download:cancel', videoId),
-    isDownloading: (videoId: string) => ipcRenderer.invoke('download:is-downloading', videoId),
+    startDownload: (videoId: string, videoTitle: string, sourceInfo: any) =>
+      ipcRenderer.invoke(IPC.DOWNLOADS.START, videoId, videoTitle, sourceInfo),
+    getDownloadStatus: (videoId: string) => ipcRenderer.invoke(IPC.DOWNLOADS.GET_STATUS, videoId),
+    cancelDownload: (videoId: string) => ipcRenderer.invoke(IPC.DOWNLOADS.CANCEL, videoId),
+    isDownloading: (videoId: string) => ipcRenderer.invoke(IPC.DOWNLOADS.IS_DOWNLOADING, videoId),
     // Main settings
-    readMainSettings: () => ipcRenderer.invoke('main-settings:read'),
-    writeMainSettings: (settings: any) => ipcRenderer.invoke('main-settings:write', settings),
-    getDefaultDownloadPath: () => ipcRenderer.invoke('main-settings:get-default-download-path'),
+    readMainSettings: () => ipcRenderer.invoke(IPC.SETTINGS.READ_MAIN_SETTINGS),
+    writeMainSettings: (settings: any) => ipcRenderer.invoke(IPC.SETTINGS.WRITE_MAIN_SETTINGS, settings),
+    getDefaultDownloadPath: () => ipcRenderer.invoke(IPC.SETTINGS.GET_DEFAULT_DOWNLOAD_PATH),
     // Downloaded videos
-    getDownloadedVideos: () => ipcRenderer.invoke('downloaded-videos:get-all'),
-    getDownloadedVideosBySource: (sourceId: string) => ipcRenderer.invoke('downloaded-videos:get-by-source', sourceId),
+    getDownloadedVideos: () => ipcRenderer.invoke(IPC.DOWNLOADED_VIDEOS.GET_ALL),
+    getDownloadedVideosBySource: (sourceId: string) => ipcRenderer.invoke(IPC.DOWNLOADED_VIDEOS.GET_BY_SOURCE, sourceId),
     // YouTube Cache
-    getYouTubeCache: (cacheKey: string) => ipcRenderer.invoke('youtube-cache:get', cacheKey),
-    setYouTubeCache: (cacheKey: string, data: any) => ipcRenderer.invoke('youtube-cache:set', cacheKey, data),
-    clearExpiredYouTubeCache: () => ipcRenderer.invoke('youtube-cache:clear-expired'),
-    loadYouTubeCacheConfig: () => ipcRenderer.invoke('youtube-cache:load-config'),
+    getYouTubeCache: (cacheKey: string) => ipcRenderer.invoke(IPC.YOUTUBE_CACHE.GET, cacheKey),
+    setYouTubeCache: (cacheKey: string, data: any) => ipcRenderer.invoke(IPC.YOUTUBE_CACHE.SET, cacheKey, data),
+    clearExpiredYouTubeCache: () => ipcRenderer.invoke(IPC.YOUTUBE_CACHE.CLEAR_EXPIRED),
+    loadYouTubeCacheConfig: () => ipcRenderer.invoke(IPC.YOUTUBE_CACHE.LOAD_CONFIG),
     // Download reset functionality
-    resetDownloadStatus: (videoId: string) => ipcRenderer.invoke('download:reset-status', videoId),
-    checkDownloadedVideo: (videoId: string) => ipcRenderer.invoke('download:check-downloaded', videoId),
+    resetDownloadStatus: (videoId: string) => ipcRenderer.invoke(IPC.DOWNLOADS.RESET_STATUS, videoId),
+    checkDownloadedVideo: (videoId: string) => ipcRenderer.invoke(IPC.DOWNLOADS.CHECK_DOWNLOADED, videoId),
     // Thumbnail update events
     onThumbnailReady: (callback: (data: { videoId: string; thumbnailUrl: string }) => void) => {
       const wrappedCallback = (_: any, data: { videoId: string; thumbnailUrl: string }) => callback(data);
@@ -130,7 +405,7 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.off('thumbnail-ready', wrappedCallback);
     },
     // Get best available thumbnail for a video ID
-    getBestThumbnail: (videoId: string) => ipcRenderer.invoke('get-best-thumbnail', videoId),
+    getBestThumbnail: (videoId: string) => ipcRenderer.invoke(IPC.THUMBNAILS.GET_BEST_THUMBNAIL, videoId),
     // Navigation events for YouTube iframe links
     onNavigateToVideo: (callback: (data: { videoId: string; videoMetadata?: any }) => void) => {
       const wrappedCallback = (_: any, data: any) => {
@@ -165,22 +440,22 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.off('show-validation-error', wrappedCallback);
     },
     // Favorites management
-    favoritesGetAll: (): Promise<DatabaseResponse<any[]>> => ipcRenderer.invoke('database:favorites:get-all'),
+    favoritesGetAll: (): Promise<DatabaseResponse<any[]>> => ipcRenderer.invoke(IPC.FAVORITES.GET_ALL),
     favoritesAdd: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string): Promise<DatabaseResponse<boolean>> =>
-      ipcRenderer.invoke('database:favorites:add', videoId, sourceId),
-    favoritesRemove: (videoId: string): Promise<DatabaseResponse<boolean>> => ipcRenderer.invoke('database:favorites:remove', videoId),
-    favoritesIsFavorite: (videoId: string): Promise<DatabaseResponse<boolean>> => ipcRenderer.invoke('database:favorites:is-favorite', videoId),
+      ipcRenderer.invoke(IPC.FAVORITES.ADD, videoId, sourceId),
+    favoritesRemove: (videoId: string): Promise<DatabaseResponse<boolean>> => ipcRenderer.invoke(IPC.FAVORITES.REMOVE, videoId),
+    favoritesIsFavorite: (videoId: string): Promise<DatabaseResponse<boolean>> => ipcRenderer.invoke(IPC.FAVORITES.IS_FAVORITE, videoId),
     favoritesToggle: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string): Promise<DatabaseResponse<{ isFavorite: boolean }>> =>
-      ipcRenderer.invoke('database:favorites:toggle', videoId, sourceId),
-    favoritesUpdateMetadata: (videoId: string, metadata: any) => ipcRenderer.invoke('favorites:update-metadata', videoId, metadata),
-    favoritesGetBySource: (sourceId: string) => ipcRenderer.invoke('favorites:get-by-source', sourceId),
-    favoritesGetConfig: () => ipcRenderer.invoke('favorites:get-config'),
-    favoritesUpdateConfig: (config: any) => ipcRenderer.invoke('favorites:update-config', config),
-    favoritesCleanupOrphaned: () => ipcRenderer.invoke('favorites:cleanup-orphaned'),
-    favoritesSyncWatchHistory: () => ipcRenderer.invoke('favorites:sync-watch-history'),
-    favoritesGetUnavailable: () => ipcRenderer.invoke('favorites:get-unavailable'),
-    favoritesClearUnavailable: () => ipcRenderer.invoke('favorites:clear-unavailable'),
+      ipcRenderer.invoke(IPC.FAVORITES.TOGGLE, videoId, sourceId),
+    favoritesUpdateMetadata: (videoId: string, metadata: any) => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.UPDATE_METADATA, videoId, metadata),
+    favoritesGetBySource: (sourceId: string) => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.GET_BY_SOURCE, sourceId),
+    favoritesGetConfig: () => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.GET_CONFIG),
+    favoritesUpdateConfig: (config: any) => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.UPDATE_CONFIG, config),
+    favoritesCleanupOrphaned: () => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.CLEANUP_ORPHANED),
+    favoritesSyncWatchHistory: () => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.SYNC_WATCH_HISTORY),
+    favoritesGetUnavailable: () => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.GET_UNAVAILABLE),
+    favoritesClearUnavailable: () => ipcRenderer.invoke(IPC.FAVORITES_LEGACY.CLEAR_UNAVAILABLE),
     // Path utilities for cross-platform compatibility
-    pathJoin: (...paths: string[]) => ipcRenderer.invoke('path-join', ...paths)
+    pathJoin: (...paths: string[]) => ipcRenderer.invoke(IPC.UTILS.PATH_JOIN, ...paths)
   }
 );

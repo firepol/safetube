@@ -4,6 +4,7 @@ import DatabaseService from '../services/DatabaseService';
 import { MigrationService } from '../database/MigrationService';
 import SimpleSchemaManager from '../database/SimpleSchemaManager';
 import DatabaseErrorHandler from '../services/DatabaseErrorHandler';
+import { IPC } from '../../shared/ipc-channels';
 
 // Types for IPC database operations
 interface DatabaseResponse<T = any> {
@@ -62,7 +63,7 @@ interface SourceRecord {
  */
 export function registerDatabaseHandlers() {
   // YouTube Page Cache: Get a cached page (for preload YouTubePageCache)
-  ipcMain.handle('youtube-cache:get-page', async (_, sourceId: string, pageNumber: number): Promise<DatabaseResponse<any>> => {
+  ipcMain.handle(IPC.YOUTUBE_CACHE_DB.GET_PAGE, async (_, sourceId: string, pageNumber: number): Promise<DatabaseResponse<any>> => {
     try {
       const dbService = DatabaseService.getInstance();
       // Get page size from config or default
@@ -127,7 +128,7 @@ export function registerDatabaseHandlers() {
     }
   });
   // Database connection and health
-  ipcMain.handle('database:health-check', async (): Promise<DatabaseResponse<{ isHealthy: boolean; version?: string }>> => {
+  ipcMain.handle(IPC.DATABASE.HEALTH_CHECK, async (): Promise<DatabaseResponse<{ isHealthy: boolean; version?: string }>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const healthCheck = await dbService.healthCheck();
@@ -146,7 +147,7 @@ export function registerDatabaseHandlers() {
   });
 
   // Migration Operations
-  ipcMain.handle('database:migrate-phase1', async (): Promise<DatabaseResponse<{ summary: any }>> => {
+  ipcMain.handle(IPC.DATABASE.MIGRATE_PHASE1, async (): Promise<DatabaseResponse<{ summary: any }>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const schemaManager = new SimpleSchemaManager(dbService);
@@ -170,7 +171,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:verify-migration', async (): Promise<DatabaseResponse<{ integrity: any }>> => {
+  ipcMain.handle(IPC.DATABASE.VERIFY_MIGRATION, async (): Promise<DatabaseResponse<{ integrity: any }>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const schemaManager = new SimpleSchemaManager(dbService);
@@ -194,7 +195,7 @@ export function registerDatabaseHandlers() {
   });
 
   // Video Operations
-  ipcMain.handle('database:videos:get-by-source', async (_, sourceId: string): Promise<DatabaseResponse<VideoRecord[]>> => {
+  ipcMain.handle(IPC.VIDEOS.GET_BY_SOURCE, async (_, sourceId: string): Promise<DatabaseResponse<VideoRecord[]>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const videos = await dbService.all<VideoRecord>(`
@@ -217,7 +218,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:videos:get-by-id', async (_, videoId: string): Promise<DatabaseResponse<VideoRecord | null>> => {
+  ipcMain.handle(IPC.VIDEOS.GET_BY_ID, async (_, videoId: string): Promise<DatabaseResponse<VideoRecord | null>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const video = await dbService.get<VideoRecord>(`
@@ -238,7 +239,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:videos:search', async (_, query: string, sourceId?: string): Promise<DatabaseResponse<VideoRecord[]>> => {
+  ipcMain.handle(IPC.VIDEOS.SEARCH, async (_, query: string, sourceId?: string): Promise<DatabaseResponse<VideoRecord[]>> => {
     try {
       const dbService = DatabaseService.getInstance();
       let sql = `
@@ -271,7 +272,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:videos:update-metadata', async (_, videoId: string, metadata: Partial<VideoRecord>): Promise<DatabaseResponse<boolean>> => {
+  ipcMain.handle(IPC.VIDEOS.UPDATE_METADATA, async (_, videoId: string, metadata: Partial<VideoRecord>): Promise<DatabaseResponse<boolean>> => {
     try {
       const dbService = DatabaseService.getInstance();
 
@@ -303,7 +304,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:videos:update-availability', async (_, videoId: string, isAvailable: boolean): Promise<DatabaseResponse<boolean>> => {
+  ipcMain.handle(IPC.VIDEOS.UPDATE_AVAILABILITY, async (_, videoId: string, isAvailable: boolean): Promise<DatabaseResponse<boolean>> => {
     try {
       const dbService = DatabaseService.getInstance();
       await dbService.run(`
@@ -325,7 +326,7 @@ export function registerDatabaseHandlers() {
   });
 
   // View Records Operations
-  ipcMain.handle('database:view-records:get', async (_, videoId: string): Promise<DatabaseResponse<ViewRecord | null>> => {
+  ipcMain.handle(IPC.VIEW_RECORDS.GET, async (_, videoId: string): Promise<DatabaseResponse<ViewRecord | null>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const record = await dbService.get<ViewRecord>(`
@@ -346,7 +347,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:view-records:update', async (_, videoId: string, update: Partial<ViewRecord>): Promise<DatabaseResponse<boolean>> => {
+  ipcMain.handle(IPC.VIEW_RECORDS.UPDATE, async (_, videoId: string, update: Partial<ViewRecord>): Promise<DatabaseResponse<boolean>> => {
     try {
       const dbService = DatabaseService.getInstance();
 
@@ -381,7 +382,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:view-records:get-history', async (_, limit: number = 50): Promise<DatabaseResponse<(ViewRecord & VideoRecord)[]>> => {
+  ipcMain.handle(IPC.VIEW_RECORDS.GET_HISTORY, async (_, limit: number = 50): Promise<DatabaseResponse<(ViewRecord & VideoRecord)[]>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const history = await dbService.all<ViewRecord & VideoRecord>(`
@@ -406,7 +407,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:view-records:get-recently-watched', async (_, limit: number = 20): Promise<DatabaseResponse<(ViewRecord & VideoRecord)[]>> => {
+  ipcMain.handle(IPC.VIEW_RECORDS.GET_RECENTLY_WATCHED, async (_, limit: number = 20): Promise<DatabaseResponse<(ViewRecord & VideoRecord)[]>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const recent = await dbService.all<ViewRecord & VideoRecord>(`
@@ -433,7 +434,7 @@ export function registerDatabaseHandlers() {
   });
 
   // Favorites Operations
-  ipcMain.handle('database:favorites:get-all', async (): Promise<DatabaseResponse<any[]>> => {
+  ipcMain.handle(IPC.FAVORITES.GET_ALL, async (): Promise<DatabaseResponse<any[]>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const rawFavorites = await dbService.all<any>(`
@@ -469,7 +470,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:favorites:add', async (_, videoId: string, sourceId: string): Promise<DatabaseResponse<boolean>> => {
+  ipcMain.handle(IPC.FAVORITES.ADD, async (_, videoId: string, sourceId: string): Promise<DatabaseResponse<boolean>> => {
     try {
       const dbService = DatabaseService.getInstance();
       await dbService.run(`
@@ -491,7 +492,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:favorites:remove', async (_, videoId: string): Promise<DatabaseResponse<boolean>> => {
+  ipcMain.handle(IPC.FAVORITES.REMOVE, async (_, videoId: string): Promise<DatabaseResponse<boolean>> => {
     try {
       const dbService = DatabaseService.getInstance();
       await dbService.run(`
@@ -512,7 +513,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:favorites:is-favorite', async (_, videoId: string): Promise<DatabaseResponse<boolean>> => {
+  ipcMain.handle(IPC.FAVORITES.IS_FAVORITE, async (_, videoId: string): Promise<DatabaseResponse<boolean>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const result = await dbService.get<{ count: number }>(`
@@ -533,7 +534,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:favorites:toggle', async (_, videoId: string, sourceId: string): Promise<DatabaseResponse<{ isFavorite: boolean }>> => {
+  ipcMain.handle(IPC.FAVORITES.TOGGLE, async (_, videoId: string, sourceId: string): Promise<DatabaseResponse<{ isFavorite: boolean }>> => {
     try {
       const dbService = DatabaseService.getInstance();
 
@@ -573,7 +574,7 @@ export function registerDatabaseHandlers() {
   });
 
   // Sources Operations
-  ipcMain.handle('database:sources:get-all', async (): Promise<DatabaseResponse<SourceRecord[]>> => {
+  ipcMain.handle(IPC.SOURCES.GET_ALL, async (): Promise<DatabaseResponse<SourceRecord[]>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const sources = await dbService.all<SourceRecord>(`
@@ -594,7 +595,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:sources:get-by-id', async (_, sourceId: string): Promise<DatabaseResponse<SourceRecord | null>> => {
+  ipcMain.handle(IPC.SOURCES.GET_BY_ID, async (_, sourceId: string): Promise<DatabaseResponse<SourceRecord | null>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const source = await dbService.get<SourceRecord>(`
@@ -615,7 +616,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:sources:create', async (_, source: Omit<SourceRecord, 'id'>): Promise<DatabaseResponse<string>> => {
+  ipcMain.handle(IPC.SOURCES.CREATE, async (_, source: Omit<SourceRecord, 'id'>): Promise<DatabaseResponse<string>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const sourceId = `source_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
@@ -651,7 +652,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:sources:update', async (_, sourceId: string, updates: Partial<SourceRecord>): Promise<DatabaseResponse<boolean>> => {
+  ipcMain.handle(IPC.SOURCES.UPDATE, async (_, sourceId: string, updates: Partial<SourceRecord>): Promise<DatabaseResponse<boolean>> => {
     try {
       const dbService = DatabaseService.getInstance();
 
@@ -683,7 +684,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:sources:delete', async (_, sourceId: string): Promise<DatabaseResponse<boolean>> => {
+  ipcMain.handle(IPC.SOURCES.DELETE, async (_, sourceId: string): Promise<DatabaseResponse<boolean>> => {
     try {
       const dbService = DatabaseService.getInstance();
 
@@ -711,7 +712,7 @@ export function registerDatabaseHandlers() {
   });
 
   // YouTube API Results Operations
-  ipcMain.handle('database:youtube-cache:get-cached-results', async (_, sourceId: string, page: number = 1): Promise<DatabaseResponse<string[]>> => {
+  ipcMain.handle(IPC.YOUTUBE_CACHE_DB.GET_CACHED_RESULTS, async (_, sourceId: string, page: number = 1): Promise<DatabaseResponse<string[]>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const pageSize = 50; // Default page size
@@ -739,7 +740,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:youtube-cache:set-cached-results', async (_, sourceId: string, page: number, videoIds: string[]): Promise<DatabaseResponse<boolean>> => {
+  ipcMain.handle(IPC.YOUTUBE_CACHE_DB.SET_CACHED_RESULTS, async (_, sourceId: string, page: number, videoIds: string[]): Promise<DatabaseResponse<boolean>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const pageSize = 50;
@@ -775,7 +776,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('database:youtube-cache:clear-cache', async (_, sourceId: string): Promise<DatabaseResponse<boolean>> => {
+  ipcMain.handle(IPC.YOUTUBE_CACHE_DB.CLEAR_CACHE, async (_, sourceId: string): Promise<DatabaseResponse<boolean>> => {
     try {
       const dbService = DatabaseService.getInstance();
       await dbService.run(`
