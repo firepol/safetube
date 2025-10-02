@@ -444,7 +444,7 @@ export class YouTubeAPI {
     return this.getPlaylistVideos(channel.contentDetails.relatedPlaylists.uploads, maxResults, pageToken);
   }
 
-  static async getChannelVideosPage(channelId: string, pageNumber: number, pageSize: number = 50, signal?: AbortSignal, pageToken?: string): Promise<{ videos: any[], totalResults: number, pageNumber: number, nextPageToken?: string }> {
+  static async getChannelVideosPage(channelId: string, pageNumber: number, pageSize: number = 50, signal?: AbortSignal, pageToken?: string): Promise<{ videos: any[], totalResults: number, pageNumber: number, nextPageToken?: string, collectedTokens?: { pageNumber: number; token: string }[] }> {
     try {
       const channel = await this.getChannelDetails(channelId);
       return this.getPlaylistVideosPage(channel.contentDetails.relatedPlaylists.uploads, pageNumber, pageSize, signal, pageToken);
@@ -454,7 +454,7 @@ export class YouTubeAPI {
     }
   }
 
-  static async getPlaylistVideosPage(playlistId: string, pageNumber: number, pageSize: number = 50, signal?: AbortSignal, pageToken?: string): Promise<{ videos: any[], totalResults: number, pageNumber: number, nextPageToken?: string }> {
+  static async getPlaylistVideosPage(playlistId: string, pageNumber: number, pageSize: number = 50, signal?: AbortSignal, pageToken?: string): Promise<{ videos: any[], totalResults: number, pageNumber: number, nextPageToken?: string, collectedTokens?: { pageNumber: number; token: string }[] }> {
 
     const startTime = performance.now();
 
@@ -469,15 +469,47 @@ export class YouTubeAPI {
       throw new Error('Request aborted');
     }
 
-    // OPTIMIZED: Only fetch the requested page using the page token
-    // If no page token provided and pageNumber > 1, we can't fetch the page directly
-    if (!pageToken && pageNumber > 1) {
-      throw new Error(`Cannot fetch page ${pageNumber} without a page token. Please navigate sequentially from page 1 or from a previously cached page.`);
+    // SMART TOKEN COLLECTION: If we don't have the page token, collect tokens until we reach target page
+    // This is much lighter than fetching full video details for all pages
+    // We fetch only video IDs (not full metadata) to get pagination tokens
+    let currentToken = pageToken;
+    const collectedTokens: { pageNumber: number; token: string }[] = [];
+
+    if (!currentToken && pageNumber > 1) {
+      logVerbose(`[YouTubeAPI] 🔍 Collecting page tokens to reach page ${pageNumber}...`);
+      const tokenCollectStart = performance.now();
+
+      currentToken = undefined;
+      for (let page = 1; page < pageNumber; page++) {
+        // Check if aborted during token collection
+        if (signal?.aborted) {
+          throw new Error('Request aborted during token collection');
+        }
+
+        // Fetch just the video IDs to get the next page token (cheap operation)
+        const idResult = await this.getPlaylistVideos(playlistId, pageSize, currentToken, signal);
+        currentToken = idResult.nextPageToken;
+
+        // Store the token for this page
+        if (currentToken) {
+          collectedTokens.push({ pageNumber: page + 1, token: currentToken });
+        }
+
+        // If no more pages available, we've reached the end
+        if (!currentToken) {
+          throw new Error(`Page ${pageNumber} does not exist. Playlist only has ${page} pages.`);
+        }
+
+        logVerbose(`[YouTubeAPI] 📍 Got token for page ${page + 1}`);
+      }
+
+      const tokenCollectTime = performance.now() - tokenCollectStart;
+      logVerbose(`[YouTubeAPI] ⏱️ Token collection (${pageNumber - 1} pages): ${tokenCollectTime.toFixed(1)}ms`);
     }
 
     const fetchStart = performance.now();
 
-    const result = await this.getPlaylistVideos(playlistId, pageSize, pageToken, signal);
+    const result = await this.getPlaylistVideos(playlistId, pageSize, currentToken, signal);
     const fetchTime = performance.now() - fetchStart;
     logVerbose(`[YouTubeAPI] ⏱️ Video ID fetch (page ${pageNumber}): ${fetchTime.toFixed(1)}ms`);
 
@@ -567,7 +599,14 @@ export class YouTubeAPI {
 
     logVerbose(`[YouTubeAPI] 🏁 getPlaylistVideosPage total: ${loadTimeMs.toFixed(1)}ms (${successfulLoads}/${videos.length} successful)`);
 
-    return { videos, totalResults, pageNumber, nextPageToken };
+    return {
+      videos,
+      totalResults,
+      pageNumber,
+      nextPageToken,
+      // Return collected tokens so they can be cached by the caller
+      collectedTokens: collectedTokens.length > 0 ? collectedTokens : undefined
+    };
   }
 
 

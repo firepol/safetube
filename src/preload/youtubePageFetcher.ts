@@ -55,7 +55,7 @@ export class YouTubePageFetcher {
 
     // Cache is expired or missing, try to fetch from API
     try {
-      let result: { videos: any[], totalResults: number, pageNumber: number, nextPageToken?: string };
+      let result: { videos: any[], totalResults: number, pageNumber: number, nextPageToken?: string, collectedTokens?: { pageNumber: number; token: string }[] };
 
       const apiStart = performance.now();
 
@@ -116,6 +116,14 @@ export class YouTubePageFetcher {
       // Cache the next page token if available
       if (result.nextPageToken) {
         YouTubePageCache.setPageToken(sourceId, pageNumber + 1, result.nextPageToken);
+      }
+
+      // Cache any collected intermediate tokens from token collection
+      if (result.collectedTokens) {
+        for (const { pageNumber: tokenPageNum, token } of result.collectedTokens) {
+          YouTubePageCache.setPageToken(sourceId, tokenPageNum, token);
+          logVerbose(`[YouTubePageFetcher] 💾 Cached token for page ${tokenPageNum}`);
+        }
       }
 
       const cacheWriteTime = performance.now() - cacheWriteStart;
