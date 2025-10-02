@@ -1686,13 +1686,14 @@ const createWindow = (): void => {
                 logVerbose('[Main] Using cached channel validation result');
                 if (cachedResult) {
                   // Find the matching source for complete metadata
-                  const sources = await readVideoSources();
-                  logVerbose(`[Main] - Loaded ${sources.length} sources`);
+                  const dbService = DatabaseService.getInstance();
+                  const sources = await dbService.all<any>('SELECT * FROM sources ORDER BY position');
+                  logVerbose(`[Main] - Loaded ${sources.length} sources from database`);
 
                   // First try to match channel sources by channelId
                   let matchingSource: VideoSource | undefined = sources
-                    .filter(s => s.type === 'youtube_channel')
-                    .find(s => (s as YouTubeChannelSource).channelId === channelId);
+                    .filter((s: any) => s.type === 'youtube_channel')
+                    .find((s: any) => s.channel_id === channelId);
 
                   // If no channel match, check if this video might belong to a playlist source
                   // by looking at the channel of videos already loaded from those playlists
@@ -1752,17 +1753,18 @@ const createWindow = (): void => {
               }
 
               // Load video sources to check approved channels
-              const sources = await readVideoSources();
+              const dbService = DatabaseService.getInstance();
+              const sources = await dbService.all<any>('SELECT * FROM sources ORDER BY position');
               const approvedChannelIds = sources
-                .filter(s => s.type === 'youtube_channel')
-                .map(s => (s as YouTubeChannelSource).channelId)
+                .filter((s: any) => s.type === 'youtube_channel')
+                .map((s: any) => s.channel_id)
                 .filter(Boolean);
 
               // Check if channel is approved and find the matching source
               // First try to match channel sources by channelId
               let matchingSource: VideoSource | undefined = sources
-                .filter(s => s.type === 'youtube_channel')
-                .find(s => (s as YouTubeChannelSource).channelId === channelId);
+                .filter((s: any) => s.type === 'youtube_channel')
+                .find((s: any) => s.channel_id === channelId);
 
               // If no channel match, check if this video might belong to a playlist source
               // by looking at the channel of videos already loaded from those playlists

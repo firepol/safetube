@@ -43,10 +43,28 @@ async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<vo
     if (!sourceExists) {
       // Create a placeholder source for unknown videos
       logVerbose(`[TimeTracking] Creating placeholder source for ${sourceId}`);
-      await dbService.run(`
-        INSERT INTO sources (id, type, title, position)
-        VALUES (?, 'local', ?, 999)
-      `, [sourceId, sourceId]);
+
+      // Determine type based on videoId to satisfy CHECK constraint
+      const parseResult = parseVideoId(watchedEntry.videoId);
+      const isLocalVideo = parseResult.success && parseResult.parsed?.type === 'local';
+
+      if (isLocalVideo) {
+        // For local videos, extract directory path from videoId
+        const videoPath = extractPathFromVideoId(watchedEntry.videoId);
+        const directoryPath = videoPath ? path.dirname(videoPath) : '/unknown';
+
+        await dbService.run(`
+          INSERT INTO sources (id, type, title, position, path)
+          VALUES (?, 'local', ?, 999, ?)
+        `, [sourceId, sourceId, directoryPath]);
+      } else {
+        // For YouTube videos, use youtube_channel type with url
+        await dbService.run(`
+          INSERT INTO sources (id, type, title, position, url)
+          VALUES (?, 'youtube_channel', ?, 999, ?)
+        `, [sourceId, sourceId, `https://youtube.com/watch?v=${watchedEntry.videoId}`]);
+      }
+
       logVerbose(`[TimeTracking] Created placeholder source for ${sourceId}`);
     }
 
