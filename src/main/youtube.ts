@@ -3,6 +3,7 @@ import { promisify } from 'util';
 import { ipcMain } from 'electron';
 import { logVerbose } from '../shared/logging';
 import { YtDlpManager } from './ytDlpManager';
+import { IPC } from '../shared/ipc-channels';
 
 const execAsync = promisify(exec);
 
@@ -30,7 +31,7 @@ export function setupYouTubeHandlers() {
     return;
   }
 
-  ipcMain.handle('get-video-streams', async (_, videoId: string) => {
+  ipcMain.handle(IPC.PLAYBACK.GET_VIDEO_STREAMS, async (_, videoId: string) => {
     try {
       // Ensure yt-dlp is available (auto-download on Windows if needed)
       await YtDlpManager.ensureYtDlpAvailable();

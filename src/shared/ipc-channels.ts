@@ -43,6 +43,11 @@ export const IPC = {
   // ============================================================================
 
   FAVORITES_LEGACY: {
+    GET_ALL: 'favorites:get-all',
+    ADD: 'favorites:add',
+    REMOVE: 'favorites:remove',
+    IS_FAVORITE: 'favorites:is-favorite',
+    TOGGLE: 'favorites:toggle',
     UPDATE_METADATA: 'favorites:update-metadata',
     GET_BY_SOURCE: 'favorites:get-by-source',
     GET_CONFIG: 'favorites:get-config',
@@ -189,7 +194,7 @@ export const IPC = {
   },
 
   // ============================================================================
-  // VIDEO CONVERSION
+  // VIDEO CONVERSION & PROCESSING
   // ============================================================================
 
   CONVERSION: {
@@ -198,6 +203,16 @@ export const IPC = {
     NEEDS_VIDEO_CONVERSION: 'needs-video-conversion',
     HAS_CONVERTED_VIDEO: 'has-converted-video',
     GET_EXISTING_CONVERTED_VIDEO_PATH: 'get-existing-converted-video-path',
+    GET_CONVERSION_STATUS: 'get-conversion-status',
+    START_VIDEO_CONVERSION: 'start-video-conversion',
+  },
+
+  // Alias for VIDEO_PROCESSING (same as CONVERSION)
+  VIDEO_PROCESSING: {
+    GET_VIDEO_CODEC_INFO: 'get-video-codec-info',
+    GET_EXISTING_CONVERTED_VIDEO_PATH: 'get-existing-converted-video-path',
+    NEEDS_VIDEO_CONVERSION: 'needs-video-conversion',
+    HAS_CONVERTED_VIDEO: 'has-converted-video',
     GET_CONVERSION_STATUS: 'get-conversion-status',
     START_VIDEO_CONVERSION: 'start-video-conversion',
   },

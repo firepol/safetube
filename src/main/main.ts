@@ -8,6 +8,7 @@ import { logVerbose } from '../shared/logging';
 import { AppPaths } from '../shared/appPaths';
 import { FirstRunSetup } from '../shared/firstRunSetup';
 import log from './logger';
+import { IPC } from '../shared/ipc-channels';
 
 log.info('[Main] Main process starting...');
 
@@ -37,13 +38,13 @@ log.info('[Main] Main process starting...');
 console.log('[Main] Registering IPC handlers immediately...');
 
 // Test handler to verify IPC is working
-ipcMain.handle('test-handler', async () => {
+ipcMain.handle(IPC.TEST.TEST_HANDLER, async () => {
   console.log('[Main] Test handler called successfully');
   return 'test-success';
 });
 
 // Handle local file access
-ipcMain.handle('get-local-file', async (_, filePath: string) => {
+ipcMain.handle(IPC.LOCAL_FILES.GET_LOCAL_FILE, async (_, filePath: string) => {
   try {
     // Convert file:// URL to local path
     let localPath = filePath.replace('file://', '');
@@ -68,7 +69,7 @@ ipcMain.handle('get-local-file', async (_, filePath: string) => {
 });
 
 // Handle player configuration loading
-ipcMain.handle('get-player-config', async () => {
+ipcMain.handle(IPC.PLAYBACK.GET_PLAYER_CONFIG, async () => {
   console.log('[Main] get-player-config handler called');
   try {
     const configPath = AppPaths.getConfigPath('youtubePlayer.json');
@@ -87,7 +88,7 @@ ipcMain.handle('get-player-config', async () => {
 });
 
 // Handle setup status request
-ipcMain.handle('get-setup-status', async () => {
+ipcMain.handle(IPC.SETTINGS.GET_SETUP_STATUS, async () => {
   try {
     return await FirstRunSetup.getSetupStatus();
   } catch (error) {
@@ -97,7 +98,7 @@ ipcMain.handle('get-setup-status', async () => {
 });
 
 // Handle DLNA file access
-ipcMain.handle('get-dlna-file', async (_, server: string, port: number, path: string) => {
+ipcMain.handle(IPC.DLNA.GET_DLNA_FILE, async (_, server: string, port: number, path: string) => {
   logVerbose('Getting DLNA file:', { server, port, path });
   const url = `http://${server}:${port}${path}`;
   logVerbose('Returning DLNA URL:', url);
@@ -105,7 +106,7 @@ ipcMain.handle('get-dlna-file', async (_, server: string, port: number, path: st
 });
 
 // Handle video streams
-ipcMain.handle('get-video-streams', async (_, videoId: string) => {
+ipcMain.handle(IPC.PLAYBACK.GET_VIDEO_STREAMS, async (_, videoId: string) => {
   try {
     logVerbose('Getting video streams for:', videoId);
     // For now, return a mock response - you can implement actual YouTube API calls here
@@ -121,7 +122,7 @@ ipcMain.handle('get-video-streams', async (_, videoId: string) => {
 });
 
 // Time tracking IPC handlers
-ipcMain.handle('time-tracking:record-video-watching', async (_, videoId: string, position: number, timeWatched: number) => {
+ipcMain.handle(IPC.TIME_TRACKING.RECORD_VIDEO_WATCHING, async (_, videoId: string, position: number, timeWatched: number) => {
   try {
     await recordVideoWatching(videoId, position, timeWatched);
     return { success: true };
@@ -131,7 +132,7 @@ ipcMain.handle('time-tracking:record-video-watching', async (_, videoId: string,
   }
 });
 
-ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
+ipcMain.handle(IPC.TIME_TRACKING.GET_TIME_TRACKING_STATE, async () => {
   try {
     return await getTimeTrackingState();
   } catch (error) {
@@ -140,7 +141,7 @@ ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
   }
 });
 
-ipcMain.handle('time-tracking:get-time-limits', async () => {
+ipcMain.handle(IPC.TIME_TRACKING.GET_TIME_LIMITS, async () => {
   try {
     const { readTimeLimits } = await import('../shared/fileUtils');
     return await readTimeLimits();
@@ -152,7 +153,7 @@ ipcMain.handle('time-tracking:get-time-limits', async () => {
 
 // Admin IPC handlers (note: main admin handlers moved to ipcHandlerRegistry.ts)
 
-ipcMain.handle('admin:add-extra-time', async (_, minutes: number) => {
+ipcMain.handle(IPC.ADMIN.ADD_EXTRA_TIME, async (_, minutes: number) => {
   try {
     // Import the function here to avoid circular dependencies
     const { addExtraTimeToday } = await import('../shared/timeTracking');
@@ -166,7 +167,7 @@ ipcMain.handle('admin:add-extra-time', async (_, minutes: number) => {
   }
 });
 
-ipcMain.handle('admin:get-time-extra', async () => {
+ipcMain.handle(IPC.ADMIN.GET_TIME_EXTRA, async () => {
   try {
     // Import the function here to avoid circular dependencies
     const { readTimeExtra } = await import('../shared/fileUtils');
@@ -177,7 +178,7 @@ ipcMain.handle('admin:get-time-extra', async () => {
   }
 });
 
-ipcMain.handle('admin:get-last-watched-video-with-source', async () => {
+ipcMain.handle(IPC.ADMIN.GET_LAST_WATCHED_VIDEO_WITH_SOURCE, async () => {
   try {
     // Import the function here to avoid circular dependencies
     const { getLastWatchedVideoWithSource } = await import('../shared/timeTracking');
@@ -188,7 +189,7 @@ ipcMain.handle('admin:get-last-watched-video-with-source', async () => {
   }
 });
 
-ipcMain.handle('admin:write-time-limits', async (_, timeLimits: any) => {
+ipcMain.handle(IPC.ADMIN.WRITE_TIME_LIMITS, async (_, timeLimits: any) => {
   try {
     // Import the function here to avoid circular dependencies
     const { writeTimeLimits } = await import('../shared/fileUtils');
@@ -203,7 +204,7 @@ ipcMain.handle('admin:write-time-limits', async (_, timeLimits: any) => {
 });
 
 // Logging configuration IPC handlers
-ipcMain.handle('logging:set-verbose', async (_, enabled: boolean) => {
+ipcMain.handle(IPC.LOGGING.SET_VERBOSE, async (_, enabled: boolean) => {
   try {
     // Set environment variable for main process
     process.env.ELECTRON_LOG_VERBOSE = enabled ? 'true' : 'false';
@@ -223,7 +224,7 @@ ipcMain.handle('logging:set-verbose', async (_, enabled: boolean) => {
   }
 });
 
-ipcMain.handle('logging:get-verbose', async () => {
+ipcMain.handle(IPC.LOGGING.GET_VERBOSE, async () => {
   try {
     return { verbose: process.env.ELECTRON_LOG_VERBOSE === 'true' };
   } catch (error) {
@@ -237,7 +238,7 @@ ipcMain.handle('logging:get-verbose', async () => {
 // Video data loading is handled in src/main/index.ts
 
 // Environment variable handler
-ipcMain.handle('get-env-var', async (_, varName: string) => {
+ipcMain.handle(IPC.UTILS.GET_ENV_VAR, async (_, varName: string) => {
   console.log('[Main] get-env-var called with:', varName);
   console.log('[Main] Available env vars:', Object.keys(process.env).filter(key => key.includes('LOG')));
   const value = process.env[varName];
@@ -246,7 +247,7 @@ ipcMain.handle('get-env-var', async (_, varName: string) => {
 });
 
 // Handle loading videos from new source system (for development)
-ipcMain.handle('load-videos-from-sources', async () => {
+ipcMain.handle(IPC.VIDEO_LOADING.LOAD_VIDEOS_FROM_SOURCES, async () => {
   try {
     console.log('[Main] load-videos-from-sources handler called (development)');
 
@@ -278,7 +279,7 @@ ipcMain.handle('load-videos-from-sources', async () => {
 });
 
 // Handler for loading videos from a specific source (when user clicks a source)
-ipcMain.handle('load-videos-for-source', async (_, sourceId: string) => {
+ipcMain.handle(IPC.VIDEO_LOADING.LOAD_VIDEOS_FOR_SOURCE, async (_, sourceId: string) => {
   try {
     console.log('[Main] load-videos-for-source handler called for:', sourceId);
 

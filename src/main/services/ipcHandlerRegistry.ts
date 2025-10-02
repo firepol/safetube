@@ -21,11 +21,12 @@ import {
   filterDuplicateVideos
 } from './localVideoService';
 import { getDlnaFile } from './networkService';
+import { IPC } from '../../shared/ipc-channels';
 
 // Video Data Handlers
 export function registerVideoDataHandlers() {
   // Get local file handler
-  ipcMain.handle('get-local-file', async (event, filePath: string) => {
+  ipcMain.handle(IPC.LOCAL_FILES.GET_LOCAL_FILE, async (event, filePath: string) => {
     try {
       // Convert file:// URL to actual file path
       let decodedPath = decodeURIComponent(filePath.replace('file://', ''));
@@ -53,17 +54,17 @@ export function registerVideoDataHandlers() {
   });
 
   // Get DLNA file handler
-  ipcMain.handle('get-dlna-file', async (event, server: string, port: number, path: string) => {
+  ipcMain.handle(IPC.DLNA.GET_DLNA_FILE, async (event, server: string, port: number, path: string) => {
     return getDlnaFile(server, port, path);
   });
 
   // Test handler
-  ipcMain.handle('test-handler', async () => {
+  ipcMain.handle(IPC.TEST.TEST_HANDLER, async () => {
     return { message: 'Hello from main process!' };
   });
 
   // Get player config
-  ipcMain.handle('get-player-config', async () => {
+  ipcMain.handle(IPC.PLAYBACK.GET_PLAYER_CONFIG, async () => {
     try {
       const configPath = AppPaths.getConfigPath('youtubePlayer.json');
       if (fs.existsSync(configPath)) {
@@ -91,7 +92,7 @@ export function registerVideoDataHandlers() {
 // Time Tracking Handlers
 export function registerTimeTrackingHandlers() {
   // Record video watching
-  ipcMain.handle('time-tracking:record-video-watching', async (_, videoId: string, position: number, timeWatched: number, duration?: number) => {
+  ipcMain.handle(IPC.TIME_TRACKING.RECORD_VIDEO_WATCHING, async (_, videoId: string, position: number, timeWatched: number, duration?: number) => {
     try {
       await recordVideoWatching(videoId, position, timeWatched, duration);
       return { success: true };
@@ -102,7 +103,7 @@ export function registerTimeTrackingHandlers() {
   });
 
   // Get time tracking state
-  ipcMain.handle('time-tracking:get-time-tracking-state', async () => {
+  ipcMain.handle(IPC.TIME_TRACKING.GET_TIME_TRACKING_STATE, async () => {
     try {
       const state = await getTimeTrackingState();
       return state;
@@ -113,7 +114,7 @@ export function registerTimeTrackingHandlers() {
   });
 
   // Get watched videos - read from database
-  ipcMain.handle('get-watched-videos', async () => {
+  ipcMain.handle(IPC.VIDEO_LOADING.GET_WATCHED_VIDEOS, async () => {
     try {
       const { DatabaseService } = await import('./DatabaseService');
       const dbService = DatabaseService.getInstance();
@@ -153,7 +154,7 @@ export function registerTimeTrackingHandlers() {
   });
 
   // Get time limits
-  ipcMain.handle('time-tracking:get-time-limits', async () => {
+  ipcMain.handle(IPC.TIME_TRACKING.GET_TIME_LIMITS, async () => {
     try {
       const timeLimits = readTimeLimits();
       return timeLimits;
@@ -167,7 +168,7 @@ export function registerTimeTrackingHandlers() {
 // Admin Handlers
 export function registerAdminHandlers() {
   // Admin authentication
-  ipcMain.handle('admin:authenticate', async (_, password: string) => {
+  ipcMain.handle(IPC.ADMIN.AUTHENTICATE, async (_, password: string) => {
     try {
       // Read password hash from mainSettings
       const mainSettings = await readMainSettings();
@@ -195,7 +196,7 @@ export function registerAdminHandlers() {
   });
 
   // Change admin password
-  ipcMain.handle('admin:change-password', async (_, currentPassword: string, newPassword: string) => {
+  ipcMain.handle(IPC.ADMIN.CHANGE_PASSWORD, async (_, currentPassword: string, newPassword: string) => {
     try {
       // First authenticate with current password
       const mainSettings = await readMainSettings();
@@ -234,7 +235,7 @@ export function registerAdminHandlers() {
   });
 
   // Hash password utility for main settings
-  ipcMain.handle('admin:hash-password', async (_, password: string) => {
+  ipcMain.handle(IPC.ADMIN.HASH_PASSWORD, async (_, password: string) => {
     try {
       const bcrypt = require('bcrypt');
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -246,7 +247,7 @@ export function registerAdminHandlers() {
   });
 
   // Add extra time
-  ipcMain.handle('admin:add-extra-time', async (_, minutes: number) => {
+  ipcMain.handle(IPC.ADMIN.ADD_EXTRA_TIME, async (_, minutes: number) => {
     try {
       const usageLogPath = AppPaths.getConfigPath('usageLog.json');
       let usageLog = {};
@@ -271,7 +272,7 @@ export function registerAdminHandlers() {
   });
 
   // Get extra time
-  ipcMain.handle('admin:get-time-extra', async () => {
+  ipcMain.handle(IPC.ADMIN.GET_TIME_EXTRA, async () => {
     try {
       const usageLogPath = AppPaths.getConfigPath('usageLog.json');
       if (!fs.existsSync(usageLogPath)) {
@@ -290,7 +291,7 @@ export function registerAdminHandlers() {
   });
 
   // Write time limits
-  ipcMain.handle('admin:write-time-limits', async (_, timeLimits: any) => {
+  ipcMain.handle(IPC.ADMIN.WRITE_TIME_LIMITS, async (_, timeLimits: any) => {
     try {
       const timeLimitsPath = AppPaths.getConfigPath('timeLimits.json');
       fs.writeFileSync(timeLimitsPath, JSON.stringify(timeLimits, null, 2));
@@ -302,7 +303,7 @@ export function registerAdminHandlers() {
   });
 
   // Get last watched video with source - read from database
-  ipcMain.handle('admin:get-last-watched-video-with-source', async () => {
+  ipcMain.handle(IPC.ADMIN.GET_LAST_WATCHED_VIDEO_WITH_SOURCE, async () => {
     try {
       const { DatabaseService } = await import('../services/DatabaseService');
       const dbService = DatabaseService.getInstance();
@@ -359,7 +360,7 @@ export function registerAdminHandlers() {
 // Video Source Handlers
 export function registerVideoSourceHandlers() {
   // Get all video sources
-  ipcMain.handle('video-sources:get-all', async () => {
+  ipcMain.handle(IPC.VIDEO_SOURCES.GET_ALL, async () => {
     // Only use the database for video sources
     try {
       const DatabaseService = await import('../services/DatabaseService');
@@ -383,7 +384,7 @@ export function registerVideoSourceHandlers() {
   });
 
   // Save all video sources
-  ipcMain.handle('video-sources:save-all', async (_, sources: any[]) => {
+  ipcMain.handle(IPC.VIDEO_SOURCES.SAVE_ALL, async (_, sources: any[]) => {
     // Only use the database for saving video sources
     try {
       const DatabaseService = await import('../services/DatabaseService');
@@ -479,7 +480,7 @@ export function registerVideoSourceHandlers() {
   });
 
   // Validate YouTube URL
-  ipcMain.handle('video-sources:validate-youtube-url', async (_, url: string, type: 'youtube_channel' | 'youtube_playlist') => {
+  ipcMain.handle(IPC.VIDEO_SOURCES.VALIDATE_YOUTUBE_URL, async (_, url: string, type: 'youtube_channel' | 'youtube_playlist') => {
     try {
       if (type === 'youtube_channel') {
         // Validate YouTube channel URL format
@@ -604,7 +605,7 @@ export function registerVideoSourceHandlers() {
   });
 
   // Validate local path
-  ipcMain.handle('video-sources:validate-local-path', async (_, path: string) => {
+  ipcMain.handle(IPC.VIDEO_SOURCES.VALIDATE_LOCAL_PATH, async (_, path: string) => {
     try {
       // Check if path exists and is accessible
       if (!fs.existsSync(path)) {
@@ -633,7 +634,7 @@ export function registerVideoSourceHandlers() {
 // Local Video Handlers
 export function registerLocalVideoHandlers() {
   // Get local folder contents
-  ipcMain.handle('get-local-folder-contents', async (event, folderPath: string, maxDepth: number, currentDepth: number = 1) => {
+  ipcMain.handle(IPC.LOCAL_FILES.GET_LOCAL_FOLDER_CONTENTS, async (event, folderPath: string, maxDepth: number, currentDepth: number = 1) => {
     try {
       const result = await getLocalFolderContents(folderPath, maxDepth, currentDepth);
       return result;
@@ -644,7 +645,7 @@ export function registerLocalVideoHandlers() {
   });
 
   // Get local source video count
-  ipcMain.handle('get-local-source-video-count', async (event, sourcePath: string, maxDepth: number) => {
+  ipcMain.handle(IPC.LOCAL_FILES.GET_LOCAL_SOURCE_VIDEO_COUNT, async (event, sourcePath: string, maxDepth: number) => {
     try {
       const count = await countVideosInFolder(sourcePath, maxDepth, 1);
       return count;
@@ -655,7 +656,7 @@ export function registerLocalVideoHandlers() {
   });
 
   // Get folder video count
-  ipcMain.handle('get-folder-video-count', async (event, folderPath: string, maxDepth: number) => {
+  ipcMain.handle(IPC.LOCAL_FILES.GET_FOLDER_VIDEO_COUNT, async (event, folderPath: string, maxDepth: number) => {
     try {
       const count = await countVideosInFolder(folderPath, maxDepth, 1);
       return count;
@@ -666,7 +667,7 @@ export function registerLocalVideoHandlers() {
   });
 
   // Get local video duration
-  ipcMain.handle('get-local-video-duration', async (event, videoPath: string) => {
+  ipcMain.handle(IPC.LOCAL_FILES.GET_LOCAL_VIDEO_DURATION, async (event, videoPath: string) => {
     try {
       const { spawn } = require('child_process');
 
@@ -719,7 +720,7 @@ export function registerLocalVideoHandlers() {
 // Video Processing Handlers
 export function registerVideoProcessingHandlers() {
   // Get video codec info
-  ipcMain.handle('get-video-codec-info', async (_, filePath: string) => {
+  ipcMain.handle(IPC.VIDEO_PROCESSING.GET_VIDEO_CODEC_INFO, async (_, filePath: string) => {
     try {
       const { spawn } = require('child_process');
 
@@ -750,7 +751,7 @@ export function registerVideoProcessingHandlers() {
   });
 
   // Get existing converted video path
-  ipcMain.handle('get-existing-converted-video-path', async (_, originalPath: string, cacheDir?: string) => {
+  ipcMain.handle(IPC.VIDEO_PROCESSING.GET_EXISTING_CONVERTED_VIDEO_PATH, async (_, originalPath: string, cacheDir?: string) => {
     try {
       const actualCacheDir = cacheDir || path.join(path.dirname(originalPath), '.converted');
       const originalName = path.basename(originalPath);
@@ -767,7 +768,7 @@ export function registerVideoProcessingHandlers() {
   });
 
   // Check if video needs conversion
-  ipcMain.handle('needs-video-conversion', async (_, filePath: string) => {
+  ipcMain.handle(IPC.VIDEO_PROCESSING.NEEDS_VIDEO_CONVERSION, async (_, filePath: string) => {
     try {
       const ext = path.extname(filePath).toLowerCase();
       const needsConversion = !['.mp4', '.webm'].includes(ext);
@@ -779,7 +780,7 @@ export function registerVideoProcessingHandlers() {
   });
 
   // Check if converted video exists
-  ipcMain.handle('has-converted-video', async (_, filePath: string, cacheDir?: string) => {
+  ipcMain.handle(IPC.VIDEO_PROCESSING.HAS_CONVERTED_VIDEO, async (_, filePath: string, cacheDir?: string) => {
     try {
       const actualCacheDir = cacheDir || path.join(path.dirname(filePath), '.converted');
       const originalName = path.basename(filePath);
@@ -793,7 +794,7 @@ export function registerVideoProcessingHandlers() {
   });
 
   // Get conversion status
-  ipcMain.handle('get-conversion-status', async (_, filePath: string) => {
+  ipcMain.handle(IPC.VIDEO_PROCESSING.GET_CONVERSION_STATUS, async (_, filePath: string) => {
     try {
       // This would integrate with a conversion queue/status system
       // For now, return a simple status
@@ -805,7 +806,7 @@ export function registerVideoProcessingHandlers() {
   });
 
   // Start video conversion
-  ipcMain.handle('start-video-conversion', async (_, filePath: string, options?: any) => {
+  ipcMain.handle(IPC.VIDEO_PROCESSING.START_VIDEO_CONVERSION, async (_, filePath: string, options?: any) => {
     try {
       // This would start actual video conversion
       // For now, just log and return success
@@ -820,7 +821,7 @@ export function registerVideoProcessingHandlers() {
 // System and Utility Handlers
 export function registerSystemHandlers() {
   // Get YouTube API key
-  ipcMain.handle('get-youtube-api-key', async () => {
+  ipcMain.handle(IPC.YOUTUBE.GET_API_KEY, async () => {
     try {
       // First check environment variable
       const envApiKey = process.env.YOUTUBE_API_KEY;
@@ -842,7 +843,7 @@ export function registerSystemHandlers() {
   });
 
   // Get YouTube video info (for source validation)
-  ipcMain.handle('get-youtube-video-info', async (_, videoId: string) => {
+  ipcMain.handle(IPC.YOUTUBE.GET_VIDEO_INFO, async (_, videoId: string) => {
     try {
       // Get API key
       let apiKey: string | null = null;
@@ -884,7 +885,7 @@ export function registerSystemHandlers() {
   });
 
   // Get verbose logging status
-  ipcMain.handle('logging:get-verbose', async () => {
+  ipcMain.handle(IPC.LOGGING.GET_VERBOSE, async () => {
     try {
       const verboseEnabled = process.env.ELECTRON_LOG_VERBOSE === 'true';
       return { verbose: verboseEnabled };
@@ -895,7 +896,7 @@ export function registerSystemHandlers() {
   });
 
   // Get setup status
-  ipcMain.handle('get-setup-status', async () => {
+  ipcMain.handle(IPC.SETTINGS.GET_SETUP_STATUS, async () => {
     try {
       const hasApiKey = !!(process.env.YOUTUBE_API_KEY || fs.existsSync(AppPaths.getConfigPath('youtubeApiKey.json')));
       // Only check DB for video sources now (JSON is only for migration)
@@ -920,7 +921,7 @@ export function registerSystemHandlers() {
   });
 
   // Log from renderer
-  ipcMain.handle('logging:log', async (_, level: string, ...args: any[]) => {
+  ipcMain.handle(IPC.LOGGING.LOG, async (_, level: string, ...args: any[]) => {
     try {
       switch (level) {
         case 'error':
@@ -945,7 +946,7 @@ export function registerSystemHandlers() {
   });
 
   // Clear source cache
-  ipcMain.handle('clear-source-cache', async (_, sourceId: string) => {
+  ipcMain.handle(IPC.CACHE.CLEAR_SOURCE_CACHE, async (_, sourceId: string) => {
     try {
       const { YouTubePageCache } = await import('../../preload/youtubePageCache');
       YouTubePageCache.clearSourcePages(sourceId);
@@ -958,7 +959,7 @@ export function registerSystemHandlers() {
   });
 
   // Path utilities for cross-platform compatibility
-  ipcMain.handle('path-join', async (_, ...paths: string[]) => {
+  ipcMain.handle(IPC.UTILS.PATH_JOIN, async (_, ...paths: string[]) => {
     try {
       const path = require('path');
       return path.join(...paths);
@@ -972,7 +973,7 @@ export function registerSystemHandlers() {
 // Download Handlers
 export function registerDownloadHandlers() {
   // Start download
-  ipcMain.handle('download:start', async (_, videoId: string, videoTitle: string, sourceInfo: any) => {
+  ipcMain.handle(IPC.DOWNLOADS.START, async (_, videoId: string, videoTitle: string, sourceInfo: any) => {
     try {
       const { DownloadManager } = await import('../downloadManager');
       await DownloadManager.startDownload(videoId, videoTitle, sourceInfo);
@@ -984,7 +985,7 @@ export function registerDownloadHandlers() {
   });
 
   // Get download status
-  ipcMain.handle('download:get-status', async (_, videoId: string) => {
+  ipcMain.handle(IPC.DOWNLOADS.GET_STATUS, async (_, videoId: string) => {
     try {
       const { getDownloadStatus } = await import('../fileUtils');
       const status = await getDownloadStatus(videoId);
@@ -996,7 +997,7 @@ export function registerDownloadHandlers() {
   });
 
   // Cancel download
-  ipcMain.handle('download:cancel', async (_, videoId: string) => {
+  ipcMain.handle(IPC.DOWNLOADS.CANCEL, async (_, videoId: string) => {
     try {
       const { DownloadManager } = await import('../downloadManager');
       await DownloadManager.cancelDownload(videoId);
@@ -1008,7 +1009,7 @@ export function registerDownloadHandlers() {
   });
 
   // Check if downloading
-  ipcMain.handle('download:is-downloading', async (_, videoId: string) => {
+  ipcMain.handle(IPC.DOWNLOADS.IS_DOWNLOADING, async (_, videoId: string) => {
     try {
       const { getDownloadStatus } = await import('../fileUtils');
       const status = await getDownloadStatus(videoId);
@@ -1021,7 +1022,7 @@ export function registerDownloadHandlers() {
   });
 
   // Reset download status
-  ipcMain.handle('download:reset-status', async (_, videoId: string) => {
+  ipcMain.handle(IPC.DOWNLOADS.RESET_STATUS, async (_, videoId: string) => {
     try {
       // Remove the download status entry completely to reset to "idle" state
       const { readDownloadStatus, writeDownloadStatus } = await import('../fileUtils');
@@ -1036,7 +1037,7 @@ export function registerDownloadHandlers() {
   });
 
   // Check if downloaded
-  ipcMain.handle('download:check-downloaded', async (_, videoId: string) => {
+  ipcMain.handle(IPC.DOWNLOADS.CHECK_DOWNLOADED, async (_, videoId: string) => {
     try {
       const downloadedVideosPath = AppPaths.getConfigPath('downloadedVideos.json');
       if (!fs.existsSync(downloadedVideosPath)) {
@@ -1057,7 +1058,7 @@ export function registerDownloadHandlers() {
 // Settings Handlers
 export function registerSettingsHandlers() {
   // Read main settings
-  ipcMain.handle('main-settings:read', async () => {
+  ipcMain.handle(IPC.SETTINGS.READ_MAIN_SETTINGS, async () => {
     try {
       const settingsPath = AppPaths.getConfigPath('mainSettings.json');
       if (fs.existsSync(settingsPath)) {
@@ -1071,7 +1072,7 @@ export function registerSettingsHandlers() {
   });
 
   // Write main settings
-  ipcMain.handle('main-settings:write', async (_, settings: any) => {
+  ipcMain.handle(IPC.SETTINGS.WRITE_MAIN_SETTINGS, async (_, settings: any) => {
     try {
       const settingsPath = AppPaths.getConfigPath('mainSettings.json');
       fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
@@ -1083,7 +1084,7 @@ export function registerSettingsHandlers() {
   });
 
   // Get default download path
-  ipcMain.handle('main-settings:get-default-download-path', async () => {
+  ipcMain.handle(IPC.SETTINGS.GET_DEFAULT_DOWNLOAD_PATH, async () => {
     try {
       const { app } = require('electron');
       const defaultPath = path.join(app.getPath('downloads'), 'SafeTube');
@@ -1098,7 +1099,7 @@ export function registerSettingsHandlers() {
 // YouTube Cache Handlers
 export function registerYouTubeCacheHandlers() {
   // Get from cache
-  ipcMain.handle('youtube-cache:get', async (_, cacheKey: string) => {
+  ipcMain.handle(IPC.YOUTUBE_CACHE.GET, async (_, cacheKey: string) => {
     try {
       const cachePath = AppPaths.getConfigPath('youtubeCache.json');
       if (!fs.existsSync(cachePath)) {
@@ -1120,7 +1121,7 @@ export function registerYouTubeCacheHandlers() {
   });
 
   // Set cache entry
-  ipcMain.handle('youtube-cache:set', async (_, cacheKey: string, data: any) => {
+  ipcMain.handle(IPC.YOUTUBE_CACHE.SET, async (_, cacheKey: string, data: any) => {
     try {
       const cachePath = AppPaths.getConfigPath('youtubeCache.json');
       let cache = {};
@@ -1143,7 +1144,7 @@ export function registerYouTubeCacheHandlers() {
   });
 
   // Clear expired cache entries
-  ipcMain.handle('youtube-cache:clear-expired', async () => {
+  ipcMain.handle(IPC.YOUTUBE_CACHE.CLEAR_EXPIRED, async () => {
     try {
       const cachePath = AppPaths.getConfigPath('youtubeCache.json');
       if (!fs.existsSync(cachePath)) {
@@ -1169,7 +1170,7 @@ export function registerYouTubeCacheHandlers() {
   });
 
   // Load cache config
-  ipcMain.handle('youtube-cache:load-config', async () => {
+  ipcMain.handle(IPC.YOUTUBE_CACHE.LOAD_CONFIG, async () => {
     try {
       // Return default cache configuration
       return {
@@ -1187,7 +1188,7 @@ export function registerYouTubeCacheHandlers() {
 // Downloaded Videos Handlers
 export function registerDownloadedVideosHandlers() {
   // Get all downloaded videos
-  ipcMain.handle('downloaded-videos:get-all', async () => {
+  ipcMain.handle(IPC.DOWNLOADED_VIDEOS.GET_ALL, async () => {
     try {
       const { readDownloadedVideos } = await import('../fileUtils');
       return await readDownloadedVideos();
@@ -1198,7 +1199,7 @@ export function registerDownloadedVideosHandlers() {
   });
 
   // Get downloaded videos by source
-  ipcMain.handle('downloaded-videos:get-by-source', async (_, sourceId: string) => {
+  ipcMain.handle(IPC.DOWNLOADED_VIDEOS.GET_BY_SOURCE, async (_, sourceId: string) => {
     try {
       const { readDownloadedVideos } = await import('../fileUtils');
       const allDownloaded = await readDownloadedVideos();
@@ -1213,7 +1214,7 @@ export function registerDownloadedVideosHandlers() {
 // Favorites Handlers
 export function registerFavoritesHandlers() {
   // Get all favorites
-  ipcMain.handle('favorites:get-all', async () => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.GET_ALL, async () => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
       if (fs.existsSync(favoritesPath)) {
@@ -1228,7 +1229,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Add favorite
-  ipcMain.handle('favorites:add', async (_, metadata: { id: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail?: string, duration?: number, url?: string }) => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.ADD, async (_, metadata: { id: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail?: string, duration?: number, url?: string }) => {
     try {
       // Validate sourceId is present
       if (!metadata.sourceId || metadata.sourceId.trim() === '') {
@@ -1274,7 +1275,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Remove favorite
-  ipcMain.handle('favorites:remove', async (_, videoId: string) => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.REMOVE, async (_, videoId: string) => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
       if (!fs.existsSync(favoritesPath)) {
@@ -1295,7 +1296,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Check if favorite
-  ipcMain.handle('favorites:is-favorite', async (_, videoId: string) => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.IS_FAVORITE, async (_, videoId: string) => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
       if (!fs.existsSync(favoritesPath)) {
@@ -1313,7 +1314,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Toggle favorite
-  ipcMain.handle('favorites:toggle', async (_, videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.TOGGLE, async (_, videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string) => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
       let favorites = { favorites: [], lastModified: new Date().toISOString() };
@@ -1394,7 +1395,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Update favorite metadata
-  ipcMain.handle('favorites:update-metadata', async (_, videoId: string, metadata: any) => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.UPDATE_METADATA, async (_, videoId: string, metadata: any) => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
       if (!fs.existsSync(favoritesPath)) {
@@ -1420,7 +1421,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Get favorites by source
-  ipcMain.handle('favorites:get-by-source', async (_, sourceId: string) => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.GET_BY_SOURCE, async (_, sourceId: string) => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
       if (!fs.existsSync(favoritesPath)) {
@@ -1436,7 +1437,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Get favorites config
-  ipcMain.handle('favorites:get-config', async () => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.GET_CONFIG, async () => {
     try {
       const configPath = AppPaths.getConfigPath('favoritesConfig.json');
       if (fs.existsSync(configPath)) {
@@ -1450,7 +1451,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Update favorites config
-  ipcMain.handle('favorites:update-config', async (_, config: any) => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.UPDATE_CONFIG, async (_, config: any) => {
     try {
       const configPath = AppPaths.getConfigPath('favoritesConfig.json');
       fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
@@ -1463,7 +1464,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Cleanup orphaned favorites
-  ipcMain.handle('favorites:cleanup-orphaned', async () => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.CLEANUP_ORPHANED, async () => {
     try {
       logVerbose('[IPC] Cleaning up orphaned favorites');
       // This would implement cleanup logic
@@ -1475,7 +1476,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Sync with watch history
-  ipcMain.handle('favorites:sync-watch-history', async () => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.SYNC_WATCH_HISTORY, async () => {
     try {
       logVerbose('[IPC] Syncing favorites with watch history');
       // This would implement sync logic
@@ -1487,7 +1488,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Get unavailable favorites (for admin dashboard)
-  ipcMain.handle('favorites:get-unavailable', async () => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.GET_UNAVAILABLE, async () => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
 
@@ -1521,7 +1522,7 @@ export function registerFavoritesHandlers() {
   });
 
   // Clear unavailable favorites (for admin dashboard)
-  ipcMain.handle('favorites:clear-unavailable', async () => {
+  ipcMain.handle(IPC.FAVORITES_LEGACY.CLEAR_UNAVAILABLE, async () => {
     try {
       const favoritesPath = AppPaths.getConfigPath('favorites.json');
 

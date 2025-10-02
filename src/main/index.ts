@@ -40,6 +40,7 @@ import {
 import { getDlnaFile } from './services/networkService'
 import { registerAllHandlers } from './services/ipcHandlerRegistry'
 import { DatabaseService } from './services/DatabaseService'
+import { IPC } from '../shared/ipc-channels'
 
 /**
  * Write video metadata to database for persistence and search
@@ -222,7 +223,7 @@ const isDev = process.env.NODE_ENV === 'development'
 
 
 // Handle video data loading - ONLY from new source system
-ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: any) => {
+ipcMain.handle(IPC.VIDEO_LOADING.GET_VIDEO_DATA, async (_, videoId: string, navigationContext?: any) => {
   try {
     logVerbose(`[Main] get-video-data called for videoId: ${videoId}`);
     logVerbose(`[Main] navigationContext: ${JSON.stringify(navigationContext, null, 2)}`);
@@ -518,7 +519,7 @@ ipcMain.handle('get-video-data', async (_, videoId: string, navigationContext?: 
 
 
 // Handle loading videos from sources
-ipcMain.handle('load-all-videos-from-sources', async () => {
+ipcMain.handle(IPC.VIDEO_LOADING.LOAD_ALL_VIDEOS_FROM_SOURCES, async () => {
   try {
 
     // Step 1: Load video sources from database
@@ -776,7 +777,7 @@ ipcMain.handle('load-all-videos-from-sources', async () => {
 });
 
 // Handle loading videos for a specific source
-ipcMain.handle('load-videos-for-source', async (_, sourceId: string) => {
+ipcMain.handle(IPC.VIDEO_LOADING.LOAD_VIDEOS_FOR_SOURCE, async (_, sourceId: string) => {
   try {
     console.log('[Main] load-videos-for-source handler called for:', sourceId);
     // Read API key from mainSettings.json
@@ -804,7 +805,7 @@ ipcMain.handle('load-videos-for-source', async (_, sourceId: string) => {
 });
 
 // Handle getting paginated videos from a specific source
-ipcMain.handle('get-paginated-videos', async (event, sourceId: string, pageNumber: number) => {
+ipcMain.handle(IPC.VIDEO_LOADING.GET_PAGINATED_VIDEOS, async (event, sourceId: string, pageNumber: number) => {
   try {
     const startTime = performance.now();
     logVerbose(`[Main] 🚀 get-paginated-videos starting for ${sourceId} page ${pageNumber}`);
@@ -1402,7 +1403,7 @@ async function fetchVideosForPage(source: any, pageNumber: number, pageSize: num
 }
 
 // Handle loading videos from new source system
-ipcMain.handle('load-videos-from-sources', async () => {
+ipcMain.handle(IPC.VIDEO_LOADING.LOAD_VIDEOS_FROM_SOURCES, async () => {
   try {
     const startTime = performance.now();
     console.log('🚀 [Main] load-videos-from-sources: Using optimized lightweight resolver');
@@ -1523,7 +1524,7 @@ ipcMain.handle('load-videos-from-sources', async () => {
 });
 
 // Optimized IPC handler for Kid Screen startup - only loads source metadata
-ipcMain.handle('load-sources-for-kid-screen', async () => {
+ipcMain.handle(IPC.VIDEO_LOADING.LOAD_SOURCES_FOR_KID_SCREEN, async () => {
   try {
     const { loadSourcesForKidScreen } = await import('./services/videoDataService');
     const result = await loadSourcesForKidScreen();
@@ -2071,7 +2072,7 @@ app.on('ready', async () => {
 })
 
 // IPC handler to get the best available thumbnail for a video ID
-ipcMain.handle('get-best-thumbnail', async (event, videoId: string) => {
+ipcMain.handle(IPC.THUMBNAILS.GET_BEST_THUMBNAIL, async (event, videoId: string) => {
   try {
 
     const { parseVideoId } = await import('../shared/fileUtils');
