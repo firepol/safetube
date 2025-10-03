@@ -23,6 +23,7 @@ export const IPC = {
   DATABASE: {
     HEALTH_CHECK: 'database:health-check',
     MIGRATE_PHASE1: 'database:migrate-phase1',
+    MIGRATE_PHASE2: 'database:migrate-phase2',
     VERIFY_MIGRATION: 'database:verify-migration',
   },
 
@@ -220,7 +221,52 @@ export const IPC = {
   },
 
   // ============================================================================
-  // SETTINGS
+  // USAGE LOGS (Database-backed)
+  // ============================================================================
+
+  USAGE_LOGS: {
+    GET_BY_DATE: 'database:usage-logs:get-by-date',
+    UPSERT: 'database:usage-logs:upsert',
+    INCREMENT: 'database:usage-logs:increment',
+    GET_BY_DATE_RANGE: 'database:usage-logs:get-by-date-range',
+    GET_MONTHLY: 'database:usage-logs:get-monthly',
+  },
+
+  // ============================================================================
+  // TIME LIMITS (Database-backed)
+  // ============================================================================
+
+  TIME_LIMITS: {
+    GET: 'database:time-limits:get',
+    UPDATE: 'database:time-limits:update',
+    GET_FOR_DAY: 'database:time-limits:get-for-day',
+    UPDATE_DAY: 'database:time-limits:update-day',
+  },
+
+  // ============================================================================
+  // USAGE EXTRAS (Database-backed)
+  // ============================================================================
+
+  USAGE_EXTRAS: {
+    GET_BY_DATE: 'database:usage-extras:get-by-date',
+    GET_TOTAL_MINUTES: 'database:usage-extras:get-total-minutes',
+    ADD: 'database:usage-extras:add',
+    DELETE: 'database:usage-extras:delete',
+  },
+
+  // ============================================================================
+  // SETTINGS (Database-backed)
+  // ============================================================================
+
+  DB_SETTINGS: {
+    GET_SETTING: 'database:settings:get-setting',
+    SET_SETTING: 'database:settings:set-setting',
+    GET_BY_NAMESPACE: 'database:settings:get-by-namespace',
+    SET_BY_NAMESPACE: 'database:settings:set-by-namespace',
+  },
+
+  // ============================================================================
+  // SETTINGS (Legacy - File-backed)
   // ============================================================================
 
   SETTINGS: {

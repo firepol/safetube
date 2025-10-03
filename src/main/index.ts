@@ -1995,6 +1995,42 @@ app.on('ready', async () => {
       log.info(`[Main] Database already contains ${sourceCount?.count || 0} sources`);
     }
 
+    // Check if Phase 2 migration is needed
+    try {
+      const schemaVersion = await dbService.get<{ phase: string }>('SELECT phase FROM schema_version WHERE id = 1');
+
+      if (!schemaVersion || schemaVersion.phase === 'phase1') {
+        log.info('[Main] Phase 2 migration needed, starting...');
+
+        const { MigrationService } = await import('./database/MigrationService');
+        const { default: DatabaseErrorHandler } = await import('./services/DatabaseErrorHandler');
+
+        const errorHandler = new DatabaseErrorHandler();
+        const migrationService = new MigrationService(dbService, schemaManager, errorHandler);
+
+        // Initialize Phase 2 schema first
+        await schemaManager.initializePhase2Schema();
+
+        // Run Phase 2 migration
+        const phase2Result = await migrationService.executePhase2Migration();
+
+        if (phase2Result.status === 'completed') {
+          log.info(`[Main] Phase 2 migration completed successfully`);
+          log.info(`[Main] Migrated ${phase2Result.totalRecordsProcessed} records`);
+
+          // Update schema_version to phase2
+          await dbService.run(`UPDATE schema_version SET phase = 'phase2', updated_at = CURRENT_TIMESTAMP WHERE id = 1`);
+        } else {
+          log.error('[Main] Phase 2 migration failed:', phase2Result);
+        }
+      } else {
+        log.info(`[Main] Database schema is at ${schemaVersion.phase}, no migration needed`);
+      }
+    } catch (error) {
+      log.error('[Main] Error checking/running Phase 2 migration:', error);
+      log.warn('[Main] Continuing without Phase 2 migration');
+    }
+
     // Refresh stale YouTube sources in the background
     try {
       log.info('[Main] Attempting to refresh stale YouTube sources...');

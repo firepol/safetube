@@ -34,6 +34,9 @@ interface JsonDataLoader {
   loadUsageLogs(): any[];
   loadTimeLimits(): any;
   loadMainSettings(): any;
+  loadTimeExtra(): any[];
+  loadPaginationSettings(): any;
+  loadYouTubePlayerSettings(): any;
 }
 
 /**
@@ -388,6 +391,241 @@ export class MigrationService {
   }
 
   /**
+   * Execute Phase 2 migration (settings and usage data)
+   */
+  async executePhase2Migration(): Promise<MigrationSummary> {
+    const startTime = new Date().toISOString();
+    const summary: MigrationSummary = {
+      phase: 'phase2',
+      status: 'in_progress',
+      startTime,
+      tableStatuses: [],
+      totalRecordsProcessed: 0,
+      totalErrors: 0
+    };
+
+    try {
+      log.info('[MigrationService] Starting Phase 2 migration');
+
+      // Backup is already created in Phase 1, no need to create another
+
+      // Initialize Phase 2 schema
+      await this.schemaManager.initializePhase2Schema();
+
+      // Define migration steps for Phase 2
+      const migrationSteps = [
+        { tableName: 'usage_logs', migrationFn: this.migrateUsageLogs.bind(this) },
+        { tableName: 'time_limits', migrationFn: this.migrateTimeLimits.bind(this) },
+        { tableName: 'usage_extras', migrationFn: this.migrateUsageExtras.bind(this) },
+        { tableName: 'settings', migrationFn: this.migrateSettings.bind(this) }
+      ];
+
+      // Execute each migration step
+      for (const step of migrationSteps) {
+        const status = await this.executeMigrationStep(step.tableName, step.migrationFn);
+        summary.tableStatuses.push(status);
+        summary.totalRecordsProcessed += status.recordsProcessed;
+
+        if (status.error) {
+          summary.totalErrors++;
+        }
+      }
+
+      // Check overall success
+      const failedTables = summary.tableStatuses.filter(s => s.status === 'failed');
+      summary.status = failedTables.length === 0 ? 'completed' : 'failed';
+      summary.endTime = new Date().toISOString();
+
+      if (summary.status === 'completed') {
+        log.info(`[MigrationService] Phase 2 migration completed successfully in ${this.calculateDuration(startTime, summary.endTime)} ms`);
+        log.info(`[MigrationService] Total records processed: ${summary.totalRecordsProcessed}`);
+      } else {
+        log.error(`[MigrationService] Phase 2 migration failed. ${failedTables.length} tables had errors.`);
+      }
+
+      return summary;
+    } catch (error) {
+      summary.status = 'failed';
+      summary.endTime = new Date().toISOString();
+      summary.totalErrors++;
+
+      log.error('[MigrationService] Phase 2 migration failed with critical error:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Migrate usage logs from usageLog.json
+   */
+  private async migrateUsageLogs(): Promise<number> {
+    log.debug('[MigrationService] Loading usage logs from JSON');
+    const usageLogs = this.jsonLoader.loadUsageLogs();
+
+    if (!usageLogs || usageLogs.length === 0) {
+      log.info('[MigrationService] No usage logs found to migrate');
+      return 0;
+    }
+
+    log.debug(`[MigrationService] Migrating ${usageLogs.length} usage logs`);
+
+    const queries = usageLogs.map((log: any) => ({
+      sql: `
+        INSERT OR REPLACE INTO usage_logs (date, seconds_used)
+        VALUES (?, ?)
+      `,
+      params: [log.date, log.secondsUsed || 0]
+    }));
+
+    await this.databaseService.executeTransaction(queries);
+
+    return usageLogs.length;
+  }
+
+  /**
+   * Migrate time limits from timeLimits.json
+   */
+  private async migrateTimeLimits(): Promise<number> {
+    log.debug('[MigrationService] Loading time limits from JSON');
+    const timeLimits = this.jsonLoader.loadTimeLimits();
+
+    if (!timeLimits || Object.keys(timeLimits).length === 0) {
+      log.info('[MigrationService] No time limits found to migrate');
+      return 0;
+    }
+
+    log.debug('[MigrationService] Migrating time limits');
+
+    // Convert minutes to the database format and handle optional fields
+    await this.databaseService.run(`
+      INSERT OR REPLACE INTO time_limits (
+        id, monday, tuesday, wednesday, thursday, friday, saturday, sunday,
+        warning_threshold_minutes, countdown_warning_seconds, audio_warning_seconds,
+        time_up_message, use_system_beep, custom_beep_sound
+      ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `, [
+      timeLimits.monday || 0,
+      timeLimits.tuesday || 0,
+      timeLimits.wednesday || 0,
+      timeLimits.thursday || 0,
+      timeLimits.friday || 0,
+      timeLimits.saturday || 0,
+      timeLimits.sunday || 0,
+      timeLimits.warningThresholdMinutes || null,
+      timeLimits.countdownWarningSeconds || null,
+      timeLimits.audioWarningSeconds || null,
+      timeLimits.timeUpMessage || null,
+      timeLimits.useSystemBeep ? 1 : 0,
+      timeLimits.customBeepSound || null
+    ]);
+
+    return 1; // Single row
+  }
+
+  /**
+   * Migrate usage extras from timeExtra.json
+   */
+  private async migrateUsageExtras(): Promise<number> {
+    log.debug('[MigrationService] Loading usage extras from JSON');
+    const timeExtras = this.jsonLoader.loadTimeExtra();
+
+    if (!timeExtras || timeExtras.length === 0) {
+      log.info('[MigrationService] No usage extras found to migrate');
+      return 0;
+    }
+
+    log.debug(`[MigrationService] Migrating ${timeExtras.length} usage extras`);
+
+    const queries = timeExtras.map((extra: any) => ({
+      sql: `
+        INSERT INTO usage_extras (date, minutes_added, reason, added_by)
+        VALUES (?, ?, ?, ?)
+      `,
+      params: [
+        extra.date,
+        extra.minutesAdded || extra.minutes || 0,
+        extra.reason || null,
+        extra.addedBy || 'admin'
+      ]
+    }));
+
+    await this.databaseService.executeTransaction(queries);
+
+    return timeExtras.length;
+  }
+
+  /**
+   * Migrate settings from mainSettings.json, pagination.json, and youtubePlayer.json
+   */
+  private async migrateSettings(): Promise<number> {
+    log.debug('[MigrationService] Loading settings from JSON files');
+
+    let recordCount = 0;
+
+    // Migrate mainSettings.json
+    const mainSettings = this.jsonLoader.loadMainSettings();
+    if (mainSettings && Object.keys(mainSettings).length > 0) {
+      log.debug('[MigrationService] Migrating main settings');
+      const mainQueries = Object.entries(mainSettings).map(([key, value]) => ({
+        sql: `
+          INSERT OR REPLACE INTO settings (key, value, type)
+          VALUES (?, ?, ?)
+        `,
+        params: [
+          `main.${key}`,
+          JSON.stringify(value),
+          typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string'
+        ]
+      }));
+
+      await this.databaseService.executeTransaction(mainQueries);
+      recordCount += mainQueries.length;
+    }
+
+    // Migrate pagination.json
+    const paginationSettings = this.jsonLoader.loadPaginationSettings();
+    if (paginationSettings && Object.keys(paginationSettings).length > 0) {
+      log.debug('[MigrationService] Migrating pagination settings');
+      const paginationQueries = Object.entries(paginationSettings).map(([key, value]) => ({
+        sql: `
+          INSERT OR REPLACE INTO settings (key, value, type)
+          VALUES (?, ?, ?)
+        `,
+        params: [
+          `pagination.${key}`,
+          JSON.stringify(value),
+          typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string'
+        ]
+      }));
+
+      await this.databaseService.executeTransaction(paginationQueries);
+      recordCount += paginationQueries.length;
+    }
+
+    // Migrate youtubePlayer.json
+    const youtubePlayerSettings = this.jsonLoader.loadYouTubePlayerSettings();
+    if (youtubePlayerSettings && Object.keys(youtubePlayerSettings).length > 0) {
+      log.debug('[MigrationService] Migrating YouTube player settings');
+      const youtubeQueries = Object.entries(youtubePlayerSettings).map(([key, value]) => ({
+        sql: `
+          INSERT OR REPLACE INTO settings (key, value, type)
+          VALUES (?, ?, ?)
+        `,
+        params: [
+          `youtubePlayer.${key}`,
+          JSON.stringify(value),
+          typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : typeof value === 'object' ? 'object' : 'string'
+        ]
+      }));
+
+      await this.databaseService.executeTransaction(youtubeQueries);
+      recordCount += youtubeQueries.length;
+    }
+
+    log.debug(`[MigrationService] Migrated ${recordCount} settings`);
+    return recordCount;
+  }
+
+  /**
    * Verify migration integrity by comparing record counts
    */
   async verifyMigrationIntegrity(): Promise<{
@@ -521,6 +759,47 @@ class FileSystemJsonLoader implements JsonDataLoader {
       return JSON.parse(fs.readFileSync(path, 'utf8'));
     } catch (error) {
       log.error('[FileSystemJsonLoader] Error loading main settings:', error);
+      return {};
+    }
+  }
+
+  loadTimeExtra(): any[] {
+    try {
+      const path = AppPaths.getConfigPath('timeExtra.json');
+      if (!fs.existsSync(path)) {
+        return [];
+      }
+      const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+      // Handle both array format and object format
+      return Array.isArray(data) ? data : (data.extras || []);
+    } catch (error) {
+      log.error('[FileSystemJsonLoader] Error loading time extras:', error);
+      return [];
+    }
+  }
+
+  loadPaginationSettings(): any {
+    try {
+      const path = AppPaths.getConfigPath('pagination.json');
+      if (!fs.existsSync(path)) {
+        return {};
+      }
+      return JSON.parse(fs.readFileSync(path, 'utf8'));
+    } catch (error) {
+      log.error('[FileSystemJsonLoader] Error loading pagination settings:', error);
+      return {};
+    }
+  }
+
+  loadYouTubePlayerSettings(): any {
+    try {
+      const path = AppPaths.getConfigPath('youtubePlayer.json');
+      if (!fs.existsSync(path)) {
+        return {};
+      }
+      return JSON.parse(fs.readFileSync(path, 'utf8'));
+    } catch (error) {
+      log.error('[FileSystemJsonLoader] Error loading YouTube player settings:', error);
       return {};
     }
   }

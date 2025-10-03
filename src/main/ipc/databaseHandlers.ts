@@ -128,6 +128,30 @@ export function registerDatabaseHandlers() {
     }
   });
 
+  ipcMain.handle(IPC.DATABASE.MIGRATE_PHASE2, async (): Promise<DatabaseResponse<{ summary: any }>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const schemaManager = new SimpleSchemaManager(dbService);
+      const errorHandler = new DatabaseErrorHandler();
+      const migrationService = new MigrationService(dbService, schemaManager, errorHandler);
+
+      log.info('[Database IPC] Starting Phase 2 migration');
+      const summary = await migrationService.executePhase2Migration();
+
+      return {
+        success: true,
+        data: { summary }
+      };
+    } catch (error) {
+      log.error('[Database IPC] Phase 2 migration failed:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Migration failed',
+        code: 'MIGRATION_PHASE2_FAILED'
+      };
+    }
+  });
+
   ipcMain.handle(IPC.DATABASE.VERIFY_MIGRATION, async (): Promise<DatabaseResponse<{ integrity: any }>> => {
     try {
       const dbService = DatabaseService.getInstance();
@@ -730,6 +754,354 @@ export function registerDatabaseHandlers() {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to clear cache',
         code: 'CLEAR_CACHE_FAILED'
+      };
+    }
+  });
+
+  // ============================================================================
+  // PHASE 2 HANDLERS: Usage Logs, Time Limits, Usage Extras, Settings
+  // ============================================================================
+
+  // Usage Logs Operations
+  ipcMain.handle(IPC.USAGE_LOGS.GET_BY_DATE, async (_, date: string): Promise<DatabaseResponse<any>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { getUsageLogByDate } = await import('../database/queries/usageLogQueries');
+      const log = await getUsageLogByDate(dbService, date);
+
+      return {
+        success: true,
+        data: log
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get usage log:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get usage log',
+        code: 'GET_USAGE_LOG_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.USAGE_LOGS.UPSERT, async (_, date: string, secondsUsed: number): Promise<DatabaseResponse<boolean>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { upsertUsageLog } = await import('../database/queries/usageLogQueries');
+      await upsertUsageLog(dbService, date, secondsUsed);
+
+      return {
+        success: true,
+        data: true
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to upsert usage log:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to upsert usage log',
+        code: 'UPSERT_USAGE_LOG_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.USAGE_LOGS.INCREMENT, async (_, date: string, secondsToAdd: number): Promise<DatabaseResponse<boolean>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { incrementUsageLog } = await import('../database/queries/usageLogQueries');
+      await incrementUsageLog(dbService, date, secondsToAdd);
+
+      return {
+        success: true,
+        data: true
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to increment usage log:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to increment usage log',
+        code: 'INCREMENT_USAGE_LOG_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.USAGE_LOGS.GET_BY_DATE_RANGE, async (_, startDate: string, endDate: string): Promise<DatabaseResponse<any[]>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { getUsageLogsByDateRange } = await import('../database/queries/usageLogQueries');
+      const logs = await getUsageLogsByDateRange(dbService, startDate, endDate);
+
+      return {
+        success: true,
+        data: logs
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get usage logs by date range:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get usage logs',
+        code: 'GET_USAGE_LOGS_RANGE_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.USAGE_LOGS.GET_MONTHLY, async (_, monthPrefix: string): Promise<DatabaseResponse<number>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { getMonthlyUsage } = await import('../database/queries/usageLogQueries');
+      const totalSeconds = await getMonthlyUsage(dbService, monthPrefix);
+
+      return {
+        success: true,
+        data: totalSeconds
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get monthly usage:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get monthly usage',
+        code: 'GET_MONTHLY_USAGE_FAILED'
+      };
+    }
+  });
+
+  // Time Limits Operations
+  ipcMain.handle(IPC.TIME_LIMITS.GET, async (): Promise<DatabaseResponse<any>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { getTimeLimits } = await import('../database/queries/timeLimitQueries');
+      const limits = await getTimeLimits(dbService);
+
+      return {
+        success: true,
+        data: limits
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get time limits:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get time limits',
+        code: 'GET_TIME_LIMITS_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.TIME_LIMITS.UPDATE, async (_, timeLimits: any): Promise<DatabaseResponse<boolean>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { upsertTimeLimits } = await import('../database/queries/timeLimitQueries');
+      await upsertTimeLimits(dbService, timeLimits);
+
+      return {
+        success: true,
+        data: true
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to update time limits:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update time limits',
+        code: 'UPDATE_TIME_LIMITS_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.TIME_LIMITS.GET_FOR_DAY, async (_, dayOfWeek: number): Promise<DatabaseResponse<number>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { getTimeLimitForDay } = await import('../database/queries/timeLimitQueries');
+      const minutes = await getTimeLimitForDay(dbService, dayOfWeek);
+
+      return {
+        success: true,
+        data: minutes
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get time limit for day:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get time limit for day',
+        code: 'GET_TIME_LIMIT_DAY_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.TIME_LIMITS.UPDATE_DAY, async (_, dayOfWeek: string, minutes: number): Promise<DatabaseResponse<boolean>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { updateDayLimit } = await import('../database/queries/timeLimitQueries');
+      await updateDayLimit(dbService, dayOfWeek, minutes);
+
+      return {
+        success: true,
+        data: true
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to update day limit:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update day limit',
+        code: 'UPDATE_DAY_LIMIT_FAILED'
+      };
+    }
+  });
+
+  // Usage Extras Operations
+  ipcMain.handle(IPC.USAGE_EXTRAS.GET_BY_DATE, async (_, date: string): Promise<DatabaseResponse<any[]>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { getUsageExtrasByDate } = await import('../database/queries/usageExtraQueries');
+      const extras = await getUsageExtrasByDate(dbService, date);
+
+      return {
+        success: true,
+        data: extras
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get usage extras:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get usage extras',
+        code: 'GET_USAGE_EXTRAS_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.USAGE_EXTRAS.GET_TOTAL_MINUTES, async (_, date: string): Promise<DatabaseResponse<number>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { getTotalExtraMinutes } = await import('../database/queries/usageExtraQueries');
+      const totalMinutes = await getTotalExtraMinutes(dbService, date);
+
+      return {
+        success: true,
+        data: totalMinutes
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get total extra minutes:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get total extra minutes',
+        code: 'GET_TOTAL_EXTRAS_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.USAGE_EXTRAS.ADD, async (_, date: string, minutesAdded: number, reason?: string, addedBy?: string): Promise<DatabaseResponse<boolean>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { addUsageExtra } = await import('../database/queries/usageExtraQueries');
+      await addUsageExtra(dbService, date, minutesAdded, reason, addedBy);
+
+      return {
+        success: true,
+        data: true
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to add usage extra:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to add usage extra',
+        code: 'ADD_USAGE_EXTRA_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.USAGE_EXTRAS.DELETE, async (_, id: number): Promise<DatabaseResponse<boolean>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { deleteUsageExtra } = await import('../database/queries/usageExtraQueries');
+      await deleteUsageExtra(dbService, id);
+
+      return {
+        success: true,
+        data: true
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to delete usage extra:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to delete usage extra',
+        code: 'DELETE_USAGE_EXTRA_FAILED'
+      };
+    }
+  });
+
+  // Settings Operations
+  ipcMain.handle(IPC.DB_SETTINGS.GET_SETTING, async (_, key: string, defaultValue?: any): Promise<DatabaseResponse<any>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { getSetting } = await import('../database/queries/settingsQueries');
+      const value = await getSetting(dbService, key, defaultValue);
+
+      return {
+        success: true,
+        data: value
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get setting:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get setting',
+        code: 'GET_SETTING_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.DB_SETTINGS.SET_SETTING, async (_, key: string, value: any, type?: string, description?: string): Promise<DatabaseResponse<boolean>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { setSetting } = await import('../database/queries/settingsQueries');
+      await setSetting(dbService, key, value, type as any, description);
+
+      return {
+        success: true,
+        data: true
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to set setting:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to set setting',
+        code: 'SET_SETTING_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.DB_SETTINGS.GET_BY_NAMESPACE, async (_, namespace: string): Promise<DatabaseResponse<Record<string, any>>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { getSettingsByNamespace } = await import('../database/queries/settingsQueries');
+      const settings = await getSettingsByNamespace(dbService, namespace);
+
+      return {
+        success: true,
+        data: settings
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get settings by namespace:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get settings by namespace',
+        code: 'GET_SETTINGS_NAMESPACE_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.DB_SETTINGS.SET_BY_NAMESPACE, async (_, namespace: string, settings: Record<string, any>): Promise<DatabaseResponse<boolean>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const { setSettingsByNamespace } = await import('../database/queries/settingsQueries');
+      await setSettingsByNamespace(dbService, namespace, settings);
+
+      return {
+        success: true,
+        data: true
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to set settings by namespace:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to set settings by namespace',
+        code: 'SET_SETTINGS_NAMESPACE_FAILED'
       };
     }
   });
