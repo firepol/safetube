@@ -329,13 +329,10 @@ export function registerAdminHandlers() {
 
       const today = new Date().toISOString().split('T')[0];
 
-      // Insert or update usage_extras table
+      // Insert into usage_extras table (allows multiple entries per date for audit trail)
       await db.run(`
         INSERT INTO usage_extras (date, minutes_added, reason, added_by)
         VALUES (?, ?, ?, ?)
-        ON CONFLICT(date) DO UPDATE SET
-          minutes_added = minutes_added + excluded.minutes_added,
-          updated_at = CURRENT_TIMESTAMP
       `, [today, minutes, 'Manual addition from admin panel', 'admin']);
 
       return { success: true };

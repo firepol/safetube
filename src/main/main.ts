@@ -117,20 +117,7 @@ ipcMain.handle(IPC.TIME_TRACKING.GET_TIME_LIMITS, async () => {
 });
 
 // Admin IPC handlers (note: main admin handlers moved to ipcHandlerRegistry.ts)
-
-ipcMain.handle(IPC.ADMIN.ADD_EXTRA_TIME, async (_, minutes: number) => {
-  try {
-    // Import the function here to avoid circular dependencies
-    const { addExtraTimeToday } = await import('../shared/timeTracking');
-    await addExtraTimeToday(minutes);
-    
-    logVerbose('[Admin] Extra time added:', { minutes });
-    return { success: true };
-  } catch (error) {
-    console.error('Error adding extra time:', error);
-    throw error;
-  }
-});
+// Admin IPC handlers are now in ipcHandlerRegistry.ts
 
 ipcMain.handle(IPC.ADMIN.GET_TIME_EXTRA, async () => {
   try {
