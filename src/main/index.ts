@@ -1182,9 +1182,6 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_PAGINATED_VIDEOS, async (event, sourceId: s
     } else if (source.type === 'youtube_channel' || source.type === 'youtube_playlist') {
       // For YouTube sources, check DB cache first, then fall back to smart page fetching
       const youtubeStart = performance.now();
-      if (!apiKey) {
-        throw new Error('YouTube API key not configured for pagination');
-      }
 
       // Check for valid DB cache (only for page 1, as DB caches first 50 videos)
       let pageResult;
@@ -1223,6 +1220,11 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_PAGINATED_VIDEOS, async (event, sourceId: s
       }
 
       if (!pageResult) {
+        // Cache not available or expired - need API key to fetch fresh data
+        if (!apiKey) {
+          throw new Error('YouTube API key not configured. Cannot fetch videos without cache.');
+        }
+
         const apiFetchStart = performance.now();
         const { YouTubeAPI } = await import('../preload/youtube');
         const { YouTubePageFetcher } = await import('../preload/youtubePageFetcher');
