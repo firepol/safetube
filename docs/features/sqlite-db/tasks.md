@@ -202,7 +202,7 @@
 
 ### 7. Phase 2 Table Implementation
 
-- [ ] 7.1 Implement Usage Logs table migration
+- [x] 7.1 Implement Usage Logs table migration
   - Migrate usageLog.json to usage_logs table with proper date indexing
   - Implement efficient daily usage tracking and query optimization
   - Add data validation for usage time calculations
@@ -210,8 +210,9 @@
   - **Definition of Done**: Usage logs migrated accurately, daily tracking efficient, historical queries optimized
   - **Tests Required**: Usage data migration accuracy tests, query performance tests, validation logic tests
   - **Code Review**: Usage tracking logic review, query optimization review
+  - **COMPLETED**: Implemented with type-safe query helpers, comprehensive tests (24 tests), migration from JSON tested
 
-- [ ] 7.2 Implement Time Limits table migration
+- [x] 7.2 Implement Time Limits table migration
   - Migrate timeLimits.json to time_limits table with single-row constraint
   - Implement proper validation for time limit configurations
   - Add support for warning thresholds and custom messages
@@ -219,8 +220,9 @@
   - **Definition of Done**: Time limits migrated correctly, validation enforced, enforcement integration working
   - **Tests Required**: Time limits migration tests, validation constraint tests, enforcement integration tests
   - **Code Review**: Time limit logic review, validation strategy review
+  - **COMPLETED**: Single-row table pattern with CHECK constraint, 18 comprehensive tests, migration from timeLimits.json tested
 
-- [ ] 7.3 Implement Usage Extras table migration
+- [x] 7.3 Implement Usage Extras table migration
   - Migrate timeExtra.json to usage_extras table with audit trail support
   - Implement proper date-based extra time tracking
   - Add support for multiple extra time additions per day
@@ -228,8 +230,9 @@
   - **Definition of Done**: Extra time data migrated, audit trail preserved, admin interface integrated
   - **Tests Required**: Extra time migration tests, audit trail validation tests, admin interface integration tests
   - **Code Review**: Extra time tracking logic review, audit trail implementation review
+  - **COMPLETED**: Audit trail support with multiple entries per date, 27 comprehensive tests, handles negative values
 
-- [ ] 7.4 Implement Settings table migration
+- [x] 7.4 Implement Settings table migration
   - Create `settings` table schema with key-value structure (namespace.setting format)
   - Implement type-safe query helpers in `src/main/database/queries/settingsQueries.ts`:
     - `getSetting<T>(db, key, defaultValue)` - Get single setting with type safety
@@ -250,6 +253,7 @@
   - **Definition of Done**: All settings consolidated, namespacing working, query helpers type-safe, integration tests pass with mock data
   - **Tests Required**: Settings consolidation tests with mock JSON, namespacing validation tests, type safety tests, query helper tests
   - **Code Review**: Settings architecture review, query helper design review, test coverage validation
+  - **COMPLETED**: Unified key-value store with namespace.key format, automatic type inference, 41 comprehensive tests, migration from all 3 JSON configs tested
 
 ### 8. Advanced Search Implementation
 
