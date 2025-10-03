@@ -187,7 +187,48 @@ export function registerTimeTrackingHandlers() {
         ORDER BY vr.last_watched DESC
       `);
 
-      return viewRecords || [];
+      // Enhance local video metadata (titles and thumbnails)
+      const path = await import('path');
+      const { parseVideoId } = await import('../../shared/fileUtils');
+      const { getThumbnailCacheKey } = await import('../../shared/thumbnailUtils');
+      const { getThumbnailUrl } = await import('../services/thumbnailService');
+
+      const enhanced = viewRecords.map(record => {
+        let title = record.title;
+        let thumbnail = record.thumbnail;
+
+        // For local videos, enhance metadata
+        if (record.videoId && record.videoId.startsWith('local:')) {
+          const parsed = parseVideoId(record.videoId);
+          if (parsed.success && parsed.parsed?.type === 'local') {
+            const filePath = parsed.parsed.path;
+
+            // Extract title from filename if not available or is generic
+            if (!title || title.startsWith('Video local:')) {
+              const fileName = filePath ? path.basename(filePath, path.extname(filePath)) : 'Unknown Video';
+              title = fileName;
+            }
+
+            // Check for cached generated thumbnail if not available
+            if (!thumbnail) {
+              const cacheKey = getThumbnailCacheKey(record.videoId, 'local');
+              const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
+
+              if (fs.existsSync(cachedThumbnailPath)) {
+                thumbnail = getThumbnailUrl(cachedThumbnailPath);
+              }
+            }
+          }
+        }
+
+        return {
+          ...record,
+          title,
+          thumbnail
+        };
+      });
+
+      return enhanced || [];
     } catch (error) {
       log.error('[IPC] Error reading watched videos from database:', error);
       // Fallback to JSON file
