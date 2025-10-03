@@ -154,13 +154,38 @@ export function registerTimeTrackingHandlers() {
     }
   });
 
-  // Get time limits
+  // Get time limits from database
   ipcMain.handle(IPC.TIME_TRACKING.GET_TIME_LIMITS, async () => {
     try {
-      const timeLimits = readTimeLimits();
-      return timeLimits;
+      const { default: DatabaseService } = await import('../services/DatabaseService');
+      const db = DatabaseService.getInstance();
+
+      const result = await db.get(`
+        SELECT monday, tuesday, wednesday, thursday, friday, saturday, sunday
+        FROM time_limits
+        WHERE id = 1
+      `) as any;
+
+      if (!result) {
+        // Return default time limits if not found
+        return {
+          Monday: 30, Tuesday: 30, Wednesday: 30, Thursday: 30,
+          Friday: 30, Saturday: 60, Sunday: 60
+        };
+      }
+
+      // Convert to capitalized keys for compatibility
+      return {
+        Monday: result.monday,
+        Tuesday: result.tuesday,
+        Wednesday: result.wednesday,
+        Thursday: result.thursday,
+        Friday: result.friday,
+        Saturday: result.saturday,
+        Sunday: result.sunday
+      };
     } catch (error) {
-      log.error('[IPC] Error reading time limits:', error);
+      log.error('[IPC] Error reading time limits from database:', error);
       throw error;
     }
   });
@@ -247,27 +272,26 @@ export function registerAdminHandlers() {
     }
   });
 
-  // Add extra time
+  // Add extra time (write to database)
   ipcMain.handle(IPC.ADMIN.ADD_EXTRA_TIME, async (_, minutes: number) => {
     try {
-      const usageLogPath = AppPaths.getConfigPath('usageLog.json');
-      let usageLog = {};
-
-      if (fs.existsSync(usageLogPath)) {
-        usageLog = JSON.parse(fs.readFileSync(usageLogPath, 'utf8'));
-      }
+      const { default: DatabaseService } = await import('../services/DatabaseService');
+      const db = DatabaseService.getInstance();
 
       const today = new Date().toISOString().split('T')[0];
-      if (!(usageLog as any)[today]) {
-        (usageLog as any)[today] = { totalTime: 0, extraTime: 0 };
-      }
 
-      (usageLog as any)[today].extraTime = ((usageLog as any)[today].extraTime || 0) + (minutes * 60 * 1000);
-      fs.writeFileSync(usageLogPath, JSON.stringify(usageLog, null, 2));
+      // Insert or update usage_extras table
+      await db.run(`
+        INSERT INTO usage_extras (date, extra_minutes, reason, added_by)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(date) DO UPDATE SET
+          extra_minutes = extra_minutes + excluded.extra_minutes,
+          updated_at = CURRENT_TIMESTAMP
+      `, [today, minutes, 'Manual addition from admin panel', 'admin']);
 
       return { success: true };
     } catch (error) {
-      log.error('[IPC] Error adding extra time:', error);
+      log.error('[IPC] Error adding extra time to database:', error);
       throw error;
     }
   });
@@ -291,14 +315,29 @@ export function registerAdminHandlers() {
     }
   });
 
-  // Write time limits
+  // Write time limits (write to database)
   ipcMain.handle(IPC.ADMIN.WRITE_TIME_LIMITS, async (_, timeLimits: any) => {
     try {
-      const timeLimitsPath = AppPaths.getConfigPath('timeLimits.json');
-      fs.writeFileSync(timeLimitsPath, JSON.stringify(timeLimits, null, 2));
+      const { default: DatabaseService } = await import('../services/DatabaseService');
+      const db = DatabaseService.getInstance();
+
+      await db.run(`
+        INSERT OR REPLACE INTO time_limits (
+          id, monday, tuesday, wednesday, thursday, friday, saturday, sunday
+        ) VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        timeLimits.Monday || timeLimits.monday || 0,
+        timeLimits.Tuesday || timeLimits.tuesday || 0,
+        timeLimits.Wednesday || timeLimits.wednesday || 0,
+        timeLimits.Thursday || timeLimits.thursday || 0,
+        timeLimits.Friday || timeLimits.friday || 0,
+        timeLimits.Saturday || timeLimits.saturday || 0,
+        timeLimits.Sunday || timeLimits.sunday || 0
+      ]);
+
       return { success: true };
     } catch (error) {
-      log.error('[IPC] Error writing time limits:', error);
+      log.error('[IPC] Error writing time limits to database:', error);
       throw error;
     }
   });
@@ -1021,28 +1060,52 @@ export function registerDownloadHandlers() {
 
 // Settings Handlers
 export function registerSettingsHandlers() {
-  // Read main settings
+  // Read main settings from database
   ipcMain.handle(IPC.SETTINGS.READ_MAIN_SETTINGS, async () => {
     try {
-      const settingsPath = AppPaths.getConfigPath('mainSettings.json');
-      if (fs.existsSync(settingsPath)) {
-        return JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+      const { default: DatabaseService } = await import('../services/DatabaseService');
+      const db = DatabaseService.getInstance();
+      const rows = await db.all(
+        "SELECT key, value FROM settings WHERE key LIKE 'main.%'"
+      ) as Array<{ key: string; value: string }>;
+
+      const settings: Record<string, any> = {};
+      for (const row of rows) {
+        // Remove 'main.' prefix from key
+        const key = row.key.replace('main.', '');
+        settings[key] = JSON.parse(row.value);
       }
-      return {};
+
+      return settings;
     } catch (error) {
-      log.error('[IPC] Error reading main settings:', error);
+      log.error('[IPC] Error reading main settings from database:', error);
       return {};
     }
   });
 
-  // Write main settings
+  // Write main settings to database
   ipcMain.handle(IPC.SETTINGS.WRITE_MAIN_SETTINGS, async (_, settings: any) => {
     try {
-      const settingsPath = AppPaths.getConfigPath('mainSettings.json');
-      fs.writeFileSync(settingsPath, JSON.stringify(settings, null, 2));
+      const { default: DatabaseService } = await import('../services/DatabaseService');
+      const db = DatabaseService.getInstance();
+
+      // Convert settings object to individual key-value pairs with 'main.' prefix
+      const queries = Object.entries(settings).map(([key, value]) => ({
+        sql: `
+          INSERT OR REPLACE INTO settings (key, value, type)
+          VALUES (?, ?, ?)
+        `,
+        params: [
+          `main.${key}`,
+          JSON.stringify(value),
+          typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string'
+        ]
+      }));
+
+      await db.executeTransaction(queries);
       return { success: true };
     } catch (error) {
-      log.error('[IPC] Error writing main settings:', error);
+      log.error('[IPC] Error writing main settings to database:', error);
       throw error;
     }
   });
@@ -1204,14 +1267,9 @@ export function registerDownloadedVideosHandlers() {
 
 // YouTube Playback Handlers
 export function registerYouTubePlaybackHandlers() {
-  // Register GET_VIDEO_STREAMS handler
-  // The actual implementation is in youtube.ts and will be called from index.ts
-  // This is a stub registration for contract test validation
-  ipcMain.handle(IPC.PLAYBACK.GET_VIDEO_STREAMS, async (_, videoId: string) => {
-    // This stub will be overridden by setupYouTubeHandlers() in youtube.ts
-    // when called from index.ts during app initialization
-    return { videoStreams: [], audioTracks: [] };
-  });
+  // YouTube playback handlers are registered in youtube.ts via setupYouTubeHandlers()
+  // Called from index.ts during app initialization
+  // No stub needed here - the real handler will be registered directly
 }
 
 // Register all IPC handlers
