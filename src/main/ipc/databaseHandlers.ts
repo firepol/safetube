@@ -515,18 +515,34 @@ export function registerDatabaseHandlers() {
         };
       } else {
         // Add to favorites
-        // First, ensure the source exists in the sources table
+        // First, ensure the video exists in the videos table
+        const videoExists = await dbService.get<{ count: number }>(`
+          SELECT COUNT(*) as count FROM videos WHERE id = ?
+        `, [videoId]);
+
+        if (!videoExists || videoExists.count === 0) {
+          // Video doesn't exist, create a minimal entry
+          // Determine video type from video ID pattern
+          let videoType = 'local';
+          if (videoId.startsWith('local:')) {
+            videoType = 'local';
+          } else if (videoId.length === 11 && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+            videoType = 'youtube';
+          }
+
+          await dbService.run(`
+            INSERT OR IGNORE INTO videos (id, title, source_id, created_at, updated_at)
+            VALUES (?, ?, ?, datetime('now'), datetime('now'))
+          `, [videoId, `Video ${videoId}`, sourceId]);
+        }
+
+        // Then, ensure the source exists in the sources table
         const sourceExists = await dbService.get<{ count: number }>(`
           SELECT COUNT(*) as count FROM sources WHERE id = ?
         `, [sourceId]);
 
         if (!sourceExists || sourceExists.count === 0) {
           // Source doesn't exist, create a minimal entry
-          // Try to get video info to determine source type
-          const video = await dbService.get<{ source_id: string }>(`
-            SELECT source_id FROM videos WHERE id = ?
-          `, [videoId]);
-
           // Determine source type from video ID or source ID pattern
           let sourceType = 'local';
           if (videoId.startsWith('local:') || sourceId.startsWith('local')) {
