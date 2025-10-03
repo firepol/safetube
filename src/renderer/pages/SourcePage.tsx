@@ -241,16 +241,13 @@ export const SourcePage: React.FC = () => {
           // Run validation and thumbnail generation asynchronously - these don't block UI
           Promise.resolve().then(async () => {
 
-            // Process thumbnails in parallel, not sequentially
+            // Process thumbnails using shared utility
+            const { getBestThumbnail } = await import('../../shared/thumbnailUtils');
             const thumbnailPromises = videos.map(async (video) => {
               if (!video.thumbnail || video.thumbnail.trim() === '') {
-                try {
-                  const generatedThumbnail = await (window as any).electron.getBestThumbnail(video.id);
-                  if (generatedThumbnail) {
-                    return { id: video.id, thumbnail: generatedThumbnail };
-                  }
-                } catch (error) {
-                  logVerbose('[SourcePage] Error getting best thumbnail for:', video.id, error);
+                const generatedThumbnail = getBestThumbnail(video.thumbnail, video.type);
+                if (generatedThumbnail) {
+                  return { id: video.id, thumbnail: generatedThumbnail };
                 }
               }
               return null;

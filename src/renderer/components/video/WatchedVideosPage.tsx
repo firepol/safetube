@@ -101,18 +101,9 @@ export const WatchedVideosPage: React.FC = () => {
                  videoData.url.startsWith(sourceData.path));
 
               if (belongsToSource) {
-                // Check for best available thumbnail if original is empty
-                let bestThumbnail = videoData.thumbnail;
-                if (!bestThumbnail || bestThumbnail.trim() === '') {
-                  try {
-                    const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
-                    if (generatedThumbnail) {
-                      bestThumbnail = generatedThumbnail;
-                    }
-                  } catch (error) {
-                    logVerbose('[WatchedVideosPage] Error getting best thumbnail for:', watchedVideo.videoId, error);
-                  }
-                }
+                // Get best available thumbnail using shared utility
+                const { getBestThumbnail } = await import('../../../shared/thumbnailUtils');
+                const bestThumbnail = getBestThumbnail(videoData.thumbnail, videoData.type);
 
                 videosWithDetails.push({
                   ...videoData,
@@ -130,18 +121,9 @@ export const WatchedVideosPage: React.FC = () => {
               if (filePath && sourceData.path && filePath.startsWith(sourceData.path)) {
                 const fileName = path.basename(filePath, path.extname(filePath));
 
-                // Check for best available thumbnail for this video
-                let bestThumbnail = watchedVideo.thumbnail || '';
-                if (!bestThumbnail || bestThumbnail.trim() === '') {
-                  try {
-                    const generatedThumbnail = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
-                    if (generatedThumbnail) {
-                      bestThumbnail = generatedThumbnail;
-                    }
-                  } catch (error) {
-                    logVerbose('[WatchedVideosPage] Error getting best thumbnail for fallback video:', watchedVideo.videoId, error);
-                  }
-                }
+                // Get best available thumbnail using shared utility
+                const { getBestThumbnail } = await import('../../../shared/thumbnailUtils');
+                const bestThumbnail = getBestThumbnail(watchedVideo.thumbnail, 'local');
 
                 videosWithDetails.push({
                   id: watchedVideo.videoId,

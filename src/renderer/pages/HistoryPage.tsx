@@ -91,16 +91,9 @@ export const HistoryPage: React.FC = () => {
               videoType = 'local';
             }
 
-            // Get thumbnail - generate for local videos if missing
-            let thumbnail = watchedVideo.thumbnail || '';
-            if (!thumbnail && videoType === 'local') {
-              try {
-                const generated = await (window as any).electron.getBestThumbnail(watchedVideo.videoId);
-                thumbnail = generated || '';
-              } catch (error) {
-                logVerbose('[HistoryPage] Error getting thumbnail for:', watchedVideo.videoId, error);
-              }
-            }
+            // Get thumbnail - use shared utility to get best thumbnail
+            const { getBestThumbnail } = await import('../../shared/thumbnailUtils');
+            const thumbnail = getBestThumbnail(watchedVideo.thumbnail, videoType);
 
             return {
               id: watchedVideo.videoId,

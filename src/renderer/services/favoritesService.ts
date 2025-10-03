@@ -334,27 +334,21 @@ export class FavoritesService {
       const favorites = await this.getFavorites();
 
       // Convert favorites to VideoCardBaseProps format with thumbnail processing
+      const { getBestThumbnail } = await import('../../shared/thumbnailUtils');
       const videos: VideoCardBaseProps[] = [];
       for (const favorite of favorites) {
-        // Check for best available thumbnail if original is empty (like History page does)
-        let bestThumbnail = favorite.thumbnail;
-        if (!bestThumbnail || bestThumbnail.trim() === '') {
-          try {
-            const generatedThumbnail = await window.electron.getBestThumbnail(favorite.videoId);
-            if (generatedThumbnail) {
-              bestThumbnail = generatedThumbnail;
-            }
-          } catch (error) {
-            logVerbose('[FavoritesService] Error getting best thumbnail for:', favorite.videoId, error);
-          }
-        }
+        // Determine video type
+        const videoType = favorite.sourceType === 'downloaded' ? 'local' : favorite.sourceType;
+
+        // Get best available thumbnail using shared utility
+        const bestThumbnail = getBestThumbnail(favorite.thumbnail, videoType);
 
         videos.push({
           id: favorite.videoId,
           title: favorite.title,
-          thumbnail: bestThumbnail || '', // Use generated thumbnail or empty string
+          thumbnail: bestThumbnail,
           duration: favorite.duration || 0, // Provide 0 fallback for duration
-          type: favorite.sourceType === 'downloaded' ? 'local' : favorite.sourceType,
+          type: videoType,
           watched: false, // Will be populated by mergeWatchedData
           isClicked: false, // Will be populated by UI
           isFavorite: true, // Always true for favorites source
