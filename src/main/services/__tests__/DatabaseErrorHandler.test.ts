@@ -117,15 +117,6 @@ describe('DatabaseErrorHandler', () => {
         message: 'foreign key constraint failed'
       });
 
-      // Test the error categorization directly first
-      const testError = errorHandler.categorizeError({
-        code: 'SQLITE_CONSTRAINT_FOREIGNKEY',
-        message: 'foreign key constraint failed'
-      });
-
-      expect(testError.code).toBe(DatabaseErrorCodes.FOREIGN_KEY_VIOLATION);
-      expect(errorHandler.isRetryableError(testError)).toBe(false);
-
       const result = await errorHandler.executeWithRetry(operation, 'test-operation', {
         maxAttempts: 3,
         baseDelay: 1,

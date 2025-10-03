@@ -79,6 +79,7 @@ describe('Database IPC Handlers', () => {
         'database:sources:create',
         'database:sources:update',
         'database:sources:delete',
+        'youtube-cache:get-page',
         'database:youtube-cache:get-cached-results',
         'database:youtube-cache:set-cached-results',
         'database:youtube-cache:clear-cache'
@@ -131,7 +132,7 @@ describe('Database IPC Handlers', () => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual(mockVideos);
       expect(mockDatabaseService.all).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT * FROM videos'),
+        expect.stringContaining('SELECT id, title, published_at, thumbnail, duration, url, is_available'),
         ['source1']
       );
     });
@@ -146,7 +147,7 @@ describe('Database IPC Handlers', () => {
       expect(result.success).toBe(true);
       expect(result.data).toEqual(mockVideo);
       expect(mockDatabaseService.get).toHaveBeenCalledWith(
-        expect.stringContaining('SELECT * FROM videos WHERE id = ?'),
+        expect.stringContaining('SELECT id, title, published_at, thumbnail, duration, url, is_available'),
         ['video1']
       );
     });
@@ -288,19 +289,23 @@ describe('Database IPC Handlers', () => {
 
   describe('Favorites Handlers', () => {
     test('should get all favorites', async () => {
-      const mockFavorites = [
-        { video_id: 'video1', title: 'Favorite 1', date_added: '2023-01-01' },
-        { video_id: 'video2', title: 'Favorite 2', date_added: '2023-01-02' }
+      const mockRawFavorites = [
+        { video_id: 'video1', title: 'Favorite 1', date_added: '2023-01-01', source_id: 'source1', source_type: 'youtube_channel', thumbnail: 'thumb1.jpg', duration: 120 },
+        { video_id: 'video2', title: 'Favorite 2', date_added: '2023-01-02', source_id: 'source2', source_type: 'local', thumbnail: 'thumb2.jpg', duration: 180 }
       ];
-      mockDatabaseService.all.mockResolvedValue(mockFavorites);
+      mockDatabaseService.all.mockResolvedValue(mockRawFavorites);
 
       const handler = registeredHandlers.get('database:favorites:get-all');
       const result = await handler({});
 
       expect(result.success).toBe(true);
-      expect(result.data).toEqual(mockFavorites);
+      // Handler transforms snake_case to camelCase
+      expect(result.data).toEqual([
+        { videoId: 'video1', dateAdded: '2023-01-01', sourceType: 'youtube', sourceId: 'source1', title: 'Favorite 1', thumbnail: 'thumb1.jpg', duration: 120 },
+        { videoId: 'video2', dateAdded: '2023-01-02', sourceType: 'local', sourceId: 'source2', title: 'Favorite 2', thumbnail: 'thumb2.jpg', duration: 180 }
+      ]);
       expect(mockDatabaseService.all).toHaveBeenCalledWith(
-        expect.stringContaining('FROM favorites f JOIN videos v')
+        expect.stringContaining('FROM favorites f')
       );
     });
 

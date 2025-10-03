@@ -217,8 +217,10 @@ export class DatabaseErrorHandler {
     const options = { ...this.defaultRetryOptions, ...retryOptions };
     const startTime = Date.now();
     let lastError: DatabaseError | undefined;
+    let lastAttempt = 1;
 
     for (let attempt = 1; attempt <= options.maxAttempts; attempt++) {
+      lastAttempt = attempt;
       try {
         const result = await operation();
 
@@ -259,12 +261,12 @@ export class DatabaseErrorHandler {
 
     const totalTime = Date.now() - startTime;
 
-    log.error(`[DatabaseErrorHandler] Operation "${operationName}" failed after ${options.maxAttempts} attempts in ${totalTime}ms:`, lastError);
+    log.error(`[DatabaseErrorHandler] Operation "${operationName}" failed after ${lastAttempt} attempts in ${totalTime}ms:`, lastError);
 
     return {
       success: false,
       error: lastError,
-      attempts: options.maxAttempts,
+      attempts: lastAttempt,
       totalTime
     };
   }
