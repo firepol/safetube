@@ -346,13 +346,42 @@ export function registerDatabaseHandlers() {
   ipcMain.handle(IPC.VIEW_RECORDS.GET_HISTORY, async (_, limit: number = 50): Promise<DatabaseResponse<(ViewRecord & VideoRecord)[]>> => {
     try {
       const dbService = DatabaseService.getInstance();
-      const history = await dbService.all<ViewRecord & VideoRecord>(`
+      const rawHistory = await dbService.all<ViewRecord & VideoRecord>(`
         SELECT vr.*, v.title, v.thumbnail, v.duration as video_duration
         FROM view_records vr
         JOIN videos v ON vr.video_id = v.id
         ORDER BY vr.last_watched DESC
         LIMIT ?
       `, [limit]);
+
+      // Enhance thumbnails for local videos (check for cached generated thumbnails)
+      const fs = await import('fs');
+      const { AppPaths } = await import('../appPaths');
+      const { getThumbnailUrl } = await import('../services/thumbnailService');
+      const { parseVideoId } = await import('../../shared/fileUtils');
+      const { getThumbnailCacheKey } = await import('../../shared/thumbnailUtils');
+
+      const history = rawHistory.map(record => {
+        let thumbnail = record.thumbnail || '';
+
+        // For local videos without thumbnails, check for cached generated thumbnails
+        if (!thumbnail && record.video_id && record.video_id.startsWith('local:')) {
+          const parsed = parseVideoId(record.video_id);
+          if (parsed.success && parsed.parsed?.type === 'local') {
+            const cacheKey = getThumbnailCacheKey(record.video_id, 'local');
+            const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
+
+            if (fs.existsSync(cachedThumbnailPath)) {
+              thumbnail = getThumbnailUrl(cachedThumbnailPath);
+            }
+          }
+        }
+
+        return {
+          ...record,
+          thumbnail
+        };
+      });
 
       return {
         success: true,
