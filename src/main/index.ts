@@ -1060,7 +1060,13 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_PAGINATED_VIDEOS, async (event, sourceId: s
           }
         });
 
-
+        // Store videos in database for persistence and search
+        try {
+          await writeVideosToDatabase(videosWithMetadata);
+        } catch (dbError) {
+          log.warn('[Main] Warning: Could not write local videos to database:', dbError);
+          // Continue execution - this is not critical for basic functionality
+        }
 
         return {
           videos: videosWithMetadata,
