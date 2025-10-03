@@ -76,6 +76,15 @@ export class MigrationService {
     try {
       log.info('[MigrationService] Starting Phase 1 migration');
 
+      // Check if migration already completed (tables have data)
+      const sourcesCount = await this.databaseService.get<{ count: number }>('SELECT COUNT(*) as count FROM sources');
+      if (sourcesCount && sourcesCount.count > 0) {
+        log.info('[MigrationService] Phase 1 migration already completed (sources table has data), skipping');
+        summary.status = 'completed';
+        summary.endTime = new Date().toISOString();
+        return summary;
+      }
+
       // Create backup of JSON files before migration
       summary.backupPath = await this.createBackup();
 
@@ -84,11 +93,11 @@ export class MigrationService {
 
       // Define migration steps for Phase 1
       const migrationSteps = [
-        { tableName: 'sources', migrationFn: this.migrateSources.bind(this) },
-        { tableName: 'videos', migrationFn: this.migrateVideos.bind(this) },
-        { tableName: 'view_records', migrationFn: this.migrateViewRecords.bind(this) },
-        { tableName: 'favorites', migrationFn: this.migrateFavorites.bind(this) },
-        { tableName: 'youtube_api_results', migrationFn: this.migrateYouTubeApiResults.bind(this) }
+        { tableName: 'sources', migrationFn: this.migrateSources.bind(this), jsonFile: 'videoSources.json' },
+        { tableName: 'videos', migrationFn: this.migrateVideos.bind(this), jsonFile: 'watched.json' },
+        { tableName: 'view_records', migrationFn: this.migrateViewRecords.bind(this), jsonFile: 'watched.json' },
+        { tableName: 'favorites', migrationFn: this.migrateFavorites.bind(this), jsonFile: 'favorites.json' },
+        { tableName: 'youtube_api_results', migrationFn: this.migrateYouTubeApiResults.bind(this), jsonFile: null }
       ];
 
       // Execute each migration step
@@ -100,6 +109,14 @@ export class MigrationService {
         if (status.error) {
           summary.totalErrors++;
         }
+      }
+
+      // Rename JSON files to .old after successful migration
+      if (summary.totalErrors === 0) {
+        await this.renameJsonToOld('videoSources.json');
+        await this.renameJsonToOld('watched.json');
+        await this.renameJsonToOld('favorites.json');
+        log.info('[MigrationService] Renamed Phase 1 JSON files to .old');
       }
 
       // Check overall success
@@ -366,7 +383,10 @@ export class MigrationService {
       'favorites.json',
       'timeLimits.json',
       'usageLog.json',
-      'mainSettings.json'
+      'mainSettings.json',
+      'pagination.json',
+      'youtubePlayer.json',
+      'timeExtra.json'
     ];
 
     for (const filename of jsonFiles) {
@@ -381,6 +401,20 @@ export class MigrationService {
 
     log.info(`[MigrationService] Created backup at: ${backupDir}`);
     return backupDir;
+  }
+
+  /**
+   * Rename JSON file to .json.old after successful migration
+   */
+  private async renameJsonToOld(filename: string): Promise<void> {
+    const configDir = AppPaths.getConfigDir();
+    const sourcePath = path.join(configDir, filename);
+    const oldPath = path.join(configDir, `${filename}.old`);
+
+    if (fs.existsSync(sourcePath)) {
+      fs.renameSync(sourcePath, oldPath);
+      log.debug(`[MigrationService] Renamed ${filename} to ${filename}.old`);
+    }
   }
 
   /**
@@ -407,6 +441,15 @@ export class MigrationService {
     try {
       log.info('[MigrationService] Starting Phase 2 migration');
 
+      // Check if migration already completed (settings table has data)
+      const settingsCount = await this.databaseService.get<{ count: number }>('SELECT COUNT(*) as count FROM settings');
+      if (settingsCount && settingsCount.count > 0) {
+        log.info('[MigrationService] Phase 2 migration already completed (settings table has data), skipping');
+        summary.status = 'completed';
+        summary.endTime = new Date().toISOString();
+        return summary;
+      }
+
       // Backup is already created in Phase 1, no need to create another
 
       // Initialize Phase 2 schema
@@ -429,6 +472,17 @@ export class MigrationService {
         if (status.error) {
           summary.totalErrors++;
         }
+      }
+
+      // Rename JSON files to .old after successful migration
+      if (summary.totalErrors === 0) {
+        await this.renameJsonToOld('usageLog.json');
+        await this.renameJsonToOld('timeLimits.json');
+        await this.renameJsonToOld('timeExtra.json');
+        await this.renameJsonToOld('mainSettings.json');
+        await this.renameJsonToOld('pagination.json');
+        await this.renameJsonToOld('youtubePlayer.json');
+        log.info('[MigrationService] Renamed Phase 2 JSON files to .old');
       }
 
       // Check overall success
