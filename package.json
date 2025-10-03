@@ -29,6 +29,7 @@
     "test:fast": "vitest run --exclude=**/*.integration.test.ts",
     "test:integration": "vitest run --reporter=verbose src/renderer/services/*.integration.test.ts",
     "test:contract": "vitest run __tests__/contracts/ipc-contracts.test.ts",
+    "test:database": "vitest run --run src/main/database src/main/services/__tests__/DatabaseService.test.ts src/main/services/__tests__/DatabaseErrorHandler.test.ts src/main/ipc/__tests__/databaseHandlers.test.ts",
     "test:unit": "vitest run --exclude=**/*.integration.test.ts",
     "test:run": "vitest run",
     "test:run:fast": "vitest run --exclude=**/*.integration.test.ts",
