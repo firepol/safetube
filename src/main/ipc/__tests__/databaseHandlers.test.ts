@@ -57,32 +57,60 @@ describe('Database IPC Handlers', () => {
   describe('Handler Registration', () => {
     test('should register all database handlers', () => {
       const expectedHandlers = [
+        // Core handlers
         'database:health-check',
         'database:migrate-phase1',
+        'database:migrate-phase2',
         'database:verify-migration',
+        // Video handlers
         'database:videos:get-by-source',
         'database:videos:get-by-id',
         'database:videos:search',
         'database:videos:update-metadata',
         'database:videos:update-availability',
+        // View records handlers
         'database:view-records:get',
         'database:view-records:update',
         'database:view-records:get-history',
         'database:view-records:get-recently-watched',
+        // Favorites handlers
         'database:favorites:get-all',
         'database:favorites:add',
         'database:favorites:remove',
         'database:favorites:is-favorite',
         'database:favorites:toggle',
+        // Sources handlers
         'database:sources:get-all',
         'database:sources:get-by-id',
         'database:sources:create',
         'database:sources:update',
         'database:sources:delete',
+        // YouTube cache handlers
         'youtube-cache:get-page',
         'database:youtube-cache:get-cached-results',
         'database:youtube-cache:set-cached-results',
-        'database:youtube-cache:clear-cache'
+        'database:youtube-cache:clear-cache',
+        // Phase 2: Usage logs handlers
+        'database:usage-logs:get-by-date',
+        'database:usage-logs:upsert',
+        'database:usage-logs:increment',
+        'database:usage-logs:get-by-date-range',
+        'database:usage-logs:get-monthly',
+        // Phase 2: Time limits handlers
+        'database:time-limits:get',
+        'database:time-limits:update',
+        'database:time-limits:get-for-day',
+        'database:time-limits:update-day',
+        // Phase 2: Usage extras handlers
+        'database:usage-extras:get-by-date',
+        'database:usage-extras:get-total-minutes',
+        'database:usage-extras:add',
+        'database:usage-extras:delete',
+        // Phase 2: Settings handlers
+        'database:settings:get-setting',
+        'database:settings:set-setting',
+        'database:settings:get-by-namespace',
+        'database:settings:set-by-namespace'
       ];
 
       for (const handler of expectedHandlers) {

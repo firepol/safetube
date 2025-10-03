@@ -73,10 +73,10 @@ describe('Phase 2 Migration Integration', () => {
   });
 
   it('should preserve existing Phase 1 data when adding Phase 2 tables', async () => {
-    // Add some Phase 1 data
+    // Add some Phase 1 data (youtube_channel requires url per CHECK constraint)
     await dbService.run(`
-      INSERT INTO sources (id, type, title, sort_preference)
-      VALUES ('test-source-1', 'youtube_channel', 'Test Channel', 'newestFirst')
+      INSERT INTO sources (id, type, title, sort_preference, url)
+      VALUES ('test-source-1', 'youtube_channel', 'Test Channel', 'newestFirst', 'https://youtube.com/@test')
     `);
 
     await dbService.run(`
