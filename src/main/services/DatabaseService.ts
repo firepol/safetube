@@ -370,7 +370,7 @@ export class DatabaseService {
           log.error('[DatabaseService] Error executing query:', err, { sql, params });
           reject(err);
         } else {
-          log.debug(`[DatabaseService] Query executed in ${duration}ms:`, { sql, params: params.length });
+          // log.debug(`[DatabaseService] Query executed in ${duration}ms:`, { sql, params: params.length });
           resolve(this);
         }
       });
@@ -400,7 +400,7 @@ export class DatabaseService {
           log.error('[DatabaseService] Error executing query:', err, { sql, params });
           reject(err);
         } else {
-          log.debug(`[DatabaseService] Query executed in ${duration}ms:`, { sql, params: params.length });
+          // log.debug(`[DatabaseService] Query executed in ${duration}ms:`, { sql, params: params.length });
           resolve(row as T || null);
         }
       });
@@ -430,7 +430,7 @@ export class DatabaseService {
           log.error('[DatabaseService] Error executing query:', err, { sql, params });
           reject(err);
         } else {
-          log.debug(`[DatabaseService] Query executed in ${duration}ms, returned ${rows?.length || 0} rows:`, { sql, params: params.length });
+          // log.debug(`[DatabaseService] Query executed in ${duration}ms, returned ${rows?.length || 0} rows:`, { sql, params: params.length });
           resolve((rows || []) as T[]);
         }
       });
