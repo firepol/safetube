@@ -331,10 +331,10 @@ export function registerAdminHandlers() {
 
       // Insert or update usage_extras table
       await db.run(`
-        INSERT INTO usage_extras (date, extra_minutes, reason, added_by)
+        INSERT INTO usage_extras (date, minutes_added, reason, added_by)
         VALUES (?, ?, ?, ?)
         ON CONFLICT(date) DO UPDATE SET
-          extra_minutes = extra_minutes + excluded.extra_minutes,
+          minutes_added = minutes_added + excluded.minutes_added,
           updated_at = CURRENT_TIMESTAMP
       `, [today, minutes, 'Manual addition from admin panel', 'admin']);
 
