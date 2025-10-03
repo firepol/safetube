@@ -249,6 +249,56 @@ export class SimpleSchemaManager {
   }
 
   /**
+   * Initialize Phase 2 database schema
+   */
+  async initializePhase2Schema(): Promise<void> {
+    try {
+      log.info('[SimpleSchemaManager] Initializing Phase 2 schema');
+
+      // Check if already initialized
+      const currentVersion = await this.getCurrentSchemaVersion();
+      if (currentVersion && currentVersion.phase === 'phase2') {
+        log.debug('[SimpleSchemaManager] Phase 2 schema already initialized');
+        return;
+      }
+
+      // Create Phase 2 tables
+      await this.createUsageLogsTable();
+
+      // Update schema version
+      await this.databaseService.run(`
+        INSERT OR REPLACE INTO schema_version (id, version, phase)
+        VALUES (1, 2, 'phase2')
+      `);
+
+      log.info('[SimpleSchemaManager] Phase 2 schema initialized successfully');
+    } catch (error) {
+      log.error('[SimpleSchemaManager] Error initializing Phase 2 schema:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create usage_logs table
+   */
+  private async createUsageLogsTable(): Promise<void> {
+    await this.databaseService.run(`
+      CREATE TABLE IF NOT EXISTS usage_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          seconds_used INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(date)
+      )
+    `);
+
+    // Create indexes
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_date ON usage_logs(date)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_updated_at ON usage_logs(updated_at)');
+  }
+
+  /**
    * Get current schema version
    */
   async getCurrentSchemaVersion(): Promise<SchemaVersion | null> {

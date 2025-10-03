@@ -71,6 +71,15 @@ export interface YouTubeApiResult {
   created_at: string;
 }
 
+// Usage Log types (Phase 2)
+export interface UsageLog {
+  id: number;
+  date: string; // YYYY-MM-DD format
+  seconds_used: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Query result types with joins
 export interface ViewRecordWithVideo extends ViewRecord {
   video_title?: string;
