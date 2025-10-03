@@ -20,3 +20,12 @@ export * from './favoriteQueries';
 
 // Export YouTube cache queries
 export * from './youtubeCacheQueries';
+
+// Export usage log queries (Phase 2)
+export * from './usageLogQueries';
+
+// Export time limit queries (Phase 2)
+export * from './timeLimitQueries';
+
+// Export usage extra queries (Phase 2)
+export * from './usageExtraQueries';

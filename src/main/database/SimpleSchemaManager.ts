@@ -264,6 +264,8 @@ export class SimpleSchemaManager {
 
       // Create Phase 2 tables
       await this.createUsageLogsTable();
+      await this.createTimeLimitsTable();
+      await this.createUsageExtrasTable();
 
       // Update schema version
       await this.databaseService.run(`
@@ -296,6 +298,56 @@ export class SimpleSchemaManager {
     // Create indexes
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_date ON usage_logs(date)');
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_updated_at ON usage_logs(updated_at)');
+  }
+
+  /**
+   * Create time_limits table (single-row table)
+   */
+  private async createTimeLimitsTable(): Promise<void> {
+    await this.databaseService.run(`
+      CREATE TABLE IF NOT EXISTS time_limits (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          monday INTEGER NOT NULL DEFAULT 0,
+          tuesday INTEGER NOT NULL DEFAULT 0,
+          wednesday INTEGER NOT NULL DEFAULT 0,
+          thursday INTEGER NOT NULL DEFAULT 0,
+          friday INTEGER NOT NULL DEFAULT 0,
+          saturday INTEGER NOT NULL DEFAULT 0,
+          sunday INTEGER NOT NULL DEFAULT 0,
+          warning_threshold_minutes INTEGER,
+          countdown_warning_seconds INTEGER,
+          audio_warning_seconds INTEGER,
+          time_up_message TEXT,
+          use_system_beep BOOLEAN DEFAULT 0,
+          custom_beep_sound TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insert default row
+    await this.databaseService.run(`
+      INSERT OR IGNORE INTO time_limits (id) VALUES (1)
+    `);
+  }
+
+  /**
+   * Create usage_extras table
+   */
+  private async createUsageExtrasTable(): Promise<void> {
+    await this.databaseService.run(`
+      CREATE TABLE IF NOT EXISTS usage_extras (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          minutes_added INTEGER NOT NULL,
+          reason TEXT,
+          added_by TEXT DEFAULT 'admin',
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create index
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_extras_date ON usage_extras(date)');
   }
 
   /**

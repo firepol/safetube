@@ -80,6 +80,36 @@ export interface UsageLog {
   updated_at: string;
 }
 
+// Time Limits types (Phase 2)
+export interface TimeLimit {
+  id: number;
+  monday: number;
+  tuesday: number;
+  wednesday: number;
+  thursday: number;
+  friday: number;
+  saturday: number;
+  sunday: number;
+  warning_threshold_minutes: number | null;
+  countdown_warning_seconds: number | null;
+  audio_warning_seconds: number | null;
+  time_up_message: string | null;
+  use_system_beep: boolean;
+  custom_beep_sound: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// Usage Extras types (Phase 2)
+export interface UsageExtra {
+  id: number;
+  date: string; // YYYY-MM-DD format
+  minutes_added: number;
+  reason: string | null;
+  added_by: string;
+  created_at: string;
+}
+
 // Query result types with joins
 export interface ViewRecordWithVideo extends ViewRecord {
   video_title?: string;
