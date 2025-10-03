@@ -515,6 +515,32 @@ export function registerDatabaseHandlers() {
         };
       } else {
         // Add to favorites
+        // First, ensure the source exists in the sources table
+        const sourceExists = await dbService.get<{ count: number }>(`
+          SELECT COUNT(*) as count FROM sources WHERE id = ?
+        `, [sourceId]);
+
+        if (!sourceExists || sourceExists.count === 0) {
+          // Source doesn't exist, create a minimal entry
+          // Try to get video info to determine source type
+          const video = await dbService.get<{ source_id: string }>(`
+            SELECT source_id FROM videos WHERE id = ?
+          `, [videoId]);
+
+          // Determine source type from video ID or source ID pattern
+          let sourceType = 'local';
+          if (videoId.startsWith('local:') || sourceId.startsWith('local')) {
+            sourceType = 'local';
+          } else if (videoId.length === 11 && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+            sourceType = 'youtube_channel';
+          }
+
+          await dbService.run(`
+            INSERT OR IGNORE INTO sources (id, type, title, sort_preference)
+            VALUES (?, ?, ?, ?)
+          `, [sourceId, sourceType, `Source ${sourceId}`, 'newestFirst']);
+        }
+
         await dbService.run(`
           INSERT INTO favorites (video_id, source_id, date_added)
           VALUES (?, ?, ?)
