@@ -29,3 +29,6 @@ export * from './timeLimitQueries';
 
 // Export usage extra queries (Phase 2)
 export * from './usageExtraQueries';
+
+// Export settings queries (Phase 2)
+export * from './settingsQueries';

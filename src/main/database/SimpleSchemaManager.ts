@@ -266,6 +266,7 @@ export class SimpleSchemaManager {
       await this.createUsageLogsTable();
       await this.createTimeLimitsTable();
       await this.createUsageExtrasTable();
+      await this.createSettingsTable();
 
       // Update schema version
       await this.databaseService.run(`
@@ -348,6 +349,25 @@ export class SimpleSchemaManager {
 
     // Create index
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_extras_date ON usage_extras(date)');
+  }
+
+  /**
+   * Create settings table (unified key-value store)
+   */
+  private async createSettingsTable(): Promise<void> {
+    await this.databaseService.run(`
+      CREATE TABLE IF NOT EXISTS settings (
+          key TEXT PRIMARY KEY,
+          value TEXT,
+          type TEXT NOT NULL DEFAULT 'string',
+          description TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create index for namespace queries
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key)');
   }
 
   /**
