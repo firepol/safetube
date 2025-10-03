@@ -248,15 +248,17 @@ export async function readTimeExtra(): Promise<TimeExtra> {
     const { default: DatabaseService } = await import('./services/DatabaseService');
     const db = DatabaseService.getInstance();
 
+    // Sum all minutes_added for each date (since table allows multiple entries per date)
     const rows = await db.all(`
-      SELECT date, minutes_added
+      SELECT date, SUM(minutes_added) as total_minutes
       FROM usage_extras
+      GROUP BY date
       ORDER BY date DESC
-    `) as Array<{ date: string; minutes_added: number }>;
+    `) as Array<{ date: string; total_minutes: number }>;
 
     const timeExtra: TimeExtra = {};
     for (const row of rows) {
-      timeExtra[row.date] = row.minutes_added;
+      timeExtra[row.date] = row.total_minutes;
     }
 
     return timeExtra;

@@ -341,21 +341,21 @@ export async function getTimeTrackingState(): Promise<{
     
     const currentDate = new Date().toISOString().split('T')[0];
     const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
-    
+
     const timeLimitMinutes = (timeLimits[dayOfWeek as keyof TimeLimits] as number) || 0;
-    const timeLimitSeconds = timeLimitMinutes * 60;
+    const extraTimeMinutes = timeExtra[currentDate] || 0;
+    const timeLimitSeconds = (timeLimitMinutes + extraTimeMinutes) * 60;
     const timeUsedToday = usageLog[currentDate] || 0;
     const timeRemaining = Math.max(0, timeLimitSeconds - timeUsedToday);
     const isLimitReached = timeUsedToday >= timeLimitSeconds;
-    const extraTimeToday = timeExtra[currentDate];
-    
+
     return {
       currentDate,
       timeUsedToday,
       timeLimitToday: timeLimitSeconds,
       timeRemaining,
       isLimitReached,
-      extraTimeToday
+      extraTimeToday: extraTimeMinutes
     };
   } catch (error) {
     logVerbose(`[TimeTracking] Error getting time tracking state: ${error}`);
