@@ -95,22 +95,104 @@ async function writeJsonFile<T>(filename: string, data: T): Promise<void> {
   }
 }
 
-// Time Limits Functions
+// Time Limits Functions - Now use database
 export async function readTimeLimits(): Promise<TimeLimits> {
-  return readJsonFile<TimeLimits>('timeLimits.json');
+  try {
+    const { default: DatabaseService } = await import('./services/DatabaseService');
+    const db = DatabaseService.getInstance();
+
+    const result = await db.get(`
+      SELECT monday, tuesday, wednesday, thursday, friday, saturday, sunday
+      FROM time_limits
+      WHERE id = 1
+    `) as any;
+
+    if (!result) {
+      // Return defaults if not in database
+      return {
+        Monday: 30, Tuesday: 30, Wednesday: 30, Thursday: 30,
+        Friday: 30, Saturday: 60, Sunday: 60
+      };
+    }
+
+    return {
+      Monday: result.monday,
+      Tuesday: result.tuesday,
+      Wednesday: result.wednesday,
+      Thursday: result.thursday,
+      Friday: result.friday,
+      Saturday: result.saturday,
+      Sunday: result.sunday
+    };
+  } catch (error) {
+    console.error('[fileUtils] Error reading time limits from database:', error);
+    // Fallback to defaults
+    return {
+      Monday: 30, Tuesday: 30, Wednesday: 30, Thursday: 30,
+      Friday: 30, Saturday: 60, Sunday: 60
+    };
+  }
 }
 
 export async function writeTimeLimits(timeLimits: TimeLimits): Promise<void> {
-  return writeJsonFile('timeLimits.json', timeLimits);
+  const { default: DatabaseService } = await import('./services/DatabaseService');
+  const db = DatabaseService.getInstance();
+
+  await db.run(`
+    INSERT OR REPLACE INTO time_limits (
+      id, monday, tuesday, wednesday, thursday, friday, saturday, sunday
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?)
+  `, [
+    timeLimits.Monday || 0,
+    timeLimits.Tuesday || 0,
+    timeLimits.Wednesday || 0,
+    timeLimits.Thursday || 0,
+    timeLimits.Friday || 0,
+    timeLimits.Saturday || 0,
+    timeLimits.Sunday || 0
+  ]);
 }
 
-// Usage Log Functions
+// Usage Log Functions - Now use database
 export async function readUsageLog(): Promise<UsageLog> {
-  return readJsonFile<UsageLog>('usageLog.json');
+  try {
+    const { default: DatabaseService } = await import('./services/DatabaseService');
+    const db = DatabaseService.getInstance();
+
+    const rows = await db.all(`
+      SELECT date, seconds_used
+      FROM usage_logs
+      ORDER BY date DESC
+    `) as Array<{ date: string; seconds_used: number }>;
+
+    const usageLog: UsageLog = {};
+    for (const row of rows) {
+      usageLog[row.date] = row.seconds_used;
+    }
+
+    return usageLog;
+  } catch (error) {
+    console.error('[fileUtils] Error reading usage log from database:', error);
+    return {};
+  }
 }
 
 export async function writeUsageLog(usageLog: UsageLog): Promise<void> {
-  return writeJsonFile('usageLog.json', usageLog);
+  const { default: DatabaseService } = await import('./services/DatabaseService');
+  const db = DatabaseService.getInstance();
+
+  // Convert UsageLog object to array of queries
+  const queries = Object.entries(usageLog).map(([date, seconds]) => ({
+    sql: `
+      INSERT OR REPLACE INTO usage_logs (date, seconds_used)
+      VALUES (?, ?)
+    `,
+    params: [date, seconds]
+  }));
+
+  if (queries.length > 0) {
+    await db.executeTransaction(queries);
+  }
 }
 
 // Video Source Functions
@@ -169,13 +251,48 @@ export async function writeTimeExtra(timeExtra: TimeExtra): Promise<void> {
   return writeJsonFile('timeExtra.json', timeExtra);
 }
 
-// Main Settings Functions
+// Main Settings Functions - Now use database
 export async function readMainSettings(): Promise<MainSettings> {
-  return readJsonFile<MainSettings>('mainSettings.json');
+  try {
+    const { default: DatabaseService } = await import('./services/DatabaseService');
+    const db = DatabaseService.getInstance();
+
+    const rows = await db.all(`
+      SELECT key, value FROM settings WHERE key LIKE 'main.%'
+    `) as Array<{ key: string; value: string }>;
+
+    const settings: any = {};
+    for (const row of rows) {
+      const key = row.key.replace('main.', '');
+      settings[key] = JSON.parse(row.value);
+    }
+
+    return settings;
+  } catch (error) {
+    console.error('[fileUtils] Error reading main settings from database:', error);
+    return {};
+  }
 }
 
 export async function writeMainSettings(settings: MainSettings): Promise<void> {
-  return writeJsonFile('mainSettings.json', settings);
+  const { default: DatabaseService } = await import('./services/DatabaseService');
+  const db = DatabaseService.getInstance();
+
+  const queries = Object.entries(settings).map(([key, value]) => ({
+    sql: `
+      INSERT OR REPLACE INTO settings (key, value, type)
+      VALUES (?, ?, ?)
+    `,
+    params: [
+      `main.${key}`,
+      JSON.stringify(value),
+      typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string'
+    ]
+  }));
+
+  if (queries.length > 0) {
+    await db.executeTransaction(queries);
+  }
 }
 
 export async function getDefaultDownloadPath(): Promise<string> {
