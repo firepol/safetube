@@ -27,6 +27,17 @@ vi.mock('electron-log', () => ({
     debug: vi.fn(),
     info: vi.fn(),
     warn: vi.fn(),
-    error: vi.fn()
+    error: vi.fn(),
+    transports: {
+      file: {
+        resolvePathFn: vi.fn(),
+        level: 'info',
+        format: ''
+      },
+      console: {
+        level: 'info',
+        format: ''
+      }
+    }
   }
 }));
