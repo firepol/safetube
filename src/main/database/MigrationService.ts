@@ -784,7 +784,21 @@ class FileSystemJsonLoader implements JsonDataLoader {
       if (!fs.existsSync(path)) {
         return [];
       }
-      return JSON.parse(fs.readFileSync(path, 'utf8'));
+      const rawData = JSON.parse(fs.readFileSync(path, 'utf8'));
+
+      // Convert object format { "2024-01-15": 1800 } to array format
+      // [{ date: "2024-01-15", secondsUsed: 1800 }]
+      if (Array.isArray(rawData)) {
+        return rawData; // Already in array format
+      } else if (typeof rawData === 'object' && rawData !== null) {
+        // Convert object to array
+        return Object.entries(rawData).map(([date, secondsUsed]) => ({
+          date,
+          secondsUsed: Number(secondsUsed) || 0
+        }));
+      }
+
+      return [];
     } catch (error) {
       log.error('[FileSystemJsonLoader] Error loading usage logs:', error);
       return [];
