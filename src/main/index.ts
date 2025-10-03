@@ -358,160 +358,59 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_VIDEO_DATA, async (_, videoId: string, navi
       }
     }
 
-    // For non-local videos (including YouTube), use the existing logic
-    if (!global.currentVideos || global.currentVideos.length === 0) {
-      log.error('[Main] No videos loaded from source system. Video sources may not be initialized.');
+    // For non-local videos (including YouTube), check global.currentVideos first
+    let video = null;
+
+    if (global.currentVideos && global.currentVideos.length > 0) {
+      video = global.currentVideos.find((v: any) => v.id === videoId);
+    }
+
+    // If not found in memory, try to load from database
+    if (!video) {
+      logVerbose('[Main] Video not found in memory, checking database...');
+      try {
+        const dbService = DatabaseService.getInstance();
+        const dbVideo = await dbService.get(`
+          SELECT
+            v.id, v.title, v.thumbnail, v.duration, v.url, v.published_at,
+            v.description, v.source_id as sourceId,
+            s.title as sourceTitle, s.thumbnail as sourceThumbnail
+          FROM videos v
+          LEFT JOIN sources s ON v.source_id = s.id
+          WHERE v.id = ?
+        `, [videoId]);
+
+        if (dbVideo) {
+          logVerbose('[Main] Video found in database:', videoId);
+          video = {
+            ...dbVideo,
+            type: 'youtube', // Assume YouTube for now (could enhance with type column)
+            publishedAt: dbVideo.published_at
+          };
+        }
+      } catch (dbError) {
+        log.warn('[Main] Could not load video from database:', dbError);
+      }
+    }
+
+    // If still not found, throw error
+    if (!video) {
+      log.error('[Main] Video not found in memory or database:', videoId);
       throw new Error('Video sources not initialized. Please restart the app.');
     }
 
-
-    const video = global.currentVideos.find((v: any) => v.id === videoId);
-    if (video) {
-      // Ensure YouTube videos have the correct type set (PlayerRouter depends on this)
-      if (!video.type && videoId.length === 11 && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
-        video.type = 'youtube';
-        logVerbose('[Main] Fixed missing type for YouTube video:', videoId);
-      }
-
-      // Merge with watched data to populate resumeAt for all video types
-      const { mergeWatchedData } = await import('./fileUtils');
-      const videosWithWatchedData = await mergeWatchedData([video]);
-      const videoWithResume = videosWithWatchedData[0];
-
-      return videoWithResume;
-    } else {
-      // Check if this might be a raw filename that needs to be matched by file path
-      // This handles cases where old watched data contains raw filenames instead of encoded IDs
-      if (videoId.includes('/') || videoId.startsWith('_') || videoId.endsWith('.mp4') || videoId.endsWith('.mkv') || videoId.endsWith('.webm') || videoId.endsWith('.avi') || videoId.endsWith('.mov') || videoId.endsWith('.m4v')) {
-
-        // Try to find the video by matching the file path
-        const videoByPath = global.currentVideos.find((v: any) => {
-          if (v.type === 'local' && v.url) {
-            // Check if the video's URL matches the videoId (possibly with path reconstruction)
-            return v.url === videoId ||
-              v.url.endsWith(videoId) ||
-              v.url.includes(videoId) ||
-              (videoId.startsWith('_') && v.url.endsWith(videoId.substring(1))) ||
-              (videoId.includes('_') && v.url.includes(videoId.replace(/_/g, '/')));
-          }
-          return false;
-        });
-
-        if (videoByPath) {
-
-          // Merge with watched data to populate resumeAt for path-matched videos
-          const { mergeWatchedData } = await import('./fileUtils');
-          const videosWithWatchedData = await mergeWatchedData([videoByPath]);
-          const videoWithResume = videosWithWatchedData[0];
-
-          return videoWithResume;
-        }
-      }
-
-      // Don't log as error for YouTube videos or other expected non-local videos
-      // Only log as verbose for debugging
-
-      // For YouTube videos (11-character video IDs), try to fetch from YouTube API
-      if (videoId.length === 11 && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
-        try {
-          // Get YouTube API key from main settings
-          const { readMainSettings } = await import('./fileUtils');
-          const settings = await readMainSettings();
-
-          if (!settings.youtubeApiKey) {
-            return null;
-          }
-
-          // Fetch video details from YouTube API
-          const { YouTubeAPI } = await import('./youtube-api');
-          const youtubeApi = new YouTubeAPI(settings.youtubeApiKey);
-          const videoDetails = await youtubeApi.getVideoDetails(videoId);
-
-          if (!videoDetails) {
-            return null;
-          }
-
-          // Convert duration from ISO 8601 to seconds
-          const { parseDuration } = await import('../shared/videoDurationUtils');
-          const duration = parseDuration(videoDetails.contentDetails.duration);
-
-          // Try to find matching source for this video (for related video clicks)
-          const channelId = videoDetails.snippet.channelId;
-          let matchingSource: VideoSource | undefined = undefined;
-          let finalSourceId = 'external-youtube';
-          let finalSourceTitle = 'YouTube';
-          let finalSourceType: 'youtube_channel' | 'youtube_playlist' = 'youtube_channel';
-
-          if (channelId) {
-            logVerbose(`[Main] YouTube video ${videoId} belongs to channel ${channelId}, checking for matching sources`);
-
-            // First try to match channel sources by channelId
-            const sources = await readVideoSources();
-            matchingSource = sources
-              .filter(s => s.type === 'youtube_channel')
-              .find(s => (s as YouTubeChannelSource).channelId === channelId);
-
-            // If no channel match, check playlist sources via existing videos
-            if (!matchingSource && global.currentVideos) {
-              logVerbose(`[Main] No channel match found, checking playlist sources...`);
-              const videoFromPlaylist = global.currentVideos.find((v: any) =>
-                v.type === 'youtube' && v.channelId === channelId
-              );
-
-              if (videoFromPlaylist) {
-                matchingSource = sources.find(s => s.id === videoFromPlaylist.sourceId);
-                logVerbose(`[Main] Found matching playlist source: ${matchingSource ? matchingSource.title + ' (' + matchingSource.id + ')' : 'none'}`);
-              }
-            }
-
-            if (matchingSource) {
-              finalSourceId = matchingSource.id;
-              finalSourceTitle = matchingSource.title;
-              finalSourceType = matchingSource.type as 'youtube_channel' | 'youtube_playlist';
-              logVerbose(`[Main] YouTube video ${videoId} mapped to source: ${finalSourceTitle} (${finalSourceId})`);
-            } else {
-              logVerbose(`[Main] YouTube video ${videoId} does not belong to any approved source`);
-            }
-          }
-
-          // Create video object from YouTube API data
-          const video = {
-            id: videoId,
-            type: 'youtube',
-            title: videoDetails.snippet.title || 'Unknown Title',
-            thumbnail: videoDetails.snippet.thumbnails?.medium?.url ||
-                      videoDetails.snippet.thumbnails?.default?.url || '',
-            duration,
-            url: `https://www.youtube.com/watch?v=${videoId}`,
-            sourceId: finalSourceId,
-            sourceTitle: finalSourceTitle,
-            sourceType: finalSourceType,
-            sourceThumbnail: '',
-            resumeAt: undefined as number | undefined,
-            channelId: channelId,
-          };
-
-          // Merge with watched data to populate resumeAt
-          const { mergeWatchedData } = await import('./fileUtils');
-          const videosWithWatchedData = await mergeWatchedData([video]);
-          const videoWithResume = videosWithWatchedData[0];
-
-          return videoWithResume;
-
-        } catch (apiError) {
-          logVerbose('[Main] Failed to fetch YouTube video from API:', apiError);
-          return null;
-        }
-      }
-
-      // For other video types, return null instead of throwing error
-      // This prevents error spam in the console
-      if (videoId.startsWith('example-') || videoId.startsWith('local-')) {
-        return null;
-      }
-
-      throw new Error(`Video with ID '${videoId}' not found in any source`);
+    // Ensure YouTube videos have the correct type set (PlayerRouter depends on this)
+    if (!video.type && videoId.length === 11 && /^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+      video.type = 'youtube';
+      logVerbose('[Main] Fixed missing type for YouTube video:', videoId);
     }
+
+    // Merge with watched data to populate resumeAt for all video types
+    const { mergeWatchedData } = await import('./fileUtils');
+    const videosWithWatchedData = await mergeWatchedData([video]);
+    const videoWithResume = videosWithWatchedData[0];
+
+    return videoWithResume;
   } catch (error) {
     log.error('[Main] Error loading video data:', error);
     throw error;

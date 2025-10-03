@@ -14,14 +14,10 @@ interface SetupResult {
  * First-run setup helper that creates necessary directories and copies default config files
  */
 export class FirstRunSetup {
+  // Phase 2 migration: timeLimits, usageLog, youtubePlayer, timeExtra, pagination, mainSettings are now in database
+  // Only videoSources.json is still needed for migration purposes
   private static readonly REQUIRED_CONFIG_FILES = [
-    'timeLimits.json',
-    'usageLog.json',
-    'videoSources.json',
-    'youtubePlayer.json',
-    'timeExtra.json',
-    'pagination.json',
-    'mainSettings.json'
+    'videoSources.json'
   ];
 
   /**
@@ -180,58 +176,19 @@ export class FirstRunSetup {
 
   /**
    * Create a minimal default config file
+   * Phase 2 migration: Only videoSources.json is still created as a temporary migration file
    */
   private static async createDefaultConfigFile(filePath: string, filename: string): Promise<void> {
     let defaultContent: any = {};
 
     switch (filename) {
-      case 'timeLimits.json':
-        defaultContent = {
-          Monday: 30,
-          Tuesday: 30,
-          Wednesday: 30,
-          Thursday: 30,
-          Friday: 45,
-          Saturday: 90,
-          Sunday: 90,
-          warningThresholdMinutes: 3,
-          countdownWarningSeconds: 60,
-          audioWarningSeconds: 10,
-          timeUpMessage: "Time's up for today! Here's your schedule:",
-          useSystemBeep: false,
-          customBeepSound: ""
-        };
-        break;
-      case 'usageLog.json':
-        defaultContent = {};
-        break;
       case 'videoSources.json':
         defaultContent = [];
         break;
-      case 'youtubePlayer.json':
-        defaultContent = {
-          autoplay: false,
-          volume: 0.8,
-          quality: 'auto'
-        };
-        break;
-      case 'timeExtra.json':
-        defaultContent = {};
-        break;
-      case 'pagination.json':
-        defaultContent = {
-          pageSize: 50,
-          maxPages: 10
-        };
-        break;
-      case 'mainSettings.json':
-        defaultContent = {
-          downloadPath: "",
-          youtubeApiKey: "",
-          adminPassword: "$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy",
-          enableVerboseLogging: false
-        };
-        break;
+      default:
+        // All other config files are now in the database
+        logVerbose(`[FirstRunSetup] Skipping ${filename} - Phase 2 migration to database complete`);
+        return;
     }
 
     await fs.writeFile(filePath, JSON.stringify(defaultContent, null, 2), 'utf-8');
