@@ -68,25 +68,6 @@ ipcMain.handle(IPC.LOCAL_FILES.GET_LOCAL_FILE, async (_, filePath: string) => {
   }
 });
 
-// Handle player configuration loading
-ipcMain.handle(IPC.PLAYBACK.GET_PLAYER_CONFIG, async () => {
-  console.log('[Main] get-player-config handler called');
-  try {
-    const configPath = AppPaths.getConfigPath('youtubePlayer.json');
-    console.log('[Main] Config path:', configPath);
-    if (!fs.existsSync(configPath)) {
-      console.log('[Main] Config file not found');
-      throw new Error('Player configuration file not found');
-    }
-    const configData = fs.readFileSync(configPath, 'utf8');
-    console.log('[Main] Config data loaded successfully');
-    return JSON.parse(configData);
-  } catch (error) {
-    console.error('Error loading player config:', error);
-    throw error;
-  }
-});
-
 // Handle setup status request
 ipcMain.handle(IPC.SETTINGS.GET_SETUP_STATUS, async () => {
   try {

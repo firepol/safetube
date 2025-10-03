@@ -67,24 +67,73 @@ export function registerVideoDataHandlers() {
   // Get player config
   ipcMain.handle(IPC.PLAYBACK.GET_PLAYER_CONFIG, async () => {
     try {
-      const configPath = AppPaths.getConfigPath('youtubePlayer.json');
-      if (fs.existsSync(configPath)) {
-        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        return config;
+      const { default: DatabaseService } = await import('../services/DatabaseService');
+      const db = DatabaseService.getInstance();
+
+      const rows = await db.all(
+        "SELECT key, value FROM settings WHERE key LIKE 'youtube_player.%'"
+      ) as Array<{ key: string; value: string }>;
+
+      if (rows.length === 0) {
+        // Return defaults if not in database
+        return {
+          youtubePlayerType: 'iframe',
+          youtubePlayerConfig: {
+            iframe: {
+              showRelatedVideos: false,
+              customEndScreen: true,
+              qualityControls: true,
+              autoplay: true,
+              controls: true
+            },
+            mediasource: {
+              maxQuality: '1080p',
+              preferredLanguages: ['en'],
+              fallbackToLowerQuality: true
+            }
+          },
+          perVideoOverrides: {}
+        };
       }
-      return {
-        quality: 'auto',
-        volume: 1.0,
-        muted: false,
-        autoplay: false
-      };
+
+      // Build config object from database rows
+      const config: any = {};
+      for (const row of rows) {
+        const key = row.key.replace('youtube_player.', '');
+        const value = JSON.parse(row.value);
+
+        // Handle nested keys like 'youtubePlayerConfig.iframe.autoplay'
+        const parts = key.split('.');
+        let current = config;
+        for (let i = 0; i < parts.length - 1; i++) {
+          if (!current[parts[i]]) {
+            current[parts[i]] = {};
+          }
+          current = current[parts[i]];
+        }
+        current[parts[parts.length - 1]] = value;
+      }
+
+      return config;
     } catch (error) {
       log.error('[IPC] Error reading player config:', error);
       return {
-        quality: 'auto',
-        volume: 1.0,
-        muted: false,
-        autoplay: false
+        youtubePlayerType: 'iframe',
+        youtubePlayerConfig: {
+          iframe: {
+            showRelatedVideos: false,
+            customEndScreen: true,
+            qualityControls: true,
+            autoplay: true,
+            controls: true
+          },
+          mediasource: {
+            maxQuality: '1080p',
+            preferredLanguages: ['en'],
+            fallbackToLowerQuality: true
+          }
+        },
+        perVideoOverrides: {}
       };
     }
   });

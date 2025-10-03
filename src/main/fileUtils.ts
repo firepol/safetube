@@ -242,13 +242,46 @@ export async function writeWatchedVideos(watchedVideos: WatchedVideo[]): Promise
   return writeJsonFile('watched.json', watchedVideos);
 }
 
-// Time Extra Functions
+// Time Extra Functions - Now use database
 export async function readTimeExtra(): Promise<TimeExtra> {
-  return readJsonFile<TimeExtra>('timeExtra.json');
+  try {
+    const { default: DatabaseService } = await import('./services/DatabaseService');
+    const db = DatabaseService.getInstance();
+
+    const rows = await db.all(`
+      SELECT date, minutes_added
+      FROM usage_extras
+      ORDER BY date DESC
+    `) as Array<{ date: string; minutes_added: number }>;
+
+    const timeExtra: TimeExtra = {};
+    for (const row of rows) {
+      timeExtra[row.date] = row.minutes_added;
+    }
+
+    return timeExtra;
+  } catch (error) {
+    console.error('[fileUtils] Error reading time extra from database:', error);
+    return {};
+  }
 }
 
 export async function writeTimeExtra(timeExtra: TimeExtra): Promise<void> {
-  return writeJsonFile('timeExtra.json', timeExtra);
+  const { default: DatabaseService } = await import('./services/DatabaseService');
+  const db = DatabaseService.getInstance();
+
+  // Convert TimeExtra object to array of queries
+  const queries = Object.entries(timeExtra).map(([date, minutes]) => ({
+    sql: `
+      INSERT OR REPLACE INTO usage_extras (date, minutes_added)
+      VALUES (?, ?)
+    `,
+    params: [date, minutes]
+  }));
+
+  if (queries.length > 0) {
+    await db.executeTransaction(queries);
+  }
 }
 
 // Main Settings Functions - Now use database
@@ -346,13 +379,52 @@ export async function addDownloadedVideo(video: DownloadedVideo): Promise<void> 
   await writeDownloadedVideos(videos);
 }
 
-// Pagination config functions
+// Pagination config functions - Now use database
 export async function readPaginationConfig(): Promise<{ pageSize: number; maxPages: number }> {
-  return readJsonFile<{ pageSize: number; maxPages: number }>('pagination.json');
+  try {
+    const { default: DatabaseService } = await import('./services/DatabaseService');
+    const db = DatabaseService.getInstance();
+
+    const rows = await db.all(`
+      SELECT key, value FROM settings WHERE key LIKE 'pagination.%'
+    `) as Array<{ key: string; value: string }>;
+
+    const config: any = {};
+    for (const row of rows) {
+      const key = row.key.replace('pagination.', '');
+      config[key] = JSON.parse(row.value);
+    }
+
+    // Return defaults if not in database
+    return {
+      pageSize: config.pageSize || 20,
+      maxPages: config.maxPages || 5
+    };
+  } catch (error) {
+    console.error('[fileUtils] Error reading pagination config from database:', error);
+    return { pageSize: 20, maxPages: 5 };
+  }
 }
 
 export async function writePaginationConfig(config: { pageSize: number; maxPages: number }): Promise<void> {
-  return writeJsonFile('pagination.json', config);
+  const { default: DatabaseService } = await import('./services/DatabaseService');
+  const db = DatabaseService.getInstance();
+
+  const queries = Object.entries(config).map(([key, value]) => ({
+    sql: `
+      INSERT OR REPLACE INTO settings (key, value, type)
+      VALUES (?, ?, ?)
+    `,
+    params: [
+      `pagination.${key}`,
+      JSON.stringify(value),
+      'number'
+    ]
+  }));
+
+  if (queries.length > 0) {
+    await db.executeTransaction(queries);
+  }
 }
 
 // Merge watched data with video list
