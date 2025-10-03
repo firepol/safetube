@@ -92,6 +92,27 @@ export class DatabaseService {
 
       this.config = { ...defaultConfig, ...config };
 
+      // Safety check: prevent tests from using production database
+      const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+      const isProductionPath = this.config.path.includes('safetube.db') &&
+                              !this.config.path.includes('test') &&
+                              this.config.path !== ':memory:' &&
+                              !this.config.path.includes('/tmp/');
+
+      if (isTestEnv && isProductionPath) {
+        const error = new Error(
+          `CRITICAL: Test attempting to use production database!\n` +
+          `Path: ${this.config.path}\n` +
+          `Tests MUST use :memory: or /tmp/ paths to prevent data corruption.\n` +
+          `Use resetDatabaseSingleton() and createTestDatabase() from testHelpers.ts`
+        );
+        log.error('[DatabaseService]', error.message);
+        throw error;
+      }
+
+      // Log database initialization for debugging
+      log.info(`[DatabaseService] Initializing database: ${this.config.path}`);
+
       // Ensure data directory exists
       const dataDir = path.dirname(this.config.path);
       if (!fs.existsSync(dataDir)) {

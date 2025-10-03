@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import './setup'; // Import mocks first
 import DatabaseService from '../DatabaseService';
+import { resetDatabaseSingleton, createTestDatabase, cleanupTestDatabase } from '../../database/__tests__/testHelpers';
 
 const TEST_DB_PATH = '/tmp/claude/test-database.db';
 
@@ -10,6 +11,9 @@ describe('DatabaseService', () => {
   let databaseService: DatabaseService;
 
   beforeEach(async () => {
+    // Reset singleton to ensure test isolation
+    resetDatabaseSingleton();
+
     // Clean up any existing test database
     if (fs.existsSync(TEST_DB_PATH)) {
       fs.unlinkSync(TEST_DB_PATH);
@@ -25,16 +29,8 @@ describe('DatabaseService', () => {
   });
 
   afterEach(async () => {
-    try {
-      await databaseService.close();
-    } catch (error) {
-      // Ignore close errors in tests
-    }
-
-    // Clean up test database
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
+    // Clean up test database and reset singleton
+    await cleanupTestDatabase(databaseService, TEST_DB_PATH);
   });
 
   test('should initialize database successfully', async () => {

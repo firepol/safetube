@@ -4,6 +4,7 @@ import path from 'path';
 import '../../services/__tests__/setup'; // Import mocks
 import DatabaseService from '../../services/DatabaseService';
 import SchemaManager from '../SchemaManager';
+import { resetDatabaseSingleton, createTestDatabase, cleanupTestDatabase } from './testHelpers';
 
 // Mock the schema file reading for tests
 const mockSchemaContent = `
@@ -43,6 +44,9 @@ describe('SchemaManager', () => {
   let schemaManager: SchemaManager;
 
   beforeEach(async () => {
+    // Reset singleton to ensure test isolation
+    resetDatabaseSingleton();
+
     // Clean up any existing test database
     if (fs.existsSync(TEST_DB_PATH)) {
       fs.unlinkSync(TEST_DB_PATH);
@@ -54,23 +58,14 @@ describe('SchemaManager', () => {
       fs.mkdirSync(testDir, { recursive: true });
     }
 
-    databaseService = DatabaseService.getInstance();
-    await databaseService.initialize({ path: TEST_DB_PATH });
+    databaseService = await createTestDatabase({ useMemory: false, path: TEST_DB_PATH });
 
     schemaManager = new SchemaManager(databaseService);
   });
 
   afterEach(async () => {
-    try {
-      await databaseService.close();
-    } catch (error) {
-      // Ignore close errors in tests
-    }
-
-    // Clean up test database
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
+    // Clean up test database and reset singleton
+    await cleanupTestDatabase(databaseService, TEST_DB_PATH);
   });
 
   test('should initialize Phase 1 schema successfully', async () => {

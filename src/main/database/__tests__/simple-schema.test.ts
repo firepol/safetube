@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import '../../services/__tests__/setup'; // Import mocks
 import DatabaseService from '../../services/DatabaseService';
+import { resetDatabaseSingleton, createTestDatabase, cleanupTestDatabase } from './testHelpers';
 
 const TEST_DB_PATH = '/tmp/claude/test-simple-schema.db';
 
@@ -10,6 +11,9 @@ describe('Simple Schema Test', () => {
   let databaseService: DatabaseService;
 
   beforeEach(async () => {
+    // Reset singleton to ensure test isolation
+    resetDatabaseSingleton();
+
     // Clean up any existing test database
     if (fs.existsSync(TEST_DB_PATH)) {
       fs.unlinkSync(TEST_DB_PATH);
@@ -21,21 +25,12 @@ describe('Simple Schema Test', () => {
       fs.mkdirSync(testDir, { recursive: true });
     }
 
-    databaseService = DatabaseService.getInstance();
-    await databaseService.initialize({ path: TEST_DB_PATH });
+    databaseService = await createTestDatabase({ useMemory: false, path: TEST_DB_PATH });
   });
 
   afterEach(async () => {
-    try {
-      await databaseService.close();
-    } catch (error) {
-      // Ignore close errors in tests
-    }
-
-    // Clean up test database
-    if (fs.existsSync(TEST_DB_PATH)) {
-      fs.unlinkSync(TEST_DB_PATH);
-    }
+    // Clean up test database and reset singleton
+    await cleanupTestDatabase(databaseService, TEST_DB_PATH);
   });
 
   test('should create a simple table', async () => {

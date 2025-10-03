@@ -3,6 +3,7 @@ import path from 'path';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import DatabaseService from '../../services/DatabaseService';
 import { SimpleSchemaManager } from '../SimpleSchemaManager';
+import { resetDatabaseSingleton, createTestDatabase, cleanupTestDatabase } from './testHelpers';
 
 // Mock Electron app for testing
 vi.mock('electron', () => ({
@@ -22,8 +23,11 @@ describe('Database Initialization', () => {
   let schemaManager: SimpleSchemaManager;
 
   beforeEach(async () => {
+    // Reset singleton to ensure test isolation
+    resetDatabaseSingleton();
+
     // Use a temporary database file for testing
-    testDbPath = path.join('/tmp/claude', 'test-safetube.db');
+    testDbPath = path.join('/tmp/claude', 'test-database-init.db');
 
     // Ensure test directory exists
     const testDir = path.dirname(testDbPath);
@@ -43,25 +47,14 @@ describe('Database Initialization', () => {
     }
 
     // Initialize database service with test database
-    dbService = DatabaseService.getInstance();
-    await dbService.initialize({ path: testDbPath });
+    dbService = await createTestDatabase({ useMemory: false, path: testDbPath });
 
     schemaManager = new SimpleSchemaManager(dbService);
   });
 
   afterEach(async () => {
-    // Clean up test database
-    await dbService.close();
-
-    if (fs.existsSync(testDbPath)) {
-      fs.unlinkSync(testDbPath);
-    }
-    if (fs.existsSync(testDbPath + '-wal')) {
-      fs.unlinkSync(testDbPath + '-wal');
-    }
-    if (fs.existsSync(testDbPath + '-shm')) {
-      fs.unlinkSync(testDbPath + '-shm');
-    }
+    // Clean up test database and reset singleton
+    await cleanupTestDatabase(dbService, testDbPath);
   });
 
   it('should initialize database with proper configuration', async () => {
