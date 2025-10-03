@@ -1,19 +1,8 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import './../../services/__tests__/setup'; // Import mocks first
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import DatabaseService from '../../services/DatabaseService';
 import SimpleSchemaManager from '../SimpleSchemaManager';
-import { resetDatabaseSingleton } from './testHelpers';
-
-// Mock Electron app for testing
-vi.mock('electron', () => ({
-  app: {
-    getPath: vi.fn((type: string) => {
-      if (type === 'userData') {
-        return '/tmp/claude/test-userdata';
-      }
-      return '/tmp/claude';
-    })
-  }
-}));
+import { resetDatabaseSingleton, createTestDatabase, cleanupTestDatabase } from './testHelpers';
 
 describe('Phase 2 Migration Integration', () => {
   let dbService: DatabaseService;
@@ -23,8 +12,8 @@ describe('Phase 2 Migration Integration', () => {
     // Reset singleton to ensure test isolation
     resetDatabaseSingleton();
 
-    dbService = new DatabaseService(':memory:');
-    await dbService.initialize();
+    // Create in-memory test database
+    dbService = await createTestDatabase({ useMemory: true });
     schemaManager = new SimpleSchemaManager(dbService);
 
     // Initialize Phase 1 schema
@@ -32,7 +21,7 @@ describe('Phase 2 Migration Integration', () => {
   });
 
   afterEach(async () => {
-    await dbService.close();
+    await cleanupTestDatabase(dbService);
   });
 
   it('should create Phase 2 tables successfully', async () => {
@@ -53,17 +42,21 @@ describe('Phase 2 Migration Integration', () => {
     // Initialize Phase 2 schema
     await schemaManager.initializePhase2Schema();
 
-    // Check that default time limits were created
-    const timeLimits = await dbService.all<any>('SELECT * FROM time_limits ORDER BY day_of_week');
+    // Check that default time limits were created (single-row table)
+    const timeLimits = await dbService.get<any>('SELECT * FROM time_limits WHERE id = 1');
 
-    // Should have 7 rows (one for each day)
-    expect(timeLimits).toHaveLength(7);
+    // Should have 1 row with id = 1
+    expect(timeLimits).toBeDefined();
+    expect(timeLimits?.id).toBe(1);
 
-    // Verify default values (60 minutes per day)
-    timeLimits.forEach((limit, index) => {
-      expect(limit.day_of_week).toBe(index);
-      expect(limit.minutes).toBe(60);
-    });
+    // Verify default values (0 minutes per day by default)
+    expect(timeLimits?.monday).toBe(0);
+    expect(timeLimits?.tuesday).toBe(0);
+    expect(timeLimits?.wednesday).toBe(0);
+    expect(timeLimits?.thursday).toBe(0);
+    expect(timeLimits?.friday).toBe(0);
+    expect(timeLimits?.saturday).toBe(0);
+    expect(timeLimits?.sunday).toBe(0);
   });
 
   it('should update schema version to phase2', async () => {
