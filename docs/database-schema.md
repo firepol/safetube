@@ -90,6 +90,136 @@ erDiagram
     }
 ```
 
+## Phase 2 Tables
+
+### `settings`
+**Purpose**: Unified key-value storage for all application settings (consolidates mainSettings.json, pagination.json, youtubePlayer.json)
+
+**Schema**:
+```sql
+CREATE TABLE settings (
+    key TEXT PRIMARY KEY,                   -- Setting key (namespace.setting format)
+    value TEXT,                            -- JSON-encoded setting value
+    type TEXT NOT NULL DEFAULT 'string',   -- Value type hint (string|number|boolean|object)
+    description TEXT,                      -- Setting description
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+**Key Features**:
+- **Namespace format**: `main.*`, `pagination.*`, `youtube_player.*`
+- **Type hints**: Stored in `type` column for proper deserialization
+- **JSON values**: Complex objects stored as JSON strings in `value` column
+- **Flexible schema**: No need for schema changes when adding new settings
+
+**Example Records**:
+```sql
+-- From mainSettings.json
+INSERT INTO settings (key, value, type) VALUES ('main.darkMode', 'false', 'boolean');
+INSERT INTO settings (key, value, type) VALUES ('main.language', '"en"', 'string');
+
+-- From pagination.json
+INSERT INTO settings (key, value, type) VALUES ('pagination.pageSize', '50', 'number');
+INSERT INTO settings (key, value, type) VALUES ('pagination.cacheExpiration', '3600', 'number');
+
+-- From youtubePlayer.json
+INSERT INTO settings (key, value, type) VALUES ('youtube_player.quality', '"1080p"', 'string');
+INSERT INTO settings (key, value, type) VALUES ('youtube_player.autoplay', 'true', 'boolean');
+```
+
+**Query Helpers** (src/main/database/queries/settingsQueries.ts):
+- `getSetting<T>(db, key, defaultValue)` - Retrieve typed setting
+- `setSetting<T>(db, key, value, type)` - Store setting with type inference
+- `getSettingsByNamespace(db, namespace)` - Get all settings for namespace
+- `setSettingsByNamespace(db, namespace, settings)` - Bulk update namespace
+
+**Typical Queries**:
+```typescript
+// Get single setting
+const darkMode = await getSetting<boolean>(db, 'main.darkMode', false);
+
+// Get all pagination settings
+const paginationConfig = await getSettingsByNamespace(db, 'pagination');
+// Returns: { pageSize: 50, cacheExpiration: 3600 }
+
+// Set setting
+await setSetting(db, 'main.theme', 'dark', 'string');
+
+// Bulk update namespace
+await setSettingsByNamespace(db, 'youtube_player', {
+  quality: '1080p',
+  autoplay: false
+});
+```
+
+---
+
+### `usage_logs`
+**Purpose**: Daily usage tracking for parental time limits
+
+**Schema**:
+```sql
+CREATE TABLE usage_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,                     -- ISO date (YYYY-MM-DD)
+    seconds_used INTEGER NOT NULL DEFAULT 0, -- Daily usage in seconds
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(date)
+);
+
+CREATE INDEX idx_usage_logs_date ON usage_logs(date);
+```
+
+---
+
+### `time_limits`
+**Purpose**: Weekly time limit configuration (single-row table)
+
+**Schema**:
+```sql
+CREATE TABLE time_limits (
+    id INTEGER PRIMARY KEY CHECK (id = 1),  -- Single row table
+    monday INTEGER NOT NULL DEFAULT 0,      -- Minutes allowed
+    tuesday INTEGER NOT NULL DEFAULT 0,
+    wednesday INTEGER NOT NULL DEFAULT 0,
+    thursday INTEGER NOT NULL DEFAULT 0,
+    friday INTEGER NOT NULL DEFAULT 0,
+    saturday INTEGER NOT NULL DEFAULT 0,
+    sunday INTEGER NOT NULL DEFAULT 0,
+    warning_threshold_minutes INTEGER,       -- Warning threshold
+    countdown_warning_seconds INTEGER,       -- Countdown warning time
+    audio_warning_seconds INTEGER,           -- Audio warning time
+    time_up_message TEXT,                   -- Custom time up message
+    use_system_beep BOOLEAN DEFAULT 0,      -- Use system beep flag
+    custom_beep_sound TEXT,                 -- Path to custom beep sound
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+### `usage_extras`
+**Purpose**: Bonus time tracking with audit trail
+
+**Schema**:
+```sql
+CREATE TABLE usage_extras (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    date TEXT NOT NULL,                     -- ISO date (YYYY-MM-DD)
+    minutes_added INTEGER NOT NULL,         -- Extra minutes added
+    reason TEXT,                           -- Optional reason for addition
+    added_by TEXT DEFAULT 'admin',         -- Who added the time
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_usage_extras_date ON usage_extras(date);
+```
+
+---
+
 ## Table Descriptions
 
 ### `sources`

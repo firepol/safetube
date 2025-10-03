@@ -230,13 +230,26 @@
   - **Code Review**: Extra time tracking logic review, audit trail implementation review
 
 - [ ] 7.4 Implement Settings table migration
+  - Create `settings` table schema with key-value structure (namespace.setting format)
+  - Implement type-safe query helpers in `src/main/database/queries/settingsQueries.ts`:
+    - `getSetting<T>(db, key, defaultValue)` - Get single setting with type safety
+    - `setSetting<T>(db, key, value, type)` - Set single setting with serialization
+    - `getSettingsByNamespace(db, namespace)` - Get all settings for namespace (main.*, pagination.*, etc.)
+    - `setSettingsByNamespace(db, namespace, settings)` - Bulk set for namespace
   - Consolidate mainSettings.json, pagination.json, and youtubePlayer.json into unified settings table
-  - Implement proper namespacing with key-value structure
-  - Add type validation and serialization for complex setting values
-  - Create settings access layer with caching for performance
-  - **Definition of Done**: All settings consolidated, namespacing working, access layer performant
-  - **Tests Required**: Settings consolidation tests, namespacing validation tests, performance tests for settings access
-  - **Code Review**: Settings architecture review, consolidation strategy review
+  - Implement serialization/deserialization helpers:
+    - `serializeSetting(value)` - Convert JS value to JSON string
+    - `deserializeSetting<T>(value, type)` - Convert JSON string to typed value
+    - `inferType(value)` - Auto-detect setting type
+  - Add migration logic to read JSON files and populate settings table with namespaced keys
+  - Create integration tests using in-memory database:
+    - Test migration from mock JSON settings (not production files)
+    - Test retrieval using query helpers
+    - Test namespace consolidation (verify all 3 configs migrate correctly)
+    - Test type safety (boolean, number, string, object settings)
+  - **Definition of Done**: All settings consolidated, namespacing working, query helpers type-safe, integration tests pass with mock data
+  - **Tests Required**: Settings consolidation tests with mock JSON, namespacing validation tests, type safety tests, query helper tests
+  - **Code Review**: Settings architecture review, query helper design review, test coverage validation
 
 ### 8. Advanced Search Implementation
 

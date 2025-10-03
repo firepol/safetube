@@ -416,6 +416,64 @@ class MigrationService {
    });
    ```
 
+### Type-Safe Query Helpers
+
+All database operations use type-safe query helpers to prevent duplicate queries and ensure type safety:
+
+```typescript
+// src/main/database/queries/settingsQueries.ts
+export async function getSetting<T>(
+  db: DatabaseService,
+  key: string,
+  defaultValue?: T
+): Promise<T | undefined> {
+  const row = await db.get<SettingRow>(
+    'SELECT value, type FROM settings WHERE key = ?',
+    [key]
+  );
+
+  if (!row) return defaultValue;
+
+  return deserializeSetting<T>(row.value, row.type);
+}
+
+export async function setSetting<T>(
+  db: DatabaseService,
+  key: string,
+  value: T,
+  type: SettingType = inferType(value)
+): Promise<void> {
+  await db.run(
+    `INSERT OR REPLACE INTO settings (key, value, type, updated_at)
+     VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
+    [key, serializeSetting(value), type]
+  );
+}
+
+export async function getSettingsByNamespace(
+  db: DatabaseService,
+  namespace: string
+): Promise<Record<string, any>> {
+  const rows = await db.all<SettingRow>(
+    'SELECT key, value, type FROM settings WHERE key LIKE ?',
+    [`${namespace}.%`]
+  );
+
+  return rows.reduce((acc, row) => {
+    const shortKey = row.key.replace(`${namespace}.`, '');
+    acc[shortKey] = deserializeSetting(row.value, row.type);
+    return acc;
+  }, {} as Record<string, any>);
+}
+```
+
+**Query Helper Benefits**:
+- Single source of truth for queries (no duplicate SQL)
+- Type-safe parameters and results
+- Consistent error handling
+- Automatic serialization/deserialization
+- Easy testing with mocked database
+
 ### Cache Folder Migration Strategy
 
 ```typescript
@@ -910,76 +968,175 @@ class ConcurrencyManager {
 
 ## Testing Strategy
 
-### Unit Testing
+### Unit Testing with In-Memory Database
+
+All unit tests use in-memory SQLite databases to avoid touching production data:
 
 ```typescript
 // src/main/services/__tests__/DatabaseService.test.ts
 describe('DatabaseService', () => {
   let databaseService: DatabaseService;
-  let testDbPath: string;
 
   beforeEach(async () => {
-    testDbPath = path.join(__dirname, 'test.db');
-    databaseService = new DatabaseService(testDbPath);
+    // Use in-memory database for all tests
+    databaseService = new DatabaseService(':memory:');
     await databaseService.initialize();
+
+    // Initialize schema
+    const schemaManager = new SimpleSchemaManager(databaseService);
+    await schemaManager.initializePhase1Schema();
   });
 
   afterEach(async () => {
     await databaseService.close();
-    await fs.unlink(testDbPath);
   });
 
   describe('video operations', () => {
     test('should create and retrieve videos', async () => {
-      const video = createTestVideo();
-      await databaseService.createVideo(video);
+      // First create a source (required foreign key)
+      await createSource(databaseService, {
+        id: 'test-source',
+        type: 'youtube_channel',
+        title: 'Test Channel',
+        url: 'https://youtube.com/@test'
+      });
 
-      const retrieved = await databaseService.getVideo(video.id);
+      const video = createTestVideo({ sourceId: 'test-source' });
+      await createVideo(databaseService, video);
+
+      const retrieved = await getVideoById(databaseService, video.id);
       expect(retrieved).toMatchObject(video);
     });
 
     test('should handle foreign key constraints', async () => {
       const video = createTestVideo({ sourceId: 'nonexistent' });
 
-      await expect(databaseService.createVideo(video))
+      await expect(createVideo(databaseService, video))
         .rejects.toThrow('FOREIGN KEY constraint failed');
     });
   });
 });
 ```
 
-### Integration Testing
+### Integration Testing with Mock JSON Data
+
+Settings migration tests use mock JSON fixtures instead of production config:
+
+```typescript
+// src/main/services/__tests__/SettingsMigration.test.ts
+describe('Settings Migration', () => {
+  let databaseService: DatabaseService;
+  let migrationService: MigrationService;
+
+  beforeEach(async () => {
+    // In-memory database
+    databaseService = new DatabaseService(':memory:');
+    await databaseService.initialize();
+
+    const schemaManager = new SimpleSchemaManager(databaseService);
+    await schemaManager.initializePhase2Schema();
+
+    migrationService = new MigrationService(databaseService);
+  });
+
+  afterEach(async () => {
+    await databaseService.close();
+  });
+
+  test('should migrate mainSettings.json correctly', async () => {
+    // Mock JSON data
+    const mockMainSettings = {
+      darkMode: false,
+      language: 'en',
+      autoplay: true
+    };
+
+    // Migrate using mock data (not from file)
+    await migrationService.migrateMainSettings(mockMainSettings);
+
+    // Verify using query helpers
+    const darkMode = await getSetting<boolean>(databaseService, 'main.darkMode');
+    const language = await getSetting<string>(databaseService, 'main.language');
+    const autoplay = await getSetting<boolean>(databaseService, 'main.autoplay');
+
+    expect(darkMode).toBe(false);
+    expect(language).toBe('en');
+    expect(autoplay).toBe(true);
+  });
+
+  test('should consolidate all settings namespaces', async () => {
+    const mockSettings = {
+      main: { theme: 'dark', volume: 80 },
+      pagination: { pageSize: 50, cacheExpiration: 3600 },
+      youtube_player: { quality: '1080p', autoplay: false }
+    };
+
+    await migrationService.migrateAllSettings(mockSettings);
+
+    // Retrieve by namespace using query helper
+    const mainSettings = await getSettingsByNamespace(databaseService, 'main');
+    const paginationSettings = await getSettingsByNamespace(databaseService, 'pagination');
+    const youtubeSettings = await getSettingsByNamespace(databaseService, 'youtube_player');
+
+    expect(mainSettings).toEqual(mockSettings.main);
+    expect(paginationSettings).toEqual(mockSettings.pagination);
+    expect(youtubeSettings).toEqual(mockSettings.youtube_player);
+  });
+});
+```
+
+### Integration Testing (Full Migration)
 
 ```typescript
 // src/main/__tests__/migration.integration.test.ts
 describe('Migration Integration', () => {
+  let databaseService: DatabaseService;
+  let migrationService: MigrationService;
+
+  beforeEach(async () => {
+    // In-memory database for isolation
+    databaseService = new DatabaseService(':memory:');
+    await databaseService.initialize();
+    migrationService = new MigrationService(databaseService);
+  });
+
+  afterEach(async () => {
+    await databaseService.close();
+  });
+
   test('should migrate Phase 1 data correctly', async () => {
-    // Setup test JSON files
-    const testSources = createTestVideoSources();
-    const testWatched = createTestWatchedVideos();
-    const testFavorites = createTestFavorites();
+    // Setup mock JSON data (not files)
+    const testSources = createMockVideoSources();
+    const testWatched = createMockWatchedVideos();
+    const testFavorites = createMockFavorites();
 
-    await writeTestFile('videoSources.json', testSources);
-    await writeTestFile('watched.json', testWatched);
-    await writeTestFile('favorites.json', testFavorites);
-
-    // Run migration
-    const migrationResult = await migrationService.migratePhase1();
+    // Run migration with mock data
+    const migrationResult = await migrationService.migratePhase1({
+      sources: testSources,
+      watched: testWatched,
+      favorites: testFavorites
+    });
 
     expect(migrationResult.success).toBe(true);
 
-    // Verify data integrity
-    const migratedSources = await databaseService.getAllSources();
-    const migratedVideos = await databaseService.getAllVideos();
-    const migratedViewRecords = await databaseService.getAllViewRecords();
-    const migratedFavorites = await databaseService.getAllFavorites();
+    // Verify data integrity using query helpers
+    const migratedSources = await getAllSources(databaseService);
+    const migratedViewRecords = await getAllViewRecords(databaseService);
+    const migratedFavorites = await getAllFavorites(databaseService);
 
     expect(migratedSources).toHaveLength(testSources.length);
     expect(migratedViewRecords).toHaveLength(testWatched.length);
-    expect(migratedFavorites.favorites).toHaveLength(testFavorites.favorites.length);
+    expect(migratedFavorites).toHaveLength(testFavorites.favorites.length);
   });
 });
 ```
+
+**Testing Best Practices**:
+- Always use `:memory:` for DatabaseService in tests
+- Never access production `safetube.db` during tests
+- Use mock JSON fixtures instead of reading config files
+- Leverage type-safe query helpers in assertions
+- Initialize schema in `beforeEach` for clean state
 
 ### Performance Testing
 

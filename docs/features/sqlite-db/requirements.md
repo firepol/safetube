@@ -153,5 +153,8 @@ The migration follows SQLite best practices for Electron applications: database 
 1. WHEN mainSettings.json is migrated THEN the system SHALL preserve all application configuration in the settings table
 2. WHEN pagination.json is migrated THEN the system SHALL maintain current page state and cache expiration preferences in the settings table
 3. WHEN YouTube player settings are migrated THEN the system SHALL preserve quality and playback preferences
-4. WHEN settings are accessed THEN the system SHALL provide both individual and bulk configuration retrieval
+4. WHEN settings are accessed THEN the system SHALL provide both individual and bulk configuration retrieval using type-safe query helpers
 5. WHEN pagination settings control cache expiration THEN the system SHALL use database settings to determine youtube_api_results cache validity
+6. WHEN settings are queried THEN the system SHALL use type-safe query helpers to avoid duplicate queries and ensure type safety
+7. WHEN integration tests run THEN the system SHALL use in-memory database instances instead of production safetube.db
+8. WHEN settings are migrated from JSON THEN the system SHALL verify migration accuracy with integration tests using mock JSON fixtures
