@@ -342,10 +342,21 @@ export class SimpleSchemaManager {
         WHERE type='table' AND name NOT LIKE 'sqlite_%'
       `);
 
+      // Disable foreign keys temporarily to allow dropping tables in any order
+      await this.databaseService.run('PRAGMA foreign_keys = OFF');
+
       // Drop all tables
       for (const table of tables) {
-        await this.databaseService.run(`DROP TABLE IF EXISTS ${table.name}`);
+        try {
+          await this.databaseService.run(`DROP TABLE IF EXISTS "${table.name}"`);
+        } catch (error) {
+          log.warn(`[SimpleSchemaManager] Failed to drop table ${table.name}:`, error);
+          // Continue with other tables
+        }
       }
+
+      // Re-enable foreign keys
+      await this.databaseService.run('PRAGMA foreign_keys = ON');
 
       log.info('[SimpleSchemaManager] Schema dropped successfully');
     } catch (error) {

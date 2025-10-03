@@ -4,6 +4,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import DatabaseService from '../../services/DatabaseService';
 import { SimpleSchemaManager } from '../SimpleSchemaManager';
 import { resetDatabaseSingleton, createTestDatabase, cleanupTestDatabase } from './testHelpers';
+import { findSourceById, findAllSources } from '../queries/sourceQueries';
+import { findVideoById } from '../queries/videoQueries';
+import { findViewRecordByVideoId, upsertViewRecord } from '../queries/viewRecordQueries';
 
 // Mock Electron app for testing
 vi.mock('electron', () => ({
@@ -124,10 +127,8 @@ describe('Database Initialization', () => {
       testSource.channelId
     ]);
 
-    // Verify the source was inserted
-    const insertedSource = await dbService.get<any>(`
-      SELECT * FROM sources WHERE id = ?
-    `, [testSource.id]);
+    // Verify the source was inserted using query helper
+    const insertedSource = await findSourceById(dbService, testSource.id);
 
     expect(insertedSource).toBeDefined();
     expect(insertedSource?.id).toBe(testSource.id);
@@ -136,11 +137,9 @@ describe('Database Initialization', () => {
     expect(insertedSource?.url).toBe(testSource.url);
     expect(insertedSource?.channel_id).toBe(testSource.channelId);
 
-    // Test count
-    const count = await dbService.get<{ count: number }>(`
-      SELECT COUNT(*) as count FROM sources
-    `);
-    expect(count?.count).toBe(1);
+    // Test count using query helper
+    const allSources = await findAllSources(dbService);
+    expect(allSources).toHaveLength(1);
   });
 
   it('should enforce foreign key constraints', async () => {
@@ -166,15 +165,21 @@ describe('Database Initialization', () => {
       `)
     ).rejects.toThrow();
 
-    // Valid insertion should work
-    await dbService.run(`
-      INSERT INTO view_records (source_id, video_id, position, time_watched, first_watched, last_watched)
-      VALUES ('test_source', 'test_video', 100, 200, datetime('now'), datetime('now'))
-    `);
+    // Valid insertion should work using query helper
+    const now = new Date().toISOString();
+    await upsertViewRecord(
+      dbService,
+      'test_video',
+      'test_source',
+      100,     // position
+      200,     // timeWatched
+      300,     // duration
+      false,   // watched
+      now,     // firstWatched
+      now      // lastWatched
+    );
 
-    const record = await dbService.get<any>(`
-      SELECT * FROM view_records WHERE source_id = 'test_source'
-    `);
+    const record = await findViewRecordByVideoId(dbService, 'test_video');
     expect(record).toBeDefined();
     expect(record?.video_id).toBe('test_video');
   });
