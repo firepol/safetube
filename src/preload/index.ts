@@ -168,7 +168,6 @@ const IPC = {
 
   CONVERSION: {
     GET_VIDEO_CODEC_INFO: 'get-video-codec-info',
-    GET_COMPATIBLE_VIDEO_PATH: 'get-compatible-video-path',
     NEEDS_VIDEO_CONVERSION: 'needs-video-conversion',
     HAS_CONVERTED_VIDEO: 'has-converted-video',
     GET_EXISTING_CONVERTED_VIDEO_PATH: 'get-existing-converted-video-path',
@@ -208,14 +207,6 @@ const IPC = {
   },
 
   // ============================================================================
-  // THUMBNAILS
-  // ============================================================================
-
-  THUMBNAILS: {
-    GET_BEST_THUMBNAIL: 'get-best-thumbnail',
-  },
-
-  // ============================================================================
   // SETTINGS
   // ============================================================================
 
@@ -231,7 +222,6 @@ const IPC = {
   // ============================================================================
 
   LOGGING: {
-    SET_VERBOSE: 'logging:set-verbose',
     GET_VERBOSE: 'logging:get-verbose',
     LOG: 'logging:log',
   },
@@ -250,7 +240,6 @@ const IPC = {
 
   UTILS: {
     PATH_JOIN: 'path-join',
-    GET_ENV_VAR: 'get-env-var',
   },
 
   // ============================================================================
@@ -338,8 +327,6 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.invoke(IPC.VIDEO_SOURCES.VALIDATE_LOCAL_PATH, path),
     // Video codec detection and conversion
     getVideoCodecInfo: (filePath: string) => ipcRenderer.invoke(IPC.CONVERSION.GET_VIDEO_CODEC_INFO, filePath),
-    getCompatibleVideoPath: (originalPath: string, cacheDir?: string) =>
-      ipcRenderer.invoke(IPC.CONVERSION.GET_COMPATIBLE_VIDEO_PATH, originalPath, cacheDir),
     needsVideoConversion: (filePath: string) => ipcRenderer.invoke(IPC.CONVERSION.NEEDS_VIDEO_CONVERSION, filePath),
     hasConvertedVideo: (filePath: string, cacheDir?: string) =>
       ipcRenderer.invoke(IPC.CONVERSION.HAS_CONVERTED_VIDEO, filePath, cacheDir),
@@ -355,7 +342,6 @@ contextBridge.exposeInMainWorld(
       ELECTRON_LOG_VERBOSE: process.env.ELECTRON_LOG_VERBOSE
     },
     // Logging configuration methods
-    setVerboseLogging: (enabled: boolean) => ipcRenderer.invoke(IPC.LOGGING.SET_VERBOSE, enabled),
     getVerboseLogging: () => ipcRenderer.invoke(IPC.LOGGING.GET_VERBOSE),
     // Logging methods
     log: (level: string, ...args: any[]) => ipcRenderer.invoke(IPC.LOGGING.LOG, level, ...args),
@@ -391,8 +377,6 @@ contextBridge.exposeInMainWorld(
     offThumbnailReady: (wrappedCallback: any) => {
       ipcRenderer.off('thumbnail-ready', wrappedCallback);
     },
-    // Get best available thumbnail for a video ID
-    getBestThumbnail: (videoId: string) => ipcRenderer.invoke(IPC.THUMBNAILS.GET_BEST_THUMBNAIL, videoId),
     // Navigation events for YouTube iframe links
     onNavigateToVideo: (callback: (data: { videoId: string; videoMetadata?: any }) => void) => {
       const wrappedCallback = (_: any, data: any) => {

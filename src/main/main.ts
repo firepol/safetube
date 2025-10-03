@@ -105,22 +105,6 @@ ipcMain.handle(IPC.DLNA.GET_DLNA_FILE, async (_, server: string, port: number, p
   return url;
 });
 
-// Handle video streams
-ipcMain.handle(IPC.PLAYBACK.GET_VIDEO_STREAMS, async (_, videoId: string) => {
-  try {
-    logVerbose('Getting video streams for:', videoId);
-    // For now, return a mock response - you can implement actual YouTube API calls here
-    return {
-      streams: [
-        { url: `https://www.youtube.com/watch?v=${videoId}`, quality: 'default' }
-      ]
-    };
-  } catch (error) {
-    console.error('Error getting video streams:', error);
-    throw error;
-  }
-});
-
 // Time tracking IPC handlers
 ipcMain.handle(IPC.TIME_TRACKING.RECORD_VIDEO_WATCHING, async (_, videoId: string, position: number, timeWatched: number) => {
   try {

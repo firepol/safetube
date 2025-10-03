@@ -2098,37 +2098,6 @@ app.on('ready', async () => {
   createWindow()
 })
 
-// IPC handler to get the best available thumbnail for a video ID
-ipcMain.handle(IPC.THUMBNAILS.GET_BEST_THUMBNAIL, async (event, videoId: string) => {
-  try {
-
-    const { parseVideoId } = await import('../shared/fileUtils');
-    const { getThumbnailCacheKey } = await import('../shared/thumbnailUtils');
-
-    const parsed = parseVideoId(videoId);
-    if (!parsed.success) {
-      logVerbose('[Main] Failed to parse video ID:', parsed.error);
-      return null;
-    }
-
-    // Only handle local videos for now
-    if (parsed.parsed?.type === 'local') {
-      const cacheKey = getThumbnailCacheKey(videoId, 'local');
-      const cachedThumbnailPath = AppPaths.getThumbnailPath(`${cacheKey}.jpg`);
-
-      if (fs.existsSync(cachedThumbnailPath)) {
-        const thumbnailUrl = getThumbnailUrl(cachedThumbnailPath);
-        return thumbnailUrl;
-      }
-    }
-
-    return null;
-  } catch (error) {
-    logVerbose('[Main] Error getting best thumbnail for:', videoId, error);
-    return null;
-  }
-})
-
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
 // explicitly with Cmd + Q.

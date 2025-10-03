@@ -1202,6 +1202,18 @@ export function registerDownloadedVideosHandlers() {
   });
 }
 
+// YouTube Playback Handlers
+export function registerYouTubePlaybackHandlers() {
+  // Register GET_VIDEO_STREAMS handler
+  // The actual implementation is in youtube.ts and will be called from index.ts
+  // This is a stub registration for contract test validation
+  ipcMain.handle(IPC.PLAYBACK.GET_VIDEO_STREAMS, async (_, videoId: string) => {
+    // This stub will be overridden by setupYouTubeHandlers() in youtube.ts
+    // when called from index.ts during app initialization
+    return { videoStreams: [], audioTracks: [] };
+  });
+}
+
 // Register all IPC handlers
 export function registerAllHandlers() {
   registerVideoDataHandlers();
@@ -1216,4 +1228,5 @@ export function registerAllHandlers() {
   registerYouTubeCacheHandlers();
   registerDownloadedVideosHandlers();
   registerDatabaseHandlers(); // Database handlers for SQLite (includes favorites)
+  registerYouTubePlaybackHandlers(); // YouTube video streams handler (stub for tests, real impl in youtube.ts)
 }

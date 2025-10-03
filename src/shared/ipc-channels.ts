@@ -181,7 +181,6 @@ export const IPC = {
 
   CONVERSION: {
     GET_VIDEO_CODEC_INFO: 'get-video-codec-info',
-    GET_COMPATIBLE_VIDEO_PATH: 'get-compatible-video-path',
     NEEDS_VIDEO_CONVERSION: 'needs-video-conversion',
     HAS_CONVERTED_VIDEO: 'has-converted-video',
     GET_EXISTING_CONVERTED_VIDEO_PATH: 'get-existing-converted-video-path',
@@ -221,14 +220,6 @@ export const IPC = {
   },
 
   // ============================================================================
-  // THUMBNAILS
-  // ============================================================================
-
-  THUMBNAILS: {
-    GET_BEST_THUMBNAIL: 'get-best-thumbnail',
-  },
-
-  // ============================================================================
   // SETTINGS
   // ============================================================================
 
@@ -244,7 +235,6 @@ export const IPC = {
   // ============================================================================
 
   LOGGING: {
-    SET_VERBOSE: 'logging:set-verbose',
     GET_VERBOSE: 'logging:get-verbose',
     LOG: 'logging:log',
   },
@@ -263,7 +253,6 @@ export const IPC = {
 
   UTILS: {
     PATH_JOIN: 'path-join',
-    GET_ENV_VAR: 'get-env-var',
   },
 
   // ============================================================================
