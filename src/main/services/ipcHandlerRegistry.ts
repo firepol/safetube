@@ -1034,18 +1034,6 @@ export function registerDownloadHandlers() {
     }
   });
 
-  // Get download status
-  ipcMain.handle(IPC.DOWNLOADS.GET_STATUS, async (_, videoId: string) => {
-    try {
-      const { getDownloadStatus } = await import('../fileUtils');
-      const status = await getDownloadStatus(videoId);
-      return status || { status: 'idle', progress: 0 };
-    } catch (error) {
-      log.error('[IPC] Error getting download status:', error);
-      return { status: 'idle', progress: 0 };
-    }
-  });
-
   // Cancel download
   ipcMain.handle(IPC.DOWNLOADS.CANCEL, async (_, videoId: string) => {
     try {
@@ -1083,21 +1071,6 @@ export function registerDownloadHandlers() {
     } catch (error) {
       log.error('[IPC] Error resetting download status:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Reset failed' };
-    }
-  });
-
-  // Check if downloaded
-  ipcMain.handle(IPC.DOWNLOADS.CHECK_DOWNLOADED, async (_, videoId: string) => {
-    try {
-      const { DatabaseService } = await import('../services/DatabaseService');
-      const { isVideoDownloaded } = await import('../database/queries/downloadedVideosQueries');
-      const dbService = DatabaseService.getInstance();
-      const isDownloaded = await isVideoDownloaded(dbService, videoId);
-
-      return { isDownloaded };
-    } catch (error) {
-      log.error('[IPC] Error checking downloaded status:', error);
-      return { isDownloaded: false };
     }
   });
 }
