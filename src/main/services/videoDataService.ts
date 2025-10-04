@@ -219,8 +219,22 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
 
   // Add downloaded videos as a special source
   try {
-    const { readDownloadedVideos } = await import('../fileUtils');
-    const downloadedVideos = await readDownloadedVideos();
+    const { DatabaseService } = await import('./DatabaseService');
+    const { getAllDownloadedVideos } = await import('../database/queries/downloadedVideosQueries');
+    const dbService = DatabaseService.getInstance();
+    const downloadedVideosDb = await getAllDownloadedVideos(dbService);
+
+    // Map database format to expected format
+    const downloadedVideos = downloadedVideosDb.map(dv => ({
+      videoId: dv.video_id,
+      sourceId: dv.source_id,
+      title: dv.title,
+      filePath: dv.file_path,
+      thumbnail: dv.thumbnail_path,
+      duration: dv.duration,
+      downloadedAt: dv.downloaded_at,
+      sourceType: 'youtube' // Default, could be enhanced
+    }));
 
     if (downloadedVideos.length > 0) {
       // Group downloaded videos by source

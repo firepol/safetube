@@ -1089,13 +1089,10 @@ export function registerDownloadHandlers() {
   // Check if downloaded
   ipcMain.handle(IPC.DOWNLOADS.CHECK_DOWNLOADED, async (_, videoId: string) => {
     try {
-      const downloadedVideosPath = AppPaths.getConfigPath('downloadedVideos.json');
-      if (!fs.existsSync(downloadedVideosPath)) {
-        return { isDownloaded: false };
-      }
-
-      const downloadedVideos = JSON.parse(fs.readFileSync(downloadedVideosPath, 'utf8'));
-      const isDownloaded = downloadedVideos.some((video: any) => video.id === videoId);
+      const { DatabaseService } = await import('../services/DatabaseService');
+      const { isVideoDownloaded } = await import('../database/queries/downloadedVideosQueries');
+      const dbService = DatabaseService.getInstance();
+      const isDownloaded = await isVideoDownloaded(dbService, videoId);
 
       return { isDownloaded };
     } catch (error) {
