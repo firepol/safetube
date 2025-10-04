@@ -59,6 +59,28 @@ export class DatabaseService {
   }
 
   /**
+   * Validate database path is safe for current environment
+   */
+  private validateDatabasePath(dbPath: string): void {
+    const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
+    const isProductionPath = dbPath.includes('safetube.db') &&
+                            !dbPath.includes('test') &&
+                            dbPath !== ':memory:' &&
+                            !dbPath.includes('/tmp/');
+
+    if (isTestEnv && isProductionPath) {
+      const error = new Error(
+        `CRITICAL: Test attempting to use production database!\n` +
+        `Path: ${dbPath}\n` +
+        `Tests MUST use :memory: or /tmp/ paths to prevent data corruption.\n` +
+        `Use resetDatabaseSingleton() and createTestDatabase() from testHelpers.ts`
+      );
+      log.error('[DatabaseService]', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Initialize the database with configuration
    */
   async initialize(config?: Partial<DatabaseConfig>): Promise<void> {
@@ -93,22 +115,7 @@ export class DatabaseService {
       this.config = { ...defaultConfig, ...config };
 
       // Safety check: prevent tests from using production database
-      const isTestEnv = process.env.NODE_ENV === 'test' || process.env.VITEST === 'true';
-      const isProductionPath = this.config.path.includes('safetube.db') &&
-                              !this.config.path.includes('test') &&
-                              this.config.path !== ':memory:' &&
-                              !this.config.path.includes('/tmp/');
-
-      if (isTestEnv && isProductionPath) {
-        const error = new Error(
-          `CRITICAL: Test attempting to use production database!\n` +
-          `Path: ${this.config.path}\n` +
-          `Tests MUST use :memory: or /tmp/ paths to prevent data corruption.\n` +
-          `Use resetDatabaseSingleton() and createTestDatabase() from testHelpers.ts`
-        );
-        log.error('[DatabaseService]', error.message);
-        throw error;
-      }
+      this.validateDatabasePath(this.config.path);
 
       // Log database initialization for debugging
       log.info(`[DatabaseService] Initializing database: ${this.config.path}`);
@@ -355,6 +362,11 @@ export class DatabaseService {
       throw new Error('Database not initialized');
     }
 
+    // Additional safety check for test environment
+    if (this.config) {
+      this.validateDatabasePath(this.config.path);
+    }
+
     const connection = await this.acquireConnection();
     const startTime = Date.now();
 
@@ -383,6 +395,11 @@ export class DatabaseService {
   async get<T = any>(sql: string, params: any[] = []): Promise<T | null> {
     if (!this.isInitialized) {
       throw new Error('Database not initialized');
+    }
+
+    // Additional safety check for test environment
+    if (this.config) {
+      this.validateDatabasePath(this.config.path);
     }
 
     const connection = await this.acquireConnection();
@@ -415,6 +432,11 @@ export class DatabaseService {
       throw new Error('Database not initialized');
     }
 
+    // Additional safety check for test environment
+    if (this.config) {
+      this.validateDatabasePath(this.config.path);
+    }
+
     const connection = await this.acquireConnection();
     const startTime = Date.now();
 
@@ -443,6 +465,11 @@ export class DatabaseService {
   async executeTransaction(queries: Array<{ sql: string; params?: any[] }>, options: { silent?: boolean } = {}): Promise<void> {
     if (!this.isInitialized) {
       throw new Error('Database not initialized');
+    }
+
+    // Additional safety check for test environment
+    if (this.config) {
+      this.validateDatabasePath(this.config.path);
     }
 
     const connection = await this.acquireConnection();
