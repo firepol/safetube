@@ -9,7 +9,14 @@ import {
   findCachedPage,
   findVideoById,
   findVideosBySource,
-  searchVideos
+  searchVideos,
+  getDownloadStatus,
+  cleanupOldDownloads,
+  getAllDownloadedVideos,
+  getDownloadedVideosBySource,
+  getDownloadedVideoById,
+  isVideoDownloaded,
+  getTotalDownloadedSize
 } from '../database/queries';
 
 // Types for IPC database operations
@@ -1173,6 +1180,148 @@ export function registerDatabaseHandlers() {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to set settings by namespace',
         code: 'SET_SETTINGS_NAMESPACE_FAILED'
+      };
+    }
+  });
+
+  // ============================================================================
+  // Download Operations
+  // ============================================================================
+
+  ipcMain.handle(IPC.DOWNLOADS.GET_STATUS, async (_, videoId: string): Promise<DatabaseResponse<any>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const status = await getDownloadStatus(dbService, videoId);
+
+      return {
+        success: true,
+        data: status || null
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get download status:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get download status',
+        code: 'GET_DOWNLOAD_STATUS_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.DOWNLOADS.CHECK_DOWNLOADED, async (_, videoId: string): Promise<DatabaseResponse<boolean>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const isDownloaded = await isVideoDownloaded(dbService, videoId);
+
+      return {
+        success: true,
+        data: isDownloaded
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to check if video is downloaded:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to check download status',
+        code: 'CHECK_DOWNLOADED_FAILED'
+      };
+    }
+  });
+
+  // Cleanup old downloads (completed >7 days, failed >30 days)
+  ipcMain.handle('downloads:cleanup', async (): Promise<DatabaseResponse<{ removed: number }>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const removed = await cleanupOldDownloads(dbService);
+
+      return {
+        success: true,
+        data: { removed }
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to cleanup old downloads:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to cleanup downloads',
+        code: 'CLEANUP_DOWNLOADS_FAILED'
+      };
+    }
+  });
+
+  // ============================================================================
+  // Downloaded Videos Operations
+  // ============================================================================
+
+  ipcMain.handle(IPC.DOWNLOADED_VIDEOS.GET_ALL, async (): Promise<DatabaseResponse<any[]>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const videos = await getAllDownloadedVideos(dbService);
+
+      return {
+        success: true,
+        data: videos || []
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get all downloaded videos:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get downloaded videos',
+        code: 'GET_DOWNLOADED_VIDEOS_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle(IPC.DOWNLOADED_VIDEOS.GET_BY_SOURCE, async (_, sourceId: string): Promise<DatabaseResponse<any[]>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const videos = await getDownloadedVideosBySource(dbService, sourceId);
+
+      return {
+        success: true,
+        data: videos || []
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get downloaded videos by source:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get downloaded videos by source',
+        code: 'GET_DOWNLOADED_VIDEOS_BY_SOURCE_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle('downloaded-videos:get-by-id', async (_, videoId: string): Promise<DatabaseResponse<any>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const video = await getDownloadedVideoById(dbService, videoId);
+
+      return {
+        success: true,
+        data: video || null
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get downloaded video by ID:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get downloaded video',
+        code: 'GET_DOWNLOADED_VIDEO_BY_ID_FAILED'
+      };
+    }
+  });
+
+  ipcMain.handle('downloaded-videos:get-total-size', async (_, sourceId?: string): Promise<DatabaseResponse<number>> => {
+    try {
+      const dbService = DatabaseService.getInstance();
+      const totalSize = await getTotalDownloadedSize(dbService, sourceId);
+
+      return {
+        success: true,
+        data: totalSize
+      };
+    } catch (error) {
+      log.error('[Database IPC] Failed to get total downloaded size:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to get total size',
+        code: 'GET_TOTAL_SIZE_FAILED'
       };
     }
   });
