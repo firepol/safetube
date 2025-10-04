@@ -59,9 +59,6 @@ describe('Database IPC Handlers', () => {
       const expectedHandlers = [
         // Core handlers
         'database:health-check',
-        'database:migrate-phase1',
-        'database:migrate-phase2',
-        'database:verify-migration',
         // Video handlers
         'database:videos:get-by-source',
         'database:videos:get-by-id',
@@ -110,7 +107,16 @@ describe('Database IPC Handlers', () => {
         'database:settings:get-setting',
         'database:settings:set-setting',
         'database:settings:get-by-namespace',
-        'database:settings:set-by-namespace'
+        'database:settings:set-by-namespace',
+        // Downloads handlers
+        'download:get-status',
+        'download:check-downloaded',
+        'downloads:cleanup',
+        // Downloaded videos handlers
+        'downloaded-videos:get-all',
+        'downloaded-videos:get-by-source',
+        'downloaded-videos:get-by-id',
+        'downloaded-videos:get-total-size'
       ];
 
       for (const handler of expectedHandlers) {
@@ -281,8 +287,8 @@ describe('Database IPC Handlers', () => {
 
     test('should get viewing history', async () => {
       const mockHistory = [
-        { video_id: 'video1', title: 'Video 1', last_watched: '2023-01-01' },
-        { video_id: 'video2', title: 'Video 2', last_watched: '2023-01-02' }
+        { video_id: 'video1', title: 'Video 1', thumbnail: '', last_watched: '2023-01-01' },
+        { video_id: 'video2', title: 'Video 2', thumbnail: '', last_watched: '2023-01-02' }
       ];
       mockDatabaseService.all.mockResolvedValue(mockHistory);
 
