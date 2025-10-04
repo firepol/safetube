@@ -4,9 +4,8 @@ import { CachedYouTubeAPI } from './__tests__/cached-youtube';
 import { testCache } from './__tests__/test-cache';
 import { logVerboseRenderer } from '@/shared/logging';
 
-// Mock environment variables (legacy fallback for testing)
-// Primary method is now IPC call to main process for mainSettings.json
-vi.stubEnv('VITE_YOUTUBE_API_KEY', 'test-api-key');
+// Mock electron IPC for testing (primary method)
+// Environment variable fallback is handled in main process via YOUTUBE_API_KEY
 
 // Mock electron IPC for YouTube API key (primary method)
 const mockElectron = {

@@ -58,7 +58,7 @@ cp .env.example .env
 ```
 
 Required variables:
-- `VITE_YOUTUBE_API_KEY` - YouTube API key fallback for development/testing (use Main Settings tab instead)
+- `YOUTUBE_API_KEY` - YouTube API key fallback for development/testing (use Main Settings tab instead)
 
 ### CI Environment
 

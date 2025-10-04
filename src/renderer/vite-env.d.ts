@@ -1,9 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
-  // Legacy fallback support for development/testing
-  // Primary API key source is now mainSettings.json via IPC
-  readonly VITE_YOUTUBE_API_KEY?: string;
+  // Primary API key source is Main Settings (via IPC from main process)
+  // Environment variable fallback is handled in main process via YOUTUBE_API_KEY
 }
 
 interface ImportMeta {

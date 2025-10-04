@@ -76,14 +76,14 @@ scoop install ffmpeg
 3. Enter your YouTube API key and save
 4. The key is securely stored in `mainSettings.json`
 
-**Legacy Method**: Environment Configuration (`.env` file) - *for development/testing only*
+**Environment Variable Fallback** (`.env` file) - *for development/testing only*
 **Location**: `%APPDATA%\SafeTube\.env` (e.g., `C:\Users\YourName\AppData\Roaming\SafeTube\.env`)
 ```bash
-# Legacy fallback - only used if Main Settings is not configured
-VITE_YOUTUBE_API_KEY=your_youtube_api_key_here
+# Fallback - only used if Main Settings is not configured
+YOUTUBE_API_KEY=your_youtube_api_key_here
 ```
 
-**Priority**: Main Settings tab → Environment variable → Error message
+**Priority**: Main Settings tab → YOUTUBE_API_KEY environment variable → Error message
 
 #### Video Sources (`config/videoSources.json`)
 **Location**: `%APPDATA%\SafeTube\config\videoSources.json` (e.g., `C:\Users\YourName\AppData\Roaming\SafeTube\config\videoSources.json`)
@@ -183,11 +183,11 @@ cp .env.example .env
 
 **Option B (Development Only)**: Use environment variables:
 ```bash
-# Legacy fallback for development/testing
-VITE_YOUTUBE_API_KEY=your_youtube_api_key_here
+# Fallback for development/testing
+YOUTUBE_API_KEY=your_youtube_api_key_here
 ```
 
-**Priority**: Main Settings (mainSettings.json) → Environment variable → Error
+**Priority**: Main Settings → YOUTUBE_API_KEY environment variable → Error
 
 ### Development Commands
 

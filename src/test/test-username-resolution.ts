@@ -4,24 +4,15 @@ import { YouTubeAPI } from '../main/youtube-api';
 
 async function testUsernameResolution() {
   try {
-    // Try to read API key from mainSettings.json first
-    let apiKey = '';
-    try {
-      const { readMainSettings } = await import('../shared/fileUtils');
-      const mainSettings = await readMainSettings();
-      apiKey = mainSettings.youtubeApiKey || '';
-      console.log('API key loaded from mainSettings.json:', !!apiKey);
-    } catch (error) {
-      console.warn('Could not read mainSettings.json, trying environment variables:', error);
-      // Fallback to environment variables
-      apiKey = process.env.VITE_YOUTUBE_API_KEY || process.env.YOUTUBE_API_KEY || '';
-      console.log('API key loaded from environment:', !!apiKey);
-    }
+    const { getYouTubeApiKey } = await import('../main/helpers/settingsHelper');
+    const apiKey = await getYouTubeApiKey();
 
     if (!apiKey) {
-      console.error('No API key found for testing. Please configure it in mainSettings.json (via Main Settings tab) or set VITE_YOUTUBE_API_KEY environment variable for testing.');
+      console.error('No API key found for testing. Please configure it via Main Settings tab or set YOUTUBE_API_KEY environment variable for testing.');
       return;
     }
+
+    console.log('API key loaded:', !!apiKey);
     
     const youtubeAPI = new YouTubeAPI(apiKey);
     

@@ -624,7 +624,6 @@ export function registerVideoSourceHandlers() {
           if (envApiKey) {
             apiKey = envApiKey;
           } else {
-            // Then check mainSettings.json
             const mainSettings = await readMainSettings();
             if (mainSettings.youtubeApiKey) {
               apiKey = mainSettings.youtubeApiKey;
@@ -690,7 +689,6 @@ export function registerVideoSourceHandlers() {
           if (envApiKey) {
             apiKey = envApiKey;
           } else {
-            // Then check mainSettings.json
             const mainSettings = await readMainSettings();
             if (mainSettings.youtubeApiKey) {
               apiKey = mainSettings.youtubeApiKey;
@@ -919,7 +917,6 @@ export function registerSystemHandlers() {
         return envApiKey;
       }
 
-      // Then check mainSettings.json
       const mainSettings = await readMainSettings();
       if (mainSettings.youtubeApiKey) {
         return mainSettings.youtubeApiKey;

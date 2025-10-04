@@ -1,7 +1,7 @@
 import { promises as fs } from 'fs';
 import * as path from 'path';
 import { AppPaths } from './appPaths';
-import { TimeLimits, UsageLog, WatchedVideo, VideoSource, TimeExtra, MainSettings, DownloadStatus, DownloadedVideo, FavoritesConfig, FavoriteVideo, VideoMetadata } from '../shared/types';
+import { TimeLimits, UsageLog, WatchedVideo, VideoSource, TimeExtra, DownloadStatus, DownloadedVideo, FavoritesConfig, FavoriteVideo, VideoMetadata } from '../shared/types';
 
 const CONFIG_DIR = AppPaths.getConfigDir();
 
@@ -286,49 +286,9 @@ export async function writeTimeExtra(timeExtra: TimeExtra): Promise<void> {
   }
 }
 
-// Main Settings Functions - Now use database
-export async function readMainSettings(): Promise<MainSettings> {
-  try {
-    const { default: DatabaseService } = await import('./services/DatabaseService');
-    const db = DatabaseService.getInstance();
-
-    const rows = await db.all(`
-      SELECT key, value FROM settings WHERE key LIKE 'main.%'
-    `) as Array<{ key: string; value: string }>;
-
-    const settings: any = {};
-    for (const row of rows) {
-      const key = row.key.replace('main.', '');
-      settings[key] = JSON.parse(row.value);
-    }
-
-    return settings;
-  } catch (error) {
-    console.error('[fileUtils] Error reading main settings from database:', error);
-    return {};
-  }
-}
-
-export async function writeMainSettings(settings: MainSettings): Promise<void> {
-  const { default: DatabaseService } = await import('./services/DatabaseService');
-  const db = DatabaseService.getInstance();
-
-  const queries = Object.entries(settings).map(([key, value]) => ({
-    sql: `
-      INSERT OR REPLACE INTO settings (key, value, type)
-      VALUES (?, ?, ?)
-    `,
-    params: [
-      `main.${key}`,
-      JSON.stringify(value),
-      typeof value === 'boolean' ? 'boolean' : typeof value === 'number' ? 'number' : 'string'
-    ]
-  }));
-
-  if (queries.length > 0) {
-    await db.executeTransaction(queries);
-  }
-}
+// Main Settings Functions - Moved to src/main/helpers/settingsHelper.ts
+// These exports are kept for backwards compatibility during migration
+export { readMainSettings, writeMainSettings } from './helpers/settingsHelper';
 
 export async function getDefaultDownloadPath(): Promise<string> {
   const { app } = await import('electron');

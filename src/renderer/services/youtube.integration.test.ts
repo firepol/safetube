@@ -39,13 +39,8 @@ testRunner('YouTubeAPI Integration', () => {
         console.warn('[YouTube Integration Test] Could not get API key from main process:', error);
       }
 
-      // Fallback to environment variable for testing (legacy method)
       if (!apiKey) {
-        apiKey = import.meta.env.VITE_YOUTUBE_API_KEY || '';
-      }
-
-      if (!apiKey) {
-        throw new Error('YouTube API key not configured for integration test. Configure via Main Settings tab or set VITE_YOUTUBE_API_KEY environment variable.');
+        throw new Error('YouTube API key not configured for integration test. Configure via Main Settings tab or set YOUTUBE_API_KEY environment variable.');
       }
 
       const response = await fetch(

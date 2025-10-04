@@ -203,15 +203,13 @@ ipcMain.handle(IPC.VIDEO_LOADING.LOAD_VIDEOS_FROM_SOURCES, async () => {
   try {
     console.log('[Main] load-videos-from-sources handler called (development)');
 
-    // Read API key from mainSettings.json
     let apiKey = '';
     try {
-      const { readMainSettings } = await import('../shared/fileUtils');
-      const mainSettings = await readMainSettings();
-      apiKey = mainSettings.youtubeApiKey || '';
-      console.log('[Main] API key loaded from mainSettings.json:', apiKey ? '***configured***' : 'NOT configured');
+      const { getYouTubeApiKey } = await import('../main/helpers/settingsHelper');
+      apiKey = await getYouTubeApiKey();
+      console.log('[Main] API key loaded:', apiKey ? '***configured***' : 'NOT configured');
     } catch (error) {
-      console.warn('[Main] Could not read mainSettings for development video loading:', error);
+      console.warn('[Main] Could not read API key for development video loading:', error);
     }
 
     // Import and use the main process version that has the encoded IDs
@@ -235,15 +233,13 @@ ipcMain.handle(IPC.VIDEO_LOADING.LOAD_VIDEOS_FOR_SOURCE, async (_, sourceId: str
   try {
     console.log('[Main] load-videos-for-source handler called for:', sourceId);
 
-    // Read API key from mainSettings.json
     let apiKey = '';
     try {
-      const { readMainSettings } = await import('../shared/fileUtils');
-      const mainSettings = await readMainSettings();
-      apiKey = mainSettings.youtubeApiKey || '';
+      const { getYouTubeApiKey } = await import('../main/helpers/settingsHelper');
+      apiKey = await getYouTubeApiKey();
       console.log('[Main] API key loaded for source:', sourceId, apiKey ? '***configured***' : 'NOT configured');
     } catch (error) {
-      console.warn('[Main] Could not read mainSettings for source video loading:', error);
+      console.warn('[Main] Could not read API key for source video loading:', error);
     }
 
     // Import and use the specific source loading function
@@ -357,15 +353,13 @@ app.whenReady().then(async () => {
   try {
     console.log('[Main] Initializing video sources...');
 
-    // Read API key from mainSettings.json
     let apiKey = '';
     try {
-      const { readMainSettings } = await import('../shared/fileUtils');
-      const mainSettings = await readMainSettings();
-      apiKey = mainSettings.youtubeApiKey || '';
-      console.log('[Main] API key loaded from mainSettings.json for startup:', apiKey ? '***configured***' : 'NOT configured');
+      const { getYouTubeApiKey } = await import('../main/helpers/settingsHelper');
+      apiKey = await getYouTubeApiKey();
+      console.log('[Main] API key loaded for startup:', apiKey ? '***configured***' : 'NOT configured');
     } catch (error) {
-      console.warn('[Main] Could not read mainSettings for startup video loading:', error);
+      console.warn('[Main] Could not read API key for startup video loading:', error);
     }
 
     const { loadAllVideosFromSourcesMain } = await import('../main/index');
