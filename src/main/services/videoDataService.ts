@@ -263,7 +263,7 @@ export async function loadAllVideosFromSources(apiKey?: string | null) {
           duration: dv.duration,
           url: `file://${dv.filePath}`,
           sourceId: dv.sourceId,
-          sourceTitle: dv.channelTitle || dv.playlistTitle || 'Unknown Source',
+          sourceTitle: 'Downloaded', // Could be enhanced by joining with sources table
           sourceType: dv.sourceType,
           sourceThumbnail: '',
           downloadedAt: dv.downloadedAt,
