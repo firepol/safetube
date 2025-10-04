@@ -1191,6 +1191,21 @@ export function registerDatabaseHandlers() {
   ipcMain.handle(IPC.DOWNLOADS.GET_STATUS, async (_, videoId: string): Promise<DatabaseResponse<any>> => {
     try {
       const dbService = DatabaseService.getInstance();
+
+      // First check if video is already downloaded (in downloaded_videos table)
+      const isDownloaded = await isVideoDownloaded(dbService, videoId);
+      if (isDownloaded) {
+        return {
+          success: true,
+          data: {
+            videoId,
+            status: 'completed',
+            progress: 100
+          }
+        };
+      }
+
+      // Otherwise check active downloads table
       const status = await getDownloadStatus(dbService, videoId);
 
       return {
