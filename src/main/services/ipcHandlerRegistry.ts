@@ -1257,31 +1257,6 @@ export function registerYouTubeCacheHandlers() {
 }
 
 // Downloaded Videos Handlers
-export function registerDownloadedVideosHandlers() {
-  // Get all downloaded videos
-  ipcMain.handle(IPC.DOWNLOADED_VIDEOS.GET_ALL, async () => {
-    try {
-      const { readDownloadedVideos } = await import('../fileUtils');
-      return await readDownloadedVideos();
-    } catch (error) {
-      log.error('[IPC] Error reading downloaded videos:', error);
-      return [];
-    }
-  });
-
-  // Get downloaded videos by source
-  ipcMain.handle(IPC.DOWNLOADED_VIDEOS.GET_BY_SOURCE, async (_, sourceId: string) => {
-    try {
-      const { readDownloadedVideos } = await import('../fileUtils');
-      const allDownloaded = await readDownloadedVideos();
-      return allDownloaded.filter(video => video.sourceId === sourceId);
-    } catch (error) {
-      log.error('[IPC] Error reading downloaded videos by source:', error);
-      return [];
-    }
-  });
-}
-
 // YouTube Playback Handlers
 export function registerYouTubePlaybackHandlers() {
   // YouTube playback handlers are registered in youtube.ts via setupYouTubeHandlers()
@@ -1301,7 +1276,6 @@ export function registerAllHandlers() {
   registerDownloadHandlers();
   registerSettingsHandlers();
   registerYouTubeCacheHandlers();
-  registerDownloadedVideosHandlers();
-  registerDatabaseHandlers(); // Database handlers for SQLite (includes favorites)
+  registerDatabaseHandlers(); // Database handlers for SQLite (includes favorites and downloaded videos)
   registerYouTubePlaybackHandlers(); // YouTube video streams handler (stub for tests, real impl in youtube.ts)
 }
