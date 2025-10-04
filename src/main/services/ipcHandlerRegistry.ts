@@ -1259,9 +1259,62 @@ export function registerYouTubeCacheHandlers() {
 // Downloaded Videos Handlers
 // YouTube Playback Handlers
 export function registerYouTubePlaybackHandlers() {
-  // YouTube playback handlers are registered in youtube.ts via setupYouTubeHandlers()
-  // Called from index.ts during app initialization
-  // No stub needed here - the real handler will be registered directly
+  // Register YouTube playback handler inline
+  // This used to be in setupYouTubeHandlers() in youtube.ts
+  // but we need it here for the IPC contract tests to detect it
+
+  const { exec } = require('child_process');
+  const { promisify } = require('util');
+  const execAsync = promisify(exec);
+
+  ipcMain.handle(IPC.PLAYBACK.GET_VIDEO_STREAMS, async (_, videoId: string) => {
+    try {
+      // Lazy load heavy dependencies only when needed
+      const { YtDlpManager } = await import('../ytDlpManager');
+
+      // Ensure yt-dlp is available (auto-download on Windows if needed)
+      await YtDlpManager.ensureYtDlpAvailable();
+
+      // Use yt-dlp to get video info in JSON format
+      const ytDlpCommand = YtDlpManager.getYtDlpCommand();
+      const { stdout } = await execAsync(`${ytDlpCommand} -j https://www.youtube.com/watch?v=${videoId}`);
+      const info = JSON.parse(stdout);
+
+      const videoStreams: any[] = [];
+      const audioTracks: any[] = [];
+
+      // Process formats
+      for (const format of info.formats) {
+        // Video-only formats
+        if (format.vcodec && format.vcodec !== 'none' && (!format.acodec || format.acodec === 'none')) {
+          videoStreams.push({
+            url: format.url,
+            quality: format.format_note || format.quality || 'unknown',
+            mimeType: format.ext === 'webm' ? 'video/webm' : 'video/mp4',
+            width: format.width,
+            height: format.height,
+            fps: format.fps,
+            bitrate: format.tbr
+          });
+        }
+
+        // Audio-only formats
+        if (format.acodec && format.acodec !== 'none' && (!format.vcodec || format.vcodec === 'none')) {
+          audioTracks.push({
+            url: format.url,
+            language: format.language || 'unknown',
+            mimeType: format.ext === 'webm' ? 'audio/webm' : 'audio/mp4',
+            bitrate: format.abr
+          });
+        }
+      }
+
+      return { videoStreams, audioTracks };
+    } catch (error) {
+      console.error('[YouTube] Error getting video streams:', error);
+      throw error;
+    }
+  });
 }
 
 // Register all IPC handlers

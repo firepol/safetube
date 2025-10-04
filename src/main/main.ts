@@ -6,7 +6,7 @@ import * as url from 'url';
 import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTracking';
 import { logVerbose } from '../shared/logging';
 import { AppPaths } from '../shared/appPaths';
-import { FirstRunSetup } from '../shared/firstRunSetup';
+import { FirstRunSetup } from './firstRunSetup';
 import { getYouTubeApiKey } from './helpers/settingsHelper';
 import log from './logger';
 import { IPC } from '../shared/ipc-channels';
@@ -65,16 +65,6 @@ ipcMain.handle(IPC.LOCAL_FILES.GET_LOCAL_FILE, async (_, filePath: string) => {
     return `file://${localPath}`;
   } catch (error) {
     console.error('Error getting local file:', error);
-    throw error;
-  }
-});
-
-// Handle setup status request
-ipcMain.handle(IPC.SETTINGS.GET_SETUP_STATUS, async () => {
-  try {
-    return await FirstRunSetup.getSetupStatus();
-  } catch (error) {
-    console.error('Error getting setup status:', error);
     throw error;
   }
 });

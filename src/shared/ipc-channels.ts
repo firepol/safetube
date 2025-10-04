@@ -22,9 +22,6 @@ export const IPC = {
 
   DATABASE: {
     HEALTH_CHECK: 'database:health-check',
-    MIGRATE_PHASE1: 'database:migrate-phase1',
-    MIGRATE_PHASE2: 'database:migrate-phase2',
-    VERIFY_MIGRATION: 'database:verify-migration',
   },
 
   // ============================================================================
@@ -200,6 +197,7 @@ export const IPC = {
     IS_DOWNLOADING: 'download:is-downloading',
     RESET_STATUS: 'download:reset-status',
     CHECK_DOWNLOADED: 'download:check-downloaded',
+    CLEANUP: 'downloads:cleanup',
   },
 
   // ============================================================================
@@ -209,6 +207,8 @@ export const IPC = {
   DOWNLOADED_VIDEOS: {
     GET_ALL: 'downloaded-videos:get-all',
     GET_BY_SOURCE: 'downloaded-videos:get-by-source',
+    GET_BY_ID: 'downloaded-videos:get-by-id',
+    GET_TOTAL_SIZE: 'downloaded-videos:get-total-size',
   },
 
   // ============================================================================
