@@ -1227,14 +1227,14 @@ export function registerDatabaseHandlers() {
   });
 
   // Cleanup old downloads (completed >7 days, failed >30 days)
-  ipcMain.handle('downloads:cleanup', async (): Promise<DatabaseResponse<{ removed: number }>> => {
+  ipcMain.handle('downloads:cleanup', async (): Promise<DatabaseResponse<number>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const removed = await cleanupOldDownloads(dbService);
 
       return {
         success: true,
-        data: { removed }
+        data: removed
       };
     } catch (error) {
       log.error('[Database IPC] Failed to cleanup old downloads:', error);

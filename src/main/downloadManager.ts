@@ -108,13 +108,7 @@ export class DownloadManager {
       }
 
       // Create download record in database
-      await createDownload(this.db, {
-        videoId,
-        sourceId: sourceInfo.sourceId,
-        status: 'downloading',
-        progress: 0,
-        startTime: Date.now()
-      });
+      await createDownload(this.db, videoId, sourceInfo.sourceId);
 
       // Ensure yt-dlp is available
       await YtDlpManager.ensureYtDlpAvailable();
@@ -300,7 +294,6 @@ export class DownloadManager {
         filePath: videoFile,
         thumbnailPath: thumbnailFile || null,
         duration: duration || null,
-        downloadedAt: new Date().toISOString(),
         fileSize,
         format
       });
@@ -456,7 +449,22 @@ export class DownloadManager {
    * Get download progress for a video
    */
   static async getDownloadProgress(videoId: string): Promise<DownloadStatus | null> {
-    return getDownloadStatus(this.db, videoId);
+    const download = await getDownloadStatus(this.db, videoId);
+
+    if (!download) {
+      return null;
+    }
+
+    // Map database Download to DownloadStatus interface
+    return {
+      videoId: download.video_id,
+      status: download.status,
+      progress: download.progress,
+      startTime: download.start_time || undefined,
+      endTime: download.end_time || undefined,
+      error: download.error_message || undefined,
+      filePath: download.file_path || undefined
+    };
   }
 
   /**
