@@ -83,7 +83,7 @@ export async function createDownload(
   sourceId: string
 ): Promise<void> {
   await db.run(
-    `INSERT INTO downloads (video_id, source_id, status, progress, start_time, updated_at)
+    `INSERT OR REPLACE INTO downloads (video_id, source_id, status, progress, start_time, updated_at)
      VALUES (?, ?, 'pending', 0, ?, CURRENT_TIMESTAMP)`,
     [videoId, sourceId, Date.now()]
   );

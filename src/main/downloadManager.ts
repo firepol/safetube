@@ -73,8 +73,18 @@ export class DownloadManager {
       // Check if already downloading
       const existingStatus = await getDownloadStatus(this.db, videoId);
 
-      if (existingStatus && (existingStatus.status === 'downloading' || existingStatus.status === 'pending')) {
+      if (existingStatus && existingStatus.status === 'downloading') {
         throw new Error('Video is already being downloaded');
+      }
+
+      // Check for stale pending downloads (older than 5 minutes) and allow retry
+      if (existingStatus && existingStatus.status === 'pending') {
+        const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+        if (existingStatus.start_time && existingStatus.start_time > fiveMinutesAgo) {
+          throw new Error('Video download is already queued');
+        }
+        // Stale pending download - will be overwritten
+        logVerbose('[DownloadManager] Cleaning up stale pending download for', videoId);
       }
 
       // Check if already downloaded
@@ -183,7 +193,15 @@ export class DownloadManager {
       });
 
     } catch (error) {
-      await markDownloadFailed(this.db, videoId, error instanceof Error ? error.message : String(error));
+      // Try to mark as failed, but if no record exists yet, just log the error
+      try {
+        const existingRecord = await getDownloadStatus(this.db, videoId);
+        if (existingRecord) {
+          await markDownloadFailed(this.db, videoId, error instanceof Error ? error.message : String(error));
+        }
+      } catch (updateError) {
+        logVerbose('[DownloadManager] Failed to update download status:', updateError);
+      }
       throw error;
     }
   }
