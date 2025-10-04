@@ -257,12 +257,8 @@ export class SimpleSchemaManager {
 
       // Check if already initialized
       const currentVersion = await this.getCurrentSchemaVersion();
-      if (currentVersion && currentVersion.phase === 'phase2') {
-        log.debug('[SimpleSchemaManager] Phase 2 schema already initialized');
-        return;
-      }
 
-      // Create Phase 2 tables
+      // Create Phase 2 tables (CREATE TABLE IF NOT EXISTS ensures safe re-run)
       await this.createUsageLogsTable();
       await this.createTimeLimitsTable();
       await this.createUsageExtrasTable();
@@ -270,11 +266,13 @@ export class SimpleSchemaManager {
       await this.createDownloadsTable();
       await this.createDownloadedVideosTable();
 
-      // Update schema version
-      await this.databaseService.run(`
-        INSERT OR REPLACE INTO schema_version (id, version, phase)
-        VALUES (1, 2, 'phase2')
-      `);
+      // Only update schema version if not already at phase2
+      if (!currentVersion || currentVersion.phase !== 'phase2') {
+        await this.databaseService.run(`
+          INSERT OR REPLACE INTO schema_version (id, version, phase)
+          VALUES (1, 2, 'phase2')
+        `);
+      }
 
       log.info('[SimpleSchemaManager] Phase 2 schema initialized successfully');
     } catch (error) {

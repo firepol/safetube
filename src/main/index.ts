@@ -1868,7 +1868,13 @@ app.on('ready', async () => {
     try {
       const schemaVersion = await dbService.get<{ phase: string }>('SELECT phase FROM schema_version WHERE id = 1');
 
-      if (!schemaVersion || schemaVersion.phase === 'phase1') {
+      // Check if downloads JSON files exist (migration may be needed even if schema is phase2)
+      const downloadsJsonPath = path.join(AppPaths.getConfigDir(), 'downloadedVideos.json');
+      const downloadsJsonExists = fs.existsSync(downloadsJsonPath);
+
+      const needsMigration = !schemaVersion || schemaVersion.phase === 'phase1' || downloadsJsonExists;
+
+      if (needsMigration) {
         log.info('[Main] Phase 2 migration needed, starting...');
 
         const { MigrationService } = await import('./database/MigrationService');
@@ -1877,7 +1883,7 @@ app.on('ready', async () => {
         const errorHandler = new DatabaseErrorHandler();
         const migrationService = new MigrationService(dbService, schemaManager, errorHandler);
 
-        // Initialize Phase 2 schema first
+        // Initialize Phase 2 schema first (safe to run even if tables exist)
         await schemaManager.initializePhase2Schema();
 
         // Run Phase 2 migration
@@ -1887,8 +1893,10 @@ app.on('ready', async () => {
           log.info(`[Main] Phase 2 migration completed successfully`);
           log.info(`[Main] Migrated ${phase2Result.totalRecordsProcessed} records`);
 
-          // Update schema_version to phase2
-          await dbService.run(`UPDATE schema_version SET phase = 'phase2', updated_at = CURRENT_TIMESTAMP WHERE id = 1`);
+          // Update schema_version to phase2 (if not already)
+          if (!schemaVersion || schemaVersion.phase !== 'phase2') {
+            await dbService.run(`UPDATE schema_version SET phase = 'phase2', updated_at = CURRENT_TIMESTAMP WHERE id = 1`);
+          }
         } else {
           log.error('[Main] Phase 2 migration failed:', phase2Result);
         }

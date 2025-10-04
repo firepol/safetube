@@ -701,7 +701,7 @@ export class MigrationService {
 
     const queries = downloads.map((download: any) => ({
       sql: `
-        INSERT INTO downloads (
+        INSERT OR REPLACE INTO downloads (
           video_id, source_id, status, progress, start_time, end_time,
           error_message, file_path
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -762,7 +762,7 @@ export class MigrationService {
 
         return {
           sql: `
-            INSERT INTO downloaded_videos (
+            INSERT OR REPLACE INTO downloaded_videos (
               video_id, source_id, title, file_path, thumbnail_path,
               duration, downloaded_at, file_size, format
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
