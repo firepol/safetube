@@ -32,3 +32,9 @@ export * from './usageExtraQueries';
 
 // Export settings queries (Phase 2)
 export * from './settingsQueries';
+
+// Export downloads queries (Phase 2)
+export * from './downloadsQueries';
+
+// Export downloaded videos queries (Phase 2)
+export * from './downloadedVideosQueries';

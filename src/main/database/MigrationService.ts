@@ -37,6 +37,8 @@ interface JsonDataLoader {
   loadTimeExtra(): any[];
   loadPaginationSettings(): any;
   loadYouTubePlayerSettings(): any;
+  loadDownloadStatus(): any[];
+  loadDownloadedVideos(): any[];
 }
 
 /**
@@ -460,7 +462,9 @@ export class MigrationService {
         { tableName: 'usage_logs', migrationFn: this.migrateUsageLogs.bind(this) },
         { tableName: 'time_limits', migrationFn: this.migrateTimeLimits.bind(this) },
         { tableName: 'usage_extras', migrationFn: this.migrateUsageExtras.bind(this) },
-        { tableName: 'settings', migrationFn: this.migrateSettings.bind(this) }
+        { tableName: 'settings', migrationFn: this.migrateSettings.bind(this) },
+        { tableName: 'downloads', migrationFn: this.migrateDownloads.bind(this) },
+        { tableName: 'downloaded_videos', migrationFn: this.migrateDownloadedVideos.bind(this) }
       ];
 
       // Execute each migration step
@@ -482,6 +486,8 @@ export class MigrationService {
         await this.renameJsonToOld('mainSettings.json');
         await this.renameJsonToOld('pagination.json');
         await this.renameJsonToOld('youtubePlayer.json');
+        await this.renameJsonToOld('downloadStatus.json');
+        await this.renameJsonToOld('downloadedVideos.json');
         log.info('[MigrationService] Renamed Phase 2 JSON files to .old');
       }
 
@@ -680,6 +686,108 @@ export class MigrationService {
   }
 
   /**
+   * Migrate downloads from downloadStatus.json (if exists)
+   */
+  private async migrateDownloads(): Promise<number> {
+    log.debug('[MigrationService] Loading downloads from JSON');
+    const downloads = this.jsonLoader.loadDownloadStatus();
+
+    if (!downloads || downloads.length === 0) {
+      log.info('[MigrationService] No downloads found to migrate');
+      return 0;
+    }
+
+    log.debug(`[MigrationService] Migrating ${downloads.length} download records`);
+
+    const queries = downloads.map((download: any) => ({
+      sql: `
+        INSERT INTO downloads (
+          video_id, source_id, status, progress, start_time, end_time,
+          error_message, file_path
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `,
+      params: [
+        download.videoId,
+        download.sourceId || null,
+        download.status || 'pending',
+        download.progress || 0,
+        download.startTime || null,
+        download.endTime || null,
+        download.errorMessage || null,
+        download.filePath || null
+      ]
+    }));
+
+    await this.databaseService.executeTransaction(queries);
+
+    return downloads.length;
+  }
+
+  /**
+   * Migrate downloaded videos from downloadedVideos.json
+   */
+  private async migrateDownloadedVideos(): Promise<number> {
+    log.debug('[MigrationService] Loading downloaded videos from JSON');
+    const downloadedVideos = this.jsonLoader.loadDownloadedVideos();
+
+    if (!downloadedVideos || downloadedVideos.length === 0) {
+      log.info('[MigrationService] No downloaded videos found to migrate');
+      return 0;
+    }
+
+    log.debug(`[MigrationService] Migrating ${downloadedVideos.length} downloaded videos`);
+
+    const fs = await import('fs');
+    const path = await import('path');
+
+    const queries = await Promise.all(
+      downloadedVideos.map(async (video: any) => {
+        // Calculate file size if not present
+        let fileSize = video.fileSize || null;
+        if (!fileSize && video.filePath && fs.existsSync(video.filePath)) {
+          try {
+            const stats = fs.statSync(video.filePath);
+            fileSize = stats.size;
+          } catch (error) {
+            log.warn(`[MigrationService] Could not get file size for ${video.filePath}:`, error);
+          }
+        }
+
+        // Detect format from file extension if not present
+        let format = video.format || null;
+        if (!format && video.filePath) {
+          const ext = path.extname(video.filePath).toLowerCase().replace('.', '');
+          format = ext || null;
+        }
+
+        return {
+          sql: `
+            INSERT INTO downloaded_videos (
+              video_id, source_id, title, file_path, thumbnail_path,
+              duration, downloaded_at, file_size, format
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `,
+          params: [
+            video.videoId,
+            video.sourceId || 'unknown',
+            video.title || '',
+            video.filePath || '',
+            video.thumbnail || null,
+            video.duration || null,
+            video.downloadedAt || new Date().toISOString(),
+            fileSize,
+            format
+          ]
+        };
+      })
+    );
+
+    await this.databaseService.executeTransaction(queries);
+
+    return downloadedVideos.length;
+  }
+
+  /**
    * Verify migration integrity by comparing record counts
    */
   async verifyMigrationIntegrity(): Promise<{
@@ -869,6 +977,36 @@ class FileSystemJsonLoader implements JsonDataLoader {
     } catch (error) {
       log.error('[FileSystemJsonLoader] Error loading YouTube player settings:', error);
       return {};
+    }
+  }
+
+  loadDownloadStatus(): any[] {
+    try {
+      const path = AppPaths.getConfigPath('downloadStatus.json');
+      if (!fs.existsSync(path)) {
+        return [];
+      }
+      const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+      // Handle both array format and object format
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      log.error('[FileSystemJsonLoader] Error loading download status:', error);
+      return [];
+    }
+  }
+
+  loadDownloadedVideos(): any[] {
+    try {
+      const path = AppPaths.getConfigPath('downloadedVideos.json');
+      if (!fs.existsSync(path)) {
+        return [];
+      }
+      const data = JSON.parse(fs.readFileSync(path, 'utf8'));
+      // Handle both array format and object format
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      log.error('[FileSystemJsonLoader] Error loading downloaded videos:', error);
+      return [];
     }
   }
 }

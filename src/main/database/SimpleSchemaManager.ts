@@ -267,6 +267,8 @@ export class SimpleSchemaManager {
       await this.createTimeLimitsTable();
       await this.createUsageExtrasTable();
       await this.createSettingsTable();
+      await this.createDownloadsTable();
+      await this.createDownloadedVideosTable();
 
       // Update schema version
       await this.databaseService.run(`
@@ -368,6 +370,62 @@ export class SimpleSchemaManager {
 
     // Create index for namespace queries
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_settings_key ON settings(key)');
+  }
+
+  /**
+   * Create downloads table (transient download tracking)
+   */
+  private async createDownloadsTable(): Promise<void> {
+    await this.databaseService.run(`
+      CREATE TABLE IF NOT EXISTS downloads (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          video_id TEXT NOT NULL,
+          source_id TEXT,
+          status TEXT NOT NULL CHECK(status IN ('pending', 'downloading', 'completed', 'failed')),
+          progress INTEGER NOT NULL DEFAULT 0,
+          start_time INTEGER,
+          end_time INTEGER,
+          error_message TEXT,
+          file_path TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(video_id),
+          FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create indexes
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloads_video_id ON downloads(video_id)');
+  }
+
+  /**
+   * Create downloaded_videos table (permanent download registry)
+   */
+  private async createDownloadedVideosTable(): Promise<void> {
+    await this.databaseService.run(`
+      CREATE TABLE IF NOT EXISTS downloaded_videos (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          video_id TEXT UNIQUE,
+          source_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          file_path TEXT NOT NULL,
+          thumbnail_path TEXT,
+          duration INTEGER,
+          downloaded_at TEXT NOT NULL,
+          file_size INTEGER,
+          format TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
+      )
+    `);
+
+    // Create indexes
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_video_id ON downloaded_videos(video_id)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_source_id ON downloaded_videos(source_id)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_downloaded_at ON downloaded_videos(downloaded_at)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_file_path ON downloaded_videos(file_path)');
   }
 
   /**
