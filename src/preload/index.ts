@@ -396,7 +396,10 @@ contextBridge.exposeInMainWorld(
     // Download management
     startDownload: (videoId: string, videoTitle: string, sourceInfo: any) =>
       ipcRenderer.invoke(IPC.DOWNLOADS.START, videoId, videoTitle, sourceInfo),
-    getDownloadStatus: (videoId: string) => ipcRenderer.invoke(IPC.DOWNLOADS.GET_STATUS, videoId),
+    getDownloadStatus: async (videoId: string) => {
+      const response = await ipcRenderer.invoke(IPC.DOWNLOADS.GET_STATUS, videoId);
+      return response.success ? response.data : null;
+    },
     cancelDownload: (videoId: string) => ipcRenderer.invoke(IPC.DOWNLOADS.CANCEL, videoId),
     isDownloading: (videoId: string) => ipcRenderer.invoke(IPC.DOWNLOADS.IS_DOWNLOADING, videoId),
     // Main settings
@@ -404,8 +407,14 @@ contextBridge.exposeInMainWorld(
     writeMainSettings: (settings: any) => ipcRenderer.invoke(IPC.SETTINGS.WRITE_MAIN_SETTINGS, settings),
     getDefaultDownloadPath: () => ipcRenderer.invoke(IPC.SETTINGS.GET_DEFAULT_DOWNLOAD_PATH),
     // Downloaded videos
-    getDownloadedVideos: () => ipcRenderer.invoke(IPC.DOWNLOADED_VIDEOS.GET_ALL),
-    getDownloadedVideosBySource: (sourceId: string) => ipcRenderer.invoke(IPC.DOWNLOADED_VIDEOS.GET_BY_SOURCE, sourceId),
+    getDownloadedVideos: async () => {
+      const response = await ipcRenderer.invoke(IPC.DOWNLOADED_VIDEOS.GET_ALL);
+      return response.success ? response.data : [];
+    },
+    getDownloadedVideosBySource: async (sourceId: string) => {
+      const response = await ipcRenderer.invoke(IPC.DOWNLOADED_VIDEOS.GET_BY_SOURCE, sourceId);
+      return response.success ? response.data : [];
+    },
     // YouTube Cache
     getYouTubeCache: (cacheKey: string) => ipcRenderer.invoke(IPC.YOUTUBE_CACHE.GET, cacheKey),
     setYouTubeCache: (cacheKey: string, data: any) => ipcRenderer.invoke(IPC.YOUTUBE_CACHE.SET, cacheKey, data),
