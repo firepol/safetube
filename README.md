@@ -169,6 +169,11 @@ cd safetube
 yarn install
 ```
 
+**Windows Users**: If you get a "Permission denied (publickey)" error during `yarn install`, run this command first to configure git to use HTTPS instead of SSH:
+```bash
+git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+```
+
 3. Create environment file:
 ```bash
 cp .env.example .env
