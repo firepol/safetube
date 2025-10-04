@@ -443,14 +443,8 @@ export class MigrationService {
     try {
       log.info('[MigrationService] Starting Phase 2 migration');
 
-      // Check if migration already completed (settings table has data)
-      const settingsCount = await this.databaseService.get<{ count: number }>('SELECT COUNT(*) as count FROM settings');
-      if (settingsCount && settingsCount.count > 0) {
-        log.info('[MigrationService] Phase 2 migration already completed (settings table has data), skipping');
-        summary.status = 'completed';
-        summary.endTime = new Date().toISOString();
-        return summary;
-      }
+      // Don't skip migration based on table counts - use INSERT OR REPLACE to safely re-migrate
+      // This allows adding new tables (like downloads) after initial migration
 
       // Backup is already created in Phase 1, no need to create another
 
