@@ -7,6 +7,7 @@ import { createLocalVideoId } from '../../shared/fileUtils';
 import { logVerbose } from '../../shared/logging';
 import { AppPaths } from '../appPaths';
 import { readTimeLimits, readMainSettings, writeMainSettings } from '../fileUtils';
+import { getYouTubeApiKey } from '../helpers/settingsHelper';
 import log from '../logger';
 import { recordVideoWatching, getTimeTrackingState } from '../timeTracking';
 import { YouTubeAPI } from '../youtube-api';
@@ -619,16 +620,7 @@ export function registerVideoSourceHandlers() {
         // Try to fetch channel details with API if available
         let apiKey: string | null = null;
         try {
-          // First check environment variable
-          const envApiKey = process.env.YOUTUBE_API_KEY;
-          if (envApiKey) {
-            apiKey = envApiKey;
-          } else {
-            const mainSettings = await readMainSettings();
-            if (mainSettings.youtubeApiKey) {
-              apiKey = mainSettings.youtubeApiKey;
-            }
-          }
+          apiKey = await getYouTubeApiKey();
         } catch (error) {
           log.warn('[IPC] Error getting YouTube API key:', error);
         }
@@ -684,16 +676,7 @@ export function registerVideoSourceHandlers() {
         // Try to fetch playlist details with API if available
         let apiKey: string | null = null;
         try {
-          // First check environment variable
-          const envApiKey = process.env.YOUTUBE_API_KEY;
-          if (envApiKey) {
-            apiKey = envApiKey;
-          } else {
-            const mainSettings = await readMainSettings();
-            if (mainSettings.youtubeApiKey) {
-              apiKey = mainSettings.youtubeApiKey;
-            }
-          }
+          apiKey = await getYouTubeApiKey();
         } catch (error) {
           log.warn('[IPC] Error getting YouTube API key:', error);
         }
@@ -911,18 +894,8 @@ export function registerSystemHandlers() {
   // Get YouTube API key
   ipcMain.handle(IPC.YOUTUBE.GET_API_KEY, async () => {
     try {
-      // First check environment variable
-      const envApiKey = process.env.YOUTUBE_API_KEY;
-      if (envApiKey) {
-        return envApiKey;
-      }
-
-      const mainSettings = await readMainSettings();
-      if (mainSettings.youtubeApiKey) {
-        return mainSettings.youtubeApiKey;
-      }
-
-      return null;
+      const apiKey = await getYouTubeApiKey();
+      return apiKey || null;
     } catch (error) {
       log.error('[IPC] Error getting YouTube API key:', error);
       return null;
@@ -932,17 +905,7 @@ export function registerSystemHandlers() {
   // Get YouTube video info (for source validation)
   ipcMain.handle(IPC.YOUTUBE.GET_VIDEO_INFO, async (_, videoId: string) => {
     try {
-      // Get API key
-      let apiKey: string | null = null;
-      const envApiKey = process.env.YOUTUBE_API_KEY;
-      if (envApiKey) {
-        apiKey = envApiKey;
-      } else {
-        const mainSettings = await readMainSettings();
-        if (mainSettings.youtubeApiKey) {
-          apiKey = mainSettings.youtubeApiKey;
-        }
-      }
+      const apiKey = await getYouTubeApiKey();
 
       if (!apiKey) {
         log.error('[IPC] YouTube API key not found');

@@ -13,6 +13,7 @@ import { logVerbose } from '../shared/logging'
 
 import { AppPaths } from './appPaths'
 import { readTimeLimits, readMainSettings, readVideoSources } from './fileUtils'
+import { getYouTubeApiKey } from './helpers/settingsHelper'
 import { YouTubeChannelSource, VideoSource } from '../shared/types'
 import log from './logger'
 import { recordVideoWatching, getTimeTrackingState } from './timeTracking'
@@ -533,16 +534,8 @@ ipcMain.handle(IPC.VIDEO_LOADING.LOAD_ALL_VIDEOS_FROM_SOURCES, async () => {
 
         } else if (source.sourceType === 'youtube_channel' || source.sourceType === 'youtube_playlist') {
           try {
-            let apiKey = 'your-api-key-here';
-            try {
-              const { readMainSettings } = await import('./fileUtils');
-              const mainSettings = await readMainSettings();
-              apiKey = mainSettings.youtubeApiKey || 'your-api-key-here';
-            } catch (error) {
-              log.warn('[Main] Could not read settings, trying environment variables:', error);
-              apiKey = 'your-api-key-here';
-            }
-            if (apiKey === 'your-api-key-here') {
+            const apiKey = await getYouTubeApiKey();
+            if (!apiKey) {
               debugInfo.push(`[Main] YouTube source ${source.title} - API key not configured`);
               continue;
             }
@@ -684,15 +677,8 @@ ipcMain.handle(IPC.VIDEO_LOADING.LOAD_ALL_VIDEOS_FROM_SOURCES, async () => {
 ipcMain.handle(IPC.VIDEO_LOADING.LOAD_VIDEOS_FOR_SOURCE, async (_, sourceId: string) => {
   try {
     console.log('[Main] load-videos-for-source handler called for:', sourceId);
-    let apiKey = '';
-    try {
-      const { readMainSettings } = await import('./fileUtils');
-      const mainSettings = await readMainSettings();
-      apiKey = mainSettings.youtubeApiKey || '';
-      console.log('[Main] API key loaded for source:', sourceId, apiKey ? '***configured***' : 'NOT configured');
-    } catch (error) {
-      console.warn('[Main] Could not read settings for source video loading:', error);
-    }
+    const apiKey = await getYouTubeApiKey();
+    console.log('[Main] API key loaded for source:', sourceId, apiKey ? '***configured***' : 'NOT configured');
     // Import and use the specific source loading function
     const { loadVideosForSpecificSource } = await import('./services/videoDataService');
     const result = await loadVideosForSpecificSource(sourceId, apiKey);
@@ -727,15 +713,8 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_PAGINATED_VIDEOS, async (event, sourceId: s
     const configTime = performance.now() - configStart;
     logVerbose(`[Main] ⏱️ Config read: ${configTime.toFixed(1)}ms`);
 
-    let apiKey = '';
     const apiKeyStart = performance.now();
-    try {
-      const { readMainSettings } = await import('./fileUtils');
-      const mainSettings = await readMainSettings();
-      apiKey = mainSettings.youtubeApiKey || '';
-    } catch (error) {
-      log.warn('[Main] Could not read settings for pagination:', error);
-    }
+    const apiKey = await getYouTubeApiKey();
     const apiKeyTime = performance.now() - apiKeyStart;
     logVerbose(`[Main] ⏱️ API key read: ${apiKeyTime.toFixed(1)}ms`);
 
@@ -1198,15 +1177,7 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_PAGINATED_VIDEOS, async (event, sourceId: s
 // Helper function to fetch videos for a specific page
 async function fetchVideosForPage(source: any, pageNumber: number, pageSize: number, pageToken: string | undefined): Promise<any[]> {
   try {
-    let apiKey = '';
-    try {
-      const { readMainSettings } = await import('./fileUtils');
-      const mainSettings = await readMainSettings();
-      apiKey = mainSettings.youtubeApiKey || '';
-    } catch (error) {
-      log.warn('[Main] Could not read settings, trying environment variables:', error);
-      apiKey = '';
-    }
+    const apiKey = await getYouTubeApiKey();
     if (!apiKey) {
       log.warn('[Main] YouTube API key not available for fetching videos');
       return [];
@@ -1404,15 +1375,7 @@ ipcMain.handle(IPC.VIDEO_LOADING.LOAD_VIDEOS_FROM_SOURCES, async () => {
     // Fallback to original implementation
     console.log('🚀 [Main] Falling back to original implementation');
 
-    let apiKey = '';
-    try {
-      const { readMainSettings } = await import('./fileUtils');
-      const mainSettings = await readMainSettings();
-      apiKey = mainSettings.youtubeApiKey || '';
-    } catch (error) {
-      log.warn('[Main] Could not read settings, trying environment variables:', error);
-      apiKey = '';
-    }
+    const apiKey = await getYouTubeApiKey();
 
     const result = await loadAllVideosFromSources(apiKey);
 

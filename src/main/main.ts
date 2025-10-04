@@ -7,6 +7,7 @@ import { recordVideoWatching, getTimeTrackingState } from '../shared/timeTrackin
 import { logVerbose } from '../shared/logging';
 import { AppPaths } from '../shared/appPaths';
 import { FirstRunSetup } from '../shared/firstRunSetup';
+import { getYouTubeApiKey } from './helpers/settingsHelper';
 import log from './logger';
 import { IPC } from '../shared/ipc-channels';
 
@@ -205,7 +206,6 @@ ipcMain.handle(IPC.VIDEO_LOADING.LOAD_VIDEOS_FROM_SOURCES, async () => {
 
     let apiKey = '';
     try {
-      const { getYouTubeApiKey } = await import('../main/helpers/settingsHelper');
       apiKey = await getYouTubeApiKey();
       console.log('[Main] API key loaded:', apiKey ? '***configured***' : 'NOT configured');
     } catch (error) {
@@ -235,7 +235,6 @@ ipcMain.handle(IPC.VIDEO_LOADING.LOAD_VIDEOS_FOR_SOURCE, async (_, sourceId: str
 
     let apiKey = '';
     try {
-      const { getYouTubeApiKey } = await import('../main/helpers/settingsHelper');
       apiKey = await getYouTubeApiKey();
       console.log('[Main] API key loaded for source:', sourceId, apiKey ? '***configured***' : 'NOT configured');
     } catch (error) {
@@ -355,7 +354,6 @@ app.whenReady().then(async () => {
 
     let apiKey = '';
     try {
-      const { getYouTubeApiKey } = await import('../main/helpers/settingsHelper');
       apiKey = await getYouTubeApiKey();
       console.log('[Main] API key loaded for startup:', apiKey ? '***configured***' : 'NOT configured');
     } catch (error) {
