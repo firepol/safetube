@@ -28,14 +28,16 @@ describe('Phase 2 Migration Integration', () => {
     // Initialize Phase 2 schema
     await schemaManager.initializePhase2Schema();
 
-    // Verify all Phase 2 tables exist
+    // Verify all Phase 2 tables exist (including download tables)
     const tables = await dbService.all<{ name: string }>(`
-      SELECT name FROM sqlite_master WHERE type='table' AND name IN ('usage_logs', 'time_limits', 'usage_extras', 'settings')
+      SELECT name FROM sqlite_master
+      WHERE type='table'
+      AND name IN ('usage_logs', 'time_limits', 'usage_extras', 'settings', 'downloads', 'downloaded_videos')
     `);
 
-    expect(tables).toHaveLength(4);
+    expect(tables).toHaveLength(6);
     const tableNames = tables.map(t => t.name).sort();
-    expect(tableNames).toEqual(['settings', 'time_limits', 'usage_extras', 'usage_logs']);
+    expect(tableNames).toEqual(['downloaded_videos', 'downloads', 'settings', 'time_limits', 'usage_extras', 'usage_logs']);
   });
 
   it('should create default time limits', async () => {
@@ -95,5 +97,78 @@ describe('Phase 2 Migration Integration', () => {
     expect(videos).toHaveLength(1);
     expect(sources[0].id).toBe('test-source-1');
     expect(videos[0].id).toBe('test-video-1');
+  });
+
+  it('should create downloads table with proper schema', async () => {
+    // Initialize Phase 2 schema
+    await schemaManager.initializePhase2Schema();
+
+    // Verify downloads table structure
+    const columns = await dbService.all<{ name: string; type: string }>(`
+      PRAGMA table_info(downloads)
+    `);
+
+    const columnNames = columns.map(c => c.name);
+    expect(columnNames).toContain('video_id');
+    expect(columnNames).toContain('source_id');
+    expect(columnNames).toContain('status');
+    expect(columnNames).toContain('progress');
+    expect(columnNames).toContain('start_time');
+    expect(columnNames).toContain('end_time');
+    expect(columnNames).toContain('error_message');
+    expect(columnNames).toContain('file_path');
+  });
+
+  it('should create downloaded_videos table with proper schema', async () => {
+    // Initialize Phase 2 schema
+    await schemaManager.initializePhase2Schema();
+
+    // Verify downloaded_videos table structure
+    const columns = await dbService.all<{ name: string; type: string }>(`
+      PRAGMA table_info(downloaded_videos)
+    `);
+
+    const columnNames = columns.map(c => c.name);
+    expect(columnNames).toContain('video_id');
+    expect(columnNames).toContain('source_id');
+    expect(columnNames).toContain('title');
+    expect(columnNames).toContain('file_path');
+    expect(columnNames).toContain('thumbnail_path');
+    expect(columnNames).toContain('duration');
+    expect(columnNames).toContain('downloaded_at');
+    expect(columnNames).toContain('file_size');
+    expect(columnNames).toContain('format');
+  });
+
+  it('should enforce downloads table constraints', async () => {
+    // Initialize Phase 2 schema
+    await schemaManager.initializePhase2Schema();
+
+    // Test UNIQUE constraint on video_id
+    await dbService.run(`
+      INSERT INTO downloads (video_id, status, progress)
+      VALUES ('test-video', 'downloading', 50)
+    `);
+
+    // Should fail with UNIQUE constraint violation
+    await expect(
+      dbService.run(`
+        INSERT INTO downloads (video_id, status, progress)
+        VALUES ('test-video', 'pending', 0)
+      `)
+    ).rejects.toThrow();
+  });
+
+  it('should enforce CHECK constraint on download status', async () => {
+    // Initialize Phase 2 schema
+    await schemaManager.initializePhase2Schema();
+
+    // Should fail with invalid status
+    await expect(
+      dbService.run(`
+        INSERT INTO downloads (video_id, status, progress)
+        VALUES ('test-video', 'invalid-status', 0)
+      `)
+    ).rejects.toThrow();
   });
 });
