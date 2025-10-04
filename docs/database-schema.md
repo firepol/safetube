@@ -16,10 +16,14 @@ erDiagram
     sources ||--o{ view_records : "tracks"
     sources ||--o{ favorites : "has"
     sources ||--o{ youtube_api_results : "caches"
+    sources ||--o{ downloads : "downloading_from"
+    sources ||--o{ downloaded_videos : "stores"
     videos ||--o| view_records : "watched_in"
     videos ||--o| favorites : "favorited_in"
     videos ||--o{ youtube_api_results : "cached_as"
     videos ||--|| videos_fts : "indexed_by"
+    videos ||--o| downloaded_videos : "downloaded_as"
+    downloads ||--o| downloaded_videos : "becomes"
 
     sources {
         TEXT id PK "UUID or custom identifier"
@@ -87,6 +91,35 @@ erDiagram
         TEXT page_range "e.g., '1-50', '51-100'"
         TEXT fetch_timestamp "ISO 8601 timestamp"
         TEXT created_at
+    }
+
+    downloads {
+        INTEGER id PK "Auto-increment"
+        TEXT video_id "UNIQUE constraint"
+        TEXT source_id FK
+        TEXT status "pending | downloading | completed | failed"
+        INTEGER progress "0-100"
+        INTEGER start_time "Unix timestamp (ms)"
+        INTEGER end_time "Unix timestamp (ms)"
+        TEXT error_message
+        TEXT file_path
+        TEXT created_at
+        TEXT updated_at
+    }
+
+    downloaded_videos {
+        INTEGER id PK "Auto-increment"
+        TEXT video_id FK "UNIQUE, references videos.id"
+        TEXT source_id FK
+        TEXT title
+        TEXT file_path
+        TEXT thumbnail_path
+        INTEGER duration "Duration in seconds"
+        TEXT downloaded_at "ISO 8601 timestamp"
+        INTEGER file_size "Bytes"
+        TEXT format "mp4, webm, etc."
+        TEXT created_at
+        TEXT updated_at
     }
 ```
 
@@ -216,6 +249,133 @@ CREATE TABLE usage_extras (
 );
 
 CREATE INDEX idx_usage_extras_date ON usage_extras(date);
+```
+
+---
+
+### `downloads`
+**Purpose**: Track active and recent download operations (transient data)
+
+**Schema**:
+```sql
+CREATE TABLE downloads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    video_id TEXT NOT NULL,                -- YouTube video ID being downloaded
+    source_id TEXT,                        -- FK to sources table
+    status TEXT NOT NULL CHECK(status IN ('pending', 'downloading', 'completed', 'failed')),
+    progress INTEGER NOT NULL DEFAULT 0,   -- Download progress 0-100
+    start_time INTEGER,                    -- Unix timestamp (ms)
+    end_time INTEGER,                      -- Unix timestamp (ms)
+    error_message TEXT,                    -- Error details if failed
+    file_path TEXT,                        -- Path to downloaded file
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(video_id),
+    FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_downloads_status ON downloads(status);
+CREATE INDEX idx_downloads_video_id ON downloads(video_id);
+```
+
+**Key Features**:
+- **Transient tracking**: Temporary records for active/recent downloads
+- **Unique constraint**: One download record per video at a time
+- **Status tracking**: pending → downloading → completed/failed
+- **Progress monitoring**: 0-100 percentage for UI updates
+- **Auto-cleanup**: Old completed/failed records can be purged periodically
+- **Error logging**: Stores failure reasons for troubleshooting
+
+**Lifecycle**:
+1. **Start download**: INSERT with status='pending'
+2. **Download progress**: UPDATE progress field
+3. **Completion**: UPDATE status='completed', set end_time, file_path
+4. **Failure**: UPDATE status='failed', set end_time, error_message
+5. **Cleanup**: DELETE old records (completed >7 days, failed >30 days)
+
+---
+
+### `downloaded_videos`
+**Purpose**: Permanent registry of successfully downloaded YouTube videos stored locally
+
+**Schema**:
+```sql
+CREATE TABLE downloaded_videos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    video_id TEXT NOT NULL UNIQUE,         -- YouTube video ID (matches videos.id if exists)
+    source_id TEXT NOT NULL,               -- FK to sources table
+    title TEXT NOT NULL,                   -- Video title at download time
+    file_path TEXT NOT NULL,               -- Absolute path to video file
+    thumbnail_path TEXT,                   -- Path to downloaded thumbnail
+    duration INTEGER,                      -- Duration in seconds
+    downloaded_at TEXT NOT NULL,           -- ISO 8601 timestamp
+    file_size INTEGER,                     -- File size in bytes
+    format TEXT,                           -- Video format (mp4, webm, etc.)
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_downloaded_videos_video_id ON downloaded_videos(video_id);
+CREATE INDEX idx_downloaded_videos_source_id ON downloaded_videos(source_id);
+CREATE INDEX idx_downloaded_videos_downloaded_at ON downloaded_videos(downloaded_at);
+CREATE INDEX idx_downloaded_videos_file_path ON downloaded_videos(file_path);
+```
+
+**Key Features**:
+- **Permanent records**: Unlike downloads table, these persist indefinitely
+- **Source linkage**: References both source and original video (if exists)
+- **File metadata**: Stores path, size, format for local playback
+- **Download history**: Tracks when videos were downloaded
+- **Orphan handling**: FK to videos uses SET NULL (downloaded videos persist even if source video deleted)
+
+**Relationship to Other Tables**:
+- **videos**: Optional FK (downloaded video may reference original YouTube video)
+- **sources**: Required FK (must belong to a source)
+- **view_records**: Downloaded videos can have viewing history like regular videos
+- **favorites**: Downloaded videos can be favorited
+
+**Typical Queries**:
+```sql
+-- Check if video already downloaded
+SELECT file_path FROM downloaded_videos WHERE video_id = ?;
+
+-- Get all downloads for a source
+SELECT * FROM downloaded_videos
+WHERE source_id = ?
+ORDER BY downloaded_at DESC;
+
+-- Get total downloaded size by source
+SELECT source_id, SUM(file_size) as total_size
+FROM downloaded_videos
+GROUP BY source_id;
+
+-- Find orphaned files (file doesn't exist on disk)
+SELECT * FROM downloaded_videos
+WHERE file_path NOT IN (/* filesystem check */);
+```
+
+**Data Migration from JSON**:
+```typescript
+// Migrate downloadedVideos.json → downloaded_videos table
+const jsonVideos = await readDownloadedVideos();
+for (const video of jsonVideos) {
+  await db.run(`
+    INSERT INTO downloaded_videos (
+      video_id, source_id, title, file_path, thumbnail_path,
+      duration, downloaded_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+  `, [
+    video.videoId,
+    video.sourceId,
+    video.title,
+    video.filePath,
+    video.thumbnail,
+    video.duration,
+    video.downloadedAt
+  ]);
+}
 ```
 
 ---

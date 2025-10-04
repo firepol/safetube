@@ -255,6 +255,44 @@
   - **Code Review**: Settings architecture review, query helper design review, test coverage validation
   - **COMPLETED**: Unified key-value store with namespace.key format, automatic type inference, 41 comprehensive tests, migration from all 3 JSON configs tested
 
+- [ ] 7.5 Implement Downloads table migration
+  - Create `downloads` table schema with status tracking and progress monitoring
+  - Create query helper file `src/main/database/queries/downloadsQueries.ts` with methods:
+    - `getDownloadStatus(db, videoId)` - Get current download status
+    - `createDownload(db, videoId, sourceId)` - Start new download tracking
+    - `updateDownloadProgress(db, videoId, progress)` - Update progress 0-100
+    - `markDownloadCompleted(db, videoId, filePath)` - Mark download completed
+    - `markDownloadFailed(db, videoId, error)` - Mark download failed with error
+    - `cleanupOldDownloads(db)` - Remove old completed/failed records
+  - Migrate downloadStatus.json to downloads table
+  - Update DownloadManager.ts to use database query helpers instead of fileUtils
+  - Implement IPC handlers for download operations
+  - Add cleanup scheduler for old download records (completed >7d, failed >30d)
+  - Rename downloadStatus.json → downloadStatus.json.old after migration
+  - **Definition of Done**: Downloads tracked in database, DownloadManager refactored, IPC handlers working, cleanup automated
+  - **Tests Required**: Download status migration tests, query helper tests, DownloadManager integration tests, cleanup logic tests
+  - **Code Review**: Download tracking logic review, refactoring completeness review
+
+- [ ] 7.6 Implement Downloaded Videos table migration
+  - Create `downloaded_videos` table schema with file metadata tracking
+  - Create query helper file `src/main/database/queries/downloadedVideosQueries.ts` with methods:
+    - `getAllDownloadedVideos(db)` - Get all downloaded videos
+    - `getDownloadedVideosBySource(db, sourceId)` - Get downloads for source
+    - `getDownloadedVideoById(db, videoId)` - Get single downloaded video
+    - `createDownloadedVideo(db, video)` - Record new downloaded video
+    - `isVideoDownloaded(db, videoId)` - Check if video already downloaded
+    - `getTotalDownloadedSize(db, sourceId?)` - Calculate total file size
+    - `deleteDownloadedVideo(db, videoId)` - Remove downloaded video record
+  - Migrate downloadedVideos.json to downloaded_videos table
+  - Update DownloadManager.ts to use `createDownloadedVideo()` instead of `addDownloadedVideo()`
+  - Add file size calculation during download completion
+  - Add format detection based on file extension
+  - Implement IPC handlers for downloaded video operations
+  - Rename downloadedVideos.json → downloadedVideos.json.old after migration
+  - **Definition of Done**: Downloaded videos in database, file metadata tracked, DownloadManager updated, IPC handlers working
+  - **Tests Required**: Downloaded videos migration tests, query helper tests, file metadata accuracy tests, IPC handler tests
+  - **Code Review**: Migration accuracy review, metadata tracking review, foreign key handling review
+
 ### 8. Advanced Search Implementation
 
 - [ ] 8.1 Implement full-text search capabilities

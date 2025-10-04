@@ -307,6 +307,71 @@ CREATE TABLE settings (
 -- youtubePlayer.json -> 'youtube_player.*'
 ```
 
+#### 10. Downloads Table (Replaces downloadStatus.json)
+
+```sql
+CREATE TABLE downloads (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    video_id TEXT NOT NULL,                -- YouTube video ID being downloaded
+    source_id TEXT,                        -- FK to sources table
+    status TEXT NOT NULL CHECK(status IN ('pending', 'downloading', 'completed', 'failed')),
+    progress INTEGER NOT NULL DEFAULT 0,   -- Download progress 0-100
+    start_time INTEGER,                    -- Unix timestamp (ms)
+    end_time INTEGER,                      -- Unix timestamp (ms)
+    error_message TEXT,                    -- Error details if failed
+    file_path TEXT,                        -- Path to downloaded file
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    UNIQUE(video_id),
+    FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_downloads_status ON downloads(status);
+CREATE INDEX idx_downloads_video_id ON downloads(video_id);
+```
+
+**Lifecycle Management**:
+- Create with `status='pending'` when download starts
+- Update `progress` field during download (0-100)
+- Set `status='completed'` and `file_path` on success
+- Set `status='failed'` and `error_message` on failure
+- Cleanup policy: DELETE records where `status='completed'` AND `end_time` < 7 days ago
+- Cleanup policy: DELETE records where `status='failed'` AND `end_time` < 30 days ago
+
+#### 11. Downloaded Videos Table (Replaces downloadedVideos.json)
+
+```sql
+CREATE TABLE downloaded_videos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    video_id TEXT NOT NULL UNIQUE,         -- YouTube video ID (matches videos.id if exists)
+    source_id TEXT NOT NULL,               -- FK to sources table
+    title TEXT NOT NULL,                   -- Video title at download time
+    file_path TEXT NOT NULL,               -- Absolute path to video file
+    thumbnail_path TEXT,                   -- Path to downloaded thumbnail
+    duration INTEGER,                      -- Duration in seconds
+    downloaded_at TEXT NOT NULL,           -- ISO 8601 timestamp
+    file_size INTEGER,                     -- File size in bytes
+    format TEXT,                           -- Video format (mp4, webm, etc.)
+    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE CASCADE,
+    FOREIGN KEY (video_id) REFERENCES videos(id) ON DELETE SET NULL
+);
+
+CREATE INDEX idx_downloaded_videos_video_id ON downloaded_videos(video_id);
+CREATE INDEX idx_downloaded_videos_source_id ON downloaded_videos(source_id);
+CREATE INDEX idx_downloaded_videos_downloaded_at ON downloaded_videos(downloaded_at);
+CREATE INDEX idx_downloaded_videos_file_path ON downloaded_videos(file_path);
+```
+
+**Key Design Decisions**:
+- FK to `videos` uses `ON DELETE SET NULL` (downloads persist even if source video deleted)
+- FK to `sources` uses `ON DELETE CASCADE` (downloads removed if source deleted)
+- `thumbnail_path` (not `thumbnail`) to distinguish filesystem paths from URLs
+- `file_size` and `format` added for future file management features
+
 ## Migration Strategy
 
 ### Migration Service Architecture
@@ -415,6 +480,48 @@ class MigrationService {
      youtube_player: youtubePlayerConfig
    });
    ```
+
+3. **Download Data Migration**
+   ```typescript
+   // Migrate download tracking data
+   const downloadStatus = await loadDownloadStatus();
+   const downloadedVideos = await loadDownloadedVideos();
+
+   await migrateDownloadStatus(downloadStatus);
+   await migrateDownloadedVideos(downloadedVideos);
+
+   // Rename JSON files after successful migration
+   await renameToOld('downloadStatus.json');
+   await renameToOld('downloadedVideos.json');
+   ```
+
+### Refactoring Plan for Download Management
+
+**Move Methods from fileUtils.ts to Database Layer**:
+
+Current location (`src/main/fileUtils.ts`):
+- `readDownloadStatus()` → Move to `src/main/database/queries/downloadsQueries.ts` as `getDownloadStatus()`
+- `writeDownloadStatus()` → Remove (use direct database operations)
+- `updateDownloadStatus()` → Move to `downloadsQueries.ts` as `updateDownloadStatus()`
+- `getDownloadStatus()` → Move to `downloadsQueries.ts` (already named correctly)
+- `readDownloadedVideos()` → Move to `src/main/database/queries/downloadedVideosQueries.ts` as `getAllDownloadedVideos()`
+- `addDownloadedVideo()` → Move to `downloadedVideosQueries.ts` as `createDownloadedVideo()`
+
+**New Query Helper Files to Create**:
+- `src/main/database/queries/downloadsQueries.ts` - Download status operations
+- `src/main/database/queries/downloadedVideosQueries.ts` - Downloaded video operations
+
+**Update DownloadManager.ts**:
+- Replace `fileUtils` imports with database query helper imports
+- Update `updateDownloadStatus()` calls to use database operations
+- Update `addDownloadedVideo()` call to use `createDownloadedVideo()` from query helpers
+- Add file size calculation when recording downloaded videos
+- Add format detection based on file extension
+
+**JSON File Migration**:
+- After successful Phase 2 migration, rename `downloadStatus.json` → `downloadStatus.json.old`
+- After successful Phase 2 migration, rename `downloadedVideos.json` → `downloadedVideos.json.old`
+- Keep `.old` files for rollback capability (matching pattern from other JSON migrations)
 
 ### Type-Safe Query Helpers
 
@@ -633,7 +740,21 @@ export const databaseHandlers = {
   'db:migration:getStatus': async () => Promise<MigrationStatus>,
   'db:migration:runPhase1': async () => Promise<MigrationResult>,
   'db:migration:runPhase2': async () => Promise<MigrationResult>,
-  'db:migration:rollback': async (phase: 1 | 2) => Promise<RollbackResult>
+  'db:migration:rollback': async (phase: 1 | 2) => Promise<RollbackResult>,
+
+  // Download operations (Phase 2)
+  'db:downloads:getStatus': async (videoId: string) => Promise<DownloadStatus | null>,
+  'db:downloads:updateProgress': async (videoId: string, progress: number) => Promise<void>,
+  'db:downloads:markCompleted': async (videoId: string, filePath: string) => Promise<void>,
+  'db:downloads:markFailed': async (videoId: string, error: string) => Promise<void>,
+  'db:downloads:cleanup': async () => Promise<{ removed: number }>,
+
+  // Downloaded videos operations (Phase 2)
+  'db:downloadedVideos:getAll': async () => Promise<DownloadedVideo[]>,
+  'db:downloadedVideos:getBySource': async (sourceId: string) => Promise<DownloadedVideo[]>,
+  'db:downloadedVideos:getById': async (videoId: string) => Promise<DownloadedVideo | null>,
+  'db:downloadedVideos:isDownloaded': async (videoId: string) => Promise<boolean>,
+  'db:downloadedVideos:getTotalSize': async (sourceId?: string) => Promise<number>
 };
 ```
 

@@ -158,3 +158,17 @@ The migration follows SQLite best practices for Electron applications: database 
 6. WHEN settings are queried THEN the system SHALL use type-safe query helpers to avoid duplicate queries and ensure type safety
 7. WHEN integration tests run THEN the system SHALL use in-memory database instances instead of production safetube.db
 8. WHEN settings are migrated from JSON THEN the system SHALL verify migration accuracy with integration tests using mock JSON fixtures
+
+### Requirement 16: Download Management Tables (Phase 2)
+**User Story:** As a developer, I want download operations tracked in the database, so that downloadStatus.json and downloadedVideos.json can be eliminated.
+
+#### Acceptance Criteria
+1. WHEN downloadStatus.json is migrated THEN the system SHALL preserve all active download states in the downloads table
+2. WHEN downloadedVideos.json is migrated THEN the system SHALL preserve all downloaded video records in the downloaded_videos table
+3. WHEN downloads are initiated THEN the system SHALL create records in downloads table with status tracking
+4. WHEN downloads complete THEN the system SHALL move data from downloads to downloaded_videos table
+5. WHEN downloads fail THEN the system SHALL preserve error information in downloads table
+6. WHEN download progress updates THEN the system SHALL update progress field efficiently
+7. WHEN old download records exist THEN the system SHALL implement cleanup (completed >7 days, failed >30 days)
+8. WHEN downloaded videos are queried THEN the system SHALL return file paths, thumbnails, and metadata
+9. WHEN JSON files are migrated THEN the system SHALL rename them to .old after successful migration
