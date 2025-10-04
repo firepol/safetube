@@ -44,51 +44,6 @@ export const useDatabase = () => {
     }
   }, []);
 
-  /**
-   * Execute Phase 1 migration
-   */
-  const migratePhase1 = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const result = await DatabaseClient.migratePhase1();
-
-      if (result) {
-        // After successful migration, check health again
-        await checkHealth();
-        return result;
-      } else {
-        throw new Error('Migration failed');
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Migration failed';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, [checkHealth]);
-
-  /**
-   * Verify migration integrity
-   */
-  const verifyMigration = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const result = await DatabaseClient.verifyMigration();
-      return result;
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Verification failed';
-      setError(errorMessage);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
   return {
     // State
     isInitialized,
@@ -98,8 +53,6 @@ export const useDatabase = () => {
 
     // Actions
     checkHealth,
-    migratePhase1,
-    verifyMigration,
   };
 };
 

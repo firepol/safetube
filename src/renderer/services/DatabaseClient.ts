@@ -96,47 +96,6 @@ export class DatabaseClient {
     }
   }
 
-  // ==================== Migration Operations ====================
-
-  /**
-   * Execute Phase 1 database migration
-   */
-  static async migratePhase1(): Promise<{ summary: any } | null> {
-    try {
-      const response = await (window.electron as any).invoke(IPC.DATABASE.MIGRATE_PHASE1) as DatabaseResponse<{ summary: any }>;
-
-      if (response.success) {
-        logVerbose('[DatabaseClient] Phase 1 migration completed successfully');
-        return response.data || null;
-      } else {
-        logVerbose('[DatabaseClient] Phase 1 migration failed:', response.error);
-        return null;
-      }
-    } catch (error) {
-      logVerbose('[DatabaseClient] Phase 1 migration error:', error);
-      return null;
-    }
-  }
-
-  /**
-   * Verify migration integrity
-   */
-  static async verifyMigration(): Promise<{ integrity: any } | null> {
-    try {
-      const response = await (window.electron as any).invoke(IPC.DATABASE.VERIFY_MIGRATION) as DatabaseResponse<{ integrity: any }>;
-
-      if (response.success) {
-        return response.data || null;
-      } else {
-        logVerbose('[DatabaseClient] Migration verification failed:', response.error);
-        return null;
-      }
-    } catch (error) {
-      logVerbose('[DatabaseClient] Migration verification error:', error);
-      return null;
-    }
-  }
-
   // ==================== Video Operations ====================
 
   /**

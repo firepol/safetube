@@ -62,45 +62,6 @@ describe('DatabaseClient', () => {
     });
   });
 
-  describe('Migration Operations', () => {
-    test('should execute Phase 1 migration successfully', async () => {
-      const mockSummary = { migrated: 100, errors: 0 };
-      mockElectron.invoke.mockResolvedValue({
-        success: true,
-        data: { summary: mockSummary }
-      });
-
-      const result = await DatabaseClient.migratePhase1();
-
-      expect(result).toEqual({ summary: mockSummary });
-      expect(mockElectron.invoke).toHaveBeenCalledWith('database:migrate-phase1');
-    });
-
-    test('should return null on migration failure', async () => {
-      mockElectron.invoke.mockResolvedValue({
-        success: false,
-        error: 'Migration failed'
-      });
-
-      const result = await DatabaseClient.migratePhase1();
-
-      expect(result).toBeNull();
-    });
-
-    test('should verify migration integrity', async () => {
-      const mockIntegrity = { valid: true, issues: [] };
-      mockElectron.invoke.mockResolvedValue({
-        success: true,
-        data: { integrity: mockIntegrity }
-      });
-
-      const result = await DatabaseClient.verifyMigration();
-
-      expect(result).toEqual({ integrity: mockIntegrity });
-      expect(mockElectron.invoke).toHaveBeenCalledWith('database:verify-migration');
-    });
-  });
-
   describe('Video Operations', () => {
     test('should get videos by source', async () => {
       const mockVideos = [

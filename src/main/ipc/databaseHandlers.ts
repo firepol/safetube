@@ -1,7 +1,6 @@
 import { ipcMain } from 'electron';
 import log from '../logger';
 import DatabaseService from '../services/DatabaseService';
-import { MigrationService } from '../database/MigrationService';
 import SimpleSchemaManager from '../database/SimpleSchemaManager';
 import DatabaseErrorHandler from '../services/DatabaseErrorHandler';
 import { IPC } from '../../shared/ipc-channels';
@@ -106,78 +105,6 @@ export function registerDatabaseHandlers() {
         success: false,
         error: error instanceof Error ? error.message : 'Health check failed',
         code: 'HEALTH_CHECK_FAILED'
-      };
-    }
-  });
-
-  // Migration Operations
-  ipcMain.handle(IPC.DATABASE.MIGRATE_PHASE1, async (): Promise<DatabaseResponse<{ summary: any }>> => {
-    try {
-      const dbService = DatabaseService.getInstance();
-      const schemaManager = new SimpleSchemaManager(dbService);
-      const errorHandler = new DatabaseErrorHandler();
-      const migrationService = new MigrationService(dbService, schemaManager, errorHandler);
-
-      log.info('[Database IPC] Starting Phase 1 migration');
-      const summary = await migrationService.executePhase1Migration();
-
-      return {
-        success: true,
-        data: { summary }
-      };
-    } catch (error) {
-      log.error('[Database IPC] Phase 1 migration failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Migration failed',
-        code: 'MIGRATION_FAILED'
-      };
-    }
-  });
-
-  ipcMain.handle(IPC.DATABASE.MIGRATE_PHASE2, async (): Promise<DatabaseResponse<{ summary: any }>> => {
-    try {
-      const dbService = DatabaseService.getInstance();
-      const schemaManager = new SimpleSchemaManager(dbService);
-      const errorHandler = new DatabaseErrorHandler();
-      const migrationService = new MigrationService(dbService, schemaManager, errorHandler);
-
-      log.info('[Database IPC] Starting Phase 2 migration');
-      const summary = await migrationService.executePhase2Migration();
-
-      return {
-        success: true,
-        data: { summary }
-      };
-    } catch (error) {
-      log.error('[Database IPC] Phase 2 migration failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Migration failed',
-        code: 'MIGRATION_PHASE2_FAILED'
-      };
-    }
-  });
-
-  ipcMain.handle(IPC.DATABASE.VERIFY_MIGRATION, async (): Promise<DatabaseResponse<{ integrity: any }>> => {
-    try {
-      const dbService = DatabaseService.getInstance();
-      const schemaManager = new SimpleSchemaManager(dbService);
-      const errorHandler = new DatabaseErrorHandler();
-      const migrationService = new MigrationService(dbService, schemaManager, errorHandler);
-
-      const integrity = await migrationService.verifyMigrationIntegrity();
-
-      return {
-        success: true,
-        data: { integrity }
-      };
-    } catch (error) {
-      log.error('[Database IPC] Migration verification failed:', error);
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Verification failed',
-        code: 'VERIFICATION_FAILED'
       };
     }
   });

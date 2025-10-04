@@ -88,64 +88,6 @@ describe('useDatabase', () => {
     expect(result.current.isHealthy).toBe(false);
     expect(result.current.error).toBe('Failed to connect to database');
   });
-
-  test('should execute Phase 1 migration', async () => {
-    const mockSummary = { migrated: 100, errors: 0 };
-    (DatabaseClient.healthCheck as any).mockResolvedValue({ isHealthy: true });
-    (DatabaseClient.migratePhase1 as any).mockResolvedValue({ summary: mockSummary });
-
-    const { result } = renderHook(() => useDatabase());
-
-    await waitFor(() => {
-      expect(result.current.isInitialized).toBe(true);
-    });
-
-    let migrationResult: any;
-    await act(async () => {
-      migrationResult = await result.current.migratePhase1();
-    });
-
-    expect(migrationResult).toEqual({ summary: mockSummary });
-    expect(DatabaseClient.migratePhase1).toHaveBeenCalled();
-    expect(DatabaseClient.healthCheck).toHaveBeenCalledTimes(2); // Once on mount, once after migration
-  });
-
-  test('should handle migration failure', async () => {
-    (DatabaseClient.healthCheck as any).mockResolvedValue({ isHealthy: true });
-    (DatabaseClient.migratePhase1 as any).mockResolvedValue(null);
-
-    const { result } = renderHook(() => useDatabase());
-
-    await waitFor(() => {
-      expect(result.current.isInitialized).toBe(true);
-    });
-
-    await act(async () => {
-      await expect(result.current.migratePhase1()).rejects.toThrow('Migration failed');
-    });
-
-    expect(result.current.error).toBe('Migration failed');
-  });
-
-  test('should verify migration', async () => {
-    const mockIntegrity = { valid: true, issues: [] };
-    (DatabaseClient.healthCheck as any).mockResolvedValue({ isHealthy: true });
-    (DatabaseClient.verifyMigration as any).mockResolvedValue({ integrity: mockIntegrity });
-
-    const { result } = renderHook(() => useDatabase());
-
-    await waitFor(() => {
-      expect(result.current.isInitialized).toBe(true);
-    });
-
-    let verificationResult: any;
-    await act(async () => {
-      verificationResult = await result.current.verifyMigration();
-    });
-
-    expect(verificationResult).toEqual({ integrity: mockIntegrity });
-    expect(DatabaseClient.verifyMigration).toHaveBeenCalled();
-  });
 });
 
 describe('useDatabaseVideos', () => {

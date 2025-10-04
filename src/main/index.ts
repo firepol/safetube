@@ -3,20 +3,12 @@ import path from 'path'
 
 import dotenv from 'dotenv'
 import { app, BrowserWindow, ipcMain, protocol } from 'electron'
-
-
-import { createLocalVideoId } from '../shared/fileUtils'
-
-// Load environment variables from .env file
-
 import { logVerbose } from '../shared/logging'
-
 import { AppPaths } from './appPaths'
-import { readTimeLimits, readMainSettings, readVideoSources } from './fileUtils'
+import { readMainSettings, readVideoSources } from './fileUtils'
 import { getYouTubeApiKey } from './helpers/settingsHelper'
-import { YouTubeChannelSource, VideoSource } from '../shared/types'
+import { VideoSource } from '../shared/types'
 import log from './logger'
-import { recordVideoWatching, getTimeTrackingState } from './timeTracking'
 import { setupYouTubeHandlers } from './youtube'
 import { YouTubeAPI } from './youtube-api'
 import { extractChannelId, extractPlaylistId, resolveUsernameToChannelId } from './utils/urlUtils'
@@ -25,20 +17,12 @@ import { migrateChannelIds } from './channelIdMigration'
 import {
   scanLocalFolder,
   getLocalFolderContents,
-  countVideosInFolder,
-  countVideosRecursively,
-  getFlattenedContent,
-  filterDuplicateVideos,
   setThumbnailScheduler
 } from './services/localVideoService'
 import {
   scheduleBackgroundThumbnailGeneration,
-  processNextThumbnailInQueue,
   getThumbnailUrl,
-  notifyThumbnailReady,
-  findThumbnailForVideo
 } from './services/thumbnailService'
-import { getDlnaFile } from './services/networkService'
 import { registerAllHandlers } from './services/ipcHandlerRegistry'
 import { DatabaseService } from './services/DatabaseService'
 import { IPC } from '../shared/ipc-channels'
@@ -1812,7 +1796,7 @@ const createWindow = (): void => {
 // Some APIs can only be used after this event occurs.
 app.on('ready', async () => {
 
-  // Initialize SQLite database with automatic videoSources migration FIRST
+  // Initialize SQLite database
   try {
     const { default: DatabaseService } = await import('./services/DatabaseService');
     const { SimpleSchemaManager } = await import('./database/SimpleSchemaManager');
@@ -1829,84 +1813,6 @@ app.on('ready', async () => {
     // Initialize DownloadManager with database connection
     DownloadManager.initialize(dbService);
     log.info('[Main] DownloadManager initialized with database');
-
-    // Check if sources table is empty and migrate from JSON if needed
-    const sourceCount = await dbService.get<{ count: number }>('SELECT COUNT(*) as count FROM sources');
-    if (sourceCount && sourceCount.count === 0) {
-      log.info('[Main] Sources table empty, migrating from videoSources.json...');
-
-      // Read existing JSON sources
-      const sourcesPath = AppPaths.getConfigPath('videoSources.json');
-      if (fs.existsSync(sourcesPath)) {
-        const sourcesData = JSON.parse(fs.readFileSync(sourcesPath, 'utf8'));
-
-        // Migrate sources to database
-        for (const source of sourcesData) {
-          await dbService.run(`
-            INSERT OR REPLACE INTO sources (id, type, title, sort_preference, position, url, channel_id, path, max_depth)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `, [
-            source.id,
-            source.type,
-            source.title,
-            source.sortPreference || 'newestFirst',
-            null, // position
-            source.url || null,
-            source.channelId || null,
-            source.path || null,
-            source.maxDepth || null
-          ]);
-        }
-
-        log.info(`[Main] Successfully migrated ${sourcesData.length} sources to database`);
-      }
-    } else {
-      log.info(`[Main] Database already contains ${sourceCount?.count || 0} sources`);
-    }
-
-    // Check if Phase 2 migration is needed
-    try {
-      const schemaVersion = await dbService.get<{ phase: string }>('SELECT phase FROM schema_version WHERE id = 1');
-
-      // Check if downloads JSON files exist (migration may be needed even if schema is phase2)
-      const downloadsJsonPath = path.join(AppPaths.getConfigDir(), 'downloadedVideos.json');
-      const downloadsJsonExists = fs.existsSync(downloadsJsonPath);
-
-      const needsMigration = !schemaVersion || schemaVersion.phase === 'phase1' || downloadsJsonExists;
-
-      if (needsMigration) {
-        log.info('[Main] Phase 2 migration needed, starting...');
-
-        const { MigrationService } = await import('./database/MigrationService');
-        const { default: DatabaseErrorHandler } = await import('./services/DatabaseErrorHandler');
-
-        const errorHandler = new DatabaseErrorHandler();
-        const migrationService = new MigrationService(dbService, schemaManager, errorHandler);
-
-        // Initialize Phase 2 schema first (safe to run even if tables exist)
-        await schemaManager.initializePhase2Schema();
-
-        // Run Phase 2 migration
-        const phase2Result = await migrationService.executePhase2Migration();
-
-        if (phase2Result.status === 'completed') {
-          log.info(`[Main] Phase 2 migration completed successfully`);
-          log.info(`[Main] Migrated ${phase2Result.totalRecordsProcessed} records`);
-
-          // Update schema_version to phase2 (if not already)
-          if (!schemaVersion || schemaVersion.phase !== 'phase2') {
-            await dbService.run(`UPDATE schema_version SET phase = 'phase2', updated_at = CURRENT_TIMESTAMP WHERE id = 1`);
-          }
-        } else {
-          log.error('[Main] Phase 2 migration failed:', phase2Result);
-        }
-      } else {
-        log.info(`[Main] Database schema is at ${schemaVersion.phase}, no migration needed`);
-      }
-    } catch (error) {
-      log.error('[Main] Error checking/running Phase 2 migration:', error);
-      log.warn('[Main] Continuing without Phase 2 migration');
-    }
 
     // Refresh stale YouTube sources in the background
     try {
