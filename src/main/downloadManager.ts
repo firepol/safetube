@@ -5,15 +5,32 @@ import { logVerbose } from '../shared/logging';
 import { YtDlpManager } from './ytDlpManager';
 import {
   readMainSettings,
-  getDefaultDownloadPath,
-  updateDownloadStatus,
-  getDownloadStatus,
-  addDownloadedVideo
+  getDefaultDownloadPath
 } from './fileUtils';
 import { DownloadStatus, DownloadedVideo } from '../shared/types';
+import { DatabaseService } from './services/DatabaseService';
+import {
+  getDownloadStatus,
+  createDownload,
+  updateDownloadProgress,
+  markDownloadCompleted,
+  markDownloadFailed
+} from './database/queries/downloadsQueries';
+import {
+  isVideoDownloaded,
+  createDownloadedVideo
+} from './database/queries/downloadedVideosQueries';
 
 export class DownloadManager {
   private static activeDownloads = new Map<string, ChildProcess>();
+  private static db: DatabaseService;
+
+  /**
+   * Initialize the DownloadManager with database connection
+   */
+  static initialize(database: DatabaseService): void {
+    this.db = database;
+  }
 
   /**
    * Sanitize a string to be safe for use as a file name across different operating systems
@@ -54,7 +71,7 @@ export class DownloadManager {
     try {
 
       // Check if already downloading
-      const existingStatus = await getDownloadStatus(videoId);
+      const existingStatus = await getDownloadStatus(this.db, videoId);
 
       if (existingStatus && (existingStatus.status === 'downloading' || existingStatus.status === 'pending')) {
         throw new Error('Video is already being downloaded');
@@ -65,11 +82,8 @@ export class DownloadManager {
         throw new Error('Video has already been downloaded');
       }
 
-      // Also check the downloaded videos list to prevent duplicates
-      const { readDownloadedVideos } = await import('./fileUtils');
-      const downloadedVideos = await readDownloadedVideos();
-
-      const alreadyDownloaded = downloadedVideos.find(dv => dv.videoId === videoId);
+      // Also check the downloaded videos table to prevent duplicates
+      const alreadyDownloaded = await isVideoDownloaded(this.db, videoId);
       if (alreadyDownloaded) {
         throw new Error('Video has already been downloaded');
       }
@@ -93,12 +107,13 @@ export class DownloadManager {
         throw new Error(`Failed to create download directory: ${dirError}`);
       }
 
-      // Update status to downloading
-      await updateDownloadStatus(videoId, {
+      // Create download record in database
+      await createDownload(this.db, {
+        videoId,
+        sourceId: sourceInfo.sourceId,
         status: 'downloading',
         progress: 0,
-        startTime: Date.now(),
-        sourceInfo
+        startTime: Date.now()
       });
 
       // Ensure yt-dlp is available
@@ -140,7 +155,7 @@ export class DownloadManager {
         const progressMatch = output.match(/(\d+\.?\d*)%/);
         if (progressMatch) {
           progress = Math.min(parseFloat(progressMatch[1]), 95);
-          updateDownloadStatus(videoId, { progress }).catch(console.error);
+          updateDownloadProgress(this.db, videoId, progress).catch(console.error);
         }
 
         // Extract filename from output
@@ -163,33 +178,18 @@ export class DownloadManager {
           await this.handleDownloadComplete(videoId, videoTitle, finalFilePath, sourceInfo);
         } else {
           // Download failed
-          await updateDownloadStatus(videoId, {
-            status: 'failed',
-            progress: 0,
-            endTime: Date.now(),
-            error: `yt-dlp exited with code ${code}`
-          });
+          await markDownloadFailed(this.db, videoId, `yt-dlp exited with code ${code}`);
         }
       });
 
       // Handle process error
       ytDlpProcess.on('error', async (error) => {
         this.activeDownloads.delete(videoId);
-        await updateDownloadStatus(videoId, {
-          status: 'failed',
-          progress: 0,
-          endTime: Date.now(),
-          error: error.message
-        });
+        await markDownloadFailed(this.db, videoId, error.message);
       });
 
     } catch (error) {
-      await updateDownloadStatus(videoId, {
-        status: 'failed',
-        progress: 0,
-        endTime: Date.now(),
-        error: error instanceof Error ? error.message : String(error)
-      });
+      await markDownloadFailed(this.db, videoId, error instanceof Error ? error.message : String(error));
       throw error;
     }
   }
@@ -270,48 +270,47 @@ export class DownloadManager {
       // Clean up any remaining temporary files, keeping only essential video and thumbnail files
       this.cleanupTemporaryFiles(videoFile);
 
-      // Create downloaded video entry
-      const downloadedVideo: DownloadedVideo = {
+      // Calculate file size
+      let fileSize = 0;
+      try {
+        const stats = fs.statSync(videoFile);
+        fileSize = stats.size;
+      } catch (error) {
+        logVerbose(`[DownloadManager] Failed to get file size: ${error}`);
+      }
+
+      // Detect format from file extension
+      const format = path.extname(videoFile).slice(1) || 'unknown';
+
+      logVerbose(`[DownloadManager] Creating downloaded video entry:`, {
         videoId,
         title: videoTitle,
-        channelTitle: sourceInfo.type === 'youtube_channel' ? sourceInfo.channelTitle : undefined,
-        playlistTitle: sourceInfo.type === 'youtube_playlist' ? sourceInfo.playlistTitle : undefined,
         filePath: videoFile,
-        downloadedAt: new Date().toISOString(),
+        thumbnailPath: thumbnailFile,
         duration,
-        thumbnail: thumbnailFile,
-        sourceType: sourceInfo.type,
-        sourceId: sourceInfo.sourceId
-      };
+        fileSize,
+        format
+      });
 
-      logVerbose(`[DownloadManager] Created downloaded video entry:`, {
+      // Add to downloaded videos table
+      await createDownloadedVideo(this.db, {
         videoId,
+        sourceId: sourceInfo.sourceId,
         title: videoTitle,
         filePath: videoFile,
-        thumbnail: thumbnailFile,
-        duration
+        thumbnailPath: thumbnailFile || null,
+        duration: duration || null,
+        downloadedAt: new Date().toISOString(),
+        fileSize,
+        format
       });
 
-      // Add to downloaded videos list
-      await addDownloadedVideo(downloadedVideo);
-
-      // Update download status
-      await updateDownloadStatus(videoId, {
-        status: 'completed',
-        progress: 100,
-        endTime: Date.now(),
-        filePath: videoFile
-      });
-
+      // Mark download as completed
+      await markDownloadCompleted(this.db, videoId, videoFile);
 
     } catch (error) {
       logVerbose(`[DownloadManager] Error handling download completion: ${error}`);
-      await updateDownloadStatus(videoId, {
-        status: 'failed',
-        progress: 0,
-        endTime: Date.now(),
-        error: error instanceof Error ? error.message : String(error)
-      });
+      await markDownloadFailed(this.db, videoId, error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -449,12 +448,7 @@ export class DownloadManager {
       process.kill();
       this.activeDownloads.delete(videoId);
 
-      await updateDownloadStatus(videoId, {
-        status: 'failed',
-        progress: 0,
-        endTime: Date.now(),
-        error: 'Download cancelled by user'
-      });
+      await markDownloadFailed(this.db, videoId, 'Download cancelled by user');
     }
   }
 
@@ -462,7 +456,7 @@ export class DownloadManager {
    * Get download progress for a video
    */
   static async getDownloadProgress(videoId: string): Promise<DownloadStatus | null> {
-    return getDownloadStatus(videoId);
+    return getDownloadStatus(this.db, videoId);
   }
 
   /**

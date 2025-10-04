@@ -1816,6 +1816,7 @@ app.on('ready', async () => {
   try {
     const { default: DatabaseService } = await import('./services/DatabaseService');
     const { SimpleSchemaManager } = await import('./database/SimpleSchemaManager');
+    const { DownloadManager } = await import('./downloadManager');
     const dbService = DatabaseService.getInstance();
 
     log.info('[Main] Initializing SQLite database...');
@@ -1824,6 +1825,10 @@ app.on('ready', async () => {
     // Initialize Phase 1 schema
     const schemaManager = new SimpleSchemaManager(dbService);
     await schemaManager.initializePhase1Schema();
+
+    // Initialize DownloadManager with database connection
+    DownloadManager.initialize(dbService);
+    log.info('[Main] DownloadManager initialized with database');
 
     // Check if sources table is empty and migrate from JSON if needed
     const sourceCount = await dbService.get<{ count: number }>('SELECT COUNT(*) as count FROM sources');
