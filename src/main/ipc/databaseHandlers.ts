@@ -1230,11 +1230,11 @@ export function registerDatabaseHandlers() {
   ipcMain.handle('downloads:cleanup', async (): Promise<DatabaseResponse<number>> => {
     try {
       const dbService = DatabaseService.getInstance();
-      const removed = await cleanupOldDownloads(dbService);
+      const result = await cleanupOldDownloads(dbService);
 
       return {
         success: true,
-        data: removed
+        data: result.removed
       };
     } catch (error) {
       log.error('[Database IPC] Failed to cleanup old downloads:', error);
