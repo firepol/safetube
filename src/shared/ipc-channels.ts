@@ -281,6 +281,7 @@ export const IPC = {
   // ============================================================================
 
   LOGGING: {
+    SET_VERBOSE: 'logging:set-verbose',
     GET_VERBOSE: 'logging:get-verbose',
     LOG: 'logging:log',
   },
@@ -299,6 +300,7 @@ export const IPC = {
 
   UTILS: {
     PATH_JOIN: 'path-join',
+    GET_ENV_VAR: 'get-env-var',
   },
 
   // ============================================================================

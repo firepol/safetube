@@ -1169,7 +1169,7 @@ export function registerDatabaseHandlers() {
   });
 
   // Cleanup old downloads (completed >7 days, failed >30 days)
-  ipcMain.handle('downloads:cleanup', async (): Promise<DatabaseResponse<number>> => {
+  ipcMain.handle(IPC.DOWNLOADS.CLEANUP, async (): Promise<DatabaseResponse<number>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const result = await cleanupOldDownloads(dbService);
@@ -1258,7 +1258,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('downloaded-videos:get-by-id', async (_, videoId: string): Promise<DatabaseResponse<any>> => {
+  ipcMain.handle(IPC.DOWNLOADED_VIDEOS.GET_BY_ID, async (_, videoId: string): Promise<DatabaseResponse<any>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const video = await getDownloadedVideoById(dbService, videoId);
@@ -1277,7 +1277,7 @@ export function registerDatabaseHandlers() {
     }
   });
 
-  ipcMain.handle('downloaded-videos:get-total-size', async (_, sourceId?: string): Promise<DatabaseResponse<number>> => {
+  ipcMain.handle(IPC.DOWNLOADED_VIDEOS.GET_TOTAL_SIZE, async (_, sourceId?: string): Promise<DatabaseResponse<number>> => {
     try {
       const dbService = DatabaseService.getInstance();
       const totalSize = await getTotalDownloadedSize(dbService, sourceId);

@@ -100,6 +100,17 @@ vi.mock('crypto', () => ({
   },
 }));
 
+// Mock youtube module to provide setupYouTubeHandlers
+vi.mock('../../src/main/youtube', async () => {
+  const { ipcMain } = await import('electron');
+  const { IPC } = await import('../../src/shared/ipc-channels');
+  return {
+    setupYouTubeHandlers: vi.fn(() => {
+      ipcMain.handle(IPC.PLAYBACK.GET_VIDEO_STREAMS, async () => ({ videoStreams: [], audioTracks: [] }));
+    }),
+  };
+});
+
 describe('IPC Contract Tests', () => {
   let registeredHandlers: Map<string, Function>;
   let allChannels: string[];
@@ -114,7 +125,7 @@ describe('IPC Contract Tests', () => {
     // Import and call registerAllHandlers to register all IPC handlers
     // This must happen after mocking electron
     const { registerAllHandlers } = await import('../../src/main/services/ipcHandlerRegistry');
-    registerAllHandlers();
+    await registerAllHandlers();
 
     // Also import main.ts to register its handlers (they register at module load)
     // We need to catch errors since these files have side effects
