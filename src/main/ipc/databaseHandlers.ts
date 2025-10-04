@@ -1270,9 +1270,23 @@ export function registerDatabaseHandlers() {
       const dbService = DatabaseService.getInstance();
       const videos = await getAllDownloadedVideos(dbService);
 
+      // Transform snake_case to camelCase for frontend
+      const transformedVideos = videos.map(v => ({
+        videoId: v.video_id,
+        sourceId: v.source_id,
+        title: v.title,
+        filePath: v.file_path,
+        thumbnailPath: v.thumbnail_path,
+        duration: v.duration,
+        downloadedAt: v.downloaded_at,
+        fileSize: v.file_size,
+        format: v.format,
+        sourceType: 'youtube_channel' // Default source type
+      }));
+
       return {
         success: true,
-        data: videos || []
+        data: transformedVideos
       };
     } catch (error) {
       log.error('[Database IPC] Failed to get all downloaded videos:', error);
@@ -1289,9 +1303,23 @@ export function registerDatabaseHandlers() {
       const dbService = DatabaseService.getInstance();
       const videos = await getDownloadedVideosBySource(dbService, sourceId);
 
+      // Transform snake_case to camelCase for frontend
+      const transformedVideos = videos.map(v => ({
+        videoId: v.video_id,
+        sourceId: v.source_id,
+        title: v.title,
+        filePath: v.file_path,
+        thumbnailPath: v.thumbnail_path,
+        duration: v.duration,
+        downloadedAt: v.downloaded_at,
+        fileSize: v.file_size,
+        format: v.format,
+        sourceType: 'youtube_channel' // Default source type
+      }));
+
       return {
         success: true,
-        data: videos || []
+        data: transformedVideos
       };
     } catch (error) {
       log.error('[Database IPC] Failed to get downloaded videos by source:', error);
