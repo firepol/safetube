@@ -24,6 +24,7 @@ erDiagram
     videos ||--|| videos_fts : "indexed_by"
     videos ||--o| downloaded_videos : "downloaded_as"
     downloads ||--o| downloaded_videos : "becomes"
+    search_results_cache ||--o{ searches : "cached_from"
 
     sources {
         TEXT id PK "UUID or custom identifier"
@@ -121,7 +122,206 @@ erDiagram
         TEXT created_at
         TEXT updated_at
     }
+
+    searches {
+        INTEGER id PK "Auto-increment"
+        TEXT query "Search query text"
+        TEXT search_type "database | youtube"
+        INTEGER result_count "Number of results"
+        TEXT timestamp "ISO 8601 timestamp"
+        TEXT created_at
+    }
+
+    wishlist {
+        INTEGER id PK "Auto-increment"
+        TEXT video_id "UNIQUE constraint"
+        TEXT title
+        TEXT thumbnail
+        TEXT description
+        TEXT channel_id
+        TEXT channel_name
+        INTEGER duration
+        TEXT url
+        TEXT status "pending | approved | denied"
+        TEXT requested_at "ISO 8601 timestamp"
+        TEXT reviewed_at "ISO 8601 timestamp"
+        TEXT reviewed_by
+        TEXT denial_reason
+        TEXT created_at
+        TEXT updated_at
+    }
+
+    search_results_cache {
+        INTEGER id PK "Auto-increment"
+        TEXT search_query
+        TEXT video_id
+        TEXT video_data "JSON blob"
+        INTEGER position
+        TEXT search_type "database | youtube"
+        TEXT fetch_timestamp "ISO 8601 timestamp"
+        TEXT expires_at "ISO 8601 timestamp"
+        TEXT created_at
+    }
 ```
+
+## Search & Moderation Tables
+
+### `searches`
+**Purpose**: Track all search queries for parental audit trail
+
+**Schema**:
+```sql
+CREATE TABLE searches (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  query TEXT NOT NULL,
+  search_type TEXT NOT NULL CHECK(search_type IN ('database', 'youtube')),
+  result_count INTEGER NOT NULL DEFAULT 0,
+  timestamp TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_searches_timestamp ON searches(timestamp DESC);
+CREATE INDEX idx_searches_query ON searches(query);
+```
+
+**Key Features**:
+- Records both database and YouTube searches
+- Tracks result count for analytics
+- Timestamp for chronological ordering
+- Indexed on timestamp and query for fast lookups
+
+**Typical Queries**:
+```sql
+-- Get recent searches
+SELECT * FROM searches ORDER BY timestamp DESC LIMIT 50;
+
+-- Search history for specific query
+SELECT * FROM searches WHERE query LIKE ? ORDER BY timestamp DESC;
+```
+
+---
+
+### `wishlist`
+**Purpose**: Video approval workflow for unapproved content
+
+**Schema**:
+```sql
+CREATE TABLE wishlist (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  video_id TEXT NOT NULL,
+  title TEXT NOT NULL,
+  thumbnail TEXT,
+  description TEXT,
+  channel_id TEXT,
+  channel_name TEXT,
+  duration INTEGER,
+  url TEXT NOT NULL,
+  status TEXT NOT NULL CHECK(status IN ('pending', 'approved', 'denied')),
+  requested_at TEXT NOT NULL,
+  reviewed_at TEXT,
+  reviewed_by TEXT,
+  denial_reason TEXT,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(video_id)
+);
+
+CREATE INDEX idx_wishlist_status ON wishlist(status);
+CREATE INDEX idx_wishlist_requested_at ON wishlist(requested_at);
+CREATE INDEX idx_wishlist_video_id ON wishlist(video_id);
+```
+
+**Key Features**:
+- Three states: pending, approved, denied
+- Complete video metadata stored for offline review
+- Denial reason for parent-child communication
+- Unique constraint prevents duplicate requests
+
+**Lifecycle**:
+1. Kid adds video → status='pending', requested_at=NOW()
+2. Parent approves → status='approved', reviewed_at=NOW()
+3. Parent denies → status='denied', reviewed_at=NOW(), optional denial_reason
+
+**Typical Queries**:
+```sql
+-- Get pending items for parent review
+SELECT * FROM wishlist WHERE status = 'pending' ORDER BY requested_at ASC;
+
+-- Check if video in wishlist
+SELECT status FROM wishlist WHERE video_id = ?;
+
+-- Approve video
+UPDATE wishlist
+SET status = 'approved', reviewed_at = datetime('now')
+WHERE video_id = ?;
+```
+
+---
+
+### `search_results_cache`
+**Purpose**: Cache YouTube search results for 24 hours
+
+**Schema**:
+```sql
+CREATE TABLE search_results_cache (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  search_query TEXT NOT NULL,
+  video_id TEXT NOT NULL,
+  video_data TEXT NOT NULL,  -- JSON blob with full video metadata
+  position INTEGER NOT NULL,
+  search_type TEXT NOT NULL CHECK(search_type IN ('database', 'youtube')),
+  fetch_timestamp TEXT NOT NULL,
+  expires_at TEXT NOT NULL,  -- fetch_timestamp + 24 hours
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(search_query, video_id, search_type)
+);
+
+CREATE INDEX idx_search_cache_query ON search_results_cache(search_query);
+CREATE INDEX idx_search_cache_timestamp ON search_results_cache(fetch_timestamp);
+CREATE INDEX idx_search_cache_expires ON search_results_cache(expires_at);
+```
+
+**Key Features**:
+- 24-hour cache for YouTube API results
+- Stores complete video metadata as JSON
+- Position tracks result order
+- Unique constraint prevents duplicate entries
+- Expires_at enables easy cache cleanup
+
+**video_data JSON structure**:
+```json
+{
+  "id": "string",
+  "title": "string",
+  "thumbnail": "string",
+  "description": "string",
+  "duration": "number",
+  "channelId": "string",
+  "channelName": "string",
+  "url": "string",
+  "publishedAt": "string"
+}
+```
+
+**Cache Strategy**:
+- Check cache before API call
+- Return cached results if not expired
+- Delete expired entries periodically
+
+**Typical Queries**:
+```sql
+-- Get cached results
+SELECT video_data FROM search_results_cache
+WHERE search_query = ?
+  AND search_type = 'youtube'
+  AND expires_at > datetime('now')
+ORDER BY position ASC;
+
+-- Cleanup expired cache
+DELETE FROM search_results_cache WHERE expires_at < datetime('now');
+```
+
+---
 
 ## Phase 2 Tables
 
