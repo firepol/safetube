@@ -36,13 +36,13 @@
 - `src/shared/types.ts` (add new interfaces)
 
 **Subtasks**:
-- [ ] Define `Search` interface
-- [ ] Define `WishlistItem` interface
-- [ ] Define `WishlistStatus` enum
-- [ ] Define `SearchType` enum
-- [ ] Define `SearchResult` interface
-- [ ] Define `VideoData` interface (for cache)
-- [ ] Export all new types
+- [x] Define `Search` interface
+- [x] Define `WishlistItem` interface
+- [x] Define `WishlistStatus` enum
+- [x] Define `SearchType` enum
+- [x] Define `SearchResult` interface
+- [x] Define `VideoData` interface (for cache)
+- [x] Export all new types
 
 **Acceptance Criteria**:
 - All interfaces match database schema

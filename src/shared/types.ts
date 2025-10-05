@@ -287,4 +287,77 @@ export interface VideoMetadataValidationResult {
   errors: string[];
   warnings: string[];
   normalized?: NormalizedVideoSource;
+}
+
+// Search & Moderation Feature Types
+
+export type SearchType = 'database' | 'youtube';
+
+export interface Search {
+  id: number;
+  query: string;
+  search_type: SearchType;
+  result_count: number;
+  timestamp: string; // ISO date string
+  created_at: string;
+}
+
+export type WishlistStatus = 'pending' | 'approved' | 'denied';
+
+export interface WishlistItem {
+  id: number;
+  video_id: string;
+  title: string;
+  thumbnail: string | null;
+  description: string | null;
+  channel_id: string | null;
+  channel_name: string | null;
+  duration: number | null;
+  url: string;
+  status: WishlistStatus;
+  requested_at: string; // ISO date string
+  reviewed_at: string | null; // ISO date string
+  reviewed_by: string | null;
+  denial_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SearchResult {
+  id: string;
+  title: string;
+  thumbnail: string;
+  description: string;
+  duration: number;
+  channelId: string;
+  channelName: string;
+  url: string;
+  publishedAt: string;
+  isApprovedSource?: boolean; // Whether video is from approved source
+  isInWishlist?: boolean; // Whether video is already in wishlist
+  wishlistStatus?: WishlistStatus; // Status if in wishlist
+}
+
+export interface VideoData {
+  id: string;
+  title: string;
+  thumbnail: string;
+  description: string;
+  duration: number;
+  channelId: string;
+  channelName: string;
+  url: string;
+  publishedAt: string;
+}
+
+export interface SearchResultsCacheEntry {
+  id: number;
+  search_query: string;
+  video_id: string;
+  video_data: string; // JSON blob
+  position: number;
+  search_type: SearchType;
+  fetch_timestamp: string;
+  expires_at: string;
+  created_at: string;
 } 
