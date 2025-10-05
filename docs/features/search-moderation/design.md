@@ -399,7 +399,124 @@ interface WishlistPageState {
     </div>
   </div>
 </Modal>
-```## 
+```
+
+#### BulkModerationControls
+
+**File**: `src/renderer/components/admin/BulkModerationControls.tsx`
+
+**Features**:
+- Multi-select video management
+- Bulk approve/deny operations
+- Progress tracking for batch operations
+
+**State**:
+```typescript
+interface BulkModerationState {
+  selectedVideos: Set<string>; // video IDs
+  isSelectAll: boolean;
+  isBulkOperationInProgress: boolean;
+  bulkOperationProgress: {
+    total: number;
+    completed: number;
+    failed: string[]; // video IDs that failed
+  };
+}
+```
+
+**UI Layout**:
+```tsx
+<div className="border-b border-gray-200 p-4 bg-gray-50">
+  {/* Selection Controls */}
+  <div className="flex items-center justify-between mb-4">
+    <div className="flex items-center gap-4">
+      <Checkbox
+        checked={isSelectAll}
+        indeterminate={selectedVideos.size > 0 && !isSelectAll}
+        onChange={handleSelectAll}
+        label={`Select All (${totalVideos})`}
+      />
+      
+      {selectedVideos.size > 0 && (
+        <span className="text-sm text-gray-600">
+          {selectedVideos.size} selected
+        </span>
+      )}
+    </div>
+
+    <div className="flex gap-2">
+      <Button
+        onClick={handleSelectNone}
+        variant="outline"
+        size="sm"
+        disabled={selectedVideos.size === 0}
+      >
+        Clear Selection
+      </Button>
+    </div>
+  </div>
+
+  {/* Bulk Actions */}
+  {selectedVideos.size > 0 && (
+    <div className="flex items-center gap-3">
+      <Button
+        onClick={handleBulkApprove}
+        color="green"
+        disabled={isBulkOperationInProgress}
+        className="flex items-center gap-2"
+      >
+        <CheckIcon className="w-4 h-4" />
+        Approve Selected ({selectedVideos.size})
+      </Button>
+      
+      <Button
+        onClick={handleBulkDeny}
+        color="red"
+        disabled={isBulkOperationInProgress}
+        className="flex items-center gap-2"
+      >
+        <XIcon className="w-4 h-4" />
+        Deny Selected ({selectedVideos.size})
+      </Button>
+
+      {isBulkOperationInProgress && (
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <Spinner className="w-4 h-4" />
+          Processing {bulkOperationProgress.completed}/{bulkOperationProgress.total}...
+        </div>
+      )}
+    </div>
+  )}
+</div>
+```
+
+**Enhanced VideoCardBase for Selection**:
+```typescript
+interface VideoCardBaseProps {
+  // ... existing props
+  
+  // Bulk selection support
+  isSelectable?: boolean;
+  isSelected?: boolean;
+  onSelectionChange?: (videoId: string, selected: boolean) => void;
+}
+```
+
+**Selection Checkbox Overlay**:
+```tsx
+{isSelectable && (
+  <div className="absolute top-2 left-2 z-10">
+    <Checkbox
+      checked={isSelected}
+      onChange={(checked) => onSelectionChange?.(id, checked)}
+      className="bg-white/90 backdrop-blur-sm rounded"
+      onClick={(e) => e.stopPropagation()} // Prevent video click
+    />
+  </div>
+)}
+```
+
+## 
 Data Flow
 
 ### Search Flow
@@ -473,7 +590,70 @@ Parent clicks "Deny" → DenyReasonDialog opens
   → Return success
   → Renderer: Move item to "Denied" tab
   → Notify kid (badge count update)
-```## Sta
+```
+
+#### Bulk Operations Flow
+
+**Bulk Approve**:
+```
+Parent selects multiple videos → clicks "Approve Selected"
+  → Show confirmation dialog with count
+  → Parent confirms
+  → IPC: wishlist:bulkApprove(videoIds[])
+  → Main: Begin database transaction
+  → For each videoId:
+      → UPDATE wishlist SET status='approved', reviewed_at=NOW()
+      → Track success/failure
+  → Commit transaction
+  → Return { success: successIds[], failed: failedIds[] }
+  → Renderer: 
+      → Update UI for successful items
+      → Show error toast for failed items
+      → Clear selection
+      → Refresh video lists
+  → Notify kid (badge count update)
+```
+
+**Bulk Deny**:
+```
+Parent selects multiple videos → clicks "Deny Selected"
+  → Show BulkDenyReasonDialog
+  → Parent enters optional shared reason
+  → Parent confirms
+  → IPC: wishlist:bulkDeny(videoIds[], reason?)
+  → Main: Begin database transaction
+  → For each videoId:
+      → UPDATE wishlist SET status='denied', reviewed_at=NOW(), denial_reason=reason
+      → Track success/failure
+  → Commit transaction
+  → Return { success: successIds[], failed: failedIds[] }
+  → Renderer:
+      → Update UI for successful items
+      → Show error toast for failed items
+      → Clear selection
+      → Refresh video lists
+  → Notify kid (badge count update)
+```
+
+**Selection Management**:
+```
+Parent clicks video checkbox
+  → Update selectedVideos Set
+  → Update isSelectAll state based on selection count
+  → Enable/disable bulk action buttons
+
+Parent clicks "Select All"
+  → Add all visible video IDs to selectedVideos
+  → Set isSelectAll = true
+  → Enable bulk action buttons
+
+Parent clicks "Clear Selection"
+  → Clear selectedVideos Set
+  → Set isSelectAll = false
+  → Disable bulk action buttons
+```
+
+## Sta
 te Management
 
 ### Search State
@@ -640,6 +820,82 @@ ipcMain.handle('wishlist:get:byStatus', async (event, status: WishlistStatus) =>
     WHERE status = ?
     ORDER BY requested_at DESC
   `, [status]);
+});
+
+// Bulk Operations Handlers
+ipcMain.handle('wishlist:bulkApprove', async (event, videoIds: string[]) => {
+  const db = getDatabase();
+  const results = { success: [], failed: [] };
+
+  // Use transaction for consistency
+  await db.run('BEGIN TRANSACTION');
+  
+  try {
+    for (const videoId of videoIds) {
+      try {
+        await db.run(`
+          UPDATE wishlist
+          SET status = 'approved',
+              reviewed_at = datetime('now'),
+              updated_at = datetime('now')
+          WHERE video_id = ? AND status = 'pending'
+        `, [videoId]);
+        
+        results.success.push(videoId);
+      } catch (error) {
+        console.error(`Failed to approve video ${videoId}:`, error);
+        results.failed.push(videoId);
+      }
+    }
+    
+    await db.run('COMMIT');
+    
+    // Notify kid of updates
+    mainWindow?.webContents.send('wishlist:updated');
+    
+    return results;
+  } catch (error) {
+    await db.run('ROLLBACK');
+    throw error;
+  }
+});
+
+ipcMain.handle('wishlist:bulkDeny', async (event, videoIds: string[], reason?: string) => {
+  const db = getDatabase();
+  const results = { success: [], failed: [] };
+
+  // Use transaction for consistency
+  await db.run('BEGIN TRANSACTION');
+  
+  try {
+    for (const videoId of videoIds) {
+      try {
+        await db.run(`
+          UPDATE wishlist
+          SET status = 'denied',
+              reviewed_at = datetime('now'),
+              denial_reason = ?,
+              updated_at = datetime('now')
+          WHERE video_id = ? AND status = 'pending'
+        `, [reason || null, videoId]);
+        
+        results.success.push(videoId);
+      } catch (error) {
+        console.error(`Failed to deny video ${videoId}:`, error);
+        results.failed.push(videoId);
+      }
+    }
+    
+    await db.run('COMMIT');
+    
+    // Notify kid of updates
+    mainWindow?.webContents.send('wishlist:updated');
+    
+    return results;
+  } catch (error) {
+    await db.run('ROLLBACK');
+    throw error;
+  }
 });
 ```
 
