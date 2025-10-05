@@ -199,16 +199,16 @@
   - Test modal functionality, iframe loading, and action buttons
   - _Requirements: NFR-5_
 
-- [ ] 14. Create DenyReasonDialog for denial explanations
+- [x] 14. Create DenyReasonDialog for denial explanations
   - Build dialog with text input, character limit, and validation
   - Handle reason saving and success feedback
   - _Requirements: FR-P3_
 
-- [ ] 14.1 Implement DenyReasonDialog with text input
+- [x] 14.1 Implement DenyReasonDialog with text input
   - Create dialog with 500 character limit and counter
   - _Requirements: FR-P3_
 
-- [ ] 14.2 Add validation and IPC integration
+- [x] 14.2 Add validation and IPC integration
   - Validate input and call wishlist:deny IPC with reason
   - _Requirements: FR-P3_
 
