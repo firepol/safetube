@@ -154,24 +154,24 @@
 - `src/preload/index.ts` (expose to renderer)
 
 **Subtasks**:
-- [ ] Implement search:database handler
-- [ ] Implement search:youtube handler
-- [ ] Implement search:history:get handler
-- [ ] Implement wishlist:add handler
-- [ ] Implement wishlist:remove handler
-- [ ] Implement wishlist:get:byStatus handler
-- [ ] Implement wishlist:approve handler
-- [ ] Implement wishlist:deny handler
-- [ ] Add IPC event emitters
-- [ ] Expose all handlers in preload
-- [ ] Write integration tests
+- [x] Implement search:database handler
+- [x] Implement search:youtube handler
+- [x] Implement search:history:get handler
+- [x] Implement wishlist:add handler
+- [x] Implement wishlist:remove handler
+- [x] Implement wishlist:get:byStatus handler
+- [x] Implement wishlist:approve handler
+- [x] Implement wishlist:deny handler
+- [x] Add IPC event emitters
+- [x] Expose all handlers in preload
+- [x] Write integration tests
 
 **Acceptance Criteria**:
-- All IPC handlers registered
-- Renderer can call all search/wishlist functions
-- Type-safe IPC communication
-- Error propagation works correctly
-- Integration tests verify end-to-end flow
+- All IPC handlers registered ✅
+- Renderer can call all search/wishlist functions ✅
+- Type-safe IPC communication ✅
+- Error propagation works correctly ✅
+- Integration tests verify end-to-end flow ✅
 
 **Dependencies**: Task 1.3, 1.4, 1.5
 
