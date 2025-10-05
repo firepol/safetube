@@ -182,16 +182,16 @@
   - Test table display, pagination, and modal functionality
   - _Requirements: NFR-5_
 
-- [-] 13. Create VideoPreviewModal for parent video review
+- [x] 13. Create VideoPreviewModal for parent video review
   - Build modal with YouTube iframe player and metadata display
   - Add Approve/Deny buttons without affecting time tracking
   - _Requirements: FR-P2_
 
-- [ ] 13.1 Implement VideoPreviewModal with YouTube iframe
+- [x] 13.1 Implement VideoPreviewModal with YouTube iframe
   - Create modal with embedded player and video metadata
   - _Requirements: FR-P2_
 
-- [ ] 13.2 Add action buttons and ensure no time tracking
+- [x] 13.2 Add action buttons and ensure no time tracking
   - Implement Approve/Deny buttons without counting toward time limits
   - _Requirements: FR-P2_
 
