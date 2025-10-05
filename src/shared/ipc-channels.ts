@@ -311,6 +311,7 @@ export const IPC = {
     DATABASE: 'search:database',
     YOUTUBE: 'search:youtube',
     HISTORY_GET: 'search:history:get',
+    CACHED_RESULTS_GET: 'search:cached-results:get',
   },
 
   // ============================================================================

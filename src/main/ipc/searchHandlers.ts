@@ -87,6 +87,28 @@ export function registerSearchHandlers() {
     }
   );
 
+  // Get cached search results by search query and type
+  ipcMain.handle(
+    IPC.SEARCH.CACHED_RESULTS_GET,
+    async (_, query: string, searchType: 'database' | 'youtube'): Promise<DatabaseResponse<SearchResult[]>> => {
+      try {
+        log.debug(`[Search IPC] Get cached results request: "${query}" (${searchType})`);
+        const results = await searchService.getCachedResults(query, searchType);
+        return {
+          success: true,
+          data: results
+        };
+      } catch (error) {
+        log.error('[Search IPC] Get cached results failed:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to get cached results',
+          code: 'GET_CACHED_RESULTS_FAILED'
+        };
+      }
+    }
+  );
+
   log.info('[Search IPC] Search handlers registered');
 }
 

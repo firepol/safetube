@@ -240,6 +240,7 @@ export interface ElectronAPI {
   searchDatabase: (query: string) => Promise<any[]>;
   searchYouTube: (query: string) => Promise<any[]>;
   getSearchHistory: (limit?: number) => Promise<any[]>;
+  getCachedSearchResults: (query: string, searchType: 'database' | 'youtube') => Promise<any[]>;
 
   // Wishlist functionality
   wishlistAdd: (video: any) => Promise<{ success: boolean; error?: string }>;

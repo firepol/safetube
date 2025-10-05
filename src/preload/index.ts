@@ -504,6 +504,8 @@ contextBridge.exposeInMainWorld(
     searchDatabase: (query: string) => ipcRenderer.invoke(IPC.SEARCH.DATABASE, query),
     searchYouTube: (query: string) => ipcRenderer.invoke(IPC.SEARCH.YOUTUBE, query),
     getSearchHistory: (limit?: number) => ipcRenderer.invoke(IPC.SEARCH.HISTORY_GET, limit),
+    getCachedSearchResults: (query: string, searchType: 'database' | 'youtube') => 
+      ipcRenderer.invoke(IPC.SEARCH.CACHED_RESULTS_GET, query, searchType),
 
     // Wishlist handlers
     wishlistAdd: (video: any) => ipcRenderer.invoke(IPC.WISHLIST.ADD, video),

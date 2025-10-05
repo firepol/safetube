@@ -239,6 +239,13 @@ export class SearchService {
   }
 
   /**
+   * Get cached search results for admin viewing (public method)
+   */
+  async getCachedResults(query: string, searchType: SearchType): Promise<SearchResult[]> {
+    return this.getSearchCache(query, searchType);
+  }
+
+  /**
    * Get cached search results if available and not expired
    */
   private async getSearchCache(query: string, searchType: SearchType): Promise<SearchResult[]> {
