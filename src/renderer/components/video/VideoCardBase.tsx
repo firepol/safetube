@@ -41,6 +41,10 @@ export interface VideoCardBaseProps {
   channelName?: string;
   url?: string;
   publishedAt?: string;
+  // Bulk selection support
+  isSelectable?: boolean;
+  isSelected?: boolean;
+  onSelectionChange?: (videoId: string, selected: boolean) => void;
 }
 
 export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
@@ -73,6 +77,9 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
   channelName,
   url,
   publishedAt,
+  isSelectable = false,
+  isSelected = false,
+  onSelectionChange,
 }) => {
   const progressPercentage = Math.min(100, Math.max(0, progress ?? 0));
   const isLongTitle = title.length > 32;
@@ -119,6 +126,9 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
           channelName,
           url,
           publishedAt,
+          isSelectable,
+          isSelected,
+          onSelectionChange,
         });
       } else {
         const encodedId = encodeURIComponent(id);
@@ -164,7 +174,17 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
         channelName,
         url,
         publishedAt,
+        isSelectable,
+        isSelected,
+        onSelectionChange,
       });
+    }
+  };
+
+  const handleSelectionChange = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent video click
+    if (onSelectionChange) {
+      onSelectionChange(id, !isSelected);
     }
   };
 
@@ -227,9 +247,27 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
           </div>
         )}
 
+        {/* Selection checkbox overlay */}
+        {isSelectable && (
+          <div className="absolute top-2 left-2 z-30">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={handleSelectionChange}
+                onClick={(e) => e.stopPropagation()} // Prevent video click
+                className="w-4 h-4 text-blue-600 bg-white/90 backdrop-blur-sm border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+            </label>
+          </div>
+        )}
+
         {/* Approval status badge */}
         {!isApprovedSource && !isFallback && (
-          <div className="absolute top-2 left-2 bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">
+          <div className={cn(
+            "absolute top-2 px-2 py-1 rounded text-xs font-medium bg-yellow-500 text-white",
+            isSelectable ? "left-8" : "left-2" // Adjust position if selection checkbox is present
+          )}>
             Needs Approval
           </div>
         )}

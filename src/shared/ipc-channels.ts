@@ -324,6 +324,8 @@ export const IPC = {
     GET_BY_STATUS: 'wishlist:get-by-status',
     APPROVE: 'wishlist:approve',
     DENY: 'wishlist:deny',
+    BULK_APPROVE: 'wishlist:bulk-approve',
+    BULK_DENY: 'wishlist:bulk-deny',
   },
 
   // ============================================================================

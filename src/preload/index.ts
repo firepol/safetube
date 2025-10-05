@@ -310,6 +310,8 @@ const IPC = {
     GET_BY_STATUS: 'wishlist:get-by-status',
     APPROVE: 'wishlist:approve',
     DENY: 'wishlist:deny',
+    BULK_APPROVE: 'wishlist:bulk-approve',
+    BULK_DENY: 'wishlist:bulk-deny',
   },
 
   // ============================================================================
@@ -515,6 +517,9 @@ contextBridge.exposeInMainWorld(
     wishlistApprove: (videoId: string) => ipcRenderer.invoke(IPC.WISHLIST.APPROVE, videoId),
     wishlistDeny: (videoId: string, reason?: string) =>
       ipcRenderer.invoke(IPC.WISHLIST.DENY, videoId, reason),
+    wishlistBulkApprove: (videoIds: string[]) => ipcRenderer.invoke(IPC.WISHLIST.BULK_APPROVE, videoIds),
+    wishlistBulkDeny: (videoIds: string[], reason?: string) =>
+      ipcRenderer.invoke(IPC.WISHLIST.BULK_DENY, videoIds, reason),
 
     // Wishlist events
     onWishlistUpdated: (callback: () => void) => {

@@ -3,6 +3,8 @@ import { WishlistItem, WishlistStatus } from '@/shared/types';
 import { ModerationVideoCard } from './ModerationVideoCard';
 import { VideoPreviewModal } from './VideoPreviewModal';
 import { DenyReasonDialog } from './DenyReasonDialog';
+import { BulkModerationControls } from './BulkModerationControls';
+import { BulkDenyReasonDialog } from './BulkDenyReasonDialog';
 
 export const WishlistModerationTab: React.FC = () => {
   const [activeTab, setActiveTab] = useState<WishlistStatus>('pending');
@@ -35,6 +37,22 @@ export const WishlistModerationTab: React.FC = () => {
     video: null
   });
 
+  // Bulk selection state
+  const [selectedVideos, setSelectedVideos] = useState<Set<string>>(new Set());
+  const [isBulkOperationInProgress, setIsBulkOperationInProgress] = useState(false);
+  const [bulkOperationProgress, setBulkOperationProgress] = useState<{
+    total: number;
+    completed: number;
+    failed: string[];
+  } | undefined>(undefined);
+
+  // Bulk deny dialog state
+  const [bulkDenyDialog, setBulkDenyDialog] = useState<{
+    isOpen: boolean;
+  }>({
+    isOpen: false
+  });
+
   // Load wishlist data
   const loadWishlistData = async () => {
     try {
@@ -65,6 +83,11 @@ export const WishlistModerationTab: React.FC = () => {
   useEffect(() => {
     loadWishlistData();
   }, []);
+
+  // Clear selection when tab changes
+  useEffect(() => {
+    setSelectedVideos(new Set());
+  }, [activeTab]);
 
 
 
@@ -119,6 +142,119 @@ export const WishlistModerationTab: React.FC = () => {
     }
   };
 
+  // Selection handlers
+  const handleSelectionChange = (videoId: string, selected: boolean) => {
+    const newSelection = new Set(selectedVideos);
+    if (selected) {
+      newSelection.add(videoId);
+    } else {
+      newSelection.delete(videoId);
+    }
+    setSelectedVideos(newSelection);
+  };
+
+  const handleSelectAll = () => {
+    const currentTabVideoIds = currentTabData.map(item => item.video_id);
+    const isSelectingAll = selectedVideos.size !== currentTabVideoIds.length;
+    
+    if (isSelectingAll) {
+      setSelectedVideos(new Set(currentTabVideoIds));
+    } else {
+      setSelectedVideos(new Set());
+    }
+  };
+
+  const handleSelectNone = () => {
+    setSelectedVideos(new Set());
+  };
+
+  // Bulk operation handlers
+  const handleBulkApprove = async () => {
+    if (selectedVideos.size === 0) return;
+
+    const videoIds = Array.from(selectedVideos);
+    
+    try {
+      setIsBulkOperationInProgress(true);
+      setBulkOperationProgress({
+        total: videoIds.length,
+        completed: 0,
+        failed: []
+      });
+
+      const result = await window.electron.wishlistBulkApprove(videoIds);
+      
+      setBulkOperationProgress({
+        total: videoIds.length,
+        completed: result.success.length,
+        failed: result.failed
+      });
+
+      // Show success/error feedback
+      if (result.failed.length > 0) {
+        setError(`${result.failed.length} videos failed to approve. Please try again.`);
+      }
+
+      // Refresh data and clear selection
+      await loadWishlistData();
+      setSelectedVideos(new Set());
+    } catch (err) {
+      console.error('Error bulk approving videos:', err);
+      setError('Failed to approve videos. Please try again.');
+    } finally {
+      setIsBulkOperationInProgress(false);
+      setBulkOperationProgress(undefined);
+    }
+  };
+
+  const handleBulkDenyClick = () => {
+    if (selectedVideos.size === 0) return;
+    setBulkDenyDialog({ isOpen: true });
+  };
+
+  const handleBulkDenyConfirm = async (reason?: string) => {
+    if (selectedVideos.size === 0) return;
+
+    const videoIds = Array.from(selectedVideos);
+    
+    try {
+      setIsBulkOperationInProgress(true);
+      setBulkOperationProgress({
+        total: videoIds.length,
+        completed: 0,
+        failed: []
+      });
+
+      const result = await window.electron.wishlistBulkDeny(videoIds, reason);
+      
+      setBulkOperationProgress({
+        total: videoIds.length,
+        completed: result.success.length,
+        failed: result.failed
+      });
+
+      // Show success/error feedback
+      if (result.failed.length > 0) {
+        setError(`${result.failed.length} videos failed to deny. Please try again.`);
+      }
+
+      // Refresh data and clear selection
+      await loadWishlistData();
+      setSelectedVideos(new Set());
+    } catch (err) {
+      console.error('Error bulk denying videos:', err);
+      setError('Failed to deny videos. Please try again.');
+    } finally {
+      setIsBulkOperationInProgress(false);
+      setBulkOperationProgress(undefined);
+      setBulkDenyDialog({ isOpen: false });
+    }
+  };
+
+  const handleBulkDenyCancel = () => {
+    setBulkDenyDialog({ isOpen: false });
+  };
+
   // Get current tab data
   const currentTabData = wishlistItems[activeTab];
 
@@ -128,6 +264,11 @@ export const WishlistModerationTab: React.FC = () => {
     approved: wishlistItems.approved.length,
     denied: wishlistItems.denied.length
   };
+
+  // Bulk selection computed values
+  const currentTabVideoIds = currentTabData.map(item => item.video_id);
+  const isSelectAll = selectedVideos.size > 0 && selectedVideos.size === currentTabVideoIds.length;
+  const showBulkControls = activeTab === 'pending' && currentTabData.length > 0;
 
   if (isLoading) {
     return (
@@ -216,6 +357,21 @@ export const WishlistModerationTab: React.FC = () => {
           </nav>
         </div>
 
+        {/* Bulk Moderation Controls */}
+        {showBulkControls && (
+          <BulkModerationControls
+            selectedVideos={selectedVideos}
+            totalVideos={currentTabData.length}
+            isSelectAll={isSelectAll}
+            isBulkOperationInProgress={isBulkOperationInProgress}
+            bulkOperationProgress={bulkOperationProgress}
+            onSelectAll={handleSelectAll}
+            onSelectNone={handleSelectNone}
+            onBulkApprove={handleBulkApprove}
+            onBulkDeny={handleBulkDenyClick}
+          />
+        )}
+
         {/* Tab Content */}
         <div className="p-6">
           {currentTabData.length === 0 ? (
@@ -244,6 +400,9 @@ export const WishlistModerationTab: React.FC = () => {
                   onWatch={handleWatch}
                   onApprove={handleApprove}
                   onDeny={handleDenyClick}
+                  isSelectable={showBulkControls}
+                  isSelected={selectedVideos.has(item.video_id)}
+                  onSelectionChange={handleSelectionChange}
                 />
               ))}
             </div>
@@ -266,6 +425,15 @@ export const WishlistModerationTab: React.FC = () => {
         onClose={() => setDenyDialog({ isOpen: false, video: null })}
         onConfirm={handleDenyConfirm}
         videoTitle={denyDialog.video?.title}
+      />
+
+      {/* Bulk Deny Reason Dialog */}
+      <BulkDenyReasonDialog
+        isOpen={bulkDenyDialog.isOpen}
+        selectedCount={selectedVideos.size}
+        onConfirm={handleBulkDenyConfirm}
+        onCancel={handleBulkDenyCancel}
+        isProcessing={isBulkOperationInProgress}
       />
     </div>
   );

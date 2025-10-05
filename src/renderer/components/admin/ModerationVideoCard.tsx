@@ -13,13 +13,20 @@ interface ModerationVideoCardProps {
   onWatch: (item: WishlistItem) => void;
   onApprove: (videoId: string) => void;
   onDeny: (item: WishlistItem) => void;
+  // Selection support
+  isSelectable?: boolean;
+  isSelected?: boolean;
+  onSelectionChange?: (videoId: string, selected: boolean) => void;
 }
 
 export const ModerationVideoCard: React.FC<ModerationVideoCardProps> = ({
   item,
   onWatch,
   onApprove,
-  onDeny
+  onDeny,
+  isSelectable = false,
+  isSelected = false,
+  onSelectionChange
 }) => {
   // Convert WishlistItem to VideoCardBaseProps
   const videoCardProps: VideoCardBaseProps = {
@@ -39,7 +46,11 @@ export const ModerationVideoCard: React.FC<ModerationVideoCardProps> = ({
     channelName: item.channel_name || undefined,
     url: item.url,
     // Custom click handler for moderation
-    onVideoClick: () => onWatch(item)
+    onVideoClick: () => onWatch(item),
+    // Selection support
+    isSelectable,
+    isSelected,
+    onSelectionChange
   };
 
   // Get action buttons based on status

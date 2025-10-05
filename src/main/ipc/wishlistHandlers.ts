@@ -172,6 +172,52 @@ export function registerWishlistHandlers(mainWindow: BrowserWindow | null = null
     }
   );
 
+  // Bulk approve videos in wishlist
+  ipcMain.handle(
+    IPC.WISHLIST.BULK_APPROVE,
+    async (_, videoIds: string[]): Promise<DatabaseResponse<{ success: string[], failed: string[] }>> => {
+      try {
+        log.info(`[Wishlist IPC] Bulk approve request: ${videoIds.length} videos`);
+        const result = await wishlistService.bulkApproveVideos(videoIds);
+
+        return {
+          success: true,
+          data: result
+        };
+      } catch (error) {
+        log.error('[Wishlist IPC] Bulk approve failed:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to bulk approve videos',
+          code: 'BULK_APPROVE_FAILED'
+        };
+      }
+    }
+  );
+
+  // Bulk deny videos in wishlist
+  ipcMain.handle(
+    IPC.WISHLIST.BULK_DENY,
+    async (_, videoIds: string[], reason?: string): Promise<DatabaseResponse<{ success: string[], failed: string[] }>> => {
+      try {
+        log.info(`[Wishlist IPC] Bulk deny request: ${videoIds.length} videos${reason ? ` (reason: ${reason})` : ''}`);
+        const result = await wishlistService.bulkDenyVideos(videoIds, reason);
+
+        return {
+          success: true,
+          data: result
+        };
+      } catch (error) {
+        log.error('[Wishlist IPC] Bulk deny failed:', error);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : 'Failed to bulk deny videos',
+          code: 'BULK_DENY_FAILED'
+        };
+      }
+    }
+  );
+
   log.info('[Wishlist IPC] Wishlist handlers registered');
 }
 
