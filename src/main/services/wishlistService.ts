@@ -78,7 +78,7 @@ export class WishlistService {
       // Emit update event
       this.emitWishlistUpdate();
 
-      return { success: true, item };
+      return { success: true, item: item || undefined };
     } catch (error: any) {
       // Handle duplicate video_id constraint violation
       if (error.code === 'SQLITE_CONSTRAINT' || error.message?.includes('UNIQUE constraint failed')) {
@@ -215,7 +215,7 @@ export class WishlistService {
       // Emit update event
       this.emitWishlistUpdate();
 
-      return { success: true, item };
+      return { success: true, item: item || undefined };
     } catch (error) {
       log.error('[WishlistService] Error approving video:', error);
       return {
@@ -271,7 +271,7 @@ export class WishlistService {
       // Emit update event
       this.emitWishlistUpdate();
 
-      return { success: true, item };
+      return { success: true, item: item || undefined };
     } catch (error) {
       log.error('[WishlistService] Error denying video:', error);
       return {
@@ -339,7 +339,7 @@ export class WishlistService {
       // Emit update event
       this.emitWishlistUpdate();
 
-      return { success: true, item };
+      return { success: true, item: item || undefined };
     } catch (error) {
       log.error('[WishlistService] Error updating wishlist status:', error);
       return {

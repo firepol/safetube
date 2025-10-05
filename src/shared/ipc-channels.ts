@@ -304,6 +304,28 @@ export const IPC = {
   },
 
   // ============================================================================
+  // SEARCH (Database and YouTube search)
+  // ============================================================================
+
+  SEARCH: {
+    DATABASE: 'search:database',
+    YOUTUBE: 'search:youtube',
+    HISTORY_GET: 'search:history:get',
+  },
+
+  // ============================================================================
+  // WISHLIST (Video approval workflow)
+  // ============================================================================
+
+  WISHLIST: {
+    ADD: 'wishlist:add',
+    REMOVE: 'wishlist:remove',
+    GET_BY_STATUS: 'wishlist:get-by-status',
+    APPROVE: 'wishlist:approve',
+    DENY: 'wishlist:deny',
+  },
+
+  // ============================================================================
   // TESTING
   // ============================================================================
 

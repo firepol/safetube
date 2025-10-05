@@ -291,6 +291,28 @@ const IPC = {
   },
 
   // ============================================================================
+  // SEARCH (Database and YouTube search)
+  // ============================================================================
+
+  SEARCH: {
+    DATABASE: 'search:database',
+    YOUTUBE: 'search:youtube',
+    HISTORY_GET: 'search:history:get',
+  },
+
+  // ============================================================================
+  // WISHLIST (Video approval workflow)
+  // ============================================================================
+
+  WISHLIST: {
+    ADD: 'wishlist:add',
+    REMOVE: 'wishlist:remove',
+    GET_BY_STATUS: 'wishlist:get-by-status',
+    APPROVE: 'wishlist:approve',
+    DENY: 'wishlist:deny',
+  },
+
+  // ============================================================================
   // TESTING
   // ============================================================================
 
@@ -476,6 +498,30 @@ contextBridge.exposeInMainWorld(
     favoritesToggle: (videoId: string, sourceId: string, type: 'youtube' | 'local' | 'dlna' | 'downloaded', title: string, thumbnail: string, duration: number, lastWatched?: string): Promise<DatabaseResponse<{ isFavorite: boolean }>> =>
       ipcRenderer.invoke(IPC.FAVORITES.TOGGLE, videoId, sourceId),
     // Path utilities for cross-platform compatibility
-    pathJoin: (...paths: string[]) => ipcRenderer.invoke(IPC.UTILS.PATH_JOIN, ...paths)
+    pathJoin: (...paths: string[]) => ipcRenderer.invoke(IPC.UTILS.PATH_JOIN, ...paths),
+
+    // Search handlers
+    searchDatabase: (query: string) => ipcRenderer.invoke(IPC.SEARCH.DATABASE, query),
+    searchYouTube: (query: string) => ipcRenderer.invoke(IPC.SEARCH.YOUTUBE, query),
+    getSearchHistory: (limit?: number) => ipcRenderer.invoke(IPC.SEARCH.HISTORY_GET, limit),
+
+    // Wishlist handlers
+    wishlistAdd: (video: any) => ipcRenderer.invoke(IPC.WISHLIST.ADD, video),
+    wishlistRemove: (videoId: string) => ipcRenderer.invoke(IPC.WISHLIST.REMOVE, videoId),
+    wishlistGetByStatus: (status: 'pending' | 'approved' | 'denied') =>
+      ipcRenderer.invoke(IPC.WISHLIST.GET_BY_STATUS, status),
+    wishlistApprove: (videoId: string) => ipcRenderer.invoke(IPC.WISHLIST.APPROVE, videoId),
+    wishlistDeny: (videoId: string, reason?: string) =>
+      ipcRenderer.invoke(IPC.WISHLIST.DENY, videoId, reason),
+
+    // Wishlist events
+    onWishlistUpdated: (callback: () => void) => {
+      const wrappedCallback = () => callback();
+      ipcRenderer.on('wishlist:updated', wrappedCallback);
+      return wrappedCallback;
+    },
+    offWishlistUpdated: (wrappedCallback: any) => {
+      ipcRenderer.off('wishlist:updated', wrappedCallback);
+    }
   }
 );
