@@ -88,18 +88,18 @@
 **Description**: Implement YouTube API search with caching
 **Files to Create/Modify**:
 - `src/main/services/searchService.ts` (extend)
-- `src/main/services/youtubeService.ts` (extend existing)
+- `src/main/youtube-api.ts` (extend existing)
 
 **Subtasks**:
-- [ ] Add `searchYouTube(query: string)` function
-- [ ] Check cache before API call
-- [ ] Call YouTube API with safeSearch='strict'
-- [ ] Store results in search_results_cache
-- [ ] Calculate expires_at (24 hours from now)
-- [ ] Record search in searches table
-- [ ] Handle API errors gracefully
-- [ ] Implement quota monitoring
-- [ ] Write unit tests
+- [x] Add `searchYouTube(query: string)` function
+- [x] Check cache before API call
+- [x] Call YouTube API with safeSearch='strict'
+- [x] Store results in search_results_cache
+- [x] Calculate expires_at (24 hours from now)
+- [x] Record search in searches table
+- [x] Handle API errors gracefully
+- [x] Implement quota monitoring
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - YouTube search returns max 50 results

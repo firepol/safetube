@@ -194,6 +194,49 @@ export class YouTubeAPI {
     }
   }
   
+  // Search for videos with safe search
+  async searchVideos(query: string, maxResults: number = 50): Promise<any[]> {
+    try {
+      // First search for videos
+      const searchResponse = await this.makeRequest(
+        `${this.baseUrl}/search?part=snippet&q=${encodeURIComponent(query)}&maxResults=${maxResults}&safeSearch=strict&type=video&key=${this.apiKey}`
+      );
+
+      if (!searchResponse.items || searchResponse.items.length === 0) {
+        return [];
+      }
+
+      // Get video IDs
+      const videoIds = searchResponse.items.map((item: any) => item.id.videoId).join(',');
+
+      // Fetch full video details including duration
+      const videoDetailsResponse = await this.makeRequest(
+        `${this.baseUrl}/videos?part=snippet,contentDetails&id=${videoIds}&key=${this.apiKey}`
+      );
+
+      if (!videoDetailsResponse.items) {
+        return [];
+      }
+
+      // Transform to consistent format
+      return videoDetailsResponse.items.map((video: any) => ({
+        id: video.id,
+        title: video.snippet.title,
+        description: video.snippet.description,
+        thumbnail: video.snippet.thumbnails?.high?.url || video.snippet.thumbnails?.medium?.url || video.snippet.thumbnails?.default?.url,
+        duration: YouTubeAPI.parseDuration(video.contentDetails.duration),
+        channelId: video.snippet.channelId,
+        channelTitle: video.snippet.channelTitle,
+        publishedAt: video.snippet.publishedAt,
+        url: `https://www.youtube.com/watch?v=${video.id}`
+      }));
+
+    } catch (error) {
+      console.error('[YouTubeAPI] Error searching videos:', error);
+      throw error;
+    }
+  }
+
   // Helper method to make HTTP requests
   private makeRequest(url: string): Promise<any> {
     return new Promise((resolve, reject) => {

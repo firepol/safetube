@@ -1,9 +1,17 @@
 import './setup'; // Import mocks first
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createTestDatabase, resetDatabaseSingleton } from '../../database/__tests__/testHelpers';
 import DatabaseService from '../DatabaseService';
 import { SimpleSchemaManager } from '../../database/SimpleSchemaManager';
 import SearchService from '../searchService';
+import { YouTubeAPI } from '../../youtube-api';
+
+// Mock YouTubeAPI
+vi.mock('../../youtube-api', () => ({
+  YouTubeAPI: vi.fn().mockImplementation(() => ({
+    searchVideos: vi.fn()
+  }))
+}));
 
 describe('SearchService', () => {
   let db: DatabaseService;
@@ -16,6 +24,7 @@ describe('SearchService', () => {
     // Initialize schema with search tables
     const schemaManager = new SimpleSchemaManager(db);
     await schemaManager.initializePhase1Schema();
+    await schemaManager.initializePhase2Schema(); // Need this for settings table
     await schemaManager.initializeSearchModerationSchema();
 
     searchService = new SearchService(db);
@@ -202,6 +211,312 @@ describe('SearchService', () => {
       await db.run('DELETE FROM searches WHERE timestamp < datetime("now", "-50 days")');
 
       const deletedCount = await searchService.clearOldSearchHistory(90);
+
+      expect(deletedCount).toBe(0);
+    });
+  });
+
+  describe('searchYouTube', () => {
+    beforeEach(async () => {
+      // Set up YouTube API key in settings
+      await db.run(`
+        INSERT INTO settings (key, value, type)
+        VALUES ('main.youtubeApiKey', '"test-api-key"', 'string')
+      `);
+    });
+
+    it('should return cached results if available and not expired', async () => {
+      const query = 'test query';
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      // Insert cached results
+      await db.run(`
+        INSERT INTO search_results_cache (
+          search_query, video_id, video_data, position,
+          search_type, fetch_timestamp, expires_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [
+        query,
+        'cached-video-1',
+        JSON.stringify({
+          id: 'cached-video-1',
+          title: 'Cached Video',
+          thumbnail: 'thumb.jpg',
+          description: 'Cached description',
+          duration: 300,
+          channelId: 'channel1',
+          channelName: 'Test Channel',
+          url: 'https://youtube.com/watch?v=cached-video-1',
+          publishedAt: '2024-01-01'
+        }),
+        0,
+        'youtube',
+        new Date().toISOString(),
+        futureDate
+      ]);
+
+      const results = await searchService.searchYouTube(query);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].id).toBe('cached-video-1');
+      expect(results[0].title).toBe('Cached Video');
+      expect(results[0].isApprovedSource).toBe(false);
+    });
+
+    it('should call YouTube API if cache is expired', async () => {
+      const query = 'test query';
+      const pastDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+
+      // Insert expired cached results
+      await db.run(`
+        INSERT INTO search_results_cache (
+          search_query, video_id, video_data, position,
+          search_type, fetch_timestamp, expires_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [
+        query,
+        'expired-video',
+        JSON.stringify({
+          id: 'expired-video',
+          title: 'Expired Video',
+          thumbnail: 'thumb.jpg',
+          description: 'Expired description',
+          duration: 300,
+          channelId: 'channel1',
+          channelName: 'Test Channel',
+          url: 'https://youtube.com/watch?v=expired-video',
+          publishedAt: '2024-01-01'
+        }),
+        0,
+        'youtube',
+        pastDate,
+        pastDate
+      ]);
+
+      // Mock YouTube API response
+      const mockVideos = [
+        {
+          id: 'new-video-1',
+          title: 'New Video',
+          thumbnail: 'thumb.jpg',
+          description: 'New description',
+          duration: 300,
+          channelId: 'channel1',
+          channelTitle: 'Test Channel',
+          url: 'https://youtube.com/watch?v=new-video-1',
+          publishedAt: '2024-01-01'
+        }
+      ];
+
+      const mockYoutubeApi = new YouTubeAPI('test-key');
+      vi.mocked(mockYoutubeApi.searchVideos).mockResolvedValue(mockVideos);
+      (searchService as any).youtubeApi = mockYoutubeApi;
+
+      const results = await searchService.searchYouTube(query);
+
+      expect(results).toHaveLength(1);
+      expect(results[0].id).toBe('new-video-1');
+      expect(results[0].title).toBe('New Video');
+      expect(mockYoutubeApi.searchVideos).toHaveBeenCalledWith(query, 50);
+    });
+
+    it('should cache YouTube API results for 24 hours', async () => {
+      const query = 'test query';
+
+      // Mock YouTube API response
+      const mockVideos = [
+        {
+          id: 'video-1',
+          title: 'Test Video',
+          thumbnail: 'thumb.jpg',
+          description: 'Test description',
+          duration: 300,
+          channelId: 'channel1',
+          channelTitle: 'Test Channel',
+          url: 'https://youtube.com/watch?v=video-1',
+          publishedAt: '2024-01-01'
+        }
+      ];
+
+      const mockYoutubeApi = new YouTubeAPI('test-key');
+      vi.mocked(mockYoutubeApi.searchVideos).mockResolvedValue(mockVideos);
+      (searchService as any).youtubeApi = mockYoutubeApi;
+
+      await searchService.searchYouTube(query);
+
+      // Verify cache entry
+      const cached = await db.all(`
+        SELECT * FROM search_results_cache
+        WHERE search_query = ? AND search_type = 'youtube'
+      `, [query]);
+
+      expect(cached).toHaveLength(1);
+      expect(cached[0].video_id).toBe('video-1');
+
+      const videoData = JSON.parse(cached[0].video_data);
+      expect(videoData.title).toBe('Test Video');
+
+      // Verify expires_at is ~24 hours from now
+      const expiresAt = new Date(cached[0].expires_at).getTime();
+      const expectedExpiry = Date.now() + 24 * 60 * 60 * 1000;
+      expect(expiresAt).toBeGreaterThan(expectedExpiry - 60000); // Within 1 minute
+      expect(expiresAt).toBeLessThan(expectedExpiry + 60000);
+    });
+
+    it('should record YouTube search in history', async () => {
+      const query = 'test query';
+
+      // Mock YouTube API response
+      const mockVideos = [
+        {
+          id: 'video-1',
+          title: 'Test Video',
+          thumbnail: 'thumb.jpg',
+          description: 'Test description',
+          duration: 300,
+          channelId: 'channel1',
+          channelTitle: 'Test Channel',
+          url: 'https://youtube.com/watch?v=video-1',
+          publishedAt: '2024-01-01'
+        }
+      ];
+
+      const mockYoutubeApi = new YouTubeAPI('test-key');
+      vi.mocked(mockYoutubeApi.searchVideos).mockResolvedValue(mockVideos);
+      (searchService as any).youtubeApi = mockYoutubeApi;
+
+      await searchService.searchYouTube(query);
+
+      const history = await db.all(`
+        SELECT * FROM searches
+        WHERE query = ? AND search_type = 'youtube'
+      `, [query]);
+
+      expect(history).toHaveLength(1);
+      expect(history[0].result_count).toBe(1);
+    });
+
+    it('should return empty array for empty query', async () => {
+      const results = await searchService.searchYouTube('');
+
+      expect(results).toHaveLength(0);
+    });
+
+    it('should handle YouTube API errors gracefully', async () => {
+      const query = 'test query';
+
+      const mockYoutubeApi = new YouTubeAPI('test-key');
+      vi.mocked(mockYoutubeApi.searchVideos).mockRejectedValue(new Error('API Error'));
+      (searchService as any).youtubeApi = mockYoutubeApi;
+
+      await expect(searchService.searchYouTube(query)).rejects.toThrow('YouTube search failed');
+    });
+
+    it('should handle quota exceeded error', async () => {
+      const query = 'test query';
+
+      const mockYoutubeApi = new YouTubeAPI('test-key');
+      vi.mocked(mockYoutubeApi.searchVideos).mockRejectedValue(new Error('quotaExceeded'));
+      (searchService as any).youtubeApi = mockYoutubeApi;
+
+      await expect(searchService.searchYouTube(query)).rejects.toThrow('YouTube API quota exceeded');
+    });
+
+    it('should throw error if YouTube API key not configured', async () => {
+      // Remove API key from settings
+      await db.run('DELETE FROM settings WHERE key = ?', ['main.youtubeApiKey']);
+
+      await expect(searchService.searchYouTube('test')).rejects.toThrow('YouTube search is not available');
+    });
+
+    it('should enforce max 50 results', async () => {
+      const query = 'test query';
+
+      // Mock YouTube API to return 50 videos
+      const mockVideos = Array.from({ length: 50 }, (_, i) => ({
+        id: `video-${i}`,
+        title: `Test Video ${i}`,
+        thumbnail: 'thumb.jpg',
+        description: 'Test description',
+        duration: 300,
+        channelId: 'channel1',
+        channelTitle: 'Test Channel',
+        url: `https://youtube.com/watch?v=video-${i}`,
+        publishedAt: '2024-01-01'
+      }));
+
+      const mockYoutubeApi = new YouTubeAPI('test-key');
+      vi.mocked(mockYoutubeApi.searchVideos).mockResolvedValue(mockVideos);
+      (searchService as any).youtubeApi = mockYoutubeApi;
+
+      const results = await searchService.searchYouTube(query);
+
+      expect(results).toHaveLength(50);
+      expect(mockYoutubeApi.searchVideos).toHaveBeenCalledWith(query, 50);
+    });
+
+    it('should mark all YouTube results as not from approved sources', async () => {
+      const query = 'test query';
+
+      const mockVideos = [
+        {
+          id: 'video-1',
+          title: 'Test Video',
+          thumbnail: 'thumb.jpg',
+          description: 'Test description',
+          duration: 300,
+          channelId: 'channel1',
+          channelTitle: 'Test Channel',
+          url: 'https://youtube.com/watch?v=video-1',
+          publishedAt: '2024-01-01'
+        }
+      ];
+
+      const mockYoutubeApi = new YouTubeAPI('test-key');
+      vi.mocked(mockYoutubeApi.searchVideos).mockResolvedValue(mockVideos);
+      (searchService as any).youtubeApi = mockYoutubeApi;
+
+      const results = await searchService.searchYouTube(query);
+
+      expect(results[0].isApprovedSource).toBe(false);
+    });
+  });
+
+  describe('clearExpiredCache', () => {
+    beforeEach(async () => {
+      const pastDate = new Date(Date.now() - 25 * 60 * 60 * 1000).toISOString();
+      const futureDate = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      // Insert expired cache entries
+      await db.run(`
+        INSERT INTO search_results_cache (
+          search_query, video_id, video_data, position,
+          search_type, fetch_timestamp, expires_at
+        )
+        VALUES
+          ('query1', 'expired1', '{}', 0, 'youtube', ?, ?),
+          ('query2', 'expired2', '{}', 0, 'youtube', ?, ?),
+          ('query3', 'valid1', '{}', 0, 'youtube', ?, ?)
+      `, [pastDate, pastDate, pastDate, pastDate, futureDate, futureDate]);
+    });
+
+    it('should delete expired cache entries', async () => {
+      const deletedCount = await searchService.clearExpiredCache();
+
+      expect(deletedCount).toBe(2);
+
+      const remaining = await db.all('SELECT * FROM search_results_cache');
+      expect(remaining).toHaveLength(1);
+      expect(remaining[0].video_id).toBe('valid1');
+    });
+
+    it('should return 0 when no expired entries', async () => {
+      // Clear all expired entries first
+      await db.run(`DELETE FROM search_results_cache WHERE expires_at < datetime('now')`);
+
+      const deletedCount = await searchService.clearExpiredCache();
 
       expect(deletedCount).toBe(0);
     });
