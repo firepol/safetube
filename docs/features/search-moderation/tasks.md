@@ -62,13 +62,13 @@
 - `src/main/services/searchService.ts` (new file)
 
 **Subtasks**:
-- [ ] Create `searchDatabase(query: string)` function
-- [ ] Implement FTS5 query with proper escaping
-- [ ] Return results as VideoCardBaseProps[]
-- [ ] Record search in `searches` table
-- [ ] Handle empty results
-- [ ] Add error handling
-- [ ] Write unit tests
+- [x] Create `searchDatabase(query: string)` function
+- [x] Implement FTS5 query with proper escaping
+- [x] Return results as SearchResult[]
+- [x] Record search in `searches` table
+- [x] Handle empty results
+- [x] Add error handling
+- [x] Write unit tests
 
 **Acceptance Criteria**:
 - Searches videos table using FTS5 index
