@@ -160,7 +160,7 @@
   - Test tab functionality, actions, and badge counts
   - _Requirements: NFR-5_
 
-- [ ] 11. Add wishlist navigation to Kid Screen
+- [x] 11. Add wishlist navigation to Kid Screen
   - Add "My Wishlist" link with unread count badge
   - Ensure proper navigation flow and styling
   - _Requirements: FR-K1_
