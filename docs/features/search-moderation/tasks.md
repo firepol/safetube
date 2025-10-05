@@ -216,16 +216,16 @@
   - Test dialog functionality, validation, and IPC calls
   - _Requirements: NFR-5_
 
-- [ ] 15. Create WishlistModerationTab for admin panel
+- [x] 15. Create WishlistModerationTab for admin panel
   - Build admin tab with sub-tabs for wishlist moderation
   - Integrate VideoPreviewModal and DenyReasonDialog
   - _Requirements: FR-P2_
 
-- [ ] 15.1 Implement WishlistModerationTab with sub-tabs
+- [x] 15.1 Implement WishlistModerationTab with sub-tabs
   - Create tab with Pending/Approved/Denied sub-tabs and video grids
   - _Requirements: FR-P2_
 
-- [ ] 15.2 Add action buttons and modal integrations
+- [x] 15.2 Add action buttons and modal integrations
   - Implement Watch, Approve, Deny, Reverse buttons with modal integrations
   - _Requirements: FR-P2_
 
