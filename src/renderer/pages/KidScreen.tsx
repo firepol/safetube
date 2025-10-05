@@ -4,6 +4,7 @@ import { SourceGrid } from '../components/layout/SourceGrid';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
 import { SearchBar } from '../components/search/SearchBar';
 import { useRateLimit } from '../App';
+import { useWishlist } from '../contexts/WishlistContext';
 import { logVerbose } from '../lib/logging';
 
 export const KidScreen: React.FC = () => {
@@ -15,6 +16,7 @@ export const KidScreen: React.FC = () => {
   const [timeTrackingState, setTimeTrackingState] = useState<any>(null);
   const [isVerboseLogging, setIsVerboseLogging] = useState(false);
   const { showWarning } = useRateLimit();
+  const { wishlistCounts } = useWishlist();
   const warningShownRef = useRef(false);
 
   useEffect(() => {
@@ -103,6 +105,10 @@ export const KidScreen: React.FC = () => {
     navigate('/history');
   };
 
+  const handleWishlistClick = () => {
+    navigate('/wishlist');
+  };
+
   const handleSearch = (query: string) => {
     if (query.trim()) {
       navigate(`/search?q=${encodeURIComponent(query)}`);
@@ -161,6 +167,15 @@ export const KidScreen: React.FC = () => {
           sources={[
             ...sources,
             {
+              id: 'wishlist',
+              title: 'My Wishlist',
+              type: 'wishlist',
+              videos: [],
+              videoCount: wishlistCounts.pending + wishlistCounts.approved,
+              thumbnail: '⭐',
+              badge: wishlistCounts.pending > 0 ? wishlistCounts.pending : undefined
+            },
+            {
               id: 'history',
               title: 'Video History',
               type: 'history',
@@ -172,6 +187,8 @@ export const KidScreen: React.FC = () => {
           onSourceClick={(source) => {
             if (source.id === 'history') {
               handleHistoryClick();
+            } else if (source.id === 'wishlist') {
+              handleWishlistClick();
             } else {
               handleSourceClick(source);
             }

@@ -8,6 +8,7 @@ import { AdminPage } from './pages/AdminPage';
 import { WatchedVideosPage } from './components/video/WatchedVideosPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SearchResultsPage } from './pages/SearchResultsPage';
+import { WishlistPage } from './pages/WishlistPage';
 import { ErrorFallbackPage } from './pages/ErrorFallbackPage';
 import { RateLimitWarning } from './components/layout/RateLimitWarning';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -204,6 +205,11 @@ function App() {
                   <Route path="/search" element={
                     <ErrorBoundary>
                       <SearchResultsPage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/wishlist" element={
+                    <ErrorBoundary>
+                      <WishlistPage />
                     </ErrorBoundary>
                   } />
                   <Route path="/player/:id" element={

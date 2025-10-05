@@ -143,16 +143,16 @@
   - Test context functionality, polling, and helper functions
   - _Requirements: NFR-5_
 
-- [ ] 10. Create WishlistPage for kids with tab navigation
+- [x] 10. Create WishlistPage for kids with tab navigation
   - Build kid's wishlist page with Pending/Approved/Denied tabs
   - Implement remove and play functionality with badge counts
   - _Requirements: FR-K1_
 
-- [ ] 10.1 Implement WishlistPage with tab navigation
+- [x] 10.1 Implement WishlistPage with tab navigation
   - Create page with three tabs displaying videos by status
   - _Requirements: FR-K1_
 
-- [ ] 10.2 Add action buttons and denial reason display
+- [x] 10.2 Add action buttons and denial reason display
   - Implement remove, play functionality and show denial reasons
   - _Requirements: FR-K1_
 
