@@ -235,6 +235,22 @@ export interface ElectronAPI {
 
   // Path utilities for cross-platform compatibility
   pathJoin: (...paths: string[]) => Promise<string>;
+
+  // Search functionality
+  searchDatabase: (query: string) => Promise<any[]>;
+  searchYouTube: (query: string) => Promise<any[]>;
+  getSearchHistory: (limit?: number) => Promise<any[]>;
+
+  // Wishlist functionality
+  wishlistAdd: (video: any) => Promise<{ success: boolean; error?: string }>;
+  wishlistRemove: (videoId: string) => Promise<{ success: boolean; error?: string }>;
+  wishlistGetByStatus: (status: 'pending' | 'approved' | 'denied') => Promise<any[]>;
+  wishlistApprove: (videoId: string) => Promise<{ success: boolean; error?: string }>;
+  wishlistDeny: (videoId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
+  
+  // Wishlist events
+  onWishlistUpdated: (callback: () => void) => any;
+  offWishlistUpdated: (wrappedCallback: any) => void;
 }
 declare global {
   interface Window {

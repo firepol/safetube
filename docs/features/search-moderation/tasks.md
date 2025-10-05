@@ -126,16 +126,16 @@
   - Position between breadcrumbs and time indicator with source-scoped search option
   - _Requirements: FR-S3_
 
-- [ ] 9. Create WishlistContext for state management
+- [x] 9. Create WishlistContext for state management
   - Build context provider for wishlist data with real-time updates and caching
   - Implement polling and IPC event listening for status changes
   - _Requirements: FR-K2_
 
-- [ ] 9.1 Implement WishlistProvider with data loading and caching
+- [x] 9.1 Implement WishlistProvider with data loading and caching
   - Create context with wishlist data by status and 30s TTL cache
   - _Requirements: FR-K2_
 
-- [ ] 9.2 Add real-time updates and helper functions
+- [x] 9.2 Add real-time updates and helper functions
   - Listen for IPC events and provide add, remove, refresh functions
   - _Requirements: FR-K2_
 
