@@ -9,13 +9,13 @@
 - `src/main/database/migrations.ts` (add migration)
 
 **Subtasks**:
-- [ ] Create `searches` table with indexes
-- [ ] Create `wishlist` table with indexes and constraints
-- [ ] Create `search_results_cache` table with indexes
-- [ ] Update schema_version table
-- [ ] Add migration runner logic
-- [ ] Test migration on fresh database
-- [ ] Test migration on existing database
+- [x] Create `searches` table with indexes
+- [x] Create `wishlist` table with indexes and constraints
+- [x] Create `search_results_cache` table with indexes
+- [x] Update schema_version table
+- [x] Add migration runner logic
+- [x] Test migration on fresh database
+- [x] Test migration on existing database
 
 **Acceptance Criteria**:
 - All three tables created successfully

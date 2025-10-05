@@ -1810,6 +1810,9 @@ app.on('ready', async () => {
     const schemaManager = new SimpleSchemaManager(dbService);
     await schemaManager.initializePhase1Schema();
 
+    // Initialize Search + Moderation schema
+    await schemaManager.initializeSearchModerationSchema();
+
     // Initialize DownloadManager with database connection
     DownloadManager.initialize(dbService);
     log.info('[Main] DownloadManager initialized with database');
