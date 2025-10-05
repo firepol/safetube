@@ -7,6 +7,7 @@ import { SourcePage } from './pages/SourcePage';
 import { AdminPage } from './pages/AdminPage';
 import { WatchedVideosPage } from './components/video/WatchedVideosPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { SearchResultsPage } from './pages/SearchResultsPage';
 import { ErrorFallbackPage } from './pages/ErrorFallbackPage';
 import { RateLimitWarning } from './components/layout/RateLimitWarning';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
@@ -196,6 +197,11 @@ function App() {
                   <Route path="/history" element={
                     <ErrorBoundary>
                       <HistoryPage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/search" element={
+                    <ErrorBoundary>
+                      <SearchResultsPage />
                     </ErrorBoundary>
                   } />
                   <Route path="/player/:id" element={

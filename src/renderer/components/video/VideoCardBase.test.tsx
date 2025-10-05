@@ -302,3 +302,255 @@ describe('VideoCardBase External Link Opening', () => {
     expect(overlay).toBeInTheDocument();
   });
 });
+des
+cribe('VideoCardBase Wishlist Functionality', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('should show wishlist button for unapproved source videos', () => {
+    const props = {
+      id: 'test-video-1',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isApprovedSource: false,
+      showWishlistButton: true,
+      channelName: 'Test Channel',
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    expect(screen.getByText('+ Add to Wishlist')).toBeInTheDocument();
+    expect(screen.getByText('Test Channel')).toBeInTheDocument();
+  });
+
+  test('should not show wishlist button for approved source videos', () => {
+    const props = {
+      id: 'test-video-1',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isApprovedSource: true,
+      showWishlistButton: true,
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    expect(screen.queryByText('+ Add to Wishlist')).not.toBeInTheDocument();
+  });
+
+  test('should show disabled wishlist button when video is already in wishlist', () => {
+    const props = {
+      id: 'test-video-1',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isApprovedSource: false,
+      isInWishlist: true,
+      wishlistStatus: 'pending' as const,
+      showWishlistButton: true,
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    const wishlistButton = screen.getByText('In Wishlist (Pending)');
+    expect(wishlistButton).toBeInTheDocument();
+    expect(wishlistButton).toBeDisabled();
+  });
+
+  test('should call onWishlistAdd when wishlist button is clicked', () => {
+    const mockOnWishlistAdd = vi.fn();
+    const props = {
+      id: 'test-video-1',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isApprovedSource: false,
+      showWishlistButton: true,
+      onWishlistAdd: mockOnWishlistAdd,
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    const wishlistButton = screen.getByText('+ Add to Wishlist');
+    fireEvent.click(wishlistButton);
+
+    expect(mockOnWishlistAdd).toHaveBeenCalledWith(expect.objectContaining({
+      id: 'test-video-1',
+      title: 'Test Video',
+    }));
+  });
+
+  test('should prevent video click when wishlist button is clicked', () => {
+    const mockOnVideoClick = vi.fn();
+    const mockOnWishlistAdd = vi.fn();
+    const props = {
+      id: 'test-video-1',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isApprovedSource: false,
+      showWishlistButton: true,
+      onVideoClick: mockOnVideoClick,
+      onWishlistAdd: mockOnWishlistAdd,
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    const wishlistButton = screen.getByText('+ Add to Wishlist');
+    fireEvent.click(wishlistButton);
+
+    expect(mockOnWishlistAdd).toHaveBeenCalled();
+    expect(mockOnVideoClick).not.toHaveBeenCalled();
+  });
+
+  test('should show "Needs Approval" badge for unapproved source videos', () => {
+    const props = {
+      id: 'test-video-1',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isApprovedSource: false,
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    expect(screen.getByText('Needs Approval')).toBeInTheDocument();
+  });
+
+  test('should show wishlist status badge when video is in wishlist', () => {
+    const props = {
+      id: 'test-video-1',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isApprovedSource: false,
+      isInWishlist: true,
+      wishlistStatus: 'approved' as const,
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    expect(screen.getByText('Approved')).toBeInTheDocument();
+  });
+
+  test('should show video details dialog for unapproved videos when clicked', () => {
+    const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const props = {
+      id: 'test-video-1',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isApprovedSource: false,
+      channelName: 'Test Channel',
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    const thumbnail = screen.getByRole('img');
+    fireEvent.click(thumbnail);
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      '[VideoCardBase] Show video details dialog for unapproved video:',
+      expect.objectContaining({
+        id: 'test-video-1',
+        title: 'Test Video',
+        channelName: 'Test Channel',
+      })
+    );
+
+    consoleSpy.mockRestore();
+  });
+
+  test('should navigate to video player for approved source videos when clicked', () => {
+    const props = {
+      id: 'test-video-1',
+      thumbnail: 'test-thumbnail.jpg',
+      title: 'Test Video',
+      duration: 180,
+      type: 'youtube' as const,
+      isApprovedSource: true,
+    };
+
+    render(
+      <TestWrapper>
+        <VideoCardBase {...props} />
+      </TestWrapper>
+    );
+
+    const thumbnail = screen.getByRole('img');
+    fireEvent.click(thumbnail);
+
+    expect(mockNavigate).toHaveBeenCalledWith('/player/test-video-1');
+  });
+
+  test('should show different wishlist button text based on status', () => {
+    const testCases = [
+      { status: 'pending' as const, expectedText: 'In Wishlist (Pending)' },
+      { status: 'approved' as const, expectedText: 'In Wishlist (Approved)' },
+      { status: 'denied' as const, expectedText: 'In Wishlist (Denied)' },
+    ];
+
+    testCases.forEach(({ status, expectedText }) => {
+      const { unmount } = render(
+        <TestWrapper>
+          <VideoCardBase
+            id="test-video-1"
+            thumbnail="test-thumbnail.jpg"
+            title="Test Video"
+            duration={180}
+            type="youtube"
+            isApprovedSource={false}
+            isInWishlist={true}
+            wishlistStatus={status}
+            showWishlistButton={true}
+          />
+        </TestWrapper>
+      );
+
+      expect(screen.getByText(expectedText)).toBeInTheDocument();
+      unmount();
+    });
+  });
+});

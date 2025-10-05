@@ -29,6 +29,18 @@ export interface VideoCardBaseProps {
   sourceId?: string;
   lastWatched?: string;
   onFavoriteToggle?: (videoId: string, isFavorite: boolean) => void;
+  // Wishlist functionality
+  isApprovedSource?: boolean;
+  isInWishlist?: boolean;
+  wishlistStatus?: 'pending' | 'approved' | 'denied';
+  showWishlistButton?: boolean;
+  onWishlistAdd?: (video: VideoCardBaseProps) => void;
+  // Additional metadata for wishlist
+  description?: string;
+  channelId?: string;
+  channelName?: string;
+  url?: string;
+  publishedAt?: string;
 }
 
 export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
@@ -51,6 +63,16 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
   sourceId,
   lastWatched,
   onFavoriteToggle,
+  isApprovedSource = true,
+  isInWishlist = false,
+  wishlistStatus,
+  showWishlistButton = false,
+  onWishlistAdd,
+  description,
+  channelId,
+  channelName,
+  url,
+  publishedAt,
 }) => {
   const progressPercentage = Math.min(100, Math.max(0, progress ?? 0));
   const isLongTitle = title.length > 32;
@@ -59,6 +81,13 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
   const handleClick = () => {
     // Prevent clicks on unavailable videos
     if (!isAvailable) {
+      return;
+    }
+
+    // For unapproved sources, show video details dialog instead of playing
+    if (!isApprovedSource && !isFallback) {
+      // TODO: Show video details dialog
+      console.log('[VideoCardBase] Show video details dialog for unapproved video:', { id, title, channelName });
       return;
     }
 
@@ -79,7 +108,17 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
           isAvailable,
           isFallback,
           errorInfo,
-          onVideoClick
+          onVideoClick,
+          isApprovedSource,
+          isInWishlist,
+          wishlistStatus,
+          showWishlistButton,
+          onWishlistAdd,
+          description,
+          channelId,
+          channelName,
+          url,
+          publishedAt,
         });
       } else {
         const encodedId = encodeURIComponent(id);
@@ -89,6 +128,43 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
       }
     } else {
       console.log('[VideoCardBase] Click blocked - video is fallback');
+    }
+  };
+
+  const handleWishlistAdd = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent video click
+    if (onWishlistAdd) {
+      onWishlistAdd({
+        id,
+        thumbnail,
+        title,
+        duration,
+        resumeAt,
+        watched,
+        isClicked,
+        type,
+        progress,
+        isAvailable,
+        isFallback,
+        errorInfo,
+        unavailableReason,
+        onVideoClick,
+        isFavorite,
+        showFavoriteIcon,
+        sourceId,
+        lastWatched,
+        onFavoriteToggle,
+        isApprovedSource,
+        isInWishlist,
+        wishlistStatus,
+        showWishlistButton,
+        onWishlistAdd,
+        description,
+        channelId,
+        channelName,
+        url,
+        publishedAt,
+      });
     }
   };
 
@@ -148,6 +224,27 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
             {errorInfo.type === 'deleted' ? 'Deleted' : 
              errorInfo.type === 'private' ? 'Private' : 
              errorInfo.type === 'restricted' ? 'Restricted' : 'Unavailable'}
+          </div>
+        )}
+
+        {/* Approval status badge */}
+        {!isApprovedSource && !isFallback && (
+          <div className="absolute top-2 left-2 bg-yellow-500 text-white px-2 py-1 rounded text-xs font-medium">
+            Needs Approval
+          </div>
+        )}
+
+        {/* Wishlist status badge */}
+        {isInWishlist && wishlistStatus && !isFallback && (
+          <div className={cn(
+            "absolute top-2 right-2 px-2 py-1 rounded text-xs font-medium",
+            wishlistStatus === 'pending' && "bg-blue-500 text-white",
+            wishlistStatus === 'approved' && "bg-green-500 text-white",
+            wishlistStatus === 'denied' && "bg-red-500 text-white"
+          )}>
+            {wishlistStatus === 'pending' && 'Pending'}
+            {wishlistStatus === 'approved' && 'Approved'}
+            {wishlistStatus === 'denied' && 'Denied'}
           </div>
         )}
         
@@ -257,6 +354,36 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
             />
           )}
         </div>
+
+        {/* Channel name for unapproved videos */}
+        {!isApprovedSource && channelName && !isFallback && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {channelName}
+          </p>
+        )}
+
+        {/* Wishlist Button */}
+        {showWishlistButton && !isApprovedSource && !isFallback && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <button
+              onClick={handleWishlistAdd}
+              disabled={isInWishlist}
+              className={cn(
+                "w-full text-sm px-3 py-2 rounded transition-colors font-medium",
+                isInWishlist
+                  ? "bg-muted text-muted-foreground cursor-not-allowed"
+                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
+              )}
+            >
+              {isInWishlist ? (
+                wishlistStatus === 'pending' ? 'In Wishlist (Pending)' :
+                wishlistStatus === 'approved' ? 'In Wishlist (Approved)' :
+                wishlistStatus === 'denied' ? 'In Wishlist (Denied)' :
+                'In Wishlist'
+              ) : '+ Add to Wishlist'}
+            </button>
+          </div>
+        )}
       </div>
     </>
   );

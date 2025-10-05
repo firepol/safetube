@@ -62,67 +62,67 @@
   - Create handlers for all wishlist operations and status management
   - _Requirements: FR-W2, FR-W3, FR-P2_
 
-- [ ] 5. Create reusable SearchBar component
+- [x] 5. Create reusable SearchBar component
   - Build SearchBar component with debouncing, keyboard shortcuts, and loading states
   - Style with Tailwind CSS and ensure responsive design
   - _Requirements: FR-S3_
 
-- [ ] 5.1 Implement SearchBar with input field and search icon
+- [x] 5.1 Implement SearchBar with input field and search icon
   - Create component with props interface and search functionality
   - _Requirements: FR-S3_
 
-- [ ] 5.2 Add debouncing and clear button functionality
+- [x] 5.2 Add debouncing and clear button functionality
   - Implement 300ms debouncing and clear button when text present
   - _Requirements: FR-S3_
 
-- [ ]* 5.3 Write SearchBar unit tests
+- [x]* 5.3 Write SearchBar unit tests
   - Test input, debounce, keyboard shortcuts, and loading states
   - _Requirements: NFR-5_
 
-- [ ] 6. Create SearchResultsPage with grid display
+- [x] 6. Create SearchResultsPage with grid display
   - Build search results page with SearchBar and VideoGrid integration
   - Handle database search, YouTube fallback, and loading states
   - _Requirements: FR-S1, FR-S2, FR-S3_
 
-- [ ] 6.1 Implement SearchResultsPage component with search state management
+- [x] 6.1 Implement SearchResultsPage component with search state management
   - Create page component with search bar and results display
   - _Requirements: FR-S1, FR-S2_
 
-- [ ] 6.2 Add YouTube fallback and manual search functionality
+- [x] 6.2 Add YouTube fallback and manual search functionality
   - Handle auto-fallback to YouTube when 0 results and manual YouTube search button
   - _Requirements: FR-S2_
 
-- [ ]* 6.3 Write SearchResultsPage unit tests
+- [x]* 6.3 Write SearchResultsPage unit tests
   - Test search functionality, fallback behavior, and state management
   - _Requirements: NFR-5_
 
-- [ ] 7. Extend VideoCardBase to support wishlist functionality
+- [x] 7. Extend VideoCardBase to support wishlist functionality
   - Add wishlist button for unapproved videos and video details dialog
   - Handle wishlist add operations and disabled states
   - _Requirements: FR-V2, FR-V3_
 
-- [ ] 7.1 Add wishlist button and visibility logic
+- [x] 7.1 Add wishlist button and visibility logic
   - Implement "+ Wishlist" button with proper visibility and disabled states
   - _Requirements: FR-V3_
 
-- [ ] 7.2 Add video details dialog for unapproved videos
+- [x] 7.2 Add video details dialog for unapproved videos
   - Create dialog showing video metadata with wishlist add functionality
   - _Requirements: FR-V2_
 
-- [ ]* 7.3 Update VideoCardBase unit tests
+- [x]* 7.3 Update VideoCardBase unit tests
   - Test wishlist button functionality and dialog behavior
   - _Requirements: NFR-5_
 
-- [ ] 8. Integrate search functionality in Kid Screen and Source Page
+- [x] 8. Integrate search functionality in Kid Screen and Source Page
   - Add SearchBar to both pages with proper positioning and navigation
   - Wire up search handlers and ensure responsive layout
   - _Requirements: FR-S3_
 
-- [ ] 8.1 Add SearchBar to Kid Screen header
+- [x] 8.1 Add SearchBar to Kid Screen header
   - Position between title and time indicator with navigation to results page
   - _Requirements: FR-S3_
 
-- [ ] 8.2 Add SearchBar to Source Page
+- [x] 8.2 Add SearchBar to Source Page
   - Position between breadcrumbs and time indicator with source-scoped search option
   - _Requirements: FR-S3_
 

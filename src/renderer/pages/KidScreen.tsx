@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SourceGrid } from '../components/layout/SourceGrid';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
+import { SearchBar } from '../components/search/SearchBar';
 import { useRateLimit } from '../App';
 import { logVerbose } from '../lib/logging';
 
@@ -102,6 +103,12 @@ export const KidScreen: React.FC = () => {
     navigate('/history');
   };
 
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
+      navigate(`/search?q=${encodeURIComponent(query)}`);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -138,6 +145,13 @@ export const KidScreen: React.FC = () => {
     <div className="p-4">
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold">Kid-Friendly Videos</h1>
+        <div className="flex-1 max-w-md mx-8">
+          <SearchBar
+            onSearch={handleSearch}
+            placeholder="Search videos..."
+            className="w-full"
+          />
+        </div>
         <TimeIndicator initialState={timeTrackingState} />
       </div>
       

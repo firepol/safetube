@@ -1,0 +1,310 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { SearchBar } from '../components/search/SearchBar';
+import { VideoCardBase } from '../components/video/VideoCardBase';
+import { SearchResult } from '../../shared/types';
+
+interface SearchResultsPageProps {}
+
+export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [searchType, setSearchType] = useState<'database' | 'youtube'>('database');
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const query = searchParams.get('q') || '';
+  const sourceId = searchParams.get('source');
+
+  // Perform database search
+  const performDatabaseSearch = useCallback(async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      // TODO: Implement source-scoped search when available
+      // For now, search all sources
+      const searchResults = await window.electron.searchDatabase(searchQuery);
+      
+      // Filter results by source if sourceId is provided
+      const filteredResults = sourceId 
+        ? searchResults.filter((result: SearchResult) => result.channelId === sourceId || result.url?.includes(sourceId))
+        : searchResults;
+      
+      setResults(filteredResults);
+      setSearchType('database');
+      setHasSearched(true);
+
+      // Auto-fallback to YouTube if no database results
+      if (filteredResults.length === 0) {
+        await performYouTubeSearch(searchQuery);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Database search failed');
+      setResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [sourceId]);
+
+  // Perform YouTube search
+  const performYouTubeSearch = useCallback(async (searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const searchResults = await window.electron.searchYouTube(searchQuery);
+      setResults(searchResults);
+      setSearchType('youtube');
+      setHasSearched(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'YouTube search failed');
+      setResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Handle search from SearchBar
+  const handleSearch = useCallback((searchQuery: string) => {
+    if (!searchQuery.trim()) return;
+    
+    // Update URL with search query
+    setSearchParams({ q: searchQuery });
+    
+    // Perform database search (with auto-fallback to YouTube)
+    performDatabaseSearch(searchQuery);
+  }, [setSearchParams, performDatabaseSearch]);
+
+  // Handle manual YouTube search button
+  const handleYouTubeSearch = useCallback(() => {
+    if (!query.trim()) return;
+    performYouTubeSearch(query);
+  }, [query, performYouTubeSearch]);
+
+  // Handle video click
+  const handleVideoClick = useCallback((video: SearchResult) => {
+    if (video.isApprovedSource) {
+      // Navigate to video player for approved sources
+      navigate(`/video/${encodeURIComponent(video.id)}`);
+    } else {
+      // Show video details dialog for unapproved sources
+      // This will be implemented when we extend VideoCardBase
+      console.log('Show video details dialog for:', video);
+    }
+  }, [navigate]);
+
+  // Search on initial load if query exists
+  useEffect(() => {
+    if (query && !hasSearched) {
+      performDatabaseSearch(query);
+    }
+  }, [query, hasSearched, performDatabaseSearch]);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
+            </button>
+            
+            <div className="flex-1 max-w-2xl mx-8">
+              <SearchBar
+                onSearch={handleSearch}
+                placeholder="Search videos..."
+                isLoading={isLoading}
+                autoFocus={!query}
+              />
+            </div>
+
+            <div className="w-16" /> {/* Spacer for balance */}
+          </div>
+        </div>
+      </div>
+
+      {/* Search Results Header */}
+      {hasSearched && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Search Results
+              </h1>
+              {query && (
+                <p className="text-gray-600 mt-1">
+                  {results.length} results for "{query}" 
+                  {sourceId && <span className="text-sm text-blue-600"> in current source</span>}
+                  <span className="ml-2 text-sm bg-gray-100 px-2 py-1 rounded">
+                    {searchType === 'database' ? 'Database' : 'YouTube'}
+                  </span>
+                </p>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              {sourceId && (
+                <button
+                  onClick={() => {
+                    // Remove source parameter to search all sources
+                    const newParams = new URLSearchParams(searchParams);
+                    newParams.delete('source');
+                    setSearchParams(newParams);
+                    performDatabaseSearch(query);
+                  }}
+                  disabled={isLoading}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Search All Sources
+                </button>
+              )}
+              {searchType === 'database' && (
+                <button
+                  onClick={handleYouTubeSearch}
+                  disabled={isLoading}
+                  className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg transition-colors flex items-center"
+                >
+                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                  </svg>
+                  Search YouTube
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Error State */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <div className="flex">
+                <svg className="w-5 h-5 text-red-400 mr-3 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <h3 className="text-sm font-medium text-red-800">Search Error</h3>
+                  <p className="text-sm text-red-700 mt-1">{error}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <span className="ml-3 text-gray-600">Searching...</span>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && hasSearched && results.length === 0 && !error && (
+            <div className="text-center py-12">
+              <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No results found</h3>
+              <p className="text-gray-600 mb-4">
+                {searchType === 'database' 
+                  ? "No videos found in your approved sources. Try searching YouTube for new content."
+                  : "No videos found on YouTube for this search."
+                }
+              </p>
+              {searchType === 'database' && (
+                <button
+                  onClick={handleYouTubeSearch}
+                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Search YouTube
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Results Grid */}
+          {!isLoading && results.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {results.map((video) => (
+                <VideoCardBase
+                  key={video.id}
+                  id={video.id}
+                  thumbnail={video.thumbnail}
+                  title={video.title}
+                  duration={video.duration}
+                  type="youtube"
+                  isApprovedSource={video.isApprovedSource}
+                  isInWishlist={video.isInWishlist}
+                  wishlistStatus={video.wishlistStatus}
+                  showWishlistButton={!video.isApprovedSource}
+                  description={video.description}
+                  channelId={video.channelId}
+                  channelName={video.channelName}
+                  url={video.url}
+                  publishedAt={video.publishedAt}
+                  onVideoClick={handleVideoClick}
+                  onWishlistAdd={async (videoData) => {
+                    try {
+                      await window.electron.wishlistAdd({
+                        id: videoData.id,
+                        title: videoData.title,
+                        thumbnail: videoData.thumbnail,
+                        description: videoData.description || '',
+                        channelId: videoData.channelId || '',
+                        channelName: videoData.channelName || '',
+                        duration: videoData.duration,
+                        url: videoData.url || '',
+                        publishedAt: videoData.publishedAt || new Date().toISOString(),
+                      });
+                      
+                      // Update local state to reflect wishlist addition
+                      setResults(prevResults => 
+                        prevResults.map(result => 
+                          result.id === videoData.id 
+                            ? { ...result, isInWishlist: true, wishlistStatus: 'pending' as const }
+                            : result
+                        )
+                      );
+                    } catch (err) {
+                      console.error('Failed to add to wishlist:', err);
+                      // TODO: Show error toast
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Initial State */}
+      {!hasSearched && !query && (
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center">
+            <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <h2 className="text-xl font-medium text-gray-900 mb-2">Search for Videos</h2>
+            <p className="text-gray-600">
+              Enter a search term to find videos from your approved sources or YouTube.
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default SearchResultsPage;
