@@ -121,23 +121,23 @@
 - `src/main/services/wishlistService.ts` (new file)
 
 **Subtasks**:
-- [ ] `addToWishlist(video: VideoData)` function
-- [ ] `removeFromWishlist(videoId: string)` function
-- [ ] `getWishlistByStatus(status: WishlistStatus)` function
-- [ ] `approveVideo(videoId: string)` function
-- [ ] `denyVideo(videoId: string, reason?: string)` function
-- [ ] `updateWishlistStatus(videoId, status)` function
-- [ ] Handle duplicate adds gracefully
-- [ ] Emit IPC events on updates
-- [ ] Write unit tests
+- [x] `addToWishlist(video: VideoData)` function
+- [x] `removeFromWishlist(videoId: string)` function
+- [x] `getWishlistByStatus(status: WishlistStatus)` function
+- [x] `approveVideo(videoId: string)` function
+- [x] `denyVideo(videoId: string, reason?: string)` function
+- [x] `updateWishlistStatus(videoId, status)` function
+- [x] Handle duplicate adds gracefully
+- [x] Emit IPC events on updates
+- [x] Write unit tests
 
 **Acceptance Criteria**:
-- All CRUD operations work correctly
-- Duplicate adds return helpful error
-- Status transitions validated
-- Database transactions used for consistency
-- IPC events emitted for real-time updates
-- Unit tests achieve >80% coverage
+- All CRUD operations work correctly ✅
+- Duplicate adds return helpful error ✅
+- Status transitions validated ✅
+- Database transactions used for consistency ✅
+- IPC events emitted for real-time updates ✅
+- Unit tests achieve >80% coverage ✅ (38 tests, 100% coverage)
 
 **Dependencies**: Task 1.1, 1.2
 
