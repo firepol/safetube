@@ -504,7 +504,7 @@ contextBridge.exposeInMainWorld(
     pathJoin: (...paths: string[]) => ipcRenderer.invoke(IPC.UTILS.PATH_JOIN, ...paths),
 
     // Search handlers
-    searchDatabase: (query: string) => ipcRenderer.invoke(IPC.SEARCH.DATABASE, query),
+    searchDatabase: (query: string, sourceId?: string) => ipcRenderer.invoke(IPC.SEARCH.DATABASE, query, sourceId),
     searchYouTube: (query: string) => ipcRenderer.invoke(IPC.SEARCH.YOUTUBE, query),
     getSearchHistory: (limit?: number) => ipcRenderer.invoke(IPC.SEARCH.HISTORY_GET, limit),
     getCachedSearchResults: (query: string, searchType: 'database' | 'youtube') => 

@@ -318,6 +318,7 @@ export interface SearchResult {
   channelName: string;
   url: string;
   publishedAt: string;
+  type?: 'youtube' | 'local' | 'dlna'; // Video type
   isApprovedSource?: boolean; // Whether video is from approved source
   isInWishlist?: boolean; // Whether video is already in wishlist
   wishlistStatus?: WishlistStatus; // Status if in wishlist

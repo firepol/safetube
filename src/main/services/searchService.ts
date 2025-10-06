@@ -38,19 +38,31 @@ export class SearchService {
    * FTS5 uses: " * AND OR NOT NEAR ( ) ^ - +
    */
   private escapeFts5Query(query: string): string {
-    // Remove or escape FTS5 special characters
-    // Keep spaces and alphanumeric characters
-    return query
-      .replace(/["*()^]/g, '') // Remove these characters
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .trim();
+    // For FTS5, we need to be more careful with escaping
+    // Split into words and handle each word separately
+    const words = query
+      .trim()
+      .split(/\s+/)
+      .filter(word => word.length > 0)
+      .map(word => {
+        // Remove special FTS5 characters but keep basic punctuation
+        const cleaned = word.replace(/["*()^]/g, '');
+        // If the word contains special characters, wrap in quotes
+        if (cleaned.includes('-') || cleaned.includes('+')) {
+          return `"${cleaned}"`;
+        }
+        return cleaned;
+      })
+      .filter(word => word.length > 0);
+
+    return words.join(' ');
   }
 
   /**
    * Search videos in database using FTS5 full-text search
    * Returns results matching title or description
    */
-  async searchDatabase(query: string): Promise<SearchResult[]> {
+  async searchDatabase(query: string, sourceId?: string): Promise<SearchResult[]> {
     try {
       log.info(`[SearchService] Searching database for: "${query}"`);
 
@@ -67,51 +79,215 @@ export class SearchService {
         return [];
       }
 
-      // Search using FTS5 index
-      const results = await this.db.all<any>(`
-        SELECT
-          v.id,
-          v.title,
-          v.thumbnail,
-          v.description,
-          v.duration,
-          v.url,
-          v.published_at,
-          v.source_id,
-          s.channel_id,
-          s.title as channel_name
-        FROM videos_fts vf
-        JOIN videos v ON v.rowid = vf.rowid
-        LEFT JOIN sources s ON v.source_id = s.id
-        WHERE videos_fts MATCH ?
-        ORDER BY vf.rank
-        LIMIT 50
-      `, [escapedQuery]);
+      // First, try FTS5 search
+      let results: any[] = [];
+      
+      try {
+        // Build query with optional source filter
+        let ftsQuery = `
+          SELECT
+            v.id,
+            v.title,
+            v.thumbnail,
+            v.description,
+            v.duration,
+            v.url,
+            v.published_at,
+            v.source_id,
+            s.channel_id,
+            s.title as channel_name,
+            s.type as source_type,
+            w.status as wishlist_status
+          FROM videos_fts vf
+          JOIN videos v ON v.rowid = vf.rowid
+          LEFT JOIN sources s ON v.source_id = s.id
+          LEFT JOIN wishlist w ON v.id = w.video_id
+          WHERE videos_fts MATCH ?`;
+        
+        const queryParams = [escapedQuery];
+        
+        if (sourceId) {
+          ftsQuery += ` AND v.source_id = ?`;
+          queryParams.push(sourceId);
+        }
+        
+        ftsQuery += ` ORDER BY vf.rank LIMIT 50`;
+        
+        results = await this.db.all<any>(ftsQuery, queryParams);
+        
+        // If FTS5 search returns few results, also search in URL field for local videos
+        if (results.length < 5) {
+          let urlSearchQuery = `
+            SELECT DISTINCT
+              v.id,
+              v.title,
+              v.thumbnail,
+              v.description,
+              v.duration,
+              v.url,
+              v.published_at,
+              v.source_id,
+              s.channel_id,
+              s.title as channel_name,
+              s.type as source_type,
+              w.status as wishlist_status
+            FROM videos v
+            LEFT JOIN sources s ON v.source_id = s.id
+            LEFT JOIN wishlist w ON v.id = w.video_id
+            WHERE v.url LIKE ?`;
+          
+          const urlQueryParams = [`%${query}%`];
+          
+          // Exclude already found results
+          if (results.length > 0) {
+            const placeholders = results.map(() => '?').join(',');
+            urlSearchQuery += ` AND v.id NOT IN (${placeholders})`;
+            urlQueryParams.push(...results.map(r => r.id));
+          }
+          
+          if (sourceId) {
+            urlSearchQuery += ` AND v.source_id = ?`;
+            urlQueryParams.push(sourceId);
+          }
+          
+          urlSearchQuery += ` LIMIT ${50 - results.length}`;
+          
+          const urlResults = await this.db.all<any>(urlSearchQuery, urlQueryParams);
+          results = [...results, ...urlResults];
+        }
+      } catch (ftsError) {
+        log.warn(`[SearchService] FTS5 search failed, falling back to LIKE search:`, ftsError);
+        
+        // Fallback to LIKE search if FTS5 fails
+        const likeQuery = `%${query.replace(/[%_]/g, '\\$&')}%`;
+        let fallbackQuery = `
+          SELECT
+            v.id,
+            v.title,
+            v.thumbnail,
+            v.description,
+            v.duration,
+            v.url,
+            v.published_at,
+            v.source_id,
+            s.channel_id,
+            s.title as channel_name,
+            s.type as source_type,
+            w.status as wishlist_status
+          FROM videos v
+          LEFT JOIN sources s ON v.source_id = s.id
+          LEFT JOIN wishlist w ON v.id = w.video_id
+          WHERE (v.title LIKE ? OR v.description LIKE ? OR v.url LIKE ?)`;
+        
+        const fallbackParams = [likeQuery, likeQuery, likeQuery];
+        
+        if (sourceId) {
+          fallbackQuery += ` AND v.source_id = ?`;
+          fallbackParams.push(sourceId);
+        }
+        
+        fallbackQuery += ` ORDER BY 
+            CASE 
+              WHEN v.title LIKE ? THEN 1 
+              WHEN v.description LIKE ? THEN 2
+              ELSE 3 
+            END,
+            v.title
+          LIMIT 50`;
+        
+        fallbackParams.push(likeQuery, likeQuery);
+        
+        results = await this.db.all<any>(fallbackQuery, fallbackParams);
+      }
 
       log.info(`[SearchService] Found ${results.length} results`);
 
-      // Record search in history
-      await this.recordSearch(query, 'database', results.length);
+      // Record search in history (include source info if scoped)
+      const searchQuery = sourceId ? `${query} (source: ${sourceId})` : query;
+      await this.recordSearch(searchQuery, 'database', results.length);
 
       // Transform to SearchResult format
-      const searchResults: SearchResult[] = results.map(row => ({
-        id: row.id,
-        title: row.title,
-        thumbnail: row.thumbnail || '',
-        description: row.description || '',
-        duration: row.duration || 0,
-        channelId: row.channel_id || '',
-        channelName: row.channel_name || '',
-        url: row.url || '',
-        publishedAt: row.published_at || '',
-        isApprovedSource: true // All database results are from approved sources
-      }));
+      const searchResults: SearchResult[] = results.map(row => {
+        // Determine video type from source type or video ID
+        let videoType: 'youtube' | 'local' | 'dlna' = 'youtube'; // default
+        if (row.source_type === 'local') {
+          videoType = 'local';
+        } else if (row.source_type === 'dlna') {
+          videoType = 'dlna';
+        } else if (row.id && row.id.startsWith('local:')) {
+          videoType = 'local';
+        }
+
+        // Enhance local video metadata
+        let title = row.title;
+        let thumbnail = row.thumbnail || '';
+
+        if (videoType === 'local' && row.id && row.id.startsWith('local:')) {
+          // Extract filename from path for better title
+          const filePath = row.id.replace('local:', '');
+          if (title.startsWith('Video local:') || !title || title === filePath) {
+            const path = require('path');
+            const fileName = path.basename(filePath, path.extname(filePath));
+            title = fileName;
+          }
+
+          // Generate thumbnail path if not available
+          if (!thumbnail) {
+            // Use a placeholder or generate thumbnail path
+            // For now, use a generic local video icon
+            thumbnail = '/placeholder-thumbnail.svg';
+          }
+        }
+
+        return {
+          id: row.id,
+          title: title,
+          thumbnail: thumbnail,
+          description: row.description || '',
+          duration: row.duration || 0,
+          channelId: row.channel_id || '',
+          channelName: row.channel_name || '',
+          url: row.url || '',
+          publishedAt: row.published_at || '',
+          type: videoType,
+          isApprovedSource: true, // All database results are from approved sources
+          isInWishlist: !!row.wishlist_status, // True if video is in wishlist
+          wishlistStatus: (row.wishlist_status as 'pending' | 'approved' | 'denied') || undefined // The actual status (pending, approved, denied)
+        };
+      });
 
       return searchResults;
     } catch (error) {
       log.error('[SearchService] Error searching database:', error);
       // Don't record failed searches
       throw new Error(`Database search failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Get wishlist statuses for multiple video IDs
+   */
+  private async getWishlistStatuses(videoIds: string[]): Promise<Map<string, string>> {
+    if (videoIds.length === 0) {
+      return new Map();
+    }
+
+    try {
+      const placeholders = videoIds.map(() => '?').join(',');
+      const results = await this.db.all<{video_id: string, status: string}>(`
+        SELECT video_id, status FROM wishlist 
+        WHERE video_id IN (${placeholders})
+      `, videoIds);
+
+      const statusMap = new Map<string, string>();
+      results.forEach(row => {
+        statusMap.set(row.video_id, row.status);
+      });
+
+      return statusMap;
+    } catch (error) {
+      log.warn('[SearchService] Error getting wishlist statuses:', error);
+      return new Map();
     }
   }
 
@@ -198,19 +374,28 @@ export class SearchService {
         return [];
       }
 
+      // Check wishlist status for YouTube videos
+      const videoIds = videos.map((video: any) => video.id);
+      const wishlistStatuses = await this.getWishlistStatuses(videoIds);
+
       // Transform to SearchResult format
-      const searchResults: SearchResult[] = videos.map((video: any) => ({
-        id: video.id,
-        title: video.title,
-        thumbnail: video.thumbnail || '',
-        description: video.description || '',
-        duration: video.duration || 0,
-        channelId: video.channelId || '',
-        channelName: video.channelTitle || '',
-        url: video.url || `https://www.youtube.com/watch?v=${video.id}`,
-        publishedAt: video.publishedAt || '',
-        isApprovedSource: false // YouTube search results are not from approved sources
-      }));
+      const searchResults: SearchResult[] = videos.map((video: any) => {
+        const wishlistStatus = wishlistStatuses.get(video.id);
+        return {
+          id: video.id,
+          title: video.title,
+          thumbnail: video.thumbnail || '',
+          description: video.description || '',
+          duration: video.duration || 0,
+          channelId: video.channelId || '',
+          channelName: video.channelTitle || '',
+          url: video.url || `https://www.youtube.com/watch?v=${video.id}`,
+          publishedAt: video.publishedAt || '',
+          isApprovedSource: false, // YouTube search results are not from approved sources
+          isInWishlist: !!wishlistStatus,
+          wishlistStatus: (wishlistStatus as 'pending' | 'approved' | 'denied') || undefined
+        };
+      });
 
       log.info(`[SearchService] Found ${searchResults.length} YouTube results`);
 

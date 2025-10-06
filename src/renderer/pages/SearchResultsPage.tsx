@@ -2,7 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { SearchBar } from '../components/search/SearchBar';
 import { VideoCardBase, VideoCardBaseProps } from '../components/video/VideoCardBase';
+import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
+import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
 import { SearchResult } from '../../shared/types';
+import { useWishlist } from '../contexts/WishlistContext';
 
 interface SearchResultsPageProps {}
 
@@ -14,9 +17,47 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchType, setSearchType] = useState<'database' | 'youtube'>('database');
   const [hasSearched, setHasSearched] = useState(false);
+  const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
+  const { isInWishlist } = useWishlist();
 
   const query = searchParams.get('q') || '';
   const sourceId = searchParams.get('source');
+
+  // Function to update search results with current wishlist status
+  const updateResultsWithWishlistStatus = useCallback((searchResults: SearchResult[]): SearchResult[] => {
+    return searchResults.map(result => {
+      const wishlistInfo = isInWishlist(result.id);
+      return {
+        ...result,
+        isInWishlist: wishlistInfo.inWishlist,
+        wishlistStatus: wishlistInfo.status
+      };
+    });
+  }, [isInWishlist]);
+
+  // Load time tracking state
+  useEffect(() => {
+    const checkTimeLimits = async () => {
+      try {
+        if (window.electron && window.electron.getTimeTrackingState) {
+          const state = await window.electron.getTimeTrackingState();
+          if (state.isLimitReached) {
+            navigate('/time-up');
+            return;
+          }
+          setTimeTrackingState({
+            timeRemaining: state.timeRemaining,
+            timeLimit: state.timeLimitToday,
+            timeUsed: state.timeUsedToday,
+            isLimitReached: state.isLimitReached
+          });
+        }
+      } catch (error) {
+        console.error('Error checking time limits:', error);
+      }
+    };
+    checkTimeLimits();
+  }, [navigate]);
 
   // Perform database search
   const performDatabaseSearch = useCallback(async (searchQuery: string) => {
@@ -26,22 +67,26 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
     setError(null);
     
     try {
-      // TODO: Implement source-scoped search when available
-      // For now, search all sources
-      const searchResults = await window.electron.searchDatabase(searchQuery);
+      // Use source-scoped search if sourceId is provided
+      const response = await window.electron.searchDatabase(searchQuery, sourceId || undefined);
       
-      // Filter results by source if sourceId is provided
-      const filteredResults = sourceId 
-        ? searchResults.filter((result: SearchResult) => result.channelId === sourceId || result.url?.includes(sourceId))
-        : searchResults;
-      
-      setResults(filteredResults);
-      setSearchType('database');
-      setHasSearched(true);
+      if (response.success && response.data) {
+        const filteredResults = response.data;
+        
+        // Update results with current wishlist status
+        const resultsWithWishlistStatus = updateResultsWithWishlistStatus(filteredResults);
+        
+        setResults(resultsWithWishlistStatus);
+        setSearchType('database');
+        setHasSearched(true);
 
-      // Auto-fallback to YouTube if no database results
-      if (filteredResults.length === 0) {
-        await performYouTubeSearch(searchQuery);
+        // Auto-fallback to YouTube if no database results
+        if (filteredResults.length === 0) {
+          await performYouTubeSearch(searchQuery);
+        }
+      } else {
+        setError(response.error || 'Database search failed');
+        setResults([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Database search failed');
@@ -59,10 +104,19 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
     setError(null);
     
     try {
-      const searchResults = await window.electron.searchYouTube(searchQuery);
-      setResults(searchResults);
-      setSearchType('youtube');
-      setHasSearched(true);
+      const response = await window.electron.searchYouTube(searchQuery);
+      
+      if (response.success && response.data) {
+        // Update results with current wishlist status
+        const resultsWithWishlistStatus = updateResultsWithWishlistStatus(response.data);
+        
+        setResults(resultsWithWishlistStatus);
+        setSearchType('youtube');
+        setHasSearched(true);
+      } else {
+        setError(response.error || 'YouTube search failed');
+        setResults([]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'YouTube search failed');
       setResults([]);
@@ -92,13 +146,18 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
   const handleVideoClick = useCallback((video: VideoCardBaseProps) => {
     if (video.isApprovedSource) {
       // Navigate to video player for approved sources
-      navigate(`/video/${encodeURIComponent(video.id)}`);
+      navigate(`/player/${encodeURIComponent(video.id)}`, {
+        state: {
+          videoTitle: video.title,
+          returnTo: `/search?q=${encodeURIComponent(query)}${sourceId ? `&source=${sourceId}` : ''}`,
+        }
+      });
     } else {
       // Show video details dialog for unapproved sources
       // This will be implemented when we extend VideoCardBase
       console.log('Show video details dialog for:', video);
     }
-  }, [navigate]);
+  }, [navigate, query, sourceId]);
 
   // Search on initial load if query exists
   useEffect(() => {
@@ -107,21 +166,46 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
     }
   }, [query, hasSearched, performDatabaseSearch]);
 
+  // Update search results when wishlist changes
+  useEffect(() => {
+    if (results.length > 0) {
+      const updatedResults = updateResultsWithWishlistStatus(results);
+      // Only update if there are actual changes to avoid infinite loops
+      const hasChanges = updatedResults.some((result, index) => 
+        result.isInWishlist !== results[index].isInWishlist || 
+        result.wishlistStatus !== results[index].wishlistStatus
+      );
+      if (hasChanges) {
+        setResults(updatedResults);
+      }
+    }
+  }, [isInWishlist, updateResultsWithWishlistStatus]);
+
+  // Generate breadcrumb items
+  const getBreadcrumbItems = (): BreadcrumbItem[] => {
+    const items: BreadcrumbItem[] = [
+      { label: 'Home', path: '/' }
+    ];
+
+    if (query) {
+      items.push({ 
+        label: `Search: "${query}"${sourceId ? ' (in source)' : ''}`, 
+        isActive: true 
+      });
+    } else {
+      items.push({ label: 'Search', isActive: true });
+    }
+
+    return items;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => navigate(-1)}
-              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back
-            </button>
+            <BreadcrumbNavigation items={getBreadcrumbItems()} />
             
             <div className="flex-1 max-w-2xl mx-8">
               <SearchBar
@@ -129,10 +213,11 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
                 placeholder="Search videos..."
                 isLoading={isLoading}
                 autoFocus={!query}
+                initialValue={query}
               />
             </div>
 
-            <div className="w-16" /> {/* Spacer for balance */}
+            <TimeIndicator initialState={timeTrackingState} />
           </div>
         </div>
       </div>
@@ -244,7 +329,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
                   thumbnail={video.thumbnail}
                   title={video.title}
                   duration={video.duration}
-                  type="youtube"
+                  type={video.type || "youtube"}
                   isApprovedSource={video.isApprovedSource}
                   isInWishlist={video.isInWishlist}
                   wishlistStatus={video.wishlistStatus}

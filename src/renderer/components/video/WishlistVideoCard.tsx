@@ -34,7 +34,7 @@ export const WishlistVideoCard: React.FC<WishlistVideoCardProps> = ({
   };
 
   return (
-    <div className="relative group">
+    <div className="relative group w-full h-full">
       <VideoCardBase {...videoProps} />
       
       {/* Action Buttons Overlay */}

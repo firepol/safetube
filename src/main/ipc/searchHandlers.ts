@@ -24,10 +24,14 @@ export function registerSearchHandlers() {
   // Search database using FTS5
   ipcMain.handle(
     IPC.SEARCH.DATABASE,
-    async (_, query: string): Promise<DatabaseResponse<SearchResult[]>> => {
+    async (_, query: string, sourceId?: string): Promise<DatabaseResponse<SearchResult[]>> => {
       try {
-        log.info(`[Search IPC] Database search request: "${query}"`);
-        const results = await searchService.searchDatabase(query);
+        const logMessage = sourceId 
+          ? `[Search IPC] Database search request: "${query}" in source "${sourceId}"`
+          : `[Search IPC] Database search request: "${query}"`;
+        log.info(logMessage);
+        
+        const results = await searchService.searchDatabase(query, sourceId);
         return {
           success: true,
           data: results

@@ -4,6 +4,7 @@ import { VideoGrid } from '../layout/VideoGrid';
 import { PageHeader } from '../layout/PageHeader';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../layout/BreadcrumbNavigation';
 import { TimeIndicator, TimeTrackingState } from '../layout/TimeIndicator';
+import { SearchBar } from '../search/SearchBar';
 import { logVerbose } from '../../lib/logging';
 
 interface FolderItem {
@@ -339,6 +340,17 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
     }
   };
 
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
+      // Navigate to search page with source-scoped search if sourceId is available
+      if (sourceId) {
+        navigate(`/search?q=${encodeURIComponent(query)}&source=${sourceId}`);
+      } else {
+        navigate(`/search?q=${encodeURIComponent(query)}`);
+      }
+    }
+  };
+
   const getCurrentFolderName = () => {
     if (currentFolderPath === sourcePath) {
       return sourceTitle;
@@ -399,6 +411,29 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   if (isLoading) {
     return (
       <div className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <BreadcrumbNavigation items={getBreadcrumbItems()} />
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleWatchedFolderClick}
+              className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+            >
+              Watched Videos
+            </button>
+            <TimeIndicator initialState={timeTrackingState} />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center mb-6">
+          <div className="flex-1 max-w-md">
+            <SearchBar
+              onSearch={handleSearch}
+              placeholder={`Search in ${sourceTitle}...`}
+              className="w-full"
+            />
+          </div>
+        </div>
+
         <div className="flex items-center justify-center h-64">
           <div className="text-lg">Loading folder contents...</div>
         </div>
@@ -409,6 +444,29 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   if (error) {
     return (
       <div className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <BreadcrumbNavigation items={getBreadcrumbItems()} />
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleWatchedFolderClick}
+              className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+            >
+              Watched Videos
+            </button>
+            <TimeIndicator initialState={timeTrackingState} />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center mb-6">
+          <div className="flex-1 max-w-md">
+            <SearchBar
+              onSearch={handleSearch}
+              placeholder={`Search in ${sourceTitle}...`}
+              className="w-full"
+            />
+          </div>
+        </div>
+
         <div className="text-red-600 mb-4">Error: {error}</div>
         <button
           onClick={handleBackClick}
@@ -423,6 +481,29 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
   if (!contents) {
     return (
       <div className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <BreadcrumbNavigation items={getBreadcrumbItems()} />
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleWatchedFolderClick}
+              className="px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded text-sm transition-colors"
+            >
+              Watched Videos
+            </button>
+            <TimeIndicator initialState={timeTrackingState} />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-center mb-6">
+          <div className="flex-1 max-w-md">
+            <SearchBar
+              onSearch={handleSearch}
+              placeholder={`Search in ${sourceTitle}...`}
+              className="w-full"
+            />
+          </div>
+        </div>
+
         <div className="text-gray-600">No contents found.</div>
       </div>
     );
@@ -430,7 +511,7 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <BreadcrumbNavigation items={getBreadcrumbItems()} />
         <div className="flex items-center space-x-3">
           <button
@@ -440,6 +521,16 @@ export const LocalFolderNavigator: React.FC<LocalFolderNavigatorProps> = ({
             Watched Videos
           </button>
           <TimeIndicator initialState={timeTrackingState} />
+        </div>
+      </div>
+
+      <div className="flex items-center justify-center mb-6">
+        <div className="flex-1 max-w-md">
+          <SearchBar
+            onSearch={handleSearch}
+            placeholder={`Search in ${sourceTitle}...`}
+            className="w-full"
+          />
         </div>
       </div>
 

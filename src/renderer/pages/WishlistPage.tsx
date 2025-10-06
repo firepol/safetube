@@ -1,14 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WishlistVideoCard } from '../components/video/WishlistVideoCard';
 import { useWishlist } from '../contexts/WishlistContext';
 import { WishlistItem } from '../../shared/types';
 import { VideoCardBaseProps } from '../components/video/VideoCardBase';
+import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
+import { TimeIndicator } from '../components/layout/TimeIndicator';
+import { SearchBar } from '../components/search/SearchBar';
 
 export const WishlistPage: React.FC = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'denied'>('pending');
   const { wishlistData, wishlistCounts, isLoading, error, removeFromWishlist } = useWishlist();
+  const hasInitialized = useRef(false);
+  
+  // Start with pending as default, will be updated on first load if needed
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'denied'>('pending');
+
+  // Set default tab to 'approved' if there are approved videos, but only on initial load
+  useEffect(() => {
+    if (!isLoading && !hasInitialized.current) {
+      hasInitialized.current = true;
+      if (wishlistCounts.approved > 0) {
+        setActiveTab('approved');
+      }
+    }
+  }, [wishlistCounts.approved, isLoading]);
 
   // Convert WishlistItem to VideoCardBaseProps for VideoGrid
   const convertWishlistItemToVideoCard = (item: WishlistItem): VideoCardBaseProps => ({
@@ -31,17 +47,50 @@ export const WishlistPage: React.FC = () => {
 
   // Get videos for current tab
   const getCurrentTabVideos = (): VideoCardBaseProps[] => {
-    const items = wishlistData[activeTab] || [];
+    const items = wishlistData[activeTab];
+    if (!items || !Array.isArray(items)) {
+      return [];
+    }
     return items.map(convertWishlistItemToVideoCard);
   };
 
   const handleVideoClick = (video: VideoCardBaseProps) => {
     if (video.wishlistStatus === 'approved') {
-      // Navigate to video player for approved videos
-      navigate(`/video/${encodeURIComponent(video.id)}`);
+      // Navigate to video player for approved videos with proper breadcrumb data
+      navigate(`/player/${encodeURIComponent(video.id)}`, {
+        state: {
+          videoTitle: video.title,
+          returnTo: '/wishlist',
+          breadcrumb: {
+            sourceName: 'My Wishlist',
+            sourceId: null, // No source ID for wishlist
+            historyPath: '/wishlist'
+          },
+          // Pass video metadata to ensure proper title display
+          videoMetadata: {
+            type: 'youtube',
+            title: video.title,
+            thumbnail: video.thumbnail,
+            duration: video.duration,
+            url: video.url,
+            sourceId: 'wishlist-approved',
+            sourceTitle: 'My Wishlist',
+            sourceType: 'youtube_channel',
+            sourceThumbnail: '',
+            navigationContext: {
+              breadcrumb: {
+                sourceName: 'My Wishlist',
+                sourceId: null,
+                historyPath: '/wishlist'
+              },
+              returnTo: '/wishlist'
+            }
+          }
+        }
+      });
     } else {
       // For pending/denied videos, just show info (no action)
-      console.log('Video not approved for playback:', video);
+      console.log('Video not approved for playbook:', video);
     }
   };
 
@@ -54,12 +103,46 @@ export const WishlistPage: React.FC = () => {
     }
   };
 
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
+      navigate(`/search?q=${encodeURIComponent(query)}`);
+    }
+  };
+
+  const getBreadcrumbItems = (): BreadcrumbItem[] => {
+    return [
+      { label: 'Home', path: '/' },
+      { label: 'My Wishlist', isActive: true }
+    ];
+  };
+
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <div className="text-lg">Loading your wishlist...</div>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <BreadcrumbNavigation items={getBreadcrumbItems()} />
+              
+              <div className="flex-1 max-w-md mx-8">
+                <SearchBar
+                  onSearch={handleSearch}
+                  placeholder="Search videos..."
+                  className="w-full"
+                />
+              </div>
+              
+              <TimeIndicator realTime={true} updateInterval={3000} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <div className="text-lg">Loading your wishlist...</div>
+          </div>
         </div>
       </div>
     );
@@ -67,16 +150,37 @@ export const WishlistPage: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-600 font-bold mb-2">Error loading wishlist</div>
-          <div className="text-gray-600 mb-4">{error}</div>
-          <button
-            onClick={() => navigate('/')}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-          >
-            Back to Home
-          </button>
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <BreadcrumbNavigation items={getBreadcrumbItems()} />
+              
+              <div className="flex-1 max-w-md mx-8">
+                <SearchBar
+                  onSearch={handleSearch}
+                  placeholder="Search videos..."
+                  className="w-full"
+                />
+              </div>
+              
+              <TimeIndicator realTime={true} updateInterval={3000} />
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="text-red-600 font-bold mb-2">Error loading wishlist</div>
+            <div className="text-gray-600 mb-4">{error}</div>
+            <button
+              onClick={() => navigate('/')}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Back to Home
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -90,19 +194,17 @@ export const WishlistPage: React.FC = () => {
       <div className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to Home
-            </button>
+            <BreadcrumbNavigation items={getBreadcrumbItems()} />
             
-            <h1 className="text-2xl font-bold text-gray-900">My Wishlist</h1>
-
-            <div className="w-24" /> {/* Spacer for balance */}
+            <div className="flex-1 max-w-md mx-8">
+              <SearchBar
+                onSearch={handleSearch}
+                placeholder="Search videos..."
+                className="w-full"
+              />
+            </div>
+            
+            <TimeIndicator realTime={true} updateInterval={3000} />
           </div>
         </div>
       </div>
@@ -255,7 +357,7 @@ export const WishlistPage: React.FC = () => {
 
         {/* Videos Grid */}
         {currentTabVideos.length > 0 && (
-          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 auto-rows-max place-items-center">
             {wishlistData[activeTab]?.map((item) => {
               const videoProps = convertWishlistItemToVideoCard(item);
               
@@ -297,14 +399,13 @@ export const WishlistPage: React.FC = () => {
                   ];
 
               return (
-                <div key={item.video_id} className="w-full flex justify-center">
-                  <WishlistVideoCard
-                    {...videoProps}
-                    wishlistItem={item}
-                    actions={actions}
-                    onVideoClick={handleVideoClick}
-                  />
-                </div>
+                <WishlistVideoCard
+                  key={item.video_id}
+                  {...videoProps}
+                  wishlistItem={item}
+                  actions={actions}
+                  onVideoClick={handleVideoClick}
+                />
               );
             })}
           </div>

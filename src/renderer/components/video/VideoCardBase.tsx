@@ -1,10 +1,11 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { formatDuration } from '../../lib/utils';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { useNavigate } from 'react-router-dom';
 import { VideoLoadError } from '../../../shared/videoErrorHandling';
 import { FavoriteButton } from './FavoriteButton';
+import { VideoDetailsDialog } from './VideoDetailsDialog';
 
 export interface VideoCardBaseProps {
   id: string;
@@ -84,6 +85,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
   const progressPercentage = Math.min(100, Math.max(0, progress ?? 0));
   const isLongTitle = title.length > 32;
   const navigate = useNavigate();
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   const handleClick = () => {
     // Prevent clicks on unavailable videos
@@ -93,8 +95,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
 
     // For unapproved sources, show video details dialog instead of playing
     if (!isApprovedSource && !isFallback) {
-      // TODO: Show video details dialog
-      console.log('[VideoCardBase] Show video details dialog for unapproved video:', { id, title, channelName });
+      setShowDetailsDialog(true);
       return;
     }
 
@@ -265,10 +266,13 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
         {/* Approval status badge */}
         {!isApprovedSource && !isFallback && (
           <div className={cn(
-            "absolute top-2 px-2 py-1 rounded text-xs font-medium bg-yellow-500 text-white",
+            "absolute top-2 px-2 py-1 rounded text-xs font-medium",
+            isInWishlist && wishlistStatus === 'pending' 
+              ? "bg-blue-500 text-white" 
+              : "bg-yellow-500 text-white",
             isSelectable ? "left-8" : "left-2" // Adjust position if selection checkbox is present
           )}>
-            Needs Approval
+            {isInWishlist && wishlistStatus === 'pending' ? 'Pending' : 'Needs Approval'}
           </div>
         )}
 
@@ -414,9 +418,9 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
               )}
             >
               {isInWishlist ? (
-                wishlistStatus === 'pending' ? 'In Wishlist (Pending)' :
-                wishlistStatus === 'approved' ? 'In Wishlist (Approved)' :
-                wishlistStatus === 'denied' ? 'In Wishlist (Denied)' :
+                wishlistStatus === 'pending' ? 'Pending Approval' :
+                wishlistStatus === 'approved' ? 'Approved' :
+                wishlistStatus === 'denied' ? 'Denied' :
                 'In Wishlist'
               ) : '+ Add to Wishlist'}
             </button>
@@ -436,9 +440,28 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
 
   // For all videos, use non-clickable card (thumbnail handles clicks)
   return (
-    <div className={cardClasses}>
-      {cardContent}
-    </div>
+    <>
+      <div className={cardClasses}>
+        {cardContent}
+      </div>
+      
+      {/* Video Details Dialog */}
+      <VideoDetailsDialog
+        isOpen={showDetailsDialog}
+        onClose={() => setShowDetailsDialog(false)}
+        video={showDetailsDialog ? {
+          id,
+          title,
+          thumbnail,
+          description: description || '',
+          duration,
+          channelName: channelName || '',
+          publishedAt: publishedAt || ''
+        } : null}
+        onAddToWishlist={onWishlistAdd}
+        isInWishlist={isInWishlist}
+      />
+    </>
   );
 });
 

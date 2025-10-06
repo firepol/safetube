@@ -369,7 +369,7 @@ describe('VideoCardBase Wishlist Functionality', () => {
       </TestWrapper>
     );
 
-    const wishlistButton = screen.getByText('In Wishlist (Pending)');
+    const wishlistButton = screen.getByText('Pending Approval');
     expect(wishlistButton).toBeInTheDocument();
     expect(wishlistButton).toBeDisabled();
   });
@@ -491,14 +491,8 @@ describe('VideoCardBase Wishlist Functionality', () => {
     const thumbnail = screen.getByRole('img');
     fireEvent.click(thumbnail);
 
-    expect(consoleSpy).toHaveBeenCalledWith(
-      '[VideoCardBase] Show video details dialog for unapproved video:',
-      expect.objectContaining({
-        id: 'test-video-1',
-        title: 'Test Video',
-        channelName: 'Test Channel',
-      })
-    );
+    // Should show video details dialog instead of navigating
+    expect(screen.getByText('Video Details')).toBeInTheDocument();
 
     consoleSpy.mockRestore();
   });
@@ -527,9 +521,9 @@ describe('VideoCardBase Wishlist Functionality', () => {
 
   test('should show different wishlist button text based on status', () => {
     const testCases = [
-      { status: 'pending' as const, expectedText: 'In Wishlist (Pending)' },
-      { status: 'approved' as const, expectedText: 'In Wishlist (Approved)' },
-      { status: 'denied' as const, expectedText: 'In Wishlist (Denied)' },
+      { status: 'pending' as const, expectedText: 'Pending Approval' },
+      { status: 'approved' as const, expectedText: 'Approved' },
+      { status: 'denied' as const, expectedText: 'Denied' },
     ];
 
     testCases.forEach(({ status, expectedText }) => {
@@ -549,7 +543,7 @@ describe('VideoCardBase Wishlist Functionality', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText(expectedText)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: expectedText })).toBeInTheDocument();
       unmount();
     });
   });

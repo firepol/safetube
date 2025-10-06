@@ -95,8 +95,12 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
         throw new Error('Wishlist API not available');
       }
       
-      const items = await window.electron.wishlistGetByStatus(status);
-      return items || [];
+      const response = await window.electron.wishlistGetByStatus(status);
+      if (response.success && response.data) {
+        return response.data;
+      } else {
+        throw new Error(response.error || `Failed to load ${status} wishlist`);
+      }
     } catch (err) {
       console.error(`[WishlistContext] Error loading ${status} wishlist:`, err);
       throw err;
@@ -121,11 +125,15 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
 
   // Calculate counts from data
   const calculateCounts = useCallback((data: WishlistData): WishlistCounts => {
+    const pending = Array.isArray(data.pending) ? data.pending.length : 0;
+    const approved = Array.isArray(data.approved) ? data.approved.length : 0;
+    const denied = Array.isArray(data.denied) ? data.denied.length : 0;
+    
     return {
-      pending: data.pending.length,
-      approved: data.approved.length,
-      denied: data.denied.length,
-      total: data.pending.length + data.approved.length + data.denied.length
+      pending,
+      approved,
+      denied,
+      total: pending + approved + denied
     };
   }, []);
 

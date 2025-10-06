@@ -2,6 +2,15 @@ import DatabaseService from './DatabaseService';
 import log from '../logger';
 import { WishlistItem, WishlistStatus, VideoData } from '../../shared/types';
 import { BrowserWindow } from 'electron';
+import {
+  addToWishlist,
+  removeFromWishlist,
+  getWishlistByStatus,
+  updateWishlistStatus,
+  isVideoInWishlist,
+  getWishlistCounts,
+  findWishlistVideo
+} from '../database/queries/wishlistQueries';
 
 /**
  * Wishlist service for managing video approval workflow
@@ -49,31 +58,21 @@ export class WishlistService {
       const now = new Date().toISOString();
 
       // Insert into wishlist with pending status
-      await this.db.run(`
-        INSERT INTO wishlist (
-          video_id, title, thumbnail, description,
-          channel_id, channel_name, duration, url,
-          status, requested_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)
-      `, [
-        video.id,
-        video.title,
-        video.thumbnail || null,
-        video.description || null,
-        video.channelId || null,
-        video.channelName || null,
-        video.duration || null,
-        video.url,
-        now,
-        now
-      ]);
+      await addToWishlist(this.db, {
+        video_id: video.id,
+        title: video.title,
+        thumbnail: video.thumbnail,
+        description: video.description,
+        channel_id: video.channelId,
+        channel_name: video.channelName,
+        duration: video.duration,
+        url: video.url
+      });
 
       log.info(`[WishlistService] Successfully added video to wishlist: ${video.id}`);
 
       // Fetch the created item
-      const item = await this.db.get<WishlistItem>(`
-        SELECT * FROM wishlist WHERE video_id = ?
-      `, [video.id]);
+      const item = await findWishlistVideo(this.db, video.id) as WishlistItem;
 
       // Emit update event
       this.emitWishlistUpdate();
@@ -102,15 +101,15 @@ export class WishlistService {
     try {
       log.info(`[WishlistService] Removing video from wishlist: ${videoId}`);
 
-      const result = await this.db.run(`
-        DELETE FROM wishlist WHERE video_id = ?
-      `, [videoId]);
-
-      if (result.changes === 0) {
+      // Check if video exists first
+      const exists = await isVideoInWishlist(this.db, videoId);
+      if (!exists) {
         const error = 'Video not found in wishlist';
         log.warn(`[WishlistService] ${error}: ${videoId}`);
         return { success: false, error };
       }
+
+      await removeFromWishlist(this.db, videoId);
 
       log.info(`[WishlistService] Successfully removed video from wishlist: ${videoId}`);
 
@@ -134,11 +133,7 @@ export class WishlistService {
     try {
       log.debug(`[WishlistService] Fetching wishlist with status: ${status}`);
 
-      const items = await this.db.all<WishlistItem>(`
-        SELECT * FROM wishlist
-        WHERE status = ?
-        ORDER BY requested_at DESC
-      `, [status]);
+      const items = await getWishlistByStatus(this.db, status) as WishlistItem[];
 
       log.debug(`[WishlistService] Found ${items.length} items with status: ${status}`);
 
@@ -178,9 +173,7 @@ export class WishlistService {
       log.info(`[WishlistService] Approving video: ${videoId}`);
 
       // Validate status transition
-      const current = await this.db.get<WishlistItem>(`
-        SELECT * FROM wishlist WHERE video_id = ?
-      `, [videoId]);
+      const current = await findWishlistVideo(this.db, videoId) as WishlistItem;
 
       if (!current) {
         const error = 'Video not found in wishlist';
@@ -208,9 +201,7 @@ export class WishlistService {
       log.info(`[WishlistService] Successfully approved video: ${videoId}`);
 
       // Fetch updated item
-      const item = await this.db.get<WishlistItem>(`
-        SELECT * FROM wishlist WHERE video_id = ?
-      `, [videoId]);
+      const item = await findWishlistVideo(this.db, videoId) as WishlistItem;
 
       // Emit update event
       this.emitWishlistUpdate();
@@ -233,9 +224,7 @@ export class WishlistService {
       log.info(`[WishlistService] Denying video: ${videoId}${reason ? ` (reason: ${reason})` : ''}`);
 
       // Validate status transition
-      const current = await this.db.get<WishlistItem>(`
-        SELECT * FROM wishlist WHERE video_id = ?
-      `, [videoId]);
+      const current = await findWishlistVideo(this.db, videoId) as WishlistItem;
 
       if (!current) {
         const error = 'Video not found in wishlist';
@@ -264,9 +253,7 @@ export class WishlistService {
       log.info(`[WishlistService] Successfully denied video: ${videoId}`);
 
       // Fetch updated item
-      const item = await this.db.get<WishlistItem>(`
-        SELECT * FROM wishlist WHERE video_id = ?
-      `, [videoId]);
+      const item = await findWishlistVideo(this.db, videoId) as WishlistItem;
 
       // Emit update event
       this.emitWishlistUpdate();
@@ -301,9 +288,7 @@ export class WishlistService {
       }
 
       // Check if video exists
-      const current = await this.db.get<WishlistItem>(`
-        SELECT * FROM wishlist WHERE video_id = ?
-      `, [videoId]);
+      const current = await findWishlistVideo(this.db, videoId) as WishlistItem;
 
       if (!current) {
         const error = 'Video not found in wishlist';
@@ -332,9 +317,7 @@ export class WishlistService {
       log.info(`[WishlistService] Successfully updated video status to ${status}: ${videoId}`);
 
       // Fetch updated item
-      const item = await this.db.get<WishlistItem>(`
-        SELECT * FROM wishlist WHERE video_id = ?
-      `, [videoId]);
+      const item = await findWishlistVideo(this.db, videoId) as WishlistItem;
 
       // Emit update event
       this.emitWishlistUpdate();
@@ -354,9 +337,7 @@ export class WishlistService {
    */
   async isInWishlist(videoId: string): Promise<{ inWishlist: boolean; status?: WishlistStatus }> {
     try {
-      const item = await this.db.get<WishlistItem>(`
-        SELECT * FROM wishlist WHERE video_id = ?
-      `, [videoId]);
+      const item = await findWishlistVideo(this.db, videoId) as WishlistItem;
 
       if (item) {
         return { inWishlist: true, status: item.status };
@@ -374,21 +355,9 @@ export class WishlistService {
    */
   async getWishlistCounts(): Promise<{ pending: number; approved: number; denied: number; total: number }> {
     try {
-      const counts = await this.db.get<any>(`
-        SELECT
-          SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
-          SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved,
-          SUM(CASE WHEN status = 'denied' THEN 1 ELSE 0 END) as denied,
-          COUNT(*) as total
-        FROM wishlist
-      `);
+      const counts = await getWishlistCounts(this.db);
 
-      return {
-        pending: counts?.pending || 0,
-        approved: counts?.approved || 0,
-        denied: counts?.denied || 0,
-        total: counts?.total || 0
-      };
+      return counts;
     } catch (error) {
       log.error('[WishlistService] Error getting wishlist counts:', error);
       return { pending: 0, approved: 0, denied: 0, total: 0 };

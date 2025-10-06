@@ -60,16 +60,22 @@ export const WishlistModerationTab: React.FC = () => {
       setError(null);
 
       // Load data for all statuses
-      const [pendingItems, approvedItems, deniedItems] = await Promise.all([
+      const [pendingResponse, approvedResponse, deniedResponse] = await Promise.all([
         window.electron.wishlistGetByStatus('pending'),
         window.electron.wishlistGetByStatus('approved'),
         window.electron.wishlistGetByStatus('denied')
       ]);
 
+      // Check if all responses are successful
+      if (!pendingResponse.success || !approvedResponse.success || !deniedResponse.success) {
+        const errorMessage = pendingResponse.error || approvedResponse.error || deniedResponse.error || 'Failed to load wishlist data';
+        throw new Error(errorMessage);
+      }
+
       setWishlistItems({
-        pending: pendingItems,
-        approved: approvedItems,
-        denied: deniedItems
+        pending: pendingResponse.data || [],
+        approved: approvedResponse.data || [],
+        denied: deniedResponse.data || []
       });
     } catch (err) {
       console.error('Error loading wishlist data:', err);
@@ -154,6 +160,8 @@ export const WishlistModerationTab: React.FC = () => {
   };
 
   const handleSelectAll = () => {
+    if (!Array.isArray(currentTabData)) return;
+    
     const currentTabVideoIds = currentTabData.map(item => item.video_id);
     const isSelectingAll = selectedVideos.size !== currentTabVideoIds.length;
     
@@ -256,7 +264,7 @@ export const WishlistModerationTab: React.FC = () => {
   };
 
   // Get current tab data
-  const currentTabData = wishlistItems[activeTab];
+  const currentTabData = wishlistItems[activeTab] || [];
 
   // Tab counts for badges
   const tabCounts = {
@@ -266,9 +274,9 @@ export const WishlistModerationTab: React.FC = () => {
   };
 
   // Bulk selection computed values
-  const currentTabVideoIds = currentTabData.map(item => item.video_id);
+  const currentTabVideoIds = Array.isArray(currentTabData) ? currentTabData.map(item => item.video_id) : [];
   const isSelectAll = selectedVideos.size > 0 && selectedVideos.size === currentTabVideoIds.length;
-  const showBulkControls = activeTab === 'pending' && currentTabData.length > 0;
+  const showBulkControls = activeTab === 'pending' && Array.isArray(currentTabData) && currentTabData.length > 0;
 
   if (isLoading) {
     return (

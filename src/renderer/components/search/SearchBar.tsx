@@ -8,18 +8,27 @@ interface SearchBarProps {
   isLoading?: boolean;
   className?: string;
   autoFocus?: boolean;
+  initialValue?: string;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
   onSearch,
   placeholder = "Search videos...",
-  debounceMs = 300,
+  debounceMs = 2000, // Increased to 2 seconds as requested
   isLoading = false,
   className = "",
-  autoFocus = false
+  autoFocus = false,
+  initialValue = ""
 }) => {
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialValue);
   const [debouncedQuery, setDebouncedQuery] = useState('');
+
+  // Initialize query from initialValue
+  useEffect(() => {
+    if (initialValue && initialValue !== query) {
+      setQuery(initialValue);
+    }
+  }, [initialValue]);
 
   // Debounce the search query
   useEffect(() => {
@@ -30,7 +39,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     return () => clearTimeout(timer);
   }, [query, debounceMs]);
 
-  // Trigger search when debounced query changes
+  // Trigger search when debounced query changes (only if non-empty)
   useEffect(() => {
     if (debouncedQuery.trim()) {
       onSearch(debouncedQuery.trim());
@@ -48,9 +57,19 @@ export const SearchBar: React.FC<SearchBarProps> = ({
     setDebouncedQuery('');
   }, []);
 
+  // Handle Enter key to trigger immediate search
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && query.trim()) {
+      e.preventDefault();
+      // Clear the debounced query and trigger immediate search
+      setDebouncedQuery('');
+      onSearch(query.trim());
+    }
+  }, [query, onSearch]);
+
   // Handle keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
       // Ctrl+K or Cmd+K to focus search
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
@@ -61,8 +80,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
   return (
@@ -78,6 +97,7 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           type="text"
           value={query}
           onChange={handleInputChange}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           autoFocus={autoFocus}
           className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all duration-200 bg-white"
