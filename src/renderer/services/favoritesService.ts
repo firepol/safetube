@@ -1,5 +1,6 @@
 import { FavoriteVideo, FavoritesConfig } from '@/shared/types';
 import { VideoCardBaseProps } from '../components/video/VideoCardBase';
+import { DatabaseResponse } from '../types';
 import { logVerbose } from '../lib/logging';
 
 
@@ -26,10 +27,10 @@ export class FavoritesService {
         return this.favoritesCache;
       }
 
-      const result = await window.electron.favoritesGetAll();
+      const result: DatabaseResponse<FavoriteVideo[]> = await window.electron.favoritesGetAll();
 
       // Handle database response format
-      const favorites = result.success && result.data ? result.data : [];
+      const favorites: FavoriteVideo[] = result.success && result.data ? result.data : [];
 
       // Update cache
       this.favoritesCache = favorites;
@@ -170,10 +171,10 @@ export class FavoritesService {
         return isFav;
       }
 
-      const result = await window.electron.favoritesIsFavorite(originalVideoId);
+      const result: DatabaseResponse<boolean> = await window.electron.favoritesIsFavorite(originalVideoId);
 
       // Handle database response format
-      const isFav = result.success && result.data !== undefined ? result.data : false;
+      const isFav: boolean = result.success && result.data !== undefined ? result.data : false;
 
       // Update cache
       this.favoriteStatusCache.set(originalVideoId, isFav);
@@ -207,7 +208,7 @@ export class FavoritesService {
       // Optimistic update using original ID
       this.favoriteStatusCache.set(originalVideoId, !currentState);
 
-      const result = await window.electron.favoritesToggle(
+      const result: DatabaseResponse<{ isFavorite: boolean }> = await window.electron.favoritesToggle(
         videoId, sourceId, type, title, thumbnail, duration, lastWatched
       );
 
@@ -216,7 +217,7 @@ export class FavoritesService {
       }
 
       // Handle new database response format
-      const newState = result.data?.isFavorite ?? !currentState;
+      const newState: boolean = result.data?.isFavorite ?? !currentState;
 
       // Create a fake favorite object for cache consistency
       const favorite = newState ? {

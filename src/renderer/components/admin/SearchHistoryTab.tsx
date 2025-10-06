@@ -29,10 +29,10 @@ export const SearchHistoryTab: React.FC<SearchHistoryTabProps> = ({ className = 
       
       const response = await window.electron.getSearchHistory(100);
       
-      if (response.success && response.data) {
-        setSearchHistory(response.data);
+      if (Array.isArray(response)) {
+        setSearchHistory(response);
       } else {
-        setError(response.error || 'Failed to load search history');
+        setError('Failed to load search history');
       }
     } catch (err) {
       console.error('Error loading search history:', err);
@@ -49,11 +49,11 @@ export const SearchHistoryTab: React.FC<SearchHistoryTabProps> = ({ className = 
       
       const response = await window.electron.getCachedSearchResults(search.query, search.search_type);
       
-      if (response.success && response.data) {
-        setCachedResults(response.data);
+      if (Array.isArray(response)) {
+        setCachedResults(response);
         setShowResultsModal(true);
       } else {
-        setError(response.error || 'Failed to load cached results');
+        setError('Failed to load cached results');
       }
     } catch (err) {
       console.error('Error loading cached results:', err);

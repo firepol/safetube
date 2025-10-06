@@ -248,6 +248,8 @@ export interface ElectronAPI {
   wishlistGetByStatus: (status: 'pending' | 'approved' | 'denied') => Promise<any[]>;
   wishlistApprove: (videoId: string) => Promise<{ success: boolean; error?: string }>;
   wishlistDeny: (videoId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
+  wishlistBulkApprove: (videoIds: string[]) => Promise<{ success: string[]; failed: string[] }>;
+  wishlistBulkDeny: (videoIds: string[], reason?: string) => Promise<{ success: string[]; failed: string[] }>;
   
   // Wishlist events
   onWishlistUpdated: (callback: () => void) => any;

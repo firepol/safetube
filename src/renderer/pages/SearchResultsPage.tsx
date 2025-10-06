@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { SearchBar } from '../components/search/SearchBar';
-import { VideoCardBase } from '../components/video/VideoCardBase';
+import { VideoCardBase, VideoCardBaseProps } from '../components/video/VideoCardBase';
 import { SearchResult } from '../../shared/types';
 
 interface SearchResultsPageProps {}
@@ -89,7 +89,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
   }, [query, performYouTubeSearch]);
 
   // Handle video click
-  const handleVideoClick = useCallback((video: SearchResult) => {
+  const handleVideoClick = useCallback((video: VideoCardBaseProps) => {
     if (video.isApprovedSource) {
       // Navigate to video player for approved sources
       navigate(`/video/${encodeURIComponent(video.id)}`);

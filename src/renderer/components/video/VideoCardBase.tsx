@@ -181,7 +181,7 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
     }
   };
 
-  const handleSelectionChange = (e: React.MouseEvent) => {
+  const handleSelectionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     e.stopPropagation(); // Prevent video click
     if (onSelectionChange) {
       onSelectionChange(id, !isSelected);

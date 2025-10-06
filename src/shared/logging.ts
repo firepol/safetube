@@ -11,7 +11,7 @@ export function logVerbose(...args: any[]) {
 
 export const logVerboseRenderer = (...args: any[]) => {
   let isVerbose = false;
-  if (typeof window !== 'undefined' && window.electron?.env?.ELECTRON_LOG_VERBOSE === 'true') {
+  if (typeof window !== 'undefined' && (window as any).electron?.env?.ELECTRON_LOG_VERBOSE === 'true') {
     isVerbose = true;
   } else if (typeof process !== 'undefined' && process.env.ELECTRON_LOG_VERBOSE === 'true') {
     isVerbose = true;

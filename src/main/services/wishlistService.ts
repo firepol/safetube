@@ -400,7 +400,7 @@ export class WishlistService {
    * Uses database transaction for consistency
    */
   async bulkApproveVideos(videoIds: string[]): Promise<{ success: string[]; failed: string[] }> {
-    const results = { success: [], failed: [] };
+    const results: { success: string[]; failed: string[] } = { success: [], failed: [] };
 
     if (videoIds.length === 0) {
       log.warn('[WishlistService] Bulk approve called with empty video list');
@@ -473,7 +473,7 @@ export class WishlistService {
    * Uses database transaction for consistency
    */
   async bulkDenyVideos(videoIds: string[], reason?: string): Promise<{ success: string[]; failed: string[] }> {
-    const results = { success: [], failed: [] };
+    const results: { success: string[]; failed: string[] } = { success: [], failed: [] };
 
     if (videoIds.length === 0) {
       log.warn('[WishlistService] Bulk deny called with empty video list');

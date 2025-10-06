@@ -35,7 +35,7 @@ export const ModerationVideoCard: React.FC<ModerationVideoCardProps> = ({
     thumbnail: item.thumbnail || '',
     duration: item.duration || 0,
     type: 'youtube' as const,
-    isWatched: false,
+    watched: false,
     progress: 0,
     showFavoriteIcon: false,
     isInWishlist: true,

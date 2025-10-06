@@ -302,8 +302,8 @@ describe('VideoCardBase External Link Opening', () => {
     expect(overlay).toBeInTheDocument();
   });
 });
-des
-cribe('VideoCardBase Wishlist Functionality', () => {
+
+describe('VideoCardBase Wishlist Functionality', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
