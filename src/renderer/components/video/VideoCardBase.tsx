@@ -1,10 +1,11 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { formatDuration } from '../../lib/utils';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { useNavigate } from 'react-router-dom';
 import { VideoLoadError } from '../../../shared/videoErrorHandling';
 import { FavoriteButton } from './FavoriteButton';
+import { VideoDetailsDialog } from './VideoDetailsDialog';
 
 export interface VideoCardBaseProps {
   id: string;
@@ -29,6 +30,22 @@ export interface VideoCardBaseProps {
   sourceId?: string;
   lastWatched?: string;
   onFavoriteToggle?: (videoId: string, isFavorite: boolean) => void;
+  // Wishlist functionality
+  isApprovedSource?: boolean;
+  isInWishlist?: boolean;
+  wishlistStatus?: 'pending' | 'approved' | 'denied';
+  showWishlistButton?: boolean;
+  onWishlistAdd?: (video: VideoCardBaseProps) => void;
+  // Additional metadata for wishlist
+  description?: string;
+  channelId?: string;
+  channelName?: string;
+  url?: string;
+  publishedAt?: string;
+  // Bulk selection support
+  isSelectable?: boolean;
+  isSelected?: boolean;
+  onSelectionChange?: (videoId: string, selected: boolean) => void;
 }
 
 export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
@@ -51,14 +68,34 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
   sourceId,
   lastWatched,
   onFavoriteToggle,
+  isApprovedSource = true,
+  isInWishlist = false,
+  wishlistStatus,
+  showWishlistButton = false,
+  onWishlistAdd,
+  description,
+  channelId,
+  channelName,
+  url,
+  publishedAt,
+  isSelectable = false,
+  isSelected = false,
+  onSelectionChange,
 }) => {
   const progressPercentage = Math.min(100, Math.max(0, progress ?? 0));
   const isLongTitle = title.length > 32;
   const navigate = useNavigate();
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   const handleClick = () => {
     // Prevent clicks on unavailable videos
     if (!isAvailable) {
+      return;
+    }
+
+    // For unapproved sources, show video details dialog instead of playing
+    if (!isApprovedSource && !isFallback) {
+      setShowDetailsDialog(true);
       return;
     }
 
@@ -79,7 +116,20 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
           isAvailable,
           isFallback,
           errorInfo,
-          onVideoClick
+          onVideoClick,
+          isApprovedSource,
+          isInWishlist,
+          wishlistStatus,
+          showWishlistButton,
+          onWishlistAdd,
+          description,
+          channelId,
+          channelName,
+          url,
+          publishedAt,
+          isSelectable,
+          isSelected,
+          onSelectionChange,
         });
       } else {
         const encodedId = encodeURIComponent(id);
@@ -89,6 +139,52 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
       }
     } else {
       console.log('[VideoCardBase] Click blocked - video is fallback');
+    }
+  };
+
+  const handleWishlistAdd = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent video click
+    if (onWishlistAdd) {
+      onWishlistAdd({
+        id,
+        thumbnail,
+        title,
+        duration,
+        resumeAt,
+        watched,
+        isClicked,
+        type,
+        progress,
+        isAvailable,
+        isFallback,
+        errorInfo,
+        unavailableReason,
+        onVideoClick,
+        isFavorite,
+        showFavoriteIcon,
+        sourceId,
+        lastWatched,
+        onFavoriteToggle,
+        isApprovedSource,
+        isInWishlist,
+        wishlistStatus,
+        showWishlistButton,
+        description,
+        channelId,
+        channelName,
+        url,
+        publishedAt,
+        isSelectable,
+        isSelected,
+        onSelectionChange,
+      });
+    }
+  };
+
+  const handleSelectionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    e.stopPropagation(); // Prevent video click
+    if (onSelectionChange) {
+      onSelectionChange(id, !isSelected);
     }
   };
 
@@ -148,6 +244,48 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
             {errorInfo.type === 'deleted' ? 'Deleted' : 
              errorInfo.type === 'private' ? 'Private' : 
              errorInfo.type === 'restricted' ? 'Restricted' : 'Unavailable'}
+          </div>
+        )}
+
+        {/* Selection checkbox overlay */}
+        {isSelectable && (
+          <div className="absolute top-2 left-2 z-30">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={handleSelectionChange}
+                onClick={(e) => e.stopPropagation()} // Prevent video click
+                className="w-4 h-4 text-blue-600 bg-white/90 backdrop-blur-sm border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+              />
+            </label>
+          </div>
+        )}
+
+        {/* Approval status badge */}
+        {!isApprovedSource && !isFallback && (
+          <div className={cn(
+            "absolute top-2 px-2 py-1 rounded text-xs font-medium",
+            isInWishlist && wishlistStatus === 'pending' 
+              ? "bg-blue-500 text-white" 
+              : "bg-yellow-500 text-white",
+            isSelectable ? "left-8" : "left-2" // Adjust position if selection checkbox is present
+          )}>
+            {isInWishlist && wishlistStatus === 'pending' ? 'Pending' : 'Needs Approval'}
+          </div>
+        )}
+
+        {/* Wishlist status badge */}
+        {isInWishlist && wishlistStatus && !isFallback && (
+          <div className={cn(
+            "absolute top-2 right-2 px-2 py-1 rounded text-xs font-medium",
+            wishlistStatus === 'pending' && "bg-blue-500 text-white",
+            wishlistStatus === 'approved' && "bg-green-500 text-white",
+            wishlistStatus === 'denied' && "bg-red-500 text-white"
+          )}>
+            {wishlistStatus === 'pending' && 'Pending'}
+            {wishlistStatus === 'approved' && 'Approved'}
+            {wishlistStatus === 'denied' && 'Denied'}
           </div>
         )}
         
@@ -257,6 +395,36 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
             />
           )}
         </div>
+
+        {/* Channel name for unapproved videos */}
+        {!isApprovedSource && channelName && !isFallback && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {channelName}
+          </p>
+        )}
+
+        {/* Wishlist Button */}
+        {showWishlistButton && !isApprovedSource && !isFallback && (
+          <div className="mt-3 pt-3 border-t border-border">
+            <button
+              onClick={handleWishlistAdd}
+              disabled={isInWishlist}
+              className={cn(
+                "w-full text-sm px-3 py-2 rounded transition-colors font-medium",
+                isInWishlist
+                  ? "bg-muted text-muted-foreground cursor-not-allowed"
+                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
+              )}
+            >
+              {isInWishlist ? (
+                wishlistStatus === 'pending' ? 'Pending Approval' :
+                wishlistStatus === 'approved' ? 'Approved' :
+                wishlistStatus === 'denied' ? 'Denied' :
+                'In Wishlist'
+              ) : '+ Add to Wishlist'}
+            </button>
+          </div>
+        )}
       </div>
     </>
   );
@@ -271,9 +439,28 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
 
   // For all videos, use non-clickable card (thumbnail handles clicks)
   return (
-    <div className={cardClasses}>
-      {cardContent}
-    </div>
+    <>
+      <div className={cardClasses}>
+        {cardContent}
+      </div>
+      
+      {/* Video Details Dialog */}
+      <VideoDetailsDialog
+        isOpen={showDetailsDialog}
+        onClose={() => setShowDetailsDialog(false)}
+        video={showDetailsDialog ? {
+          id,
+          title,
+          thumbnail,
+          description: description || '',
+          duration,
+          channelName: channelName || '',
+          publishedAt: publishedAt || ''
+        } : null}
+        onAddToWishlist={onWishlistAdd}
+        isInWishlist={isInWishlist}
+      />
+    </>
   );
 });
 

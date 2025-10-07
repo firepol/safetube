@@ -10,6 +10,7 @@ interface VideoSource {
   thumbnail?: string;
   path?: string; // For local sources
   maxDepth?: number; // For local sources
+  badge?: number; // For notification badges (e.g., pending wishlist items)
 }
 
 interface SourceGridProps {
@@ -93,6 +94,15 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
       );
     }
 
+    // For wishlist source, show special star background
+    if (source.type === 'wishlist') {
+      return (
+        <div className="w-full h-full bg-purple-100 flex items-center justify-center">
+          <div className="text-6xl text-purple-500">⭐</div>
+        </div>
+      );
+    }
+
     // Default fallback
     return (
       <div className="w-full h-full bg-gray-300 flex items-center justify-center">
@@ -115,6 +125,8 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
         return '📚';
       case 'favorites':
         return '⭐';
+      case 'wishlist':
+        return '⭐';
       default:
         return '📹';
     }
@@ -134,6 +146,8 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
         return 'Video History';
       case 'favorites':
         return 'Favorites';
+      case 'wishlist':
+        return 'My Wishlist';
       default:
         return 'Video Source';
     }
@@ -144,9 +158,16 @@ export const SourceGrid: React.FC<SourceGridProps> = ({ sources, onSourceClick }
       {sources.map((source) => (
         <div
           key={source.id}
-          className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full"
+          className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 transform hover:scale-105 w-full relative"
           onClick={() => handleSourceClick(source)}
         >
+          {/* Badge for notifications */}
+          {source.badge && source.badge > 0 && (
+            <div className="absolute top-2 right-2 z-10 bg-red-500 text-white text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center">
+              {source.badge > 99 ? '99+' : source.badge}
+            </div>
+          )}
+          
           {/* Source Thumbnail */}
           <div className="aspect-video bg-gray-200 overflow-hidden">
             {getSourceThumbnail(source)}

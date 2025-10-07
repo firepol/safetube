@@ -3,7 +3,7 @@ import log from '../logger';
 
 interface SchemaVersion {
   version: number;
-  phase: 'phase1' | 'phase2';
+  phase: 'phase1' | 'phase2' | 'search-moderation';
   updated_at: string;
 }
 
@@ -34,22 +34,30 @@ export class SimpleSchemaManager {
         return;
       }
 
-      // Create tables in dependency order
-      await this.createSchemaVersionTable();
-      await this.createSourcesTable();
-      await this.createVideosTable();
-      await this.createVideosFtsTable();
-      await this.createViewRecordsTable();
-      await this.createFavoritesTable();
-      await this.createYoutubeApiResultsTable();
+      await this.databaseService.run('BEGIN TRANSACTION');
+      try {
+        // Create tables in dependency order
+        await this.createSchemaVersionTable();
+        await this.createSourcesTable();
+        await this.createVideosTable();
+        await this.createVideosFtsTable();
+        await this.createViewRecordsTable();
+        await this.createFavoritesTable();
+        await this.createYoutubeApiResultsTable();
 
-      // Update schema version
-      await this.databaseService.run(`
-        INSERT OR REPLACE INTO schema_version (id, version, phase)
-        VALUES (1, 1, 'phase1')
-      `);
+        // Update schema version
+        await this.databaseService.run(`
+          INSERT OR REPLACE INTO schema_version (id, version, phase)
+          VALUES (1, 1, 'phase1')
+        `);
 
-      log.info('[SimpleSchemaManager] Phase 1 schema initialized successfully');
+        await this.databaseService.run('COMMIT');
+        log.info('[SimpleSchemaManager] Phase 1 schema initialized successfully');
+      } catch (error) {
+        await this.databaseService.run('ROLLBACK');
+        log.error('[SimpleSchemaManager] Error initializing Phase 1 schema, rolled back transaction:', error);
+        throw error;
+      }
     } catch (error) {
       log.error('[SimpleSchemaManager] Error initializing Phase 1 schema:', error);
       throw error;
@@ -258,23 +266,31 @@ export class SimpleSchemaManager {
       // Check if already initialized
       const currentVersion = await this.getCurrentSchemaVersion();
 
-      // Create Phase 2 tables (CREATE TABLE IF NOT EXISTS ensures safe re-run)
-      await this.createUsageLogsTable();
-      await this.createTimeLimitsTable();
-      await this.createUsageExtrasTable();
-      await this.createSettingsTable();
-      await this.createDownloadsTable();
-      await this.createDownloadedVideosTable();
+      await this.databaseService.run('BEGIN TRANSACTION');
+      try {
+        // Create Phase 2 tables (CREATE TABLE IF NOT EXISTS ensures safe re-run)
+        await this.createUsageLogsTable();
+        await this.createTimeLimitsTable();
+        await this.createUsageExtrasTable();
+        await this.createSettingsTable();
+        await this.createDownloadsTable();
+        await this.createDownloadedVideosTable();
 
-      // Only update schema version if not already at phase2
-      if (!currentVersion || currentVersion.phase !== 'phase2') {
-        await this.databaseService.run(`
-          INSERT OR REPLACE INTO schema_version (id, version, phase)
-          VALUES (1, 2, 'phase2')
-        `);
+        // Only update schema version if not already at phase2
+        if (!currentVersion || currentVersion.phase !== 'phase2') {
+          await this.databaseService.run(`
+            INSERT OR REPLACE INTO schema_version (id, version, phase)
+            VALUES (1, 2, 'phase2')
+          `);
+        }
+
+        await this.databaseService.run('COMMIT');
+        log.info('[SimpleSchemaManager] Phase 2 schema initialized successfully');
+      } catch (error) {
+        await this.databaseService.run('ROLLBACK');
+        log.error('[SimpleSchemaManager] Error initializing Phase 2 schema, rolled back transaction:', error);
+        throw error;
       }
-
-      log.info('[SimpleSchemaManager] Phase 2 schema initialized successfully');
     } catch (error) {
       log.error('[SimpleSchemaManager] Error initializing Phase 2 schema:', error);
       throw error;
@@ -424,6 +440,105 @@ export class SimpleSchemaManager {
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_source_id ON downloaded_videos(source_id)');
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_downloaded_at ON downloaded_videos(downloaded_at)');
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_file_path ON downloaded_videos(file_path)');
+  }
+
+  /**
+   * Initialize Search + Moderation schema (migration)
+   */
+  async initializeSearchModerationSchema(): Promise<void> {
+    await this.databaseService.run('BEGIN TRANSACTION');
+    try {
+      log.info('[SimpleSchemaManager] Initializing Search + Moderation schema');
+
+      // Create search and wishlist tables
+      await this.createSearchesTable();
+      await this.createWishlistTable();
+      await this.createSearchResultsCacheTable();
+
+      await this.databaseService.run('COMMIT');
+      log.info('[SimpleSchemaManager] Search + Moderation schema initialized successfully');
+    } catch (error) {
+      await this.databaseService.run('ROLLBACK');
+      log.error('[SimpleSchemaManager] Error initializing Search + Moderation schema, rolled back transaction:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create searches table
+   */
+  private async createSearchesTable(): Promise<void> {
+    await this.databaseService.run(`
+      CREATE TABLE IF NOT EXISTS searches (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          query TEXT NOT NULL,
+          search_type TEXT NOT NULL CHECK(search_type IN ('database', 'youtube')),
+          result_count INTEGER NOT NULL DEFAULT 0,
+          timestamp TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create indexes
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_searches_timestamp ON searches(timestamp DESC)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_searches_query ON searches(query)');
+  }
+
+  /**
+   * Create wishlist table
+   */
+  private async createWishlistTable(): Promise<void> {
+    await this.databaseService.run(`
+      CREATE TABLE IF NOT EXISTS wishlist (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          video_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          thumbnail TEXT,
+          description TEXT,
+          channel_id TEXT,
+          channel_name TEXT,
+          duration INTEGER,
+          url TEXT NOT NULL,
+          status TEXT NOT NULL CHECK(status IN ('pending', 'approved', 'denied')),
+          requested_at TEXT NOT NULL,
+          reviewed_at TEXT,
+          reviewed_by TEXT,
+          denial_reason TEXT,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(video_id)
+      )
+    `);
+
+    // Create indexes
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_wishlist_status ON wishlist(status)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_wishlist_requested_at ON wishlist(requested_at)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_wishlist_video_id ON wishlist(video_id)');
+  }
+
+  /**
+   * Create search_results_cache table
+   */
+  private async createSearchResultsCacheTable(): Promise<void> {
+    await this.databaseService.run(`
+      CREATE TABLE IF NOT EXISTS search_results_cache (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          search_query TEXT NOT NULL,
+          video_id TEXT NOT NULL,
+          video_data TEXT NOT NULL,
+          position INTEGER NOT NULL,
+          search_type TEXT NOT NULL CHECK(search_type IN ('database', 'youtube')),
+          fetch_timestamp TEXT NOT NULL,
+          expires_at TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(search_query, video_id, search_type)
+      )
+    `);
+
+    // Create indexes
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_search_cache_query ON search_results_cache(search_query)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_search_cache_timestamp ON search_results_cache(fetch_timestamp)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_search_cache_expires ON search_results_cache(expires_at)');
   }
 
   /**

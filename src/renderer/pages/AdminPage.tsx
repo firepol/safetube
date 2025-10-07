@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TimeLimits, TimeTrackingState } from '@/shared/types';
 import { VideoSourcesManager } from '@/renderer/components/admin/VideoSourcesManager';
+import { SearchHistoryTab } from '@/renderer/components/admin/SearchHistoryTab';
+import { WishlistModerationTab } from '@/renderer/components/admin/WishlistModerationTab';
 import { TimeIndicator } from '@/renderer/components/layout/TimeIndicator';
 
 export const AdminPage: React.FC = () => {
@@ -16,7 +18,7 @@ export const AdminPage: React.FC = () => {
   const [timeLimits, setTimeLimits] = useState<TimeLimits | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'time' | 'sources' | 'main'>('time');
+  const [activeTab, setActiveTab] = useState<'time' | 'sources' | 'main' | 'search' | 'wishlist'>('time');
   const [currentTimeState, setCurrentTimeState] = useState<TimeTrackingState | null>(null);
   const [projectedTimeState, setProjectedTimeState] = useState<TimeTrackingState | null>(null);
   const [dailyLimitModified, setDailyLimitModified] = useState(false);
@@ -451,6 +453,26 @@ export const AdminPage: React.FC = () => {
               >
                 Main Settings
               </button>
+              <button
+                onClick={() => setActiveTab('search')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'search'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Search History
+              </button>
+              <button
+                onClick={() => setActiveTab('wishlist')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${
+                  activeTab === 'wishlist'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                Wishlist Moderation
+              </button>
             </nav>
           </div>
         </div>
@@ -762,6 +784,14 @@ export const AdminPage: React.FC = () => {
               )}
             </div>
           </div>
+        )}
+
+        {activeTab === 'search' && (
+          <SearchHistoryTab />
+        )}
+
+        {activeTab === 'wishlist' && (
+          <WishlistModerationTab />
         )}
       </div>
     </div>

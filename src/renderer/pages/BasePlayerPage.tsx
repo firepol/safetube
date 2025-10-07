@@ -102,7 +102,7 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
           path: sourcePath
         });
       } else if (breadcrumbData.historyPath) {
-        // Special handling for History page
+        // Special handling for History page and Wishlist page
         items.push({
           label: breadcrumbData.sourceName,
           path: breadcrumbData.historyPath

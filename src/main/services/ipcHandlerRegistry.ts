@@ -1284,4 +1284,10 @@ export async function registerAllHandlers() {
   registerYouTubeCacheHandlers();
   registerDatabaseHandlers(); // Database handlers for SQLite (includes favorites and downloaded videos)
   await registerYouTubePlaybackHandlers(); // YouTube video streams handler (stub for tests, real impl in youtube.ts)
+
+  // Search and moderation handlers
+  const { registerSearchHandlers } = await import('../ipc/searchHandlers');
+  const { registerWishlistHandlers } = await import('../ipc/wishlistHandlers');
+  registerSearchHandlers();
+  registerWishlistHandlers(); // Note: mainWindow reference will be set later via updateWishlistMainWindow
 }

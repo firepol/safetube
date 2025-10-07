@@ -132,10 +132,10 @@ CREATE INDEX idx_wishlist_video_id ON wishlist(video_id);
 
 #### FR-W3: Wishlist State Transitions
 ```
-pending ’ approved (parent action)
-pending ’ denied (parent action)
-approved ’ denied (parent can reverse, rare)
-denied ’ approved (parent can reverse)
+pending ï¿½ approved (parent action)
+pending ï¿½ denied (parent action)
+approved ï¿½ denied (parent can reverse, rare)
+denied ï¿½ approved (parent can reverse)
 ```
 
 ### Parent Features
@@ -174,6 +174,19 @@ denied ’ approved (parent can reverse)
 - **Character Limit**: 500 characters
 - **Save**: Store reason in `wishlist.denial_reason`
 - **Display to Kid**: Show indicator icon, mouseover/click to reveal
+
+#### FR-P4: Bulk Moderation Operations
+- **Multi-Select**: Checkboxes on each video card in moderation interface
+- **Select All/None**: Quick selection buttons for entire list or current tab
+- **Bulk Actions**: 
+  - "Approve Selected" button (batch approve checked videos)
+  - "Deny Selected" button (batch deny with optional shared reason)
+- **Selection State**: Visual indication of selected videos with count display
+- **Confirmation**: Confirmation dialog before executing bulk operations
+- **Progress Feedback**: Progress indicator during batch processing
+- **Error Handling**: Individual video errors don't stop batch operation
+- **Transaction Safety**: Database transactions ensure consistency
+- **Performance**: Batch operations complete within 5 seconds for up to 50 videos
 
 ### Kid Wishlist Interface
 
@@ -307,7 +320,7 @@ CREATE INDEX idx_search_cache_expires ON search_results_cache(expires_at);
 - **AdminPage**: Add new tabs for search history and moderation
 - **Navigation**: Add "My Wishlist" to kid screen navigation
 
-### IR-2: IPC Channels (Main ” Renderer)
+### IR-2: IPC Channels (Main ï¿½ Renderer)
 New IPC channels needed:
 ```typescript
 // Search
@@ -323,6 +336,10 @@ New IPC channels needed:
 'wishlist:approve': (videoId: string) => Result
 'wishlist:deny': (videoId: string, reason?: string) => Result
 'wishlist:update:status': (videoId: string, status: WishlistStatus) => Result
+
+// Bulk Operations
+'wishlist:bulkApprove': (videoIds: string[]) => { success: string[], failed: string[] }
+'wishlist:bulkDeny': (videoIds: string[], reason?: string) => { success: string[], failed: string[] }
 ```
 
 ### IR-3: YouTube API Integration

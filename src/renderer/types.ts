@@ -235,6 +235,25 @@ export interface ElectronAPI {
 
   // Path utilities for cross-platform compatibility
   pathJoin: (...paths: string[]) => Promise<string>;
+
+  // Search functionality
+  searchDatabase: (query: string, sourceId?: string) => Promise<{success: boolean; data?: any[]; error?: string}>;
+  searchYouTube: (query: string) => Promise<{success: boolean; data?: any[]; error?: string}>;
+  getSearchHistory: (limit?: number) => Promise<{success: boolean; data?: any[]; error?: string}>;
+  getCachedSearchResults: (query: string, searchType: 'database' | 'youtube') => Promise<{success: boolean; data?: any[]; error?: string}>;
+
+  // Wishlist functionality
+  wishlistAdd: (video: any) => Promise<{ success: boolean; error?: string }>;
+  wishlistRemove: (videoId: string) => Promise<{ success: boolean; error?: string }>;
+  wishlistGetByStatus: (status: 'pending' | 'approved' | 'denied') => Promise<{success: boolean; data?: any[]; error?: string}>;
+  wishlistApprove: (videoId: string) => Promise<{ success: boolean; error?: string }>;
+  wishlistDeny: (videoId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
+  wishlistBulkApprove: (videoIds: string[]) => Promise<{ success: string[]; failed: string[] }>;
+  wishlistBulkDeny: (videoIds: string[], reason?: string) => Promise<{ success: string[]; failed: string[] }>;
+  
+  // Wishlist events
+  onWishlistUpdated: (callback: () => void) => any;
+  offWishlistUpdated: (wrappedCallback: any) => void;
 }
 declare global {
   interface Window {

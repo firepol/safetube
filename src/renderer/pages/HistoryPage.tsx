@@ -4,6 +4,8 @@ import { Pagination } from '../components/layout/Pagination';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 import { VideoGrid } from '../components/layout/VideoGrid';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
+import { SearchBar } from '../components/search/SearchBar';
+import { useWishlist } from '../contexts/WishlistContext';
 import { logVerbose } from '../lib/logging';
 import { SourceValidationService } from '../services/sourceValidationService';
 
@@ -40,6 +42,7 @@ export const HistoryPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [validationResults, setValidationResults] = useState<Map<string, boolean>>(new Map());
+  const { getWishlistItem } = useWishlist();
   const pageSize = 20; // Videos per page
 
   useEffect(() => {
@@ -83,6 +86,9 @@ export const HistoryPage: React.FC = () => {
         // Build video details from watched data (no need to call getVideoData)
         const videosWithDetails: VideoWithDetails[] = await Promise.all(
           validWatchedVideos.map(async (watchedVideo: WatchedVideo) => {
+            // Check if this video is from the wishlist and get better data
+            const wishlistItem = getWishlistItem(watchedVideo.videoId);
+            
             // Determine video type based on video ID format
             let videoType: 'youtube' | 'local' | 'dlna' = 'local';
             if (watchedVideo.videoId.length === 11 && /^[A-Za-z0-9_-]{11}$/.test(watchedVideo.videoId)) {
@@ -91,18 +97,34 @@ export const HistoryPage: React.FC = () => {
               videoType = 'local';
             }
 
+            // Use wishlist data if available, otherwise fall back to watched data
+            let title = watchedVideo.title || `Video (${watchedVideo.videoId})`;
+            let thumbnail = watchedVideo.thumbnail;
+            let duration = watchedVideo.duration || 0;
+            let sourceId = watchedVideo.source || 'unknown';
+            let sourceTitle = 'Unknown Source';
+
+            if (wishlistItem) {
+              // Use wishlist data for better title, thumbnail, etc.
+              title = wishlistItem.title || title;
+              thumbnail = wishlistItem.thumbnail || thumbnail;
+              duration = wishlistItem.duration || duration;
+              sourceId = 'wishlist-approved';
+              sourceTitle = 'My Wishlist';
+            }
+
             // Get thumbnail - use shared utility to get best thumbnail
             const { getBestThumbnail } = await import('../../shared/thumbnailUtils');
-            const thumbnail = getBestThumbnail(watchedVideo.thumbnail, videoType);
+            const finalThumbnail = getBestThumbnail(thumbnail, videoType);
 
             return {
               id: watchedVideo.videoId,
-              title: watchedVideo.title || `Video (${watchedVideo.videoId})`,
-              thumbnail,
+              title,
+              thumbnail: finalThumbnail,
               type: videoType,
-              duration: watchedVideo.duration || 0,
-              sourceId: watchedVideo.source || 'unknown',
-              sourceTitle: 'Unknown Source',
+              duration,
+              sourceId,
+              sourceTitle,
               watchedData: watchedVideo
             };
           })
@@ -114,13 +136,30 @@ export const HistoryPage: React.FC = () => {
         );
 
         // Batch validate all videos for source availability
-        const videosToValidate = videosWithDetails.map(v => ({
-          videoId: v.id,
-          sourceId: v.sourceId,
-          sourceType: v.type === 'youtube' ? 'youtube' : v.type === 'local' ? 'local' : 'dlna'
-        }));
-
-        const validationMap = await SourceValidationService.batchValidateVideos(videosToValidate);
+        // But first, check which videos are from approved wishlist items
+        const validationMap = new Map<string, boolean>();
+        
+        for (const video of videosWithDetails) {
+          // Check if this video is from an approved wishlist item
+          const wishlistItem = getWishlistItem(video.id);
+          
+          if (wishlistItem && wishlistItem.status === 'approved') {
+            // Video is from approved wishlist, mark as valid
+            validationMap.set(video.id, true);
+          } else {
+            // Video is not from wishlist or not approved, validate normally
+            const videosToValidate = [{
+              videoId: video.id,
+              sourceId: video.sourceId,
+              sourceType: video.type === 'youtube' ? 'youtube' : video.type === 'local' ? 'local' : 'dlna'
+            }];
+            
+            const sourceValidationMap = await SourceValidationService.batchValidateVideos(videosToValidate);
+            const isValid = sourceValidationMap.get(video.id) ?? true;
+            validationMap.set(video.id, isValid);
+          }
+        }
+        
         setValidationResults(validationMap);
 
         // Apply pagination
@@ -155,6 +194,26 @@ export const HistoryPage: React.FC = () => {
           sourceName: 'History',
           historyPath: '/history', // Special field for History page navigation
           basePath: '/history'
+        },
+        // Pass video metadata to ensure proper title display in player
+        videoMetadata: {
+          type: video.type,
+          title: video.title,
+          thumbnail: video.thumbnail,
+          duration: video.duration,
+          url: video.type === 'youtube' ? `https://www.youtube.com/watch?v=${video.id}` : video.id,
+          sourceId: video.sourceId,
+          sourceTitle: video.sourceTitle,
+          sourceType: video.type === 'youtube' ? 'youtube_channel' : 'local',
+          sourceThumbnail: '',
+          navigationContext: {
+            breadcrumb: {
+              sourceName: 'History',
+              historyPath: '/history',
+              basePath: '/history'
+            },
+            returnTo: '/history'
+          }
         }
       }
     });
@@ -168,6 +227,12 @@ export const HistoryPage: React.FC = () => {
     navigate('/');
   };
 
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
+      navigate(`/search?q=${encodeURIComponent(query)}`);
+    }
+  };
+
   const getBreadcrumbItems = (): BreadcrumbItem[] => {
     return [
       { label: 'Home', path: '/' },
@@ -178,10 +243,21 @@ export const HistoryPage: React.FC = () => {
   if (isLoading) {
     return (
       <div className="p-4">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <BreadcrumbNavigation items={getBreadcrumbItems()} />
           <TimeIndicator realTime={true} updateInterval={3000} />
         </div>
+        
+        <div className="flex items-center justify-center mb-6">
+          <div className="flex-1 max-w-md">
+            <SearchBar
+              onSearch={handleSearch}
+              placeholder="Search videos..."
+              className="w-full"
+            />
+          </div>
+        </div>
+        
         <div className="text-center py-12">
           <div className="text-lg mb-2">Loading video history...</div>
           <div className="text-sm text-gray-500">This may take a few moments</div>
@@ -193,10 +269,21 @@ export const HistoryPage: React.FC = () => {
   if (error) {
     return (
       <div className="p-4">
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-4">
           <BreadcrumbNavigation items={getBreadcrumbItems()} />
           <TimeIndicator realTime={true} updateInterval={3000} />
         </div>
+        
+        <div className="flex items-center justify-center mb-6">
+          <div className="flex-1 max-w-md">
+            <SearchBar
+              onSearch={handleSearch}
+              placeholder="Search videos..."
+              className="w-full"
+            />
+          </div>
+        </div>
+        
         <div className="text-center py-12">
           <div className="text-lg mb-2 text-red-500">Error: {error}</div>
           <p className="text-gray-500">There was a problem loading your video history.</p>
@@ -207,9 +294,19 @@ export const HistoryPage: React.FC = () => {
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <BreadcrumbNavigation items={getBreadcrumbItems()} />
         <TimeIndicator realTime={true} updateInterval={3000} />
+      </div>
+
+      <div className="flex items-center justify-center mb-6">
+        <div className="flex-1 max-w-md">
+          <SearchBar
+            onSearch={handleSearch}
+            placeholder="Search videos..."
+            className="w-full"
+          />
+        </div>
       </div>
 
       <h1 className="text-2xl font-bold mb-2">📚 Video History</h1>

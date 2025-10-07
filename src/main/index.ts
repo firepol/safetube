@@ -25,6 +25,7 @@ import {
 } from './services/thumbnailService'
 import { registerAllHandlers } from './services/ipcHandlerRegistry'
 import { DatabaseService } from './services/DatabaseService'
+import { findApprovedWishlistVideo } from './database/queries/wishlistQueries'
 import { IPC } from '../shared/ipc-channels'
 
 /**
@@ -355,32 +356,61 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_VIDEO_DATA, async (_, videoId: string, navi
       logVerbose('[Main] Video not found in memory, checking database...');
       try {
         const dbService = DatabaseService.getInstance();
-        const dbVideo = await dbService.get(`
-          SELECT
-            v.id, v.title, v.thumbnail, v.duration, v.url, v.published_at,
-            v.description, v.source_id as sourceId,
-            s.title as sourceTitle, s.thumbnail as sourceThumbnail
-          FROM videos v
-          LEFT JOIN sources s ON v.source_id = s.id
-          WHERE v.id = ?
-        `, [videoId]);
+                  const dbVideo = await dbService.get(`
+                    SELECT
+                      v.id, v.title, v.thumbnail, v.duration, v.url, v.published_at,
+                      v.description, v.source_id as sourceId,
+                      s.title as sourceTitle, s.thumbnail as sourceThumbnail, s.type as sourceType
+                    FROM videos v
+                    LEFT JOIN sources s ON v.source_id = s.id
+                    WHERE v.id = ?
+                  `, [videoId]);
+        
+                  if (dbVideo) {
+                    logVerbose('[Main] Video found in database:', videoId);
+                    video = {
+                      ...dbVideo,
+                      type: dbVideo.sourceType?.startsWith('youtube') ? 'youtube' : dbVideo.sourceType,
+                      publishedAt: dbVideo.published_at
+                    };
+                  }      } catch (dbError) {
+        log.warn('[Main] Could not load video from database:', dbError);
+      }
+    }
 
-        if (dbVideo) {
-          logVerbose('[Main] Video found in database:', videoId);
+    // If still not found, check wishlist for approved videos
+    if (!video) {
+      logVerbose('[Main] Video not found in database, checking wishlist...');
+      try {
+        const dbService = DatabaseService.getInstance();
+        const wishlistVideo = await findApprovedWishlistVideo(dbService, videoId);
+
+        if (wishlistVideo) {
+          logVerbose('[Main] Video found in approved wishlist:', videoId);
           video = {
-            ...dbVideo,
-            type: 'youtube', // Assume YouTube for now (could enhance with type column)
-            publishedAt: dbVideo.published_at
+            id: wishlistVideo.video_id,
+            title: wishlistVideo.title,
+            thumbnail: wishlistVideo.thumbnail || '',
+            duration: wishlistVideo.duration || 0,
+            url: wishlistVideo.url || `https://www.youtube.com/watch?v=${videoId}`,
+            description: wishlistVideo.description || '',
+            publishedAt: wishlistVideo.requested_at || '',
+            type: 'youtube', // Wishlist videos are typically YouTube videos
+            sourceId: 'wishlist-approved',
+            sourceTitle: 'Approved Wishlist',
+            sourceThumbnail: '',
+            channelId: wishlistVideo.channel_id || '',
+            channelName: wishlistVideo.channel_name || ''
           };
         }
-      } catch (dbError) {
-        log.warn('[Main] Could not load video from database:', dbError);
+      } catch (wishlistError) {
+        log.warn('[Main] Could not load video from wishlist:', wishlistError);
       }
     }
 
     // If still not found, throw error
     if (!video) {
-      log.error('[Main] Video not found in memory or database:', videoId);
+      log.error('[Main] Video not found in memory, database, or approved wishlist:', videoId);
       throw new Error('Video sources not initialized. Please restart the app.');
     }
 
@@ -1809,6 +1839,9 @@ app.on('ready', async () => {
     // Initialize Phase 1 schema
     const schemaManager = new SimpleSchemaManager(dbService);
     await schemaManager.initializePhase1Schema();
+
+    // Initialize Search + Moderation schema
+    await schemaManager.initializeSearchModerationSchema();
 
     // Initialize DownloadManager with database connection
     DownloadManager.initialize(dbService);

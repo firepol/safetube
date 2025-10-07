@@ -7,6 +7,7 @@ import { VideoGrid } from '../components/layout/VideoGrid';
 import { VideoSkeleton } from '../components/layout/VideoSkeleton';
 import { PageHeader } from '../components/layout/PageHeader';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
+import { SearchBar } from '../components/search/SearchBar';
 import { logVerbose } from '../lib/logging';
 import { SourceValidationService } from '../services/sourceValidationService';
 import { NavigationCache } from '../services/navigationCache';
@@ -409,6 +410,13 @@ export const SourcePage: React.FC = () => {
     }
   };
 
+  const handleSearch = (query: string) => {
+    if (query.trim()) {
+      // Navigate to search page with source-scoped search
+      navigate(`/search?q=${encodeURIComponent(query)}&source=${sourceId}`);
+    }
+  };
+
   const handleResetClick = async () => {
     if (!sourceId || !window.electron?.clearSourceCache) {
       console.error('Reset functionality not available');
@@ -513,7 +521,7 @@ export const SourcePage: React.FC = () => {
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <BreadcrumbNavigation items={getBreadcrumbItems()} />
         <div className="flex items-center space-x-3">
           <button
@@ -529,6 +537,16 @@ export const SourcePage: React.FC = () => {
             Reset
           </button>
           <TimeIndicator initialState={timeTrackingState} />
+        </div>
+      </div>
+      
+      <div className="flex items-center justify-center mb-6">
+        <div className="flex-1 max-w-md">
+          <SearchBar
+            onSearch={handleSearch}
+            placeholder={`Search in ${source.title}...`}
+            className="w-full"
+          />
         </div>
       </div>
 

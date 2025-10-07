@@ -7,9 +7,12 @@ import { SourcePage } from './pages/SourcePage';
 import { AdminPage } from './pages/AdminPage';
 import { WatchedVideosPage } from './components/video/WatchedVideosPage';
 import { HistoryPage } from './pages/HistoryPage';
+import { SearchResultsPage } from './pages/SearchResultsPage';
+import { WishlistPage } from './pages/WishlistPage';
 import { ErrorFallbackPage } from './pages/ErrorFallbackPage';
 import { RateLimitWarning } from './components/layout/RateLimitWarning';
 import { ErrorBoundary } from './components/common/ErrorBoundary';
+import { WishlistProvider } from './contexts/WishlistContext';
 import { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -166,12 +169,13 @@ function App() {
     <ErrorBoundary>
       <Tooltip.Provider>
         <RateLimitProvider>
-          <HashRouter>
-            <YouTubeNavigationHandler />
-            <ValidationErrorHandler />
-            <div className="min-h-screen bg-background">
-              <ErrorBoundary>
-                <Routes>
+          <WishlistProvider>
+            <HashRouter>
+              <YouTubeNavigationHandler />
+              <ValidationErrorHandler />
+              <div className="min-h-screen bg-background">
+                <ErrorBoundary>
+                  <Routes>
                   <Route path="/" element={<KidScreen />} />
                   <Route path="/source/:sourceId" element={
                     <ErrorBoundary>
@@ -198,6 +202,16 @@ function App() {
                       <HistoryPage />
                     </ErrorBoundary>
                   } />
+                  <Route path="/search" element={
+                    <ErrorBoundary>
+                      <SearchResultsPage />
+                    </ErrorBoundary>
+                  } />
+                  <Route path="/wishlist" element={
+                    <ErrorBoundary>
+                      <WishlistPage />
+                    </ErrorBoundary>
+                  } />
                   <Route path="/player/:id" element={
                     <ErrorBoundary>
                       <PlayerRouter />
@@ -210,10 +224,11 @@ function App() {
               </ErrorBoundary>
             </div>
           </HashRouter>
-        </RateLimitProvider>
-      </Tooltip.Provider>
-    </ErrorBoundary>
-  );
+        </WishlistProvider>
+      </RateLimitProvider>
+    </Tooltip.Provider>
+  </ErrorBoundary>
+);
 }
 
 export default App; 

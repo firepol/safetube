@@ -38,3 +38,6 @@ export * from './downloadsQueries';
 
 // Export downloaded videos queries (Phase 2)
 export * from './downloadedVideosQueries';
+
+// Export wishlist queries (Search + Moderation)
+export * from './wishlistQueries';
