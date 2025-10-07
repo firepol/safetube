@@ -82,3 +82,9 @@ yt-dlp
 yt-dlp.exe
 
 safetube.db*
+
+# gemini-cli settings
+.gemini/
+
+# GitHub App credentials
+gha-creds-*.json
