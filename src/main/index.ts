@@ -356,25 +356,24 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_VIDEO_DATA, async (_, videoId: string, navi
       logVerbose('[Main] Video not found in memory, checking database...');
       try {
         const dbService = DatabaseService.getInstance();
-        const dbVideo = await dbService.get(`
-          SELECT
-            v.id, v.title, v.thumbnail, v.duration, v.url, v.published_at,
-            v.description, v.source_id as sourceId,
-            s.title as sourceTitle, s.thumbnail as sourceThumbnail
-          FROM videos v
-          LEFT JOIN sources s ON v.source_id = s.id
-          WHERE v.id = ?
-        `, [videoId]);
-
-        if (dbVideo) {
-          logVerbose('[Main] Video found in database:', videoId);
-          video = {
-            ...dbVideo,
-            type: 'youtube', // Assume YouTube for now (could enhance with type column)
-            publishedAt: dbVideo.published_at
-          };
-        }
-      } catch (dbError) {
+                  const dbVideo = await dbService.get(`
+                    SELECT
+                      v.id, v.title, v.thumbnail, v.duration, v.url, v.published_at,
+                      v.description, v.source_id as sourceId,
+                      s.title as sourceTitle, s.thumbnail as sourceThumbnail, s.type as sourceType
+                    FROM videos v
+                    LEFT JOIN sources s ON v.source_id = s.id
+                    WHERE v.id = ?
+                  `, [videoId]);
+        
+                  if (dbVideo) {
+                    logVerbose('[Main] Video found in database:', videoId);
+                    video = {
+                      ...dbVideo,
+                      type: dbVideo.sourceType?.startsWith('youtube') ? 'youtube' : dbVideo.sourceType,
+                      publishedAt: dbVideo.published_at
+                    };
+                  }      } catch (dbError) {
         log.warn('[Main] Could not load video from database:', dbError);
       }
     }

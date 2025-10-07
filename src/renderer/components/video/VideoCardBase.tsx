@@ -169,7 +169,6 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
         isInWishlist,
         wishlistStatus,
         showWishlistButton,
-        onWishlistAdd,
         description,
         channelId,
         channelName,

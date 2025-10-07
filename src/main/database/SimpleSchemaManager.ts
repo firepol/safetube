@@ -34,22 +34,30 @@ export class SimpleSchemaManager {
         return;
       }
 
-      // Create tables in dependency order
-      await this.createSchemaVersionTable();
-      await this.createSourcesTable();
-      await this.createVideosTable();
-      await this.createVideosFtsTable();
-      await this.createViewRecordsTable();
-      await this.createFavoritesTable();
-      await this.createYoutubeApiResultsTable();
+      await this.databaseService.run('BEGIN TRANSACTION');
+      try {
+        // Create tables in dependency order
+        await this.createSchemaVersionTable();
+        await this.createSourcesTable();
+        await this.createVideosTable();
+        await this.createVideosFtsTable();
+        await this.createViewRecordsTable();
+        await this.createFavoritesTable();
+        await this.createYoutubeApiResultsTable();
 
-      // Update schema version
-      await this.databaseService.run(`
-        INSERT OR REPLACE INTO schema_version (id, version, phase)
-        VALUES (1, 1, 'phase1')
-      `);
+        // Update schema version
+        await this.databaseService.run(`
+          INSERT OR REPLACE INTO schema_version (id, version, phase)
+          VALUES (1, 1, 'phase1')
+        `);
 
-      log.info('[SimpleSchemaManager] Phase 1 schema initialized successfully');
+        await this.databaseService.run('COMMIT');
+        log.info('[SimpleSchemaManager] Phase 1 schema initialized successfully');
+      } catch (error) {
+        await this.databaseService.run('ROLLBACK');
+        log.error('[SimpleSchemaManager] Error initializing Phase 1 schema, rolled back transaction:', error);
+        throw error;
+      }
     } catch (error) {
       log.error('[SimpleSchemaManager] Error initializing Phase 1 schema:', error);
       throw error;
@@ -258,23 +266,31 @@ export class SimpleSchemaManager {
       // Check if already initialized
       const currentVersion = await this.getCurrentSchemaVersion();
 
-      // Create Phase 2 tables (CREATE TABLE IF NOT EXISTS ensures safe re-run)
-      await this.createUsageLogsTable();
-      await this.createTimeLimitsTable();
-      await this.createUsageExtrasTable();
-      await this.createSettingsTable();
-      await this.createDownloadsTable();
-      await this.createDownloadedVideosTable();
+      await this.databaseService.run('BEGIN TRANSACTION');
+      try {
+        // Create Phase 2 tables (CREATE TABLE IF NOT EXISTS ensures safe re-run)
+        await this.createUsageLogsTable();
+        await this.createTimeLimitsTable();
+        await this.createUsageExtrasTable();
+        await this.createSettingsTable();
+        await this.createDownloadsTable();
+        await this.createDownloadedVideosTable();
 
-      // Only update schema version if not already at phase2
-      if (!currentVersion || currentVersion.phase !== 'phase2') {
-        await this.databaseService.run(`
-          INSERT OR REPLACE INTO schema_version (id, version, phase)
-          VALUES (1, 2, 'phase2')
-        `);
+        // Only update schema version if not already at phase2
+        if (!currentVersion || currentVersion.phase !== 'phase2') {
+          await this.databaseService.run(`
+            INSERT OR REPLACE INTO schema_version (id, version, phase)
+            VALUES (1, 2, 'phase2')
+          `);
+        }
+
+        await this.databaseService.run('COMMIT');
+        log.info('[SimpleSchemaManager] Phase 2 schema initialized successfully');
+      } catch (error) {
+        await this.databaseService.run('ROLLBACK');
+        log.error('[SimpleSchemaManager] Error initializing Phase 2 schema, rolled back transaction:', error);
+        throw error;
       }
-
-      log.info('[SimpleSchemaManager] Phase 2 schema initialized successfully');
     } catch (error) {
       log.error('[SimpleSchemaManager] Error initializing Phase 2 schema:', error);
       throw error;
@@ -430,6 +446,7 @@ export class SimpleSchemaManager {
    * Initialize Search + Moderation schema (migration)
    */
   async initializeSearchModerationSchema(): Promise<void> {
+    await this.databaseService.run('BEGIN TRANSACTION');
     try {
       log.info('[SimpleSchemaManager] Initializing Search + Moderation schema');
 
@@ -438,9 +455,11 @@ export class SimpleSchemaManager {
       await this.createWishlistTable();
       await this.createSearchResultsCacheTable();
 
+      await this.databaseService.run('COMMIT');
       log.info('[SimpleSchemaManager] Search + Moderation schema initialized successfully');
     } catch (error) {
-      log.error('[SimpleSchemaManager] Error initializing Search + Moderation schema:', error);
+      await this.databaseService.run('ROLLBACK');
+      log.error('[SimpleSchemaManager] Error initializing Search + Moderation schema, rolled back transaction:', error);
       throw error;
     }
   }

@@ -134,9 +134,9 @@ export class SearchService {
             FROM videos v
             LEFT JOIN sources s ON v.source_id = s.id
             LEFT JOIN wishlist w ON v.id = w.video_id
-            WHERE v.url LIKE ?`;
+            WHERE LOWER(v.url) LIKE ?`;
           
-          const urlQueryParams = [`%${query}%`];
+          const urlQueryParams = [`%${query.toLowerCase()}%`];
           
           // Exclude already found results
           if (results.length > 0) {
@@ -159,7 +159,7 @@ export class SearchService {
         log.warn(`[SearchService] FTS5 search failed, falling back to LIKE search:`, ftsError);
         
         // Fallback to LIKE search if FTS5 fails
-        const likeQuery = `%${query.replace(/[%_]/g, '\\$&')}%`;
+        const likeQuery = `%${query.toLowerCase().replace(/[%_]/g, '\\$&')}%`;
         let fallbackQuery = `
           SELECT
             v.id,
@@ -177,7 +177,7 @@ export class SearchService {
           FROM videos v
           LEFT JOIN sources s ON v.source_id = s.id
           LEFT JOIN wishlist w ON v.id = w.video_id
-          WHERE (v.title LIKE ? OR v.description LIKE ? OR v.url LIKE ?)`;
+          WHERE (LOWER(v.title) LIKE ? OR LOWER(v.description) LIKE ? OR LOWER(v.url) LIKE ?)`;
         
         const fallbackParams = [likeQuery, likeQuery, likeQuery];
         
@@ -188,8 +188,8 @@ export class SearchService {
         
         fallbackQuery += ` ORDER BY 
             CASE 
-              WHEN v.title LIKE ? THEN 1 
-              WHEN v.description LIKE ? THEN 2
+              WHEN LOWER(v.title) LIKE ? THEN 1 
+              WHEN LOWER(v.description) LIKE ? THEN 2
               ELSE 3 
             END,
             v.title

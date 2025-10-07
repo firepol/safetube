@@ -188,6 +188,7 @@ export class WishlistService {
         UPDATE wishlist
         SET status = 'approved',
             reviewed_at = ?,
+            reviewed_by = 'admin',
             updated_at = ?
         WHERE video_id = ?
       `, [now, now, videoId]);
@@ -239,6 +240,7 @@ export class WishlistService {
         UPDATE wishlist
         SET status = 'denied',
             reviewed_at = ?,
+            reviewed_by = 'admin',
             denial_reason = ?,
             updated_at = ?
         WHERE video_id = ?
@@ -303,10 +305,11 @@ export class WishlistService {
         UPDATE wishlist
         SET status = ?,
             reviewed_at = CASE WHEN ? IN ('approved', 'denied') THEN ? ELSE reviewed_at END,
+            reviewed_by = CASE WHEN ? IN ('approved', 'denied') THEN 'admin' ELSE reviewed_by END,
             denial_reason = ?,
             updated_at = ?
         WHERE video_id = ?
-      `, [status, status, now, reason || null, now, videoId]);
+      `, [status, status, now, status, reason || null, now, videoId]);
 
       if (result.changes === 0) {
         const error = 'Failed to update video status';
@@ -364,77 +367,14 @@ export class WishlistService {
     }
   }
 
+
+
   /**
    * Bulk approve multiple videos in the wishlist
    * Uses database transaction for consistency
    */
   async bulkApproveVideos(videoIds: string[]): Promise<{ success: string[]; failed: string[] }> {
-    const results: { success: string[]; failed: string[] } = { success: [], failed: [] };
-
-    if (videoIds.length === 0) {
-      log.warn('[WishlistService] Bulk approve called with empty video list');
-      return results;
-    }
-
-    log.info(`[WishlistService] Starting bulk approve for ${videoIds.length} videos`);
-
-    try {
-      // Begin transaction
-      await this.db.run('BEGIN TRANSACTION');
-
-      const now = new Date().toISOString();
-
-      for (const videoId of videoIds) {
-        try {
-          // Update status to approved for pending videos only
-          const result = await this.db.run(`
-            UPDATE wishlist
-            SET status = 'approved',
-                reviewed_at = ?,
-                updated_at = ?
-            WHERE video_id = ? AND status = 'pending'
-          `, [now, now, videoId]);
-
-          if (result.changes > 0) {
-            results.success.push(videoId);
-            log.debug(`[WishlistService] Successfully approved video: ${videoId}`);
-          } else {
-            results.failed.push(videoId);
-            log.warn(`[WishlistService] Failed to approve video (not found or not pending): ${videoId}`);
-          }
-        } catch (error) {
-          results.failed.push(videoId);
-          log.error(`[WishlistService] Error approving video ${videoId}:`, error);
-        }
-      }
-
-      // Commit transaction
-      await this.db.run('COMMIT');
-
-      log.info(`[WishlistService] Bulk approve completed: ${results.success.length} success, ${results.failed.length} failed`);
-
-      // Emit update event if any videos were updated
-      if (results.success.length > 0) {
-        this.emitWishlistUpdate();
-      }
-
-      return results;
-    } catch (error) {
-      // Rollback transaction on error
-      try {
-        await this.db.run('ROLLBACK');
-      } catch (rollbackError) {
-        log.error('[WishlistService] Error rolling back transaction:', rollbackError);
-      }
-
-      log.error('[WishlistService] Bulk approve transaction failed:', error);
-      
-      // Mark all videos as failed
-      results.failed = [...videoIds];
-      results.success = [];
-      
-      return results;
-    }
+    return this.bulkUpdateWishlist(videoIds, 'approved');
   }
 
   /**
@@ -442,14 +382,26 @@ export class WishlistService {
    * Uses database transaction for consistency
    */
   async bulkDenyVideos(videoIds: string[], reason?: string): Promise<{ success: string[]; failed: string[] }> {
+    return this.bulkUpdateWishlist(videoIds, 'denied', reason);
+  }
+
+  /**
+   * Bulk update multiple videos in the wishlist with a new status
+   * Uses database transaction for consistency
+   */
+  private async bulkUpdateWishlist(
+    videoIds: string[],
+    status: 'approved' | 'denied',
+    reason?: string
+  ): Promise<{ success: string[]; failed: string[] }> {
     const results: { success: string[]; failed: string[] } = { success: [], failed: [] };
 
     if (videoIds.length === 0) {
-      log.warn('[WishlistService] Bulk deny called with empty video list');
+      log.warn(`[WishlistService] Bulk ${status} called with empty video list`);
       return results;
     }
 
-    log.info(`[WishlistService] Starting bulk deny for ${videoIds.length} videos${reason ? ` (reason: ${reason})` : ''}`);
+    log.info(`[WishlistService] Starting bulk ${status} for ${videoIds.length} videos`);
 
     try {
       // Begin transaction
@@ -459,33 +411,33 @@ export class WishlistService {
 
       for (const videoId of videoIds) {
         try {
-          // Update status to denied for pending videos only
           const result = await this.db.run(`
             UPDATE wishlist
-            SET status = 'denied',
+            SET status = ?,
                 reviewed_at = ?,
+                reviewed_by = 'admin',
                 denial_reason = ?,
                 updated_at = ?
             WHERE video_id = ? AND status = 'pending'
-          `, [now, reason || null, now, videoId]);
+          `, [status, now, status === 'denied' ? reason || null : null, now, videoId]);
 
           if (result.changes > 0) {
             results.success.push(videoId);
-            log.debug(`[WishlistService] Successfully denied video: ${videoId}`);
+            log.debug(`[WishlistService] Successfully updated video ${videoId} to ${status}`);
           } else {
             results.failed.push(videoId);
-            log.warn(`[WishlistService] Failed to deny video (not found or not pending): ${videoId}`);
+            log.warn(`[WishlistService] Failed to update video ${videoId} to ${status} (not found or not pending)`);
           }
         } catch (error) {
           results.failed.push(videoId);
-          log.error(`[WishlistService] Error denying video ${videoId}:`, error);
+          log.error(`[WishlistService] Error updating video ${videoId} to ${status}:`, error);
         }
       }
 
       // Commit transaction
       await this.db.run('COMMIT');
 
-      log.info(`[WishlistService] Bulk deny completed: ${results.success.length} success, ${results.failed.length} failed`);
+      log.info(`[WishlistService] Bulk ${status} completed: ${results.success.length} success, ${results.failed.length} failed`);
 
       // Emit update event if any videos were updated
       if (results.success.length > 0) {
@@ -501,7 +453,7 @@ export class WishlistService {
         log.error('[WishlistService] Error rolling back transaction:', rollbackError);
       }
 
-      log.error('[WishlistService] Bulk deny transaction failed:', error);
+      log.error(`[WishlistService] Bulk ${status} transaction failed:`, error);
       
       // Mark all videos as failed
       results.failed = [...videoIds];

@@ -50,7 +50,7 @@ export function registerWishlistHandlers(mainWindow: BrowserWindow | null = null
         log.error('[Wishlist IPC] Add to wishlist failed:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to add to wishlist',
+          error: `Failed to add to wishlist: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: 'ADD_TO_WISHLIST_FAILED'
         };
       }
@@ -81,7 +81,7 @@ export function registerWishlistHandlers(mainWindow: BrowserWindow | null = null
         log.error('[Wishlist IPC] Remove from wishlist failed:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to remove from wishlist',
+          error: `Failed to remove from wishlist: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: 'REMOVE_FROM_WISHLIST_FAILED'
         };
       }
@@ -103,7 +103,7 @@ export function registerWishlistHandlers(mainWindow: BrowserWindow | null = null
         log.error('[Wishlist IPC] Get wishlist by status failed:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to get wishlist',
+          error: `Failed to get wishlist: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: 'GET_WISHLIST_FAILED'
         };
       }
@@ -134,7 +134,7 @@ export function registerWishlistHandlers(mainWindow: BrowserWindow | null = null
         log.error('[Wishlist IPC] Approve video failed:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to approve video',
+          error: `Failed to approve video: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: 'APPROVE_VIDEO_FAILED'
         };
       }
@@ -165,7 +165,7 @@ export function registerWishlistHandlers(mainWindow: BrowserWindow | null = null
         log.error('[Wishlist IPC] Deny video failed:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to deny video',
+          error: `Failed to deny video: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: 'DENY_VIDEO_FAILED'
         };
       }
@@ -188,7 +188,7 @@ export function registerWishlistHandlers(mainWindow: BrowserWindow | null = null
         log.error('[Wishlist IPC] Bulk approve failed:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to bulk approve videos',
+          error: `Failed to bulk approve videos: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: 'BULK_APPROVE_FAILED'
         };
       }
@@ -211,7 +211,7 @@ export function registerWishlistHandlers(mainWindow: BrowserWindow | null = null
         log.error('[Wishlist IPC] Bulk deny failed:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to bulk deny videos',
+          error: `Failed to bulk deny videos: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: 'BULK_DENY_FAILED'
         };
       }

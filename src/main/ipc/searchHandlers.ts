@@ -40,7 +40,7 @@ export function registerSearchHandlers() {
         log.error('[Search IPC] Database search failed:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Database search failed',
+          error: `Database search failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: 'SEARCH_DATABASE_FAILED'
         };
       }
@@ -62,7 +62,7 @@ export function registerSearchHandlers() {
         log.error('[Search IPC] YouTube search failed:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'YouTube search failed',
+          error: `YouTube search failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: 'SEARCH_YOUTUBE_FAILED'
         };
       }
@@ -84,7 +84,7 @@ export function registerSearchHandlers() {
         log.error('[Search IPC] Get search history failed:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to get search history',
+          error: `Failed to get search history: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: 'GET_SEARCH_HISTORY_FAILED'
         };
       }
@@ -106,7 +106,7 @@ export function registerSearchHandlers() {
         log.error('[Search IPC] Get cached results failed:', error);
         return {
           success: false,
-          error: error instanceof Error ? error.message : 'Failed to get cached results',
+          error: `Failed to get cached results: ${error instanceof Error ? error.message : 'Unknown error'}`,
           code: 'GET_CACHED_RESULTS_FAILED'
         };
       }

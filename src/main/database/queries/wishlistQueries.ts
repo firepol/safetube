@@ -121,8 +121,8 @@ export async function addToWishlist(
   await db.run(
     `INSERT INTO wishlist (
       video_id, title, thumbnail, description, channel_id, 
-      channel_name, duration, url, status, requested_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP)`,
+      channel_name, duration, url, status, requested_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
     [
       videoData.video_id,
       videoData.title,
