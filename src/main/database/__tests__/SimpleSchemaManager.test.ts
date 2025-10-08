@@ -37,28 +37,19 @@ describe('SimpleSchemaManager', () => {
     await cleanupTestDatabase(databaseService, TEST_DB_PATH);
   });
 
-  test('should initialize Phase 1 schema successfully', async () => {
-    await schemaManager.initializePhase1Schema();
+  test('should initialize v1 schema successfully', async () => {
+    await schemaManager.initializeSchema();
 
     // Verify schema version was set
     const version = await schemaManager.getCurrentSchemaVersion();
     expect(version).toBeTruthy();
-    expect(version?.phase).toBe('phase1');
-    expect(version?.version).toBe(1);
+    expect(version?.version).toBe('v1');
   });
 
-  test('should validate Phase 1 schema correctly', async () => {
-    await schemaManager.initializePhase1Schema();
+  test('should create all required v1 tables', async () => {
+    await schemaManager.initializeSchema();
 
-    const validation = await schemaManager.validatePhase1Schema();
-    expect(validation.isValid).toBe(true);
-    expect(validation.errors).toHaveLength(0);
-  });
-
-  test('should create all required Phase 1 tables', async () => {
-    await schemaManager.initializePhase1Schema();
-
-    // Check that all Phase 1 tables exist
+    // Check that all tables exist
     const tables = await databaseService.all<{ name: string }>(`
       SELECT name FROM sqlite_master
       WHERE type='table' AND name NOT LIKE 'sqlite_%'
@@ -68,13 +59,21 @@ describe('SimpleSchemaManager', () => {
     const tableNames = tables.map(t => t.name);
 
     const expectedTables = [
+      'downloaded_videos',
+      'downloads',
       'favorites',
       'schema_version',
+      'search_results_cache',
+      'searches',
+      'settings',
       'sources',
+      'time_limits',
+      'usage_extras',
+      'usage_logs',
       'videos',
       'videos_fts',
       'view_records',
-      'youtube_api_results'
+      'wishlist',
     ];
 
     for (const expectedTable of expectedTables) {
@@ -82,8 +81,19 @@ describe('SimpleSchemaManager', () => {
     }
   });
 
+  test('should insert default admin password', async () => {
+    await schemaManager.initializeSchema();
+
+    const passwordHash = await databaseService.get<{ value: string }>(`
+      SELECT value FROM settings WHERE key = 'adminPassword'
+    `);
+
+    expect(passwordHash).toBeDefined();
+    expect(passwordHash?.value).toBe('$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy');
+  });
+
   test('should create required indexes', async () => {
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
 
     // Check that required indexes exist
     const indexes = await databaseService.all<{ name: string }>(`
@@ -109,7 +119,7 @@ describe('SimpleSchemaManager', () => {
   });
 
   test('should create FTS table and triggers', async () => {
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
 
     // Verify FTS table exists
     const ftsTable = await databaseService.get(`
@@ -132,7 +142,7 @@ describe('SimpleSchemaManager', () => {
   });
 
   test('should handle foreign key constraints correctly', async () => {
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
 
     // Check if foreign keys are enabled
     const fkStatus = await databaseService.get<{ foreign_keys: number }>('PRAGMA foreign_keys');
@@ -158,7 +168,7 @@ describe('SimpleSchemaManager', () => {
   });
 
   test('should test FTS functionality', async () => {
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
 
     // Insert a source and video with description
     await databaseService.run(`
@@ -185,11 +195,11 @@ describe('SimpleSchemaManager', () => {
 
   test('should not reinitialize if schema already exists', async () => {
     // Initialize schema first time
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
     const firstVersion = await schemaManager.getCurrentSchemaVersion();
 
     // Try to initialize again
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
     const secondVersion = await schemaManager.getCurrentSchemaVersion();
 
     // Should be the same
@@ -197,7 +207,7 @@ describe('SimpleSchemaManager', () => {
   });
 
   test('should drop schema correctly', async () => {
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
 
     // Verify tables exist
     const tablesBefore = await databaseService.all(`

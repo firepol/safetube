@@ -1,4 +1,5 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
+import './services/__tests__/setup.ts';
 import fs from 'fs';
 import { spawn } from 'child_process';
 import { ThumbnailGenerator } from './thumbnailGenerator';

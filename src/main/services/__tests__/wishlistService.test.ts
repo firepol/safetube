@@ -31,7 +31,7 @@ describe('WishlistService', () => {
     // Initialize schema
     const { SimpleSchemaManager } = await import('../../database/SimpleSchemaManager');
     const schemaManager = new SimpleSchemaManager(db);
-    await schemaManager.initializeSearchModerationSchema();
+    await schemaManager.initializeSchema();
 
     // Create wishlist service
     wishlistService = new WishlistService(db);
@@ -177,6 +177,9 @@ describe('WishlistService', () => {
         id: 'test-video-3',
         title: 'Test Video 3'
       });
+
+      // Add a small delay to ensure timestamps are different
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       const items = await wishlistService.getWishlistByStatus('pending');
 

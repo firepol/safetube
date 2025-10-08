@@ -1,6 +1,5 @@
 import './../../services/__tests__/setup'; // Import mocks first
-import DatabaseService from '../../services/DatabaseService';
-import SimpleSchemaManager from '../SimpleSchemaManager';
+import Database from 'better-sqlite3';
 import { resetDatabaseSingleton, createTestDatabase, cleanupTestDatabase } from './testHelpers';
 import {
   getSetting,
@@ -16,24 +15,22 @@ import {
   deserializeSetting,
   inferType
 } from '../queries/settingsQueries';
+import { initializeSchema, seedDefaultData } from '../schema';
 
 describe('Settings Queries', () => {
-  let db: DatabaseService;
-  let schemaManager: SimpleSchemaManager;
+  let db: Database.Database;
 
   beforeEach(async () => {
     // Reset singleton for test isolation
     resetDatabaseSingleton();
 
     // Create in-memory test database
-    db = await createTestDatabase({ useMemory: true });
-    schemaManager = new SimpleSchemaManager(db);
+    db = new Database(':memory:');
 
-    // Initialize Phase 1 schema first (for schema_version table)
-    await schemaManager.initializePhase1Schema();
-
-    // Initialize Phase 2 schema (creates settings table)
-    await schemaManager.initializePhase2Schema();
+    // Initialize the consolidated schema
+    initializeSchema(db);
+    // Seed the default data, including the admin password
+    seedDefaultData(db);
   });
 
   afterEach(async () => {
@@ -90,9 +87,9 @@ describe('Settings Queries', () => {
       const value = await getSetting<string>(db, 'main.theme');
       expect(value).toBe('dark');
 
-      // Should only have one entry
+      // Should only have one entry for theme, plus the default password
       const count = await countSettings(db);
-      expect(count).toBe(1);
+      expect(count).toBe(2);
     });
   });
 
@@ -266,18 +263,21 @@ describe('Settings Queries', () => {
   });
 
   describe('getAllSettings', () => {
-    it('should return empty object when no settings exist', async () => {
+    it('should return only default password when no settings exist', async () => {
       const settings = await getAllSettings(db);
-      expect(settings).toEqual({});
+      expect(settings).toEqual({
+        'main.adminPassword': '$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy'
+      });
     });
 
     it('should return all settings with full keys', async () => {
       await setSetting(db, 'main.theme', 'dark');
       await setSetting(db, 'main.language', 'en');
       await setSetting(db, 'pagination.pageSize', 50);
-
+ 
       const settings = await getAllSettings(db);
       expect(settings).toEqual({
+        'main.adminPassword': '$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy',
         'main.theme': 'dark',
         'main.language': 'en',
         'pagination.pageSize': 50
@@ -298,9 +298,9 @@ describe('Settings Queries', () => {
   });
 
   describe('countSettings', () => {
-    it('should return 0 when no settings exist', async () => {
+    it('should return 1 when only default password exists', async () => {
       const count = await countSettings(db);
-      expect(count).toBe(0);
+      expect(count).toBe(1);
     });
 
     it('should return correct count', async () => {
@@ -308,8 +308,8 @@ describe('Settings Queries', () => {
       await setSetting(db, 'main.language', 'en');
       await setSetting(db, 'pagination.pageSize', 50);
 
-      const count = await countSettings(db);
-      expect(count).toBe(3);
+      const count = await countSettings(db); // 3 settings + 1 default password
+      expect(count).toBe(4);
     });
   });
 
@@ -317,14 +317,14 @@ describe('Settings Queries', () => {
     it('should migrate mainSettings.json correctly', async () => {
       // Mock data from real mainSettings.json
       const mockMainSettings = {
-        downloadPath: '/home/paul/Videos/SafeTube',
-        youtubeApiKey: 'your-api-key-here',
-        adminPassword: '$2b$10$JsWHw.xIeyxKPkCIQxYVZugz9g8Vp8WZR9FUe92ZuXXatKBoV2dem',
-        enableVerboseLogging: true,
-        allowYouTubeClicksToOtherVideos: true
+        downloadPath: '/home/paul/Videos/SafeTube', 
+        youtubeApiKey: 'your-api-key-here', 
+        enableVerboseLogging: true, 
+        allowYouTubeClicksToOtherVideos: true 
       };
 
       // Migrate
+      // Note: adminPassword is now handled separately and not part of this namespace migration
       await setSettingsByNamespace(db, 'main', mockMainSettings);
 
       // Verify
@@ -407,7 +407,7 @@ describe('Settings Queries', () => {
 
       // Verify total count
       const count = await countSettings(db);
-      expect(count).toBe(6); // 2 main + 2 pagination + 2 youtube_player
+      expect(count).toBe(7); // 2 main + 2 pagination + 2 youtube_player + 1 default adminPassword
     });
   });
 
@@ -467,7 +467,7 @@ describe('Settings Queries', () => {
       expect(value).toBe('second');
 
       const count = await countSettings(db);
-      expect(count).toBe(1);
+      expect(count).toBe(2);
     });
   });
 });

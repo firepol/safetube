@@ -2,8 +2,7 @@ import DatabaseService from '../services/DatabaseService';
 import log from '../logger';
 
 interface SchemaVersion {
-  version: number;
-  phase: 'phase1' | 'phase2' | 'search-moderation';
+  version: string;
   updated_at: string;
 }
 
@@ -19,17 +18,15 @@ export class SimpleSchemaManager {
   }
 
   /**
-   * Initialize Phase 1 database schema
+   * Initialize the database schema
    */
-  async initializePhase1Schema(): Promise<void> {
+  async initializeSchema(): Promise<void> {
     try {
-      log.info('[SimpleSchemaManager] Initializing Phase 1 schema');
+      log.info('[SimpleSchemaManager] Initializing database schema');
 
-      // Check if already initialized
       const currentVersion = await this.getCurrentSchemaVersion();
-      if (currentVersion && currentVersion.phase === 'phase1') {
-        log.debug('[SimpleSchemaManager] Phase 1 schema already initialized');
-        // Check if we need to fix the sources table columns
+      if (currentVersion && currentVersion.version === 'v1') {
+        log.debug('[SimpleSchemaManager] Schema is already at version v1');
         await this.fixSourcesTableColumns();
         return;
       }
@@ -44,22 +41,34 @@ export class SimpleSchemaManager {
         await this.createViewRecordsTable();
         await this.createFavoritesTable();
         await this.createYoutubeApiResultsTable();
+        await this.createUsageLogsTable();
+        await this.createTimeLimitsTable();
+        await this.createUsageExtrasTable();
+        await this.createSettingsTable();
+        await this.createDownloadsTable();
+        await this.createDownloadedVideosTable();
+        await this.createSearchesTable();
+        await this.createWishlistTable();
+        await this.createSearchResultsCacheTable();
+
+        // Set default settings
+        await this.insertDefaultSettings();
 
         // Update schema version
         await this.databaseService.run(`
-          INSERT OR REPLACE INTO schema_version (id, version, phase)
-          VALUES (1, 1, 'phase1')
+          INSERT OR REPLACE INTO schema_version (id, version)
+          VALUES (1, 'v1')
         `);
 
         await this.databaseService.run('COMMIT');
-        log.info('[SimpleSchemaManager] Phase 1 schema initialized successfully');
+        log.info('[SimpleSchemaManager] Database schema initialized successfully to version v1');
       } catch (error) {
         await this.databaseService.run('ROLLBACK');
-        log.error('[SimpleSchemaManager] Error initializing Phase 1 schema, rolled back transaction:', error);
+        log.error('[SimpleSchemaManager] Error initializing schema, rolled back transaction:', error);
         throw error;
       }
     } catch (error) {
-      log.error('[SimpleSchemaManager] Error initializing Phase 1 schema:', error);
+      log.error('[SimpleSchemaManager] Error initializing schema:', error);
       throw error;
     }
   }
@@ -71,8 +80,7 @@ export class SimpleSchemaManager {
     await this.databaseService.run(`
       CREATE TABLE IF NOT EXISTS schema_version (
           id INTEGER PRIMARY KEY CHECK (id = 1),
-          version INTEGER NOT NULL,
-          phase TEXT NOT NULL,
+          version TEXT NOT NULL,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
@@ -257,47 +265,6 @@ export class SimpleSchemaManager {
   }
 
   /**
-   * Initialize Phase 2 database schema
-   */
-  async initializePhase2Schema(): Promise<void> {
-    try {
-      log.info('[SimpleSchemaManager] Initializing Phase 2 schema');
-
-      // Check if already initialized
-      const currentVersion = await this.getCurrentSchemaVersion();
-
-      await this.databaseService.run('BEGIN TRANSACTION');
-      try {
-        // Create Phase 2 tables (CREATE TABLE IF NOT EXISTS ensures safe re-run)
-        await this.createUsageLogsTable();
-        await this.createTimeLimitsTable();
-        await this.createUsageExtrasTable();
-        await this.createSettingsTable();
-        await this.createDownloadsTable();
-        await this.createDownloadedVideosTable();
-
-        // Only update schema version if not already at phase2
-        if (!currentVersion || currentVersion.phase !== 'phase2') {
-          await this.databaseService.run(`
-            INSERT OR REPLACE INTO schema_version (id, version, phase)
-            VALUES (1, 2, 'phase2')
-          `);
-        }
-
-        await this.databaseService.run('COMMIT');
-        log.info('[SimpleSchemaManager] Phase 2 schema initialized successfully');
-      } catch (error) {
-        await this.databaseService.run('ROLLBACK');
-        log.error('[SimpleSchemaManager] Error initializing Phase 2 schema, rolled back transaction:', error);
-        throw error;
-      }
-    } catch (error) {
-      log.error('[SimpleSchemaManager] Error initializing Phase 2 schema:', error);
-      throw error;
-    }
-  }
-
-  /**
    * Create usage_logs table
    */
   private async createUsageLogsTable(): Promise<void> {
@@ -387,6 +354,17 @@ export class SimpleSchemaManager {
   }
 
   /**
+   * Insert default settings, including the admin password
+   */
+  private async insertDefaultSettings(): Promise<void> {
+    const defaultPasswordHash = '$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy'; // hash for 'paren234'
+    await this.databaseService.run(`
+      INSERT OR IGNORE INTO settings (key, value, type, description)
+      VALUES ('adminPassword', ?, 'string', 'Admin password hash')
+    `, [defaultPasswordHash]);
+  }
+
+  /**
    * Create downloads table (transient download tracking)
    */
   private async createDownloadsTable(): Promise<void> {
@@ -440,28 +418,6 @@ export class SimpleSchemaManager {
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_source_id ON downloaded_videos(source_id)');
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_downloaded_at ON downloaded_videos(downloaded_at)');
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_file_path ON downloaded_videos(file_path)');
-  }
-
-  /**
-   * Initialize Search + Moderation schema (migration)
-   */
-  async initializeSearchModerationSchema(): Promise<void> {
-    await this.databaseService.run('BEGIN TRANSACTION');
-    try {
-      log.info('[SimpleSchemaManager] Initializing Search + Moderation schema');
-
-      // Create search and wishlist tables
-      await this.createSearchesTable();
-      await this.createWishlistTable();
-      await this.createSearchResultsCacheTable();
-
-      await this.databaseService.run('COMMIT');
-      log.info('[SimpleSchemaManager] Search + Moderation schema initialized successfully');
-    } catch (error) {
-      await this.databaseService.run('ROLLBACK');
-      log.error('[SimpleSchemaManager] Error initializing Search + Moderation schema, rolled back transaction:', error);
-      throw error;
-    }
   }
 
   /**
@@ -558,7 +514,7 @@ export class SimpleSchemaManager {
 
       // Get current version
       const version = await this.databaseService.get<SchemaVersion>(`
-        SELECT version, phase, updated_at
+        SELECT version, updated_at
         FROM schema_version
         WHERE id = 1
       `);
@@ -567,58 +523,6 @@ export class SimpleSchemaManager {
     } catch (error) {
       log.error('[SimpleSchemaManager] Error getting current schema version:', error);
       return null;
-    }
-  }
-
-  /**
-   * Validate Phase 1 schema
-   */
-  async validatePhase1Schema(): Promise<{ isValid: boolean; errors: string[] }> {
-    try {
-      const errors: string[] = [];
-
-      // Check all required tables exist
-      const requiredTables = [
-        'schema_version',
-        'sources',
-        'videos',
-        'videos_fts',
-        'view_records',
-        'favorites',
-        'youtube_api_results'
-      ];
-
-      const tables = await this.databaseService.all<{ name: string }>(`
-        SELECT name FROM sqlite_master
-        WHERE type='table' AND name NOT LIKE 'sqlite_%'
-        ORDER BY name
-      `);
-
-      const tableNames = tables.map(t => t.name);
-
-      for (const requiredTable of requiredTables) {
-        if (!tableNames.includes(requiredTable)) {
-          errors.push(`Missing table: ${requiredTable}`);
-        }
-      }
-
-      // Check schema version
-      const schemaVersion = await this.getCurrentSchemaVersion();
-      if (!schemaVersion) {
-        errors.push('Schema version not found');
-      } else if (schemaVersion.phase !== 'phase1') {
-        errors.push(`Expected phase1, got ${schemaVersion.phase}`);
-      }
-
-      return {
-        isValid: errors.length === 0,
-        errors
-      };
-    } catch (error) {
-      return {
-        isValid: false,
-        errors: [error instanceof Error ? error.message : 'Unknown validation error']
-      };
     }
   }
 

@@ -23,9 +23,7 @@ describe('SearchService', () => {
 
     // Initialize schema with search tables
     const schemaManager = new SimpleSchemaManager(db);
-    await schemaManager.initializePhase1Schema();
-    await schemaManager.initializePhase2Schema(); // Need this for settings table
-    await schemaManager.initializeSearchModerationSchema();
+    await schemaManager.initializeSchema();
 
     searchService = new SearchService(db);
 

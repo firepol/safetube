@@ -28,11 +28,8 @@ describe('Downloads Queries', () => {
     db = await createTestDatabase({ useMemory: true });
     schemaManager = new SimpleSchemaManager(db);
 
-    // Initialize Phase 1 schema first (for sources table FK)
-    await schemaManager.initializePhase1Schema();
-
-    // Initialize Phase 2 schema (creates downloads table)
-    await schemaManager.initializePhase2Schema();
+    // Initialize the consolidated schema
+    await schemaManager.initializeSchema();
 
     // Create test source for foreign key
     await db.run(`

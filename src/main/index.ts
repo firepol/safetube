@@ -1836,12 +1836,9 @@ app.on('ready', async () => {
     log.info('[Main] Initializing SQLite database...');
     await dbService.initialize();
 
-    // Initialize Phase 1 schema
+    // Initialize the consolidated schema
     const schemaManager = new SimpleSchemaManager(dbService);
-    await schemaManager.initializePhase1Schema();
-
-    // Initialize Search + Moderation schema
-    await schemaManager.initializeSearchModerationSchema();
+    await schemaManager.initializeSchema();
 
     // Initialize DownloadManager with database connection
     DownloadManager.initialize(dbService);

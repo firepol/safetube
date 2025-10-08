@@ -23,11 +23,8 @@ describe('Time Limit Queries', () => {
     db = await createTestDatabase({ useMemory: true });
     schemaManager = new SimpleSchemaManager(db);
 
-    // Initialize Phase 1 schema first (for schema_version table)
-    await schemaManager.initializePhase1Schema();
-
-    // Initialize Phase 2 schema (creates time_limits table with default row)
-    await schemaManager.initializePhase2Schema();
+    // Initialize the consolidated schema
+    await schemaManager.initializeSchema();
   });
 
   afterEach(async () => {
