@@ -119,7 +119,7 @@ export const ModerationVideoCard: React.FC<ModerationVideoCardProps> = ({
       </div>
 
       {/* Action Buttons Overlay */}
-      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
+      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-12 pb-2 transition-all duration-200 flex items-end justify-center opacity-0 group-hover:opacity-100">
         <div className="flex gap-2">
           {actions.map((action, index) => (
             <button
