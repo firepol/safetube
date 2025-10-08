@@ -190,17 +190,21 @@ export const WishlistModerationTab: React.FC = () => {
         failed: []
       });
 
-      const result = await window.electron.wishlistBulkApprove(videoIds);
+      const response: any = await window.electron.wishlistBulkApprove(videoIds);
       
-      setBulkOperationProgress({
-        total: videoIds.length,
-        completed: result.success.length,
-        failed: result.failed
-      });
+      if (response.success && response.data) {
+        setBulkOperationProgress({
+          total: videoIds.length,
+          completed: response.data.success.length,
+          failed: response.data.failed
+        });
 
-      // Show success/error feedback
-      if (result.failed.length > 0) {
-        setError(`${result.failed.length} videos failed to approve. Please try again.`);
+        // Show success/error feedback
+        if (response.data.failed.length > 0) {
+          setError(`${response.data.failed.length} videos failed to approve. Please try again.`);
+        }
+      } else {
+        throw new Error(response.error || 'Bulk approve failed');
       }
 
       // Refresh data and clear selection
@@ -233,17 +237,21 @@ export const WishlistModerationTab: React.FC = () => {
         failed: []
       });
 
-      const result = await window.electron.wishlistBulkDeny(videoIds, reason);
+      const response: any = await window.electron.wishlistBulkDeny(videoIds, reason);
       
-      setBulkOperationProgress({
-        total: videoIds.length,
-        completed: result.success.length,
-        failed: result.failed
-      });
+      if (response.success && response.data) {
+        setBulkOperationProgress({
+          total: videoIds.length,
+          completed: response.data.success.length,
+          failed: response.data.failed
+        });
 
-      // Show success/error feedback
-      if (result.failed.length > 0) {
-        setError(`${result.failed.length} videos failed to deny. Please try again.`);
+        // Show success/error feedback
+        if (response.data.failed.length > 0) {
+          setError(`${response.data.failed.length} videos failed to deny. Please try again.`);
+        }
+      } else {
+        throw new Error(response.error || 'Bulk deny failed');
       }
 
       // Refresh data and clear selection
