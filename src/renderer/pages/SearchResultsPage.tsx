@@ -342,7 +342,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
                   onVideoClick={handleVideoClick}
                   onWishlistAdd={async (videoData) => {
                     try {
-                      await window.electron.wishlistAdd({
+                      const result = await window.electron.wishlistAdd({
                         id: videoData.id,
                         title: videoData.title,
                         thumbnail: videoData.thumbnail,
@@ -354,16 +354,21 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
                         publishedAt: videoData.publishedAt || new Date().toISOString(),
                       });
                       
-                      // Update local state to reflect wishlist addition
-                      setResults(prevResults => 
-                        prevResults.map(result => 
-                          result.id === videoData.id 
-                            ? { ...result, isInWishlist: true, wishlistStatus: 'pending' as const }
-                            : result
-                        )
-                      );
+                      if (result.success) {
+                        // Update local state to reflect wishlist addition
+                        setResults(prevResults => 
+                          prevResults.map(result => 
+                            result.id === videoData.id 
+                              ? { ...result, isInWishlist: true, wishlistStatus: 'pending' as const }
+                              : result
+                          )
+                        );
+                      } else {
+                        setError(result.error || 'Failed to add to wishlist');
+                      }
                     } catch (err) {
                       console.error('Failed to add to wishlist:', err);
+                      setError(err instanceof Error ? err.message : 'An unknown error occurred');
                       // TODO: Show error toast
                     }
                   }}

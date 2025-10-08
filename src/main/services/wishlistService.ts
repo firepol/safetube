@@ -51,7 +51,7 @@ export class WishlistService {
       // Validate required fields
       if (!video.id || !video.title || !video.url) {
         const error = 'Missing required fields: id, title, and url are required';
-        log.warn(`[WishlistService] ${error}`);
+        log.error(`[WishlistService] ${error}`);
         return { success: false, error };
       }
 
