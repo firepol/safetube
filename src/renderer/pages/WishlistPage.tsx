@@ -10,11 +10,15 @@ import { SearchBar } from '../components/search/SearchBar';
 
 export const WishlistPage: React.FC = () => {
   const navigate = useNavigate();
-  const { wishlistData, wishlistCounts, isLoading, error, removeFromWishlist } = useWishlist();
+  const { wishlistData, wishlistCounts, isLoading, error, removeFromWishlist, refreshWishlist } = useWishlist();
   const hasInitialized = useRef(false);
   
   // Start with pending as default, will be updated on first load if needed
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'denied'>('pending');
+
+  useEffect(() => {
+    refreshWishlist();
+  }, []);
 
   // Set default tab to 'approved' if there are approved videos, but only on initial load
   useEffect(() => {

@@ -365,26 +365,6 @@ export const WishlistProvider: React.FC<WishlistProviderProps> = ({ children }) 
     };
   }, [refreshWishlist]);
 
-  // Set up polling for periodic updates (fallback mechanism)
-  useEffect(() => {
-    const POLLING_INTERVAL = 30000; // 30 seconds
-
-    const pollForUpdates = () => {
-      // Only poll if cache is expired and we're not currently loading
-      if (!isLoading && !isCacheValid(dataCache)) {
-        console.log('[WishlistContext] Polling for wishlist updates');
-        refreshWishlist();
-      }
-    };
-
-    const intervalId = setInterval(pollForUpdates, POLLING_INTERVAL);
-
-    // Cleanup on unmount
-    return () => {
-      clearInterval(intervalId);
-    };
-  }, [isLoading, dataCache, isCacheValid, refreshWishlist]);
-
   // Initial load
   useEffect(() => {
     refreshWishlist();
