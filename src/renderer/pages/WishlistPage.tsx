@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { WishlistVideoCard } from '../components/video/WishlistVideoCard';
 import { useWishlist } from '../contexts/WishlistContext';
 import { WishlistItem } from '../../shared/types';
@@ -10,6 +10,7 @@ import { SearchBar } from '../components/search/SearchBar';
 
 export const WishlistPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { wishlistData, wishlistCounts, isLoading, error, removeFromWishlist, refreshWishlist } = useWishlist();
   const hasInitialized = useRef(false);
   
@@ -18,7 +19,7 @@ export const WishlistPage: React.FC = () => {
 
   useEffect(() => {
     refreshWishlist();
-  }, []);
+  }, [location, refreshWishlist]);
 
   // Set default tab to 'approved' if there are approved videos, but only on initial load
   useEffect(() => {
