@@ -311,7 +311,8 @@ export class SimpleSchemaManager {
 
     // Insert default row
     await this.databaseService.run(`
-      INSERT OR IGNORE INTO time_limits (id) VALUES (1)
+      INSERT OR IGNORE INTO time_limits (id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, warning_threshold_minutes, countdown_warning_seconds, audio_warning_seconds, time_up_message, use_system_beep, custom_beep_sound)
+      VALUES (1, 30, 30, 30, 30, 45, 90, 90, 3, 60, 10, "Time's up for today! Here's your schedule:", 0, NULL)
     `);
   }
 
@@ -357,10 +358,10 @@ export class SimpleSchemaManager {
    * Insert default settings, including the admin password
    */
   private async insertDefaultSettings(): Promise<void> {
-    const defaultPasswordHash = '$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy'; // hash for 'paren234'
+    const defaultPasswordHash = '"$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy"'; // hash for 'paren234'
     await this.databaseService.run(`
       INSERT OR IGNORE INTO settings (key, value, type, description)
-      VALUES ('adminPassword', ?, 'string', 'Admin password hash')
+      VALUES ('main.adminPassword', ?, 'string', 'Admin password hash')
     `, [defaultPasswordHash]);
   }
 
