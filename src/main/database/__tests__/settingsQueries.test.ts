@@ -83,11 +83,11 @@ describe('Settings Queries', () => {
 
     it('should update existing setting', async () => {
       await setSetting(db, 'main.allowYouTubeClicksToOtherVideos', false);
-      let value = await getSetting<string>(db, 'main.allowYouTubeClicksToOtherVideos');
+      let value = await getSetting<boolean>(db, 'main.allowYouTubeClicksToOtherVideos');
       expect(value).toBe(false);
 
       await setSetting(db, 'main.allowYouTubeClicksToOtherVideos', true);
-      value = await getSetting<string>(db, 'main.allowYouTubeClicksToOtherVideos');
+      value = await getSetting<boolean>(db, 'main.allowYouTubeClicksToOtherVideos');
       expect(value).toBe(true);
 
       // Should only have one entry for theme, plus the default password
