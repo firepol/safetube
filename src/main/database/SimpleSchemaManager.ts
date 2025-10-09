@@ -26,15 +26,16 @@ export class SimpleSchemaManager {
       log.info('[SimpleSchemaManager] Initializing database schema');
 
       const currentVersion = await this.getCurrentSchemaVersion();
-      if (currentVersion && currentVersion.version === 'v1') {
-        log.debug('[SimpleSchemaManager] Schema is already at version v1');
+      const isExistingDatabase = currentVersion && currentVersion.version === 'v1';
+
+      if (isExistingDatabase) {
+        log.debug('[SimpleSchemaManager] Schema version is v1, ensuring all tables exist');
         await this.fixSourcesTableColumns();
-        return;
       }
 
       await this.databaseService.run('BEGIN TRANSACTION');
       try {
-        // Create tables in dependency order
+        // Create tables in dependency order (CREATE TABLE IF NOT EXISTS handles existing tables)
         await this.createSchemaVersionTable();
         await this.createSourcesTable();
         await this.createVideosTable();
@@ -52,7 +53,7 @@ export class SimpleSchemaManager {
         await this.createWishlistTable();
         await this.createSearchResultsCacheTable();
 
-        // Set default settings
+        // Set default settings (INSERT OR IGNORE handles existing data)
         await this.insertDefaultSettings();
 
         // Update schema version
@@ -62,7 +63,11 @@ export class SimpleSchemaManager {
         `);
 
         await this.databaseService.run('COMMIT');
-        log.info('[SimpleSchemaManager] Database schema initialized successfully to version v1');
+        if (isExistingDatabase) {
+          log.info('[SimpleSchemaManager] Database schema verified and updated (missing tables created)');
+        } else {
+          log.info('[SimpleSchemaManager] Database schema initialized successfully to version v1');
+        }
       } catch (error) {
         await this.databaseService.run('ROLLBACK');
         log.error('[SimpleSchemaManager] Error initializing schema, rolled back transaction:', error);
