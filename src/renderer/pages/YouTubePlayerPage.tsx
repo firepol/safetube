@@ -311,7 +311,8 @@ export const YouTubePlayerPage: React.FC = () => {
         setShowWishlistConfirmDialog(false);
       } catch (error) {
         console.error('Failed to remove from wishlist:', error);
-        setShowWishlistConfirmDialog(false);
+        // TODO: Show error toast/notification to user
+        // For now, keep dialog open so user knows something went wrong
       }
     }
   }, [video?.id, removeFromWishlist]);
