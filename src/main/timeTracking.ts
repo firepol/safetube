@@ -49,11 +49,11 @@ async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<vo
       const isLocalVideo = parseResult.success && parseResult.parsed?.type === 'local';
 
       if (sourceId === 'wishlist') {
-        // For wishlist videos, create a wishlist source
+        // For wishlist videos, create a wishlist source with placeholder URL
         await dbService.run(`
-          INSERT INTO sources (id, type, title, position)
-          VALUES (?, 'youtube_channel', 'Wishlist', 999)
-        `, [sourceId]);
+          INSERT INTO sources (id, type, title, position, url)
+          VALUES (?, 'youtube_channel', 'Wishlist', 999, ?)
+        `, [sourceId, 'https://safetube.app/wishlist']);
       } else if (isLocalVideo) {
         // For local videos, extract directory path from videoId
         const videoPath = extractPathFromVideoId(watchedEntry.videoId);
