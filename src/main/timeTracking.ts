@@ -48,7 +48,13 @@ async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<vo
       const parseResult = parseVideoId(watchedEntry.videoId);
       const isLocalVideo = parseResult.success && parseResult.parsed?.type === 'local';
 
-      if (isLocalVideo) {
+      if (sourceId === 'wishlist') {
+        // For wishlist videos, create a wishlist source with placeholder URL
+        await dbService.run(`
+          INSERT INTO sources (id, type, title, position, url)
+          VALUES (?, 'youtube_channel', 'Wishlist', 999, ?)
+        `, [sourceId, 'https://safetube.app/wishlist']);
+      } else if (isLocalVideo) {
         // For local videos, extract directory path from videoId
         const videoPath = extractPathFromVideoId(watchedEntry.videoId);
         const directoryPath = videoPath ? path.dirname(videoPath) : '/unknown';
@@ -168,6 +174,27 @@ async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
           duration: video.duration || 0
         };
       }
+    }
+
+    // Check if video is in wishlist (approved videos from wishlist)
+    try {
+      const { DatabaseService } = await import('./services/DatabaseService');
+      const dbService = DatabaseService.getInstance();
+      const wishlistVideo = await dbService.get<any>(
+        'SELECT video_id, title, thumbnail, duration FROM wishlist WHERE video_id = ? AND status = ?',
+        [videoId, 'approved']
+      );
+
+      if (wishlistVideo) {
+        return {
+          title: wishlistVideo.title || `Video ${videoId}`,
+          thumbnail: wishlistVideo.thumbnail || '',
+          source: 'wishlist',
+          duration: wishlistVideo.duration || 0
+        };
+      }
+    } catch (error) {
+      logVerbose(`[TimeTracking] Could not check wishlist for ${videoId}:`, error);
     }
 
     // Fallback for unknown or legacy videos

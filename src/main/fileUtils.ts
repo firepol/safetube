@@ -14,21 +14,72 @@ async function writeFavoriteToDatabase(metadata: VideoMetadata, operation: 'add'
     const dbService = DatabaseService.getInstance();
 
     if (operation === 'add') {
-      // Insert new favorite
+      const sourceId = metadata.source || 'unknown';
+
+      // Ensure source exists FIRST (because videos table has FK to sources)
+      const sourceExists = await dbService.get<any>(
+        'SELECT id FROM sources WHERE id = ?',
+        [sourceId]
+      );
+
+      if (!sourceExists) {
+        // Create a placeholder source for unknown videos
+        const { parseVideoId, extractPathFromVideoId } = await import('../shared/fileUtils');
+        const parseResult = parseVideoId(metadata.id);
+        const isLocalVideo = parseResult.success && parseResult.parsed?.type === 'local';
+
+        if (sourceId === 'wishlist') {
+          // For wishlist videos, create a wishlist source with placeholder URL
+          await dbService.run(`
+            INSERT INTO sources (id, type, title, position, url)
+            VALUES (?, 'youtube_channel', 'Wishlist', 999, ?)
+          `, [sourceId, 'https://safetube.app/wishlist']);
+        } else if (isLocalVideo) {
+          // For local videos, extract directory path from videoId
+          const videoPath = extractPathFromVideoId(metadata.id);
+          const directoryPath = videoPath ? path.dirname(videoPath) : '/unknown';
+
+          await dbService.run(`
+            INSERT INTO sources (id, type, title, position, path)
+            VALUES (?, 'local', ?, 999, ?)
+          `, [sourceId, sourceId, directoryPath]);
+        } else {
+          // For YouTube videos, use youtube_channel type with url
+          await dbService.run(`
+            INSERT INTO sources (id, type, title, position, url)
+            VALUES (?, 'youtube_channel', ?, 999, ?)
+          `, [sourceId, sourceId, `https://youtube.com/watch?v=${metadata.id}`]);
+        }
+      }
+
+      // Check if video exists in videos table
+      const videoExists = await dbService.get<any>(
+        'SELECT id FROM videos WHERE id = ?',
+        [metadata.id]
+      );
+
+      if (!videoExists) {
+        // Insert video into videos table
+        await dbService.run(`
+          INSERT INTO videos (
+            id, title, thumbnail, duration, url, source_id, is_available
+          ) VALUES (?, ?, ?, ?, ?, ?, 1)
+        `, [
+          metadata.id,
+          metadata.title || `Video ${metadata.id}`,
+          metadata.thumbnail || '',
+          metadata.duration || 0,
+          metadata.id, // URL is the video ID for local videos
+          sourceId
+        ]);
+      }
+
+      // Insert new favorite with correct schema
       await dbService.run(`
         INSERT OR REPLACE INTO favorites (
-          video_id, title, thumbnail, duration, source_id, source_type,
-          added_at, video_type
-        ) VALUES (?, ?, ?, ?, ?, ?, datetime('now'), ?)
-      `, [
-  metadata.id,
-  metadata.title || '',
-  metadata.thumbnail || '',
-  metadata.duration || 0,
-  metadata.source || '',
-  '', // source_type not present in VideoMetadata, leave empty or adjust as needed
-  metadata.type || 'unknown'
-      ]);
+          video_id, source_id, date_added
+        ) VALUES (?, ?, datetime('now'))
+      `, [metadata.id, sourceId]);
 
       console.log(`[FileUtils] Added favorite ${metadata.id} to database`);
     } else {

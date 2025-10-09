@@ -7,6 +7,7 @@ import { VideoCardBaseProps } from '../components/video/VideoCardBase';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
 import { SearchBar } from '../components/search/SearchBar';
+import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
 
 export const WishlistPage: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +17,10 @@ export const WishlistPage: React.FC = () => {
   
   // Start with pending as default, will be updated on first load if needed
   const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'denied'>('pending');
+
+  // Confirmation dialog state
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [videoToRemove, setVideoToRemove] = useState<string | null>(null);
 
   useEffect(() => {
     refreshWishlist();
@@ -78,7 +83,7 @@ export const WishlistPage: React.FC = () => {
             thumbnail: video.thumbnail,
             duration: video.duration,
             url: video.url,
-            sourceId: 'wishlist-approved',
+            sourceId: 'wishlist',
             sourceTitle: 'My Wishlist',
             sourceType: 'youtube_channel',
             sourceThumbnail: '',
@@ -99,13 +104,39 @@ export const WishlistPage: React.FC = () => {
     }
   };
 
-  const handleRemoveFromWishlist = async (videoId: string) => {
-    try {
-      await removeFromWishlist(videoId);
-    } catch (error) {
-      console.error('Failed to remove from wishlist:', error);
-      // TODO: Show error toast
+  const handleRemoveFromWishlist = async (videoId: string, requireConfirmation: boolean = false) => {
+    if (requireConfirmation) {
+      // Show confirmation dialog
+      setVideoToRemove(videoId);
+      setShowConfirmDialog(true);
+    } else {
+      // Remove directly without confirmation (for approved videos)
+      try {
+        await removeFromWishlist(videoId);
+      } catch (error) {
+        console.error('Failed to remove from wishlist:', error);
+        // TODO: Show error toast
+      }
     }
+  };
+
+  const handleConfirmRemove = async () => {
+    if (videoToRemove) {
+      try {
+        await removeFromWishlist(videoToRemove);
+      } catch (error) {
+        console.error('Failed to remove from wishlist:', error);
+        // TODO: Show error toast
+      } finally {
+        setShowConfirmDialog(false);
+        setVideoToRemove(null);
+      }
+    }
+  };
+
+  const handleCancelRemove = () => {
+    setShowConfirmDialog(false);
+    setVideoToRemove(null);
   };
 
   const handleSearch = (query: string) => {
@@ -367,8 +398,9 @@ export const WishlistPage: React.FC = () => {
               const videoProps = convertWishlistItemToVideoCard(item);
               
               // Define actions based on tab
-              const actions = activeTab === 'approved' 
+              const actions = activeTab === 'approved'
                 ? [
+                    // Only show Play button for approved videos, no Remove button
                     {
                       label: 'Play',
                       onClick: () => handleVideoClick(videoProps),
@@ -378,22 +410,13 @@ export const WishlistPage: React.FC = () => {
                           <path d="M8 5v14l11-7z"/>
                         </svg>
                       )
-                    },
-                    {
-                      label: 'Remove',
-                      onClick: () => handleRemoveFromWishlist(item.video_id),
-                      className: 'bg-gray-600 hover:bg-gray-700 text-white',
-                      icon: (
-                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      )
                     }
                   ]
                 : [
+                    // Show Remove button with confirmation for pending/denied videos
                     {
                       label: 'Remove',
-                      onClick: () => handleRemoveFromWishlist(item.video_id),
+                      onClick: () => handleRemoveFromWishlist(item.video_id, true),
                       className: 'bg-gray-600 hover:bg-gray-700 text-white',
                       icon: (
                         <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -416,6 +439,18 @@ export const WishlistPage: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showConfirmDialog}
+        title="Remove from Wishlist?"
+        message="Are you sure you want to remove this video from your wishlist?"
+        confirmLabel="Yes"
+        cancelLabel="No"
+        onConfirm={handleConfirmRemove}
+        onCancel={handleCancelRemove}
+        variant="danger"
+      />
     </div>
   );
 };

@@ -396,7 +396,7 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_VIDEO_DATA, async (_, videoId: string, navi
             description: wishlistVideo.description || '',
             publishedAt: wishlistVideo.requested_at || '',
             type: 'youtube', // Wishlist videos are typically YouTube videos
-            sourceId: 'wishlist-approved',
+            sourceId: 'wishlist',
             sourceTitle: 'Approved Wishlist',
             sourceThumbnail: '',
             channelId: wishlistVideo.channel_id || '',
