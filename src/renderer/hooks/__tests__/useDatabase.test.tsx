@@ -7,7 +7,7 @@ import { DatabaseClient } from '../../services/DatabaseClient';
 vi.mock('../../services/DatabaseClient', () => ({
   DatabaseClient: {
     healthCheck: vi.fn(),
-    migratePhase1: vi.fn(),
+
     verifyMigration: vi.fn(),
     searchVideos: vi.fn(),
     getVideosBySource: vi.fn(),

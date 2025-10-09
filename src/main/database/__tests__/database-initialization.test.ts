@@ -75,9 +75,9 @@ describe('Database Initialization', () => {
     expect(health.version).toBeDefined();
   });
 
-  it('should create Phase 1 schema correctly', async () => {
+  it('should create all tables for v1 schema correctly', async () => {
     // Initialize schema
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
 
     // Verify all required tables exist
     const tables = await dbService.all<{ name: string }>(`
@@ -86,24 +86,38 @@ describe('Database Initialization', () => {
     `);
 
     const tableNames = tables.map(t => t.name);
-    expect(tableNames).toContain('schema_version');
-    expect(tableNames).toContain('sources');
-    expect(tableNames).toContain('videos');
-    expect(tableNames).toContain('videos_fts');
-    expect(tableNames).toContain('view_records');
-    expect(tableNames).toContain('favorites');
-    expect(tableNames).toContain('youtube_api_results');
+    const expectedTables = [
+      'schema_version',
+      'sources',
+      'videos',
+      'videos_fts',
+      'view_records',
+      'favorites',
+      'youtube_api_results',
+      'usage_logs',
+      'time_limits',
+      'usage_extras',
+      'settings',
+      'downloads',
+      'downloaded_videos',
+      'searches',
+      'wishlist',
+      'search_results_cache'
+    ];
+
+    for (const table of expectedTables) {
+      expect(tableNames).toContain(table);
+    }
 
     // Verify schema version
-    const version = await dbService.get<{ version: number; phase: string }>(`
-      SELECT version, phase FROM schema_version WHERE id = 1
+    const version = await dbService.get<{ version: string }>(`
+      SELECT version FROM schema_version WHERE id = 1
     `);
-    expect(version?.version).toBe(1);
-    expect(version?.phase).toBe('phase1');
+    expect(version?.version).toBe('v1');
   });
 
   it('should handle sources table operations correctly', async () => {
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
 
     // Test inserting a source
     const testSource = {
@@ -143,7 +157,7 @@ describe('Database Initialization', () => {
   });
 
   it('should enforce foreign key constraints', async () => {
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
 
     // Insert a test source first
     await dbService.run(`
@@ -185,7 +199,7 @@ describe('Database Initialization', () => {
   });
 
   it('should support database operations through IPC-like interface', async () => {
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
 
     // Test batch source insertion (simulating JSON migration)
     const testSources = [

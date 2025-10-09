@@ -28,9 +28,8 @@ describe('Downloaded Videos Queries', () => {
     db = await createTestDatabase({ useMemory: true });
     schemaManager = new SimpleSchemaManager(db);
 
-    // Initialize Phase 1 and Phase 2 schemas
-    await schemaManager.initializePhase1Schema();
-    await schemaManager.initializePhase2Schema();
+    // Initialize the consolidated schema
+    await schemaManager.initializeSchema();
 
     // Create test sources
     await db.run(`

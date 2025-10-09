@@ -43,7 +43,7 @@ describe('Database Query Helpers - Integration Tests', () => {
     db = DatabaseService.getInstance();
     await db.initialize({ path: ':memory:' });
     schemaManager = new SimpleSchemaManager(db);
-    await schemaManager.initializePhase1Schema();
+    await schemaManager.initializeSchema();
   });
 
   afterEach(async () => {

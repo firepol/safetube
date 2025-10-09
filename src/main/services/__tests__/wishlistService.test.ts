@@ -31,7 +31,7 @@ describe('WishlistService', () => {
     // Initialize schema
     const { SimpleSchemaManager } = await import('../../database/SimpleSchemaManager');
     const schemaManager = new SimpleSchemaManager(db);
-    await schemaManager.initializeSearchModerationSchema();
+    await schemaManager.initializeSchema();
 
     // Create wishlist service
     wishlistService = new WishlistService(db);
@@ -171,6 +171,10 @@ describe('WishlistService', () => {
     });
 
     it('should order by requested_at DESC', async () => {
+      // SQLite CURRENT_TIMESTAMP has second precision (not millisecond),
+      // so we need at least 1 second delay to ensure distinct requested_at timestamps
+      await new Promise(resolve => setTimeout(resolve, 1100));
+
       // Add another pending video
       await wishlistService.addToWishlist({
         ...mockVideo,
