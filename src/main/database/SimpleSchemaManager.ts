@@ -25,7 +25,7 @@ export class SimpleSchemaManager {
     try {
       log.info('[SimpleSchemaManager] Initializing database schema');
 
-      // Migrate old schema_version table structure if needed
+      // Migrate old schema_version table structure if needed (outside transaction to avoid nesting)
       await this.migrateSchemaVersionTable();
 
       const currentVersion = await this.getCurrentSchemaVersion();
@@ -59,11 +59,14 @@ export class SimpleSchemaManager {
         // Set default settings (INSERT OR IGNORE handles existing data)
         await this.insertDefaultSettings();
 
-        // Update schema version
-        await this.databaseService.run(`
-          INSERT OR REPLACE INTO schema_version (id, version)
-          VALUES (1, 'v1')
-        `);
+        // Only update schema version if it changed (optimization to avoid unnecessary writes)
+        if (!currentVersion || currentVersion.version !== 'v1') {
+          await this.databaseService.run(`
+            INSERT OR REPLACE INTO schema_version (id, version)
+            VALUES (1, 'v1')
+          `);
+          log.debug('[SimpleSchemaManager] Schema version updated to v1');
+        }
 
         await this.databaseService.run('COMMIT');
         if (isExistingDatabase) {
@@ -605,9 +608,10 @@ export class SimpleSchemaManager {
 
       // Wrap migration in transaction for atomicity
       await this.databaseService.run('BEGIN IMMEDIATE TRANSACTION');
+      let oldVersion: { version: string | number; phase?: string } | null | undefined;
       try {
         // Get current version data
-        const oldVersion = await this.databaseService.get<{ version: string | number; phase?: string }>(`
+        oldVersion = await this.databaseService.get<{ version: string | number; phase?: string }>(`
           SELECT version, phase FROM schema_version WHERE id = 1
         `);
 
@@ -634,7 +638,15 @@ export class SimpleSchemaManager {
       } catch (migrationError) {
         await this.databaseService.run('ROLLBACK');
         log.error('[SimpleSchemaManager] Error during schema_version migration, rolled back:', migrationError);
-        throw new Error(`Failed to migrate schema_version table: ${migrationError instanceof Error ? migrationError.message : String(migrationError)}`);
+
+        // Include phase/version context in error message for better debugging
+        const context = oldVersion?.phase
+          ? `from phase ${oldVersion.phase} (version ${oldVersion.version})`
+          : oldVersion?.version
+            ? `from version ${oldVersion.version}`
+            : 'with unknown previous state';
+
+        throw new Error(`Failed to migrate schema_version table ${context} to v1: ${migrationError instanceof Error ? migrationError.message : String(migrationError)}`);
       }
     } catch (error) {
       log.error('[SimpleSchemaManager] Error migrating schema_version table:', error);
