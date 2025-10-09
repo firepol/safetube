@@ -452,7 +452,7 @@ export function registerAdminHandlers() {
           thumbnail: result.thumbnail
         },
         sourceId: result.source,
-        sourceTitle: result.title
+        sourceTitle: result.sourceTitle || 'Unknown Source'
       };
     } catch (error) {
       log.error('[IPC] Error getting last watched video from database:', error);

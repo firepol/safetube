@@ -77,9 +77,11 @@ export async function findLastWatchedVideo(db: DatabaseService): Promise<any | n
   return db.get(
     `SELECT vr.video_id as videoId, vr.position, vr.last_watched as lastWatched,
             vr.time_watched as timeWatched, vr.duration, vr.watched, vr.source_id as source,
-            v.title, v.thumbnail
+            v.title, v.thumbnail,
+            s.title as sourceTitle
      FROM view_records vr
      LEFT JOIN videos v ON vr.video_id = v.id
+     LEFT JOIN sources s ON vr.source_id = s.id
      ORDER BY vr.last_watched DESC
      LIMIT 1`
   );
