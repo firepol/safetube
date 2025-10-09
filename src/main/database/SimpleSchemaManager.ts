@@ -25,6 +25,9 @@ export class SimpleSchemaManager {
     try {
       log.info('[SimpleSchemaManager] Initializing database schema');
 
+      // Migrate old schema_version table structure if needed
+      await this.migrateSchemaVersionTable();
+
       const currentVersion = await this.getCurrentSchemaVersion();
       const isExistingDatabase = currentVersion && currentVersion.version === 'v1';
 
@@ -565,6 +568,64 @@ export class SimpleSchemaManager {
       log.info('[SimpleSchemaManager] Schema dropped successfully');
     } catch (error) {
       log.error('[SimpleSchemaManager] Error dropping schema:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Migrate old schema_version table structure (with phase column) to new structure
+   */
+  private async migrateSchemaVersionTable(): Promise<void> {
+    try {
+      // Check if schema_version table exists
+      const tableExists = await this.databaseService.get<{ name: string }>(`
+        SELECT name FROM sqlite_master WHERE type='table' AND name='schema_version'
+      `);
+
+      if (!tableExists) {
+        log.debug('[SimpleSchemaManager] schema_version table does not exist yet, no migration needed');
+        return;
+      }
+
+      // Check if the old phase column exists
+      const tableInfo = await this.databaseService.all<{ name: string }>(`
+        PRAGMA table_info(schema_version)
+      `);
+      const hasPhaseColumn = tableInfo.some(col => col.name === 'phase');
+
+      if (!hasPhaseColumn) {
+        log.debug('[SimpleSchemaManager] schema_version table is already in new format');
+        return;
+      }
+
+      log.info('[SimpleSchemaManager] Migrating schema_version table from old format (with phase column) to new format');
+
+      // Get current version data
+      const oldVersion = await this.databaseService.get<{ version: string | number; phase?: string }>(`
+        SELECT version, phase FROM schema_version WHERE id = 1
+      `);
+
+      // Drop old table
+      await this.databaseService.run('DROP TABLE schema_version');
+
+      // Create new table with updated structure
+      await this.databaseService.run(`
+        CREATE TABLE schema_version (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          version TEXT NOT NULL,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Insert version as 'v1' (unified schema)
+      await this.databaseService.run(`
+        INSERT INTO schema_version (id, version)
+        VALUES (1, 'v1')
+      `);
+
+      log.info('[SimpleSchemaManager] schema_version table migrated successfully');
+    } catch (error) {
+      log.error('[SimpleSchemaManager] Error migrating schema_version table:', error);
       throw error;
     }
   }
