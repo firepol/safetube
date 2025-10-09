@@ -171,15 +171,16 @@ describe('WishlistService', () => {
     });
 
     it('should order by requested_at DESC', async () => {
+      // SQLite CURRENT_TIMESTAMP has second precision (not millisecond),
+      // so we need at least 1 second delay to ensure distinct requested_at timestamps
+      await new Promise(resolve => setTimeout(resolve, 1100));
+
       // Add another pending video
       await wishlistService.addToWishlist({
         ...mockVideo,
         id: 'test-video-3',
         title: 'Test Video 3'
       });
-
-      // Add a small delay to ensure timestamps are different
-      await new Promise(resolve => setTimeout(resolve, 10));
 
       const items = await wishlistService.getWishlistByStatus('pending');
 

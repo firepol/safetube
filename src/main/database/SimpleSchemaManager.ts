@@ -36,7 +36,7 @@ export class SimpleSchemaManager {
         await this.fixSourcesTableColumns();
       }
 
-      await this.databaseService.run('BEGIN TRANSACTION');
+      await this.databaseService.run('BEGIN IMMEDIATE TRANSACTION');
       try {
         // Create tables in dependency order (CREATE TABLE IF NOT EXISTS handles existing tables)
         await this.createSchemaVersionTable();
@@ -74,11 +74,11 @@ export class SimpleSchemaManager {
       } catch (error) {
         await this.databaseService.run('ROLLBACK');
         log.error('[SimpleSchemaManager] Error initializing schema, rolled back transaction:', error);
-        throw error;
+        throw new Error(`Schema initialization failed: ${error instanceof Error ? error.message : String(error)}`);
       }
     } catch (error) {
       log.error('[SimpleSchemaManager] Error initializing schema:', error);
-      throw error;
+      throw new Error(`Failed to initialize database schema: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -603,30 +603,39 @@ export class SimpleSchemaManager {
 
       log.info('[SimpleSchemaManager] Migrating schema_version table from old format (with phase column) to new format');
 
-      // Get current version data
-      const oldVersion = await this.databaseService.get<{ version: string | number; phase?: string }>(`
-        SELECT version, phase FROM schema_version WHERE id = 1
-      `);
+      // Wrap migration in transaction for atomicity
+      await this.databaseService.run('BEGIN IMMEDIATE TRANSACTION');
+      try {
+        // Get current version data
+        const oldVersion = await this.databaseService.get<{ version: string | number; phase?: string }>(`
+          SELECT version, phase FROM schema_version WHERE id = 1
+        `);
 
-      // Drop old table
-      await this.databaseService.run('DROP TABLE schema_version');
+        // Drop old table
+        await this.databaseService.run('DROP TABLE schema_version');
 
-      // Create new table with updated structure
-      await this.databaseService.run(`
-        CREATE TABLE schema_version (
-          id INTEGER PRIMARY KEY CHECK (id = 1),
-          version TEXT NOT NULL,
-          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+        // Create new table with updated structure
+        await this.databaseService.run(`
+          CREATE TABLE schema_version (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            version TEXT NOT NULL,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+          )
+        `);
 
-      // Insert version as 'v1' (unified schema)
-      await this.databaseService.run(`
-        INSERT INTO schema_version (id, version)
-        VALUES (1, 'v1')
-      `);
+        // Insert version as 'v1' (unified schema)
+        await this.databaseService.run(`
+          INSERT INTO schema_version (id, version)
+          VALUES (1, 'v1')
+        `);
 
-      log.info('[SimpleSchemaManager] schema_version table migrated successfully');
+        await this.databaseService.run('COMMIT');
+        log.info('[SimpleSchemaManager] schema_version table migrated successfully');
+      } catch (migrationError) {
+        await this.databaseService.run('ROLLBACK');
+        log.error('[SimpleSchemaManager] Error during schema_version migration, rolled back:', migrationError);
+        throw new Error(`Failed to migrate schema_version table: ${migrationError instanceof Error ? migrationError.message : String(migrationError)}`);
+      }
     } catch (error) {
       log.error('[SimpleSchemaManager] Error migrating schema_version table:', error);
       throw error;
