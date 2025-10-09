@@ -411,11 +411,11 @@ export async function readPaginationConfig(): Promise<{ pageSize: number; maxPag
     // Return defaults if not in database
     return {
       pageSize: config.pageSize || 20,
-      maxPages: config.maxPages || 5
+      maxPages: config.maxPages || 10
     };
   } catch (error) {
     console.error('[fileUtils] Error reading pagination config from database:', error);
-    return { pageSize: 20, maxPages: 5 };
+    return { pageSize: 20, maxPages: 10 };
   }
 }
 
