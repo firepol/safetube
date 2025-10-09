@@ -121,16 +121,9 @@ ipcMain.handle(IPC.ADMIN.GET_TIME_EXTRA, async () => {
   }
 });
 
-ipcMain.handle(IPC.ADMIN.GET_LAST_WATCHED_VIDEO_WITH_SOURCE, async () => {
-  try {
-    // Import the function here to avoid circular dependencies
-    const { getLastWatchedVideoWithSource } = await import('../shared/timeTracking');
-    return await getLastWatchedVideoWithSource();
-  } catch (error) {
-    console.error('Error getting last watched video with source:', error);
-    throw error;
-  }
-});
+// REMOVED: Duplicate handler moved to ipcHandlerRegistry.ts
+// This handler was conflicting with the one in registerAdminHandlers()
+// See src/main/services/ipcHandlerRegistry.ts line 434
 
 ipcMain.handle(IPC.ADMIN.WRITE_TIME_LIMITS, async (_, timeLimits: any) => {
   try {

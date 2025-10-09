@@ -435,52 +435,28 @@ export function registerAdminHandlers() {
     try {
       const { DatabaseService } = await import('../services/DatabaseService');
       const dbService = DatabaseService.getInstance();
+      const { findLastWatchedVideo } = await import('../database/queries/viewRecordQueries');
 
-      // Get the most recently watched video
-      const result = await dbService.get<any>(`
-        SELECT
-          vr.video_id as videoId,
-          vr.position,
-          vr.last_watched as lastWatched,
-          vr.time_watched as timeWatched,
-          vr.duration,
-          vr.watched,
-          vr.source_id as source,
-          v.title,
-          v.thumbnail
-        FROM view_records vr
-        LEFT JOIN videos v ON vr.video_id = v.id
-        ORDER BY vr.last_watched DESC
-        LIMIT 1
-      `);
+      // Get the most recently watched video using query helper
+      const result = await findLastWatchedVideo(dbService);
 
-      return result || null;
-    } catch (error) {
-      log.error('[IPC] Error getting last watched video from database:', error);
-      // Fallback to JSON file
-      try {
-        const watchedPath = AppPaths.getConfigPath('watched.json');
-        if (!fs.existsSync(watchedPath)) {
-          return null;
-        }
-
-        const watched = JSON.parse(fs.readFileSync(watchedPath, 'utf8'));
-        let lastWatched = null;
-        let lastTime = 0;
-
-        for (const [videoId, data] of Object.entries(watched)) {
-          const videoData = data as any;
-          if (videoData.lastWatched && videoData.lastWatched > lastTime) {
-            lastTime = videoData.lastWatched;
-            lastWatched = { videoId, ...videoData };
-          }
-        }
-
-        return lastWatched;
-      } catch (jsonError) {
-        log.error('[IPC] Error reading watched.json fallback:', jsonError);
+      if (!result) {
         return null;
       }
+
+      // Transform to expected format for AdminPage
+      return {
+        video: {
+          videoId: result.videoId,
+          title: result.title || 'Unknown Title',
+          thumbnail: result.thumbnail
+        },
+        sourceId: result.source,
+        sourceTitle: result.title
+      };
+    } catch (error) {
+      log.error('[IPC] Error getting last watched video from database:', error);
+      return null;
     }
   });
 }
