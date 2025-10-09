@@ -78,7 +78,7 @@ export const WishlistPage: React.FC = () => {
             thumbnail: video.thumbnail,
             duration: video.duration,
             url: video.url,
-            sourceId: 'wishlist-approved',
+            sourceId: 'wishlist',
             sourceTitle: 'My Wishlist',
             sourceType: 'youtube_channel',
             sourceThumbnail: '',

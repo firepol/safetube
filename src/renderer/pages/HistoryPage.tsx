@@ -109,7 +109,7 @@ export const HistoryPage: React.FC = () => {
               title = wishlistItem.title || title;
               thumbnail = wishlistItem.thumbnail || thumbnail;
               duration = wishlistItem.duration || duration;
-              sourceId = 'wishlist-approved';
+              sourceId = 'wishlist';
               sourceTitle = 'My Wishlist';
             }
 
