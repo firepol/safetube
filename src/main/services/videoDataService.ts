@@ -594,11 +594,13 @@ export async function loadSourcesForKidScreen() {
     }
 
     // Single query to get all source metadata needed for Kid Screen
+    // Exclude 'wishlist' source as it's manually added in KidScreen component
     const sources = await dbService.all<any>(`
       SELECT
         id, type, title, sort_preference, position, url, channel_id, path, max_depth,
         total_videos, thumbnail, updated_at
       FROM sources
+      WHERE id != 'wishlist'
       ORDER BY position ASC, title ASC
     `);
 
