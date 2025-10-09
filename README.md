@@ -339,6 +339,9 @@ See [Git Workflow Documentation](docs/git-workflow.md) for detailed information.
 - The application uses environment variables for sensitive configuration
 - Personal file paths and network IPs have been replaced with placeholders
 - Update configuration files with your actual paths and IPs before use
+- **Admin Password**: The default admin password is `paren234`.
+  - **Strongly Recommended**: Change the admin password immediately upon first login
+  - Navigate to the admin area and update the password to ensure application security
 
 ## License
 
