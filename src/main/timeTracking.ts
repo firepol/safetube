@@ -20,7 +20,11 @@ interface VideoMetadata {
 }
 
 /**
- * Write view record to database for persistence and history tracking
+ * Persist a watched-video entry, ensuring the video and its source exist and inserting or updating the view record.
+ *
+ * Ensures a corresponding source row exists (creating a placeholder for wishlist, local, or YouTube-derived sources if needed), creates the video row if missing, and inserts or replaces the view_records entry with the provided timestamps, position, and watched state.
+ *
+ * @param watchedEntry - The watched video record containing videoId, source (optional), title, thumbnail, duration, position, timeWatched, watched flag, firstWatched, and lastWatched
  */
 async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<void> {
   try {
@@ -126,7 +130,10 @@ async function writeViewRecordToDatabase(watchedEntry: WatchedVideo): Promise<vo
 }
 
 /**
- * Get video metadata for enhanced history storage
+ * Determine metadata (title, thumbnail, source, duration) for a given video identifier.
+ *
+ * @param videoId - The video identifier (may represent a local file id/path, a YouTube id, or a wishlist id)
+ * @returns The video's metadata including `title`, `thumbnail` (path or URL), `source` (e.g., `'local'`, `'youtube'`, `'wishlist'`, or `'unknown'`), and `duration` in seconds
  */
 async function getVideoMetadata(videoId: string): Promise<VideoMetadata> {
   try {
@@ -412,4 +419,3 @@ export async function addExtraTime(minutes: number): Promise<void> {
     throw error;
   }
 }
-

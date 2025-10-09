@@ -6,7 +6,11 @@ import { TimeLimits, UsageLog, WatchedVideo, VideoSource, TimeExtra, DownloadSta
 const CONFIG_DIR = AppPaths.getConfigDir();
 
 /**
- * Write favorite to database for persistence and synchronization
+ * Persist or remove a favorite entry in the application's database.
+ *
+ * @param metadata - Video metadata identifying the favorite (must include `id` and optionally `source`)
+ * @param operation - `'add'` to insert or replace the favorite, `'remove'` to delete it
+ * @throws Propagates any error thrown while interacting with the database
  */
 async function writeFavoriteToDatabase(metadata: VideoMetadata, operation: 'add' | 'remove'): Promise<void> {
   try {
@@ -561,4 +565,3 @@ export async function getFavorites(): Promise<FavoriteVideo[]> {
   const { getFavorites: getFavoritesFromConfig } = await import('../shared/favoritesUtils');
   return getFavoritesFromConfig(config, 'dateAdded', 'desc');
 }
-

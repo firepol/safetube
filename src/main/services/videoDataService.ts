@@ -573,8 +573,15 @@ export async function loadVideosForSpecificSource(sourceId: string, apiKey?: str
 }
 
 /**
- * Optimized function to load only source metadata for Kid Screen startup
- * Avoids loading any video data, just source info needed for tiles
+ * Load a metadata-only list of sources optimized for the Kid Screen without loading individual video objects.
+ *
+ * Returns an object containing `videosBySource`, an array of source entries tailored for Kid Screen tiles. Each
+ * entry includes id, type, title, thumbnail, videoCount, an empty `videos` array, paginationState, source-specific
+ * fields (url, channelId, path, maxDepth), and optimization flags.
+ *
+ * @returns An object with `videosBySource: any[]` where each item represents source metadata (videos arrays are empty).
+ * @throws Error when the database is not initialized.
+ * @throws Any underlying error encountered while reading settings, counting downloaded videos, or querying the database.
  */
 export async function loadSourcesForKidScreen() {
   try {
