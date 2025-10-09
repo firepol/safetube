@@ -9,6 +9,8 @@ import { useDownload } from '../hooks/useDownload';
 import { CompactControlsRow } from '../components/video/CompactControlsRow';
 import { FavoritesService } from '../services/favoritesService';
 import { useFavoriteStatus } from '../hooks/useFavoriteStatus';
+import { useWishlist } from '../contexts/WishlistContext';
+import { ConfirmationDialog } from '../components/ui/ConfirmationDialog';
 
 
 const PLAYER_CONTAINER_ID = 'youtube-player-container';
@@ -33,6 +35,12 @@ export const YouTubePlayerPage: React.FC = () => {
 
   // Use simple favorite status hook
   const { isFavorite: isFavoriteVideo, refreshFavorites } = useFavoriteStatus();
+
+  // Wishlist hook
+  const { isInWishlist, removeFromWishlist } = useWishlist();
+
+  // Confirmation dialog state for wishlist removal
+  const [showWishlistConfirmDialog, setShowWishlistConfirmDialog] = useState(false);
 
   // Download state management using shared hook
   const {
@@ -179,6 +187,9 @@ export const YouTubePlayerPage: React.FC = () => {
   // Get current favorite status for this video
   const isFavorite = video?.id ? isFavoriteVideo(video.id, video.type) : false;
 
+  // Get wishlist status for this video
+  const wishlistInfo = video?.id ? isInWishlist(video.id) : { inWishlist: false };
+
     // Time tracking state
   const timeTrackingRef = useRef<{
     startTime: number;
@@ -287,6 +298,27 @@ export const YouTubePlayerPage: React.FC = () => {
     } catch (error) {
     }
   }, [video, refreshFavorites]);
+
+  // Wishlist removal handlers
+  const handleWishlistRemoveClick = useCallback(() => {
+    setShowWishlistConfirmDialog(true);
+  }, []);
+
+  const handleConfirmWishlistRemove = useCallback(async () => {
+    if (video?.id) {
+      try {
+        await removeFromWishlist(video.id);
+        setShowWishlistConfirmDialog(false);
+      } catch (error) {
+        console.error('Failed to remove from wishlist:', error);
+        setShowWishlistConfirmDialog(false);
+      }
+    }
+  }, [video?.id, removeFromWishlist]);
+
+  const handleCancelWishlistRemove = useCallback(() => {
+    setShowWishlistConfirmDialog(false);
+  }, []);
 
   // Initialize YouTube player
   useEffect(() => {
@@ -440,6 +472,9 @@ export const YouTubePlayerPage: React.FC = () => {
             onCancelDownload={onCancelDownload}
             onResetDownload={onResetDownload}
             showResetButton={downloadStatus.status === 'completed'}
+            isInWishlist={wishlistInfo.inWishlist}
+            wishlistStatus={wishlistInfo.status}
+            onRemoveFromWishlist={handleWishlistRemoveClick}
             size="large"
           />
 
@@ -451,6 +486,18 @@ export const YouTubePlayerPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Wishlist Removal Confirmation Dialog */}
+      <ConfirmationDialog
+        isOpen={showWishlistConfirmDialog}
+        title="Remove from Wishlist?"
+        message="Are you sure you want to remove this video from your wishlist?"
+        confirmLabel="Yes"
+        cancelLabel="No"
+        onConfirm={handleConfirmWishlistRemove}
+        onCancel={handleCancelWishlistRemove}
+        variant="danger"
+      />
     </BasePlayerPage>
   );
-}; 
+};

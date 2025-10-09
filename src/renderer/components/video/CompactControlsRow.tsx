@@ -1,6 +1,7 @@
 import React from 'react';
 import { FavoriteButton, FavoriteButtonProps } from './FavoriteButton';
 import { CompactDownloadButton } from './CompactDownloadButton';
+import { WishlistRemoveButton } from './WishlistRemoveButton';
 import { Video } from '../../types';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +29,11 @@ interface CompactControlsRowProps {
   onResetDownload?: () => void;
   showResetButton?: boolean;
 
+  // Wishlist button props
+  isInWishlist?: boolean;
+  wishlistStatus?: 'pending' | 'approved' | 'denied';
+  onRemoveFromWishlist?: () => void;
+
   // Styling props
   className?: string;
   size?: 'small' | 'medium' | 'large';
@@ -47,6 +53,9 @@ export const CompactControlsRow: React.FC<CompactControlsRowProps> = ({
   onCancelDownload,
   onResetDownload,
   showResetButton = false,
+  isInWishlist = false,
+  wishlistStatus,
+  onRemoveFromWishlist,
   className,
   size = 'medium'
 }) => {
@@ -64,6 +73,14 @@ export const CompactControlsRow: React.FC<CompactControlsRowProps> = ({
 
   return (
     <div className={containerClasses}>
+      {/* Wishlist Remove Button - only shown for approved wishlist videos */}
+      {isInWishlist && wishlistStatus === 'approved' && onRemoveFromWishlist && (
+        <WishlistRemoveButton
+          onRemove={onRemoveFromWishlist}
+          size={size}
+        />
+      )}
+
       {/* Favorite Button */}
       <FavoriteButton
         videoId={video.id}
