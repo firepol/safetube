@@ -367,11 +367,14 @@ export class SimpleSchemaManager {
    * Insert default settings, including the admin password
    */
   private async insertDefaultSettings(): Promise<void> {
-    const defaultPasswordHash = JSON.stringify(DEFAULT_ADMIN_PASSWORD_HASH);
     await this.databaseService.run(`
       INSERT OR IGNORE INTO settings (key, value, type, description)
       VALUES ('main.adminPassword', ?, 'string', 'Admin password hash')
-    `, [defaultPasswordHash]);
+    `, [JSON.stringify(DEFAULT_ADMIN_PASSWORD_HASH)]);
+    await this.databaseService.run(`
+      INSERT OR IGNORE INTO settings (key, value, type, description)
+      VALUES ('main.allowYouTubeClicksToOtherVideos', ?, 'boolean', 'Allow YouTube clicks to other videos')
+    `, [true]);
   }
 
   /**

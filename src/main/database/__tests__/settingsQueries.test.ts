@@ -82,11 +82,13 @@ describe('Settings Queries', () => {
     });
 
     it('should update existing setting', async () => {
-      await setSetting(db, 'main.theme', 'light');
-      await setSetting(db, 'main.theme', 'dark');
+      await setSetting(db, 'main.allowYouTubeClicksToOtherVideos', false);
+      let value = await getSetting<string>(db, 'main.allowYouTubeClicksToOtherVideos');
+      expect(value).toBe(false);
 
-      const value = await getSetting<string>(db, 'main.theme');
-      expect(value).toBe('dark');
+      await setSetting(db, 'main.allowYouTubeClicksToOtherVideos', true);
+      value = await getSetting<string>(db, 'main.allowYouTubeClicksToOtherVideos');
+      expect(value).toBe(true);
 
       // Should only have one entry for theme, plus the default password
       const count = await countSettings(db);
@@ -165,6 +167,7 @@ describe('Settings Queries', () => {
 
       expect(mainSettings).toEqual({
         adminPassword: DEFAULT_ADMIN_PASSWORD_HASH,
+        allowYouTubeClicksToOtherVideos: true,
         downloadPath: '/home/user/Videos',
         youtubeApiKey: 'test-key',
         enableVerboseLogging: true
@@ -203,6 +206,7 @@ describe('Settings Queries', () => {
       const settings = await getSettingsByNamespace(db, 'main');
       expect(settings).toEqual({
         adminPassword: DEFAULT_ADMIN_PASSWORD_HASH,
+        allowYouTubeClicksToOtherVideos: true,
         theme: 'dark',
         language: 'en',
         autoSave: true
@@ -229,12 +233,12 @@ describe('Settings Queries', () => {
 
   describe('deleteSetting', () => {
     it('should delete specific setting', async () => {
-      await setSetting(db, 'main.theme', 'dark');
+      await setSetting(db, 'main.allowYouTubeClicksToOtherVideos', false);
       await setSetting(db, 'main.language', 'en');
 
-      await deleteSetting(db, 'main.theme');
+      await deleteSetting(db, 'main.allowYouTubeClicksToOtherVideos');
 
-      expect(await settingExists(db, 'main.theme')).toBe(false);
+      expect(await settingExists(db, 'main.allowYouTubeClicksToOtherVideos')).toBe(false);
       expect(await settingExists(db, 'main.language')).toBe(true);
     });
 
@@ -245,7 +249,7 @@ describe('Settings Queries', () => {
 
   describe('deleteSettingsByNamespace', () => {
     beforeEach(async () => {
-      await setSetting(db, 'main.theme', 'dark');
+      await setSetting(db, 'main.allowYouTubeClicksToOtherVideos', false)
       await setSetting(db, 'main.language', 'en');
       await setSetting(db, 'pagination.pageSize', 50);
     });
@@ -267,14 +271,14 @@ describe('Settings Queries', () => {
 
   describe('getAllSettings', () => {
     it('should return all settings with full keys', async () => {
-      await setSetting(db, 'main.theme', 'dark');
+      await setSetting(db, 'main.allowYouTubeClicksToOtherVideos', false);
       await setSetting(db, 'main.language', 'en');
       await setSetting(db, 'pagination.pageSize', 50);
 
       const settings = await getAllSettings(db);
       expect(settings).toEqual({
         'main.adminPassword': DEFAULT_ADMIN_PASSWORD_HASH,
-        'main.theme': 'dark',
+        'main.allowYouTubeClicksToOtherVideos': false,
         'main.language': 'en',
         'pagination.pageSize': 50
       });
@@ -283,9 +287,9 @@ describe('Settings Queries', () => {
 
   describe('settingExists', () => {
     it('should return true for existing setting', async () => {
-      await setSetting(db, 'main.theme', 'dark');
+      await setSetting(db, 'main.allowYouTubeClicksToOtherVideos', false);
 
-      expect(await settingExists(db, 'main.theme')).toBe(true);
+      expect(await settingExists(db, 'main.allowYouTubeClicksToOtherVideos')).toBe(true);
     });
 
     it('should return false for non-existent setting', async () => {
@@ -294,13 +298,13 @@ describe('Settings Queries', () => {
   });
 
   describe('countSettings', () => {
-    it('should return 1 when only default password exists', async () => {
+    it('should return 2 when only default password and allowYouTubeClicksToOtherVideos exist', async () => {
       const count = await countSettings(db);
-      expect(count).toBe(1);
+      expect(count).toBe(2);
     });
 
     it('should return correct count', async () => {
-      await setSetting(db, 'main.theme', 'dark');
+      await setSetting(db, 'main.allowYouTubeClicksToOtherVideos', false);
       await setSetting(db, 'main.language', 'en');
       await setSetting(db, 'pagination.pageSize', 50);
 
@@ -375,6 +379,7 @@ describe('Settings Queries', () => {
       const mockSettings = {
         main: {
           adminPassword: DEFAULT_ADMIN_PASSWORD_HASH,
+          allowYouTubeClicksToOtherVideos: true,
           downloadPath: '/home/user/Videos',
           enableVerboseLogging: true
         },
@@ -404,7 +409,7 @@ describe('Settings Queries', () => {
 
       // Verify total count
       const count = await countSettings(db);
-      expect(count).toBe(7); // 2 main + 2 pagination + 2 youtube_player + 1 adminPassword
+      expect(count).toBe(8); // 2 main + 2 pagination + 2 youtube_player + 1 adminPassword + 1 allowYouTubeClicksToOtherVideos
     });
   });
 
@@ -464,7 +469,7 @@ describe('Settings Queries', () => {
       expect(value).toBe('second');
 
       const count = await countSettings(db);
-      expect(count).toBe(2);
+      expect(count).toBe(3);
     });
   });
 });
