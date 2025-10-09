@@ -37,13 +37,13 @@ describe('Time Limit Queries', () => {
 
       expect(limits).toBeDefined();
       expect(limits?.id).toBe(1);
-      expect(limits?.monday).toBe(0);
-      expect(limits?.tuesday).toBe(0);
-      expect(limits?.wednesday).toBe(0);
-      expect(limits?.thursday).toBe(0);
-      expect(limits?.friday).toBe(0);
-      expect(limits?.saturday).toBe(0);
-      expect(limits?.sunday).toBe(0);
+      expect(limits?.monday).toBe(30);
+      expect(limits?.tuesday).toBe(30);
+      expect(limits?.wednesday).toBe(30);
+      expect(limits?.thursday).toBe(30);
+      expect(limits?.friday).toBe(45);
+      expect(limits?.saturday).toBe(90);
+      expect(limits?.sunday).toBe(90);
       expect(limits?.use_system_beep).toBe(0); // SQLite stores boolean as 0/1
     });
   });
@@ -51,12 +51,12 @@ describe('Time Limit Queries', () => {
   describe('upsertTimeLimits', () => {
     it('should update time limits configuration', async () => {
       await upsertTimeLimits(db, {
-        monday: 30,
+        monday: 40,
         tuesday: 30,
         wednesday: 30,
         thursday: 30,
         friday: 45,
-        saturday: 90,
+        saturday: 120,
         sunday: 90,
         warning_threshold_minutes: 3,
         countdown_warning_seconds: 60,
@@ -67,9 +67,9 @@ describe('Time Limit Queries', () => {
       });
 
       const limits = await getTimeLimits(db);
-      expect(limits?.monday).toBe(30);
+      expect(limits?.monday).toBe(40);
       expect(limits?.friday).toBe(45);
-      expect(limits?.saturday).toBe(90);
+      expect(limits?.saturday).toBe(120);
       expect(limits?.warning_threshold_minutes).toBe(3);
       expect(limits?.countdown_warning_seconds).toBe(60);
       expect(limits?.audio_warning_seconds).toBe(10);
@@ -217,19 +217,19 @@ describe('Time Limit Queries', () => {
 
       const limits = await getTimeLimits(db);
       expect(limits?.monday).toBe(45);
-      expect(limits?.tuesday).toBe(0); // Other days unchanged
+      expect(limits?.tuesday).toBe(30); // Other days unchanged
     });
 
     it('should update multiple days independently', async () => {
-      await updateDayLimit(db, 'monday', 30);
+      await updateDayLimit(db, 'monday', 60);
       await updateDayLimit(db, 'friday', 60);
-      await updateDayLimit(db, 'saturday', 90);
+      await updateDayLimit(db, 'saturday', 30);
 
       const limits = await getTimeLimits(db);
-      expect(limits?.monday).toBe(30);
+      expect(limits?.monday).toBe(60);
       expect(limits?.friday).toBe(60);
-      expect(limits?.saturday).toBe(90);
-      expect(limits?.tuesday).toBe(0); // Unchanged days remain at default
+      expect(limits?.saturday).toBe(30);
+      expect(limits?.tuesday).toBe(30); // Unchanged days remain at default
     });
 
     it('should reject invalid day names', async () => {

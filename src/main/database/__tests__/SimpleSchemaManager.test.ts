@@ -85,11 +85,11 @@ describe('SimpleSchemaManager', () => {
     await schemaManager.initializeSchema();
 
     const passwordHash = await databaseService.get<{ value: string }>(`
-      SELECT value FROM settings WHERE key = 'adminPassword'
+      SELECT value FROM settings WHERE key = 'main.adminPassword'
     `);
 
     expect(passwordHash).toBeDefined();
-    expect(passwordHash?.value).toBe('$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy');
+    expect(passwordHash?.value).toBe('"$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy"');
   });
 
   test('should create required indexes', async () => {
