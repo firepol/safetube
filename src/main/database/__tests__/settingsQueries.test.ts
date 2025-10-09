@@ -1,5 +1,6 @@
 import './../../services/__tests__/setup'; // Import mocks first
-import Database from 'better-sqlite3';
+import DatabaseService from '../../services/DatabaseService';
+import SimpleSchemaManager from '../SimpleSchemaManager';
 import { resetDatabaseSingleton, createTestDatabase, cleanupTestDatabase } from './testHelpers';
 import {
   getSetting,
@@ -15,22 +16,22 @@ import {
   deserializeSetting,
   inferType
 } from '../queries/settingsQueries';
-import { initializeSchema, seedDefaultData } from '../schema';
+import { DEFAULT_ADMIN_PASSWORD_HASH } from '../../../shared/constants';
 
 describe('Settings Queries', () => {
-  let db: Database.Database;
+  let db: DatabaseService;
+  let schemaManager: SimpleSchemaManager;
 
   beforeEach(async () => {
     // Reset singleton for test isolation
     resetDatabaseSingleton();
 
     // Create in-memory test database
-    db = new Database(':memory:');
+    db = await createTestDatabase({ useMemory: true });
+    schemaManager = new SimpleSchemaManager(db);
 
     // Initialize the consolidated schema
-    initializeSchema(db);
-    // Seed the default data, including the admin password
-    seedDefaultData(db);
+    await schemaManager.initializeSchema();
   });
 
   afterEach(async () => {
@@ -163,6 +164,7 @@ describe('Settings Queries', () => {
       const mainSettings = await getSettingsByNamespace(db, 'main');
 
       expect(mainSettings).toEqual({
+        adminPassword: DEFAULT_ADMIN_PASSWORD_HASH,
         downloadPath: '/home/user/Videos',
         youtubeApiKey: 'test-key',
         enableVerboseLogging: true
@@ -200,6 +202,7 @@ describe('Settings Queries', () => {
 
       const settings = await getSettingsByNamespace(db, 'main');
       expect(settings).toEqual({
+        adminPassword: DEFAULT_ADMIN_PASSWORD_HASH,
         theme: 'dark',
         language: 'en',
         autoSave: true
@@ -263,21 +266,14 @@ describe('Settings Queries', () => {
   });
 
   describe('getAllSettings', () => {
-    it('should return only default password when no settings exist', async () => {
-      const settings = await getAllSettings(db);
-      expect(settings).toEqual({
-        'main.adminPassword': '$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy'
-      });
-    });
-
     it('should return all settings with full keys', async () => {
       await setSetting(db, 'main.theme', 'dark');
       await setSetting(db, 'main.language', 'en');
       await setSetting(db, 'pagination.pageSize', 50);
- 
+
       const settings = await getAllSettings(db);
       expect(settings).toEqual({
-        'main.adminPassword': '$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy',
+        'main.adminPassword': DEFAULT_ADMIN_PASSWORD_HASH,
         'main.theme': 'dark',
         'main.language': 'en',
         'pagination.pageSize': 50
@@ -308,7 +304,7 @@ describe('Settings Queries', () => {
       await setSetting(db, 'main.language', 'en');
       await setSetting(db, 'pagination.pageSize', 50);
 
-      const count = await countSettings(db); // 3 settings + 1 default password
+      const count = await countSettings(db);
       expect(count).toBe(4);
     });
   });
@@ -317,14 +313,14 @@ describe('Settings Queries', () => {
     it('should migrate mainSettings.json correctly', async () => {
       // Mock data from real mainSettings.json
       const mockMainSettings = {
-        downloadPath: '/home/paul/Videos/SafeTube', 
-        youtubeApiKey: 'your-api-key-here', 
-        enableVerboseLogging: true, 
-        allowYouTubeClicksToOtherVideos: true 
+        downloadPath: '/home/paul/Videos/SafeTube',
+        youtubeApiKey: 'your-api-key-here',
+        adminPassword: 'dummy-string-not-a-hash-for-testing',
+        enableVerboseLogging: true,
+        allowYouTubeClicksToOtherVideos: true
       };
 
       // Migrate
-      // Note: adminPassword is now handled separately and not part of this namespace migration
       await setSettingsByNamespace(db, 'main', mockMainSettings);
 
       // Verify
@@ -378,6 +374,7 @@ describe('Settings Queries', () => {
     it('should consolidate all three configs into single table', async () => {
       const mockSettings = {
         main: {
+          adminPassword: DEFAULT_ADMIN_PASSWORD_HASH,
           downloadPath: '/home/user/Videos',
           enableVerboseLogging: true
         },
@@ -407,7 +404,7 @@ describe('Settings Queries', () => {
 
       // Verify total count
       const count = await countSettings(db);
-      expect(count).toBe(7); // 2 main + 2 pagination + 2 youtube_player + 1 default adminPassword
+      expect(count).toBe(7); // 2 main + 2 pagination + 2 youtube_player + 1 adminPassword
     });
   });
 

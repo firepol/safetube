@@ -1,5 +1,6 @@
 import DatabaseService from '../services/DatabaseService';
 import log from '../logger';
+import { DEFAULT_ADMIN_PASSWORD_HASH } from '../../shared/constants';
 
 interface SchemaVersion {
   version: string;
@@ -358,7 +359,7 @@ export class SimpleSchemaManager {
    * Insert default settings, including the admin password
    */
   private async insertDefaultSettings(): Promise<void> {
-    const defaultPasswordHash = '"$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy"'; // hash for 'paren234'
+    const defaultPasswordHash = JSON.stringify(DEFAULT_ADMIN_PASSWORD_HASH);
     await this.databaseService.run(`
       INSERT OR IGNORE INTO settings (key, value, type, description)
       VALUES ('main.adminPassword', ?, 'string', 'Admin password hash')

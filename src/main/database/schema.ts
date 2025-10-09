@@ -1,4 +1,5 @@
 import { Database } from 'better-sqlite3';
+import { DEFAULT_ADMIN_PASSWORD_HASH } from '../../shared/constants';
 
 const tables = {
   sources: `
@@ -274,12 +275,9 @@ export function seedDefaultData(db: Database): void {
     seedTimeLimitsStmt.run("Time's up for today! Here's your schedule:");
  
     // 2. Seed default admin password
-    // The password is 'paren234', hashed with bcrypt.
-    const defaultAdminPasswordHash = '$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy';
- 
     // The value MUST be a valid JSON string, so we stringify it.
     // This stores it as '"$2b$10$..."' in the database, which is what your query helpers expect.
-    const jsonEncodedPassword = JSON.stringify(defaultAdminPasswordHash);
+    const jsonEncodedPassword = JSON.stringify(DEFAULT_ADMIN_PASSWORD_HASH);
  
     const seedAdminPasswordStmt = db.prepare(`
       INSERT OR IGNORE INTO settings (key, value, type, description)

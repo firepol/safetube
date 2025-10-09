@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { initializeSchema, seedDefaultData } from '../schema';
+import { DEFAULT_ADMIN_PASSWORD_HASH } from '../../../shared/constants';
 
 describe('Database Schema Initialization', () => {
   let db: Database.Database;
@@ -88,7 +89,7 @@ describe('Database Schema Initialization', () => {
     seedDefaultData(db);
 
     const key = 'main.adminPassword';
-    const expectedHash = '$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy';
+    const expectedHash = DEFAULT_ADMIN_PASSWORD_HASH;
     // The value in the database should be a JSON-encoded string.
     const expectedDbValue = JSON.stringify(expectedHash);
 

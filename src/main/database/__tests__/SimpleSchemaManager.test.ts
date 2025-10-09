@@ -5,6 +5,7 @@ import '../../services/__tests__/setup'; // Import mocks
 import DatabaseService from '../../services/DatabaseService';
 import SimpleSchemaManager from '../SimpleSchemaManager';
 import { resetDatabaseSingleton, createTestDatabase, cleanupTestDatabase } from './testHelpers';
+import { DEFAULT_ADMIN_PASSWORD_HASH } from '../../../shared/constants';
 
 const TEST_DB_PATH = '/tmp/claude/test-simple-schema-manager.db';
 
@@ -89,7 +90,7 @@ describe('SimpleSchemaManager', () => {
     `);
 
     expect(passwordHash).toBeDefined();
-    expect(passwordHash?.value).toBe('"$2b$10$CD78JZagbb56sj/6SIJfyetZN5hYjICzbPovBm5/1mol2K53bWIWy"');
+    expect(passwordHash?.value).toBe(JSON.stringify(DEFAULT_ADMIN_PASSWORD_HASH));
   });
 
   test('should create required indexes', async () => {
