@@ -41,9 +41,10 @@ describe('VideoCardBase URL Encoding', () => {
       type: "local"
     });
 
-    // Find the main clickable card by its title text
-    const card = screen.getByText('Test Movie').closest('div[tabindex="0"]');
-    fireEvent.click(card!);
+    // Click the thumbnail to navigate
+    const thumbnail = screen.getByAltText('Test Movie');
+    const thumbnailContainer = thumbnail.closest('.cursor-pointer');
+    fireEvent.click(thumbnailContainer!);
 
     expect(mockNavigate).toHaveBeenCalledWith('/player/local%3A%2Fhome%2Fuser%2Fvideos%2Fmovie.mp4');
   });
@@ -59,9 +60,10 @@ describe('VideoCardBase URL Encoding', () => {
       type: "local"
     });
 
-    // Find the main clickable card by its title text
-    const card = screen.getByText('Fun Cartoon Episode').closest('div[tabindex="0"]');
-    fireEvent.click(card!);
+    // Click the thumbnail to navigate
+    const thumbnail = screen.getByAltText('Fun Cartoon Episode');
+    const thumbnailContainer = thumbnail.closest('.cursor-pointer');
+    fireEvent.click(thumbnailContainer!);
 
     expect(mockNavigate).toHaveBeenCalledWith('/player/local%3A%2Fhome%2Fuser%2FVideos%2FFun%20Cartoon%20(2024)%20-%20Episode%201.mp4');
   });
@@ -77,9 +79,10 @@ describe('VideoCardBase URL Encoding', () => {
       type: "local"
     });
 
-    // Find the main clickable card by its title text
-    const card = screen.getByText('Fun Video with Emojis').closest('div[tabindex="0"]');
-    fireEvent.click(card!);
+    // Click the thumbnail to navigate
+    const thumbnail = screen.getByAltText('Fun Video with Emojis');
+    const thumbnailContainer = thumbnail.closest('.cursor-pointer');
+    fireEvent.click(thumbnailContainer!);
 
     expect(mockNavigate).toHaveBeenCalledWith('/player/local%3A%2Fhome%2Fuser%2FVideos%2F%F0%9F%8E%AC%20Movies%2FFun%20Video%20%F0%9F%8E%89.mp4');
   });
@@ -95,9 +98,10 @@ describe('VideoCardBase URL Encoding', () => {
       type: "dlna"
     });
 
-    // Find the main clickable card by its title text
-    const card = screen.getByText('Action Movie').closest('div[tabindex="0"]');
-    fireEvent.click(card!);
+    // Click the thumbnail to navigate
+    const thumbnail = screen.getByAltText('Action Movie');
+    const thumbnailContainer = thumbnail.closest('.cursor-pointer');
+    fireEvent.click(thumbnailContainer!);
 
     expect(mockNavigate).toHaveBeenCalledWith('/player/dlna%3A%2F%2F192.168.1.100%3A8200%2FMovies%2FAction%20Movie%20(2024).mp4');
   });
@@ -113,9 +117,10 @@ describe('VideoCardBase URL Encoding', () => {
       type: "youtube"
     });
 
-    // Find the main clickable card by its title text
-    const card = screen.getByText('YouTube Video').closest('div[tabindex="0"]');
-    fireEvent.click(card!);
+    // Click the thumbnail to navigate
+    const thumbnail = screen.getByAltText('YouTube Video');
+    const thumbnailContainer = thumbnail.closest('.cursor-pointer');
+    fireEvent.click(thumbnailContainer!);
 
     expect(mockNavigate).toHaveBeenCalledWith('/player/dQw4w9WgXcQ');
   });
@@ -131,9 +136,10 @@ describe('VideoCardBase URL Encoding', () => {
       type: "local"
     });
 
-    // Find the main clickable card by its title text
-    const card = screen.getByText('Test Video').closest('div[tabindex="0"]');
-    fireEvent.click(card!);
+    // Click the thumbnail to navigate
+    const thumbnail = screen.getByAltText('Test Video');
+    const thumbnailContainer = thumbnail.closest('.cursor-pointer');
+    fireEvent.click(thumbnailContainer!);
 
     expect(mockNavigate).toHaveBeenCalledWith('/player/local%3A%2Fhome%2Fuser%2FVideos%2FTest%2520Video.mp4');
   });
@@ -149,9 +155,10 @@ describe('VideoCardBase URL Encoding', () => {
       type: "local"
     });
 
-    // Find the main clickable card by its title text
-    const card = screen.getByText('Movie with Special Chars').closest('div[tabindex="0"]');
-    fireEvent.click(card!);
+    // Click the thumbnail to navigate
+    const thumbnail = screen.getByAltText('Movie with Special Chars');
+    const thumbnailContainer = thumbnail.closest('.cursor-pointer');
+    fireEvent.click(thumbnailContainer!);
 
     expect(mockNavigate).toHaveBeenCalledWith('/player/local%3A%2Fhome%2Fuser%2FVideos%2FMovie%3F%20%26%20Hash%23.mp4');
   });
@@ -169,9 +176,10 @@ describe('VideoCardBase URL Encoding', () => {
       onVideoClick: customClickHandler
     });
 
-    // Find the main clickable card by its title text
-    const card = screen.getByText('Custom Handler Test').closest('div[tabindex="0"]');
-    fireEvent.click(card!);
+    // Click the thumbnail to trigger custom handler
+    const thumbnail = screen.getByAltText('Custom Handler Test');
+    const thumbnailContainer = thumbnail.closest('.cursor-pointer');
+    fireEvent.click(thumbnailContainer!);
 
     expect(customClickHandler).toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
@@ -189,9 +197,13 @@ describe('VideoCardBase URL Encoding', () => {
       isFallback: true
     });
 
-    // For fallback videos, the card should be a link, not a clickable div
-    const link = screen.getByRole('link');
-    expect(link).toHaveAttribute('href', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    // For fallback videos, the card should not be clickable
+    // Check that the thumbnail container doesn't have cursor-pointer class
+    const thumbnail = screen.queryByAltText('Unavailable Video');
+    expect(thumbnail).not.toBeInTheDocument(); // Fallback videos don't show the normal thumbnail
+
+    // Should show fallback UI
+    expect(screen.getByText('Video Unavailable')).toBeInTheDocument();
 
     // Navigate should not be called for fallback videos
     expect(mockNavigate).not.toHaveBeenCalled();

@@ -1,6 +1,6 @@
 import React, { memo, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { formatDuration } from '../../lib/utils';
+import { formatDuration, formatPublishedDate, extractSubfolderName } from '../../lib/utils';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { useNavigate } from 'react-router-dom';
 import { VideoLoadError } from '../../../shared/videoErrorHandling';
@@ -373,10 +373,12 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
         
         <div className="flex items-center justify-between mt-1">
           <p className={cn(
-            "text-xs capitalize",
+            "text-xs truncate max-w-[70%]",
             isClicked ? "bg-violet-500 text-white px-2 py-1 rounded" : "text-muted-foreground"
           )}>
-            {type}
+            {type === 'youtube' ? formatPublishedDate(publishedAt) :
+             type === 'local' ? extractSubfolderName(id) || 'Local' :
+             type}
           </p>
           {/* Favorite Button in Top Bar */}
           {showFavoriteIcon && !isFallback && (

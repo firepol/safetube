@@ -235,7 +235,8 @@ describe('VideoCardBase External Link Opening', () => {
       title: 'Test Video',
       duration: 180,
       type: 'youtube' as const,
-      isClicked: true
+      isClicked: true,
+      publishedAt: '2024-01-15T12:00:00Z'
     };
 
     render(
@@ -244,8 +245,8 @@ describe('VideoCardBase External Link Opening', () => {
       </TestWrapper>
     );
 
-    // Find the type label and check for violet background
-    const typeLabel = screen.getByText('youtube');
+    // Find the type label (now shows published date) and check for violet background
+    const typeLabel = screen.getByText('Jan 15, 2024');
     expect(typeLabel).toHaveClass('bg-violet-500', 'text-white', 'px-2', 'py-1', 'rounded');
   });
 
@@ -256,7 +257,8 @@ describe('VideoCardBase External Link Opening', () => {
       title: 'Test Video',
       duration: 180,
       type: 'youtube' as const,
-      isClicked: false
+      isClicked: false,
+      publishedAt: '2024-01-15T12:00:00Z'
     };
 
     render(
@@ -265,8 +267,8 @@ describe('VideoCardBase External Link Opening', () => {
       </TestWrapper>
     );
 
-    // Find the type label and check that violet background is not present
-    const typeLabel = screen.getByText('youtube');
+    // Find the type label (now shows published date) and check that violet background is not present
+    const typeLabel = screen.getByText('Jan 15, 2024');
     expect(typeLabel).not.toHaveClass('bg-violet-500', 'text-white', 'px-2', 'py-1', 'rounded');
     expect(typeLabel).toHaveClass('text-muted-foreground');
   });
@@ -279,7 +281,8 @@ describe('VideoCardBase External Link Opening', () => {
       duration: 180,
       type: 'youtube' as const,
       watched: true,
-      isClicked: true
+      isClicked: true,
+      publishedAt: '2024-01-15T12:00:00Z'
     };
 
     render(
@@ -292,8 +295,8 @@ describe('VideoCardBase External Link Opening', () => {
     const checkmark = screen.getByText('✓');
     expect(checkmark).toBeInTheDocument();
 
-    // Check for violet type label
-    const typeLabel = screen.getByText('youtube');
+    // Check for violet type label (now shows published date)
+    const typeLabel = screen.getByText('Jan 15, 2024');
     expect(typeLabel).toHaveClass('bg-violet-500', 'text-white', 'px-2', 'py-1', 'rounded');
 
     // Check for white faded overlay on watched videos
