@@ -1221,9 +1221,12 @@ export function registerYouTubeCacheHandlers() {
   // Clear source cache (database-backed)
   ipcMain.handle(IPC.YOUTUBE_CACHE_DB.CLEAR_SOURCE, async (_, sourceId: string) => {
     try {
-      // This handler is called from the renderer process
-      // The actual cache clearing is handled in youtubePageCache.ts for the main process
-      logVerbose(`[IPC] Received clear cache request for ${sourceId}`);
+      // Actually clear the database cache for this source
+      const { default: DatabaseService } = await import('../services/DatabaseService');
+      const dbService = DatabaseService.getInstance();
+      await dbService.run('DELETE FROM youtube_api_results WHERE source_id = ?', [sourceId]);
+
+      logVerbose(`[IPC] Cleared database cache for source ${sourceId}`);
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error clearing source cache:', error);

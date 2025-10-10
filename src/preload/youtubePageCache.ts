@@ -218,9 +218,20 @@ export class YouTubePageCache {
    */
   static async clearSourcePages(sourceId: string): Promise<void> {
     try {
+      // Clear page tokens first (in-memory cache)
+      this.clearPageTokens(sourceId);
+      logVerbose(`[YouTubePageCache] Cleared page tokens for source ${sourceId}`);
+
       if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
+        // Renderer process: use IPC
         await (window as any).electron.invoke(IPC.YOUTUBE_CACHE_DB.CLEAR_SOURCE, sourceId);
-        logVerbose(`[YouTubePageCache] Cleared all page cache for source ${sourceId} from database`);
+        logVerbose(`[YouTubePageCache] Cleared all page cache for source ${sourceId} from database via IPC`);
+      } else if (typeof process !== 'undefined' && process.type === 'browser') {
+        // Main process: direct database access
+        const { DatabaseService } = await import('../main/services/DatabaseService');
+        const dbService = DatabaseService.getInstance();
+        await dbService.run('DELETE FROM youtube_api_results WHERE source_id = ?', [sourceId]);
+        logVerbose(`[YouTubePageCache] Cleared all page cache for source ${sourceId} from database (main process)`);
       }
     } catch (error) {
       console.warn(`[YouTubePageCache] Error clearing page cache for ${sourceId} from database:`, error);
