@@ -330,6 +330,8 @@ export const HistoryPage: React.FC = () => {
                 ? (video.watchedData.position / video.watchedData.duration) * 100
                 : 0;
 
+              const wishlistItem = getWishlistItem(video.id);
+
               return {
                 id: video.id,
                 thumbnail: video.thumbnail || '',
@@ -340,6 +342,7 @@ export const HistoryPage: React.FC = () => {
                 isClicked: true, // All videos in history have been clicked
                 progress: progress,
                 resumeAt: video.watchedData.position,
+                publishedAt: wishlistItem?.created_at,
                 onVideoClick: () => handleVideoClick(video),
                 sourceId: video.sourceId || 'unknown',
                 lastWatched: video.watchedData.lastWatched,

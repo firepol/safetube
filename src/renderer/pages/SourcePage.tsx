@@ -597,6 +597,7 @@ export const SourcePage: React.FC = () => {
               isFallback: video.isFallback === true,
               errorInfo: video.errorInfo,
               resumeAt: video.resumeAt,
+              publishedAt: video.publishedAt,
               onVideoClick: () => handleVideoClick({
                 ...video,
                 type: video.type || (source?.type === 'youtube_channel' || source?.type === 'youtube_playlist' ? 'youtube' : undefined)
