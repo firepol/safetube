@@ -13,6 +13,7 @@ import { recordVideoWatching, getTimeTrackingState } from '../timeTracking';
 import { YouTubeAPI } from '../youtube-api';
 import registerDatabaseHandlers from '../ipc/databaseHandlers';
 import { extractChannelId, extractPlaylistId } from '../../shared/videoSourceUtils';
+import type { VideoBatchUpsertData } from '../../shared/types';
 import {
   scanLocalFolder,
   getLocalFolderContents,
@@ -1000,7 +1001,7 @@ export function registerSystemHandlers() {
   });
 
   // Batch upsert videos
-  ipcMain.handle(IPC.VIDEOS.BATCH_UPSERT, async (_, videos: any[]) => {
+  ipcMain.handle(IPC.VIDEOS.BATCH_UPSERT, async (_, videos: VideoBatchUpsertData[]) => {
     try {
       const { writeVideosToDatabase } = await import('./videoDataService');
       await writeVideosToDatabase(videos);

@@ -1,6 +1,7 @@
 import fs from 'fs';
 
 import { logVerbose } from '../../shared/logging';
+import type { VideoBatchUpsertData } from '../../shared/types';
 import { AppPaths } from '../appPaths';
 import log from '../logger';
 import { getThumbnailUrl } from './thumbnailService';
@@ -10,7 +11,7 @@ import { countVideosInFolder } from './localVideoService';
  * Write video metadata to database for persistence and search
  * Now uses batch operations for better performance
  */
-async function writeVideosToDatabase(videos: any[]): Promise<void> {
+async function writeVideosToDatabase(videos: VideoBatchUpsertData[]): Promise<void> {
   try {
     const { DatabaseService } = await import('./DatabaseService');
     const { DataCacheService } = await import('./DataCacheService');

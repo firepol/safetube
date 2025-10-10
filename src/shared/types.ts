@@ -238,6 +238,19 @@ export interface VideoMetadata {
   url?: string;
 }
 
+// Video data structure for batch database operations
+export interface VideoBatchUpsertData {
+  id: string;
+  title?: string;
+  thumbnail?: string;
+  duration?: number;
+  sourceId?: string;
+  url?: string;
+  publishedAt?: string | null;
+  published_at?: string | null;  // Alternative property name (normalized internally)
+  description?: string | null;
+}
+
 // Favorites validation and utility types
 export interface FavoriteValidationResult {
   isValid: boolean;
