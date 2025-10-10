@@ -454,13 +454,13 @@ export class CachedYouTubeSources {
         
         const result = await YouTubeAPI.getChannelVideos(actualChannelId, 50);
         totalVideos = result.totalResults;
-        newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || []);
+        newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || [], result.publishedDates);
         fetchedNewInfo = true;
       } else if (source.type === 'youtube_playlist') {
         const playlistId = extractPlaylistId(source.url);
         const result = await YouTubeAPI.getPlaylistVideos(playlistId, 50);
         totalVideos = result.totalResults;
-        newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || []);
+        newVideos = await fetchNewYouTubeVideos(result.videoIds, cache?.videos || [], result.publishedDates);
         fetchedNewInfo = true;
       }
     } catch (error) {
@@ -758,17 +758,17 @@ function extractPlaylistId(url: string): string {
   if (match) return match[1];
   throw new Error('Invalid playlist URL');
 }
-async function fetchNewYouTubeVideos(allVideoIds: string[], cachedVideos: any[]) {
+async function fetchNewYouTubeVideos(allVideoIds: string[], cachedVideos: any[], publishedDates: Map<string, string>) {
   const cachedIds = new Set(cachedVideos.map(v => v.id));
   const newIds = allVideoIds.filter(id => !cachedIds.has(id));
   const detailsResults = await Promise.all(newIds.map(id => YouTubeAPI.getVideoDetails(id)));
-  
+
   // Filter out null results (failed videos) and transform to expected format
   const details = detailsResults.filter(v => v !== null);
   return details.map(v => ({
     id: v.id,
     title: v.snippet.title,
-    publishedAt: ((v.snippet as any).publishedAt || ''),
+    publishedAt: publishedDates.get(v.id) || '', // Use publishedAt from playlistItems API
     thumbnail: v.snippet.thumbnails.high.url,
     duration: parseISODuration(v.contentDetails.duration),
     url: `https://www.youtube.com/watch?v=${v.id}`,

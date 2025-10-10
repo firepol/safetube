@@ -452,7 +452,7 @@ export class YouTubeAPI {
     };
   }
 
-  static async getChannelVideos(channelId: string, maxResults?: number, pageToken?: string): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {
+  static async getChannelVideos(channelId: string, maxResults?: number, pageToken?: string): Promise<{ videoIds: string[], publishedDates: Map<string, string>, totalResults: number, nextPageToken?: string }> {
     const channel = await this.getChannelDetails(channelId);
     return this.getPlaylistVideos(channel.contentDetails.relatedPlaylists.uploads, maxResults, pageToken);
   }
