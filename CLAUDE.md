@@ -22,10 +22,14 @@ SafeTube is a kid-friendly video player built with Electron, React, and TypeScri
 ```bash
 yarn dev              # Start development server
 yarn electron:dev     # Start Electron app in development
-yarn test            # Run all tests
+yarn test            # Run fast tests (CI-safe, ~1-2 min)
+yarn test:all        # Run ALL tests including slow ones (~10+ min)
+yarn test:youtube    # Run YouTube API integration tests (requires API key)
 yarn lint            # Run linter
 yarn type-check      # Type checking
 ```
+
+See **@docs/testing-guide.md** for complete testing documentation.
 
 ### Key Architecture
 - **Main Process** (`src/main/`): Electron IPC, file access, system integration
@@ -60,10 +64,11 @@ Follow the Cursor rules in `@.cursor/rules/` for:
 
 ## Testing Strategy
 
-- **Unit Tests**: Components, utilities, business logic
-- **Integration Tests**: YouTube API, file system, video playback
-- **CI Environment**: Use `CI=true yarn test` to skip YouTube tests
+- **Unit Tests**: Components, utilities, business logic (run with `yarn test`)
+- **Integration Tests**: YouTube API tests (run with `yarn test:youtube`, requires API key)
+- **CI Environment**: `yarn test` automatically excludes YouTube API tests
 - **Test Infrastructure**: Sample videos in `test-videos/`, mocked services
+- **Complete Guide**: See **@docs/testing-guide.md** for detailed testing documentation
 
 ## Key Technical Notes
 

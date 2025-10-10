@@ -21,8 +21,8 @@ jobs:
       run: |
         # Build the Docker image
         docker build --target test -t safetube-test .
-        
-        # Run tests in container
+
+        # Run tests in container (excludes YouTube API tests that need real API key)
         docker run --rm safetube-test yarn test
         
     - name: Upload test results
