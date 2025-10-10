@@ -975,12 +975,40 @@ export function registerSystemHandlers() {
   ipcMain.handle(IPC.CACHE.CLEAR_SOURCE_CACHE, async (_, sourceId: string) => {
     try {
       const { YouTubePageCache } = await import('../../preload/youtubePageCache');
+      const { DataCacheService } = await import('./DataCacheService');
+      const { clearSourceCache } = await import('../database/queries/youtubeCacheQueries');
+      const { DatabaseService } = await import('./DatabaseService');
+
+      const dbService = DatabaseService.getInstance();
+      const cacheService = DataCacheService.getInstance();
+
+      // Clear file-based page cache
       YouTubePageCache.clearSourcePages(sourceId);
-      logVerbose(`[IPC] Cleared cache for source: ${sourceId}`);
+
+      // Clear in-memory cache
+      cacheService.clearSourceCache(sourceId);
+
+      // Clear database youtube_api_results for this source
+      await clearSourceCache(dbService, sourceId);
+
+      logVerbose(`[IPC] Cleared all caches for source: ${sourceId}`);
       return { success: true, message: 'Cache cleared successfully' };
     } catch (error) {
       log.error('[IPC] Error clearing source cache:', error);
       return { success: false, message: 'Failed to clear cache', error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  // Batch upsert videos
+  ipcMain.handle(IPC.VIDEOS.BATCH_UPSERT, async (_, videos: any[]) => {
+    try {
+      const { writeVideosToDatabase } = await import('./videoDataService');
+      await writeVideosToDatabase(videos);
+      logVerbose(`[IPC] Batch upserted ${videos.length} videos to database`);
+      return { success: true };
+    } catch (error) {
+      log.error('[IPC] Error batch upserting videos:', error);
+      return { success: false, error: error instanceof Error ? error.message : String(error) };
     }
   });
 

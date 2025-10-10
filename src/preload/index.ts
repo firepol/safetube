@@ -44,6 +44,7 @@ const IPC = {
     SEARCH: 'database:videos:search',
     UPDATE_METADATA: 'database:videos:update-metadata',
     UPDATE_AVAILABILITY: 'database:videos:update-availability',
+    BATCH_UPSERT: 'database:videos:batch-upsert',
   },
 
   // ============================================================================
@@ -420,6 +421,8 @@ contextBridge.exposeInMainWorld(
     log: (level: string, ...args: any[]) => ipcRenderer.invoke(IPC.LOGGING.LOG, level, ...args),
     // Clear source cache
     clearSourceCache: (sourceId: string) => ipcRenderer.invoke(IPC.CACHE.CLEAR_SOURCE_CACHE, sourceId),
+    // Batch upsert videos
+    batchUpsertVideos: (videos: any[]) => ipcRenderer.invoke(IPC.VIDEOS.BATCH_UPSERT, videos),
     // Download management
     startDownload: (videoId: string, videoTitle: string, sourceInfo: any) =>
       ipcRenderer.invoke(IPC.DOWNLOADS.START, videoId, videoTitle, sourceInfo),

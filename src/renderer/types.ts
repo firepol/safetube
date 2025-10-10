@@ -115,6 +115,11 @@ export interface ElectronAPI {
     error?: string;
     keepCache?: boolean;
   }>;
+  // Batch upsert videos
+  batchUpsertVideos: (videos: any[]) => Promise<{
+    success: boolean;
+    error?: string;
+  }>;
   // Video codec detection and conversion
   getVideoCodecInfo: (filePath: string) => Promise<{
     videoCodec: string;

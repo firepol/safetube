@@ -57,6 +57,7 @@ export const IPC = {
     SEARCH: 'database:videos:search',
     UPDATE_METADATA: 'database:videos:update-metadata',
     UPDATE_AVAILABILITY: 'database:videos:update-availability',
+    BATCH_UPSERT: 'database:videos:batch-upsert',
   },
 
   // ============================================================================

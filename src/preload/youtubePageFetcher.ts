@@ -176,10 +176,14 @@ export class YouTubePageFetcher {
           // Main process: direct database access
           const { writeVideosToDatabase } = await import('../main/services/videoDataService');
           await writeVideosToDatabase(videosWithSourceId);
-        } else if (typeof window !== 'undefined' && (window as any).electron?.invoke) {
-          // Renderer process: use IPC (if handler exists)
-          // For now, just log that we'd need an IPC handler for this
-          logVerbose(`[YouTubePageFetcher] Videos would need to be inserted via IPC for ${sourceId} page ${pageNumber}`);
+        } else if (typeof window !== 'undefined' && (window as any).electron?.batchUpsertVideos) {
+          // Renderer process: use IPC to write to database
+          const result = await (window as any).electron.batchUpsertVideos(videosWithSourceId);
+          if (!result.success) {
+            logVerbose(`[YouTubePageFetcher] Failed to insert videos via IPC: ${result.error}`);
+          } else {
+            logVerbose(`[YouTubePageFetcher] Successfully inserted ${videosWithSourceId.length} videos via IPC for ${sourceId} page ${pageNumber}`);
+          }
         }
       } catch (error) {
         logVerbose(`[YouTubePageFetcher] Error inserting videos into database: ${error}`);
