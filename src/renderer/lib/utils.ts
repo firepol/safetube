@@ -18,12 +18,17 @@ export function formatDuration(seconds: number): string {
 
 /**
  * Format a date string to a short, readable format (e.g., "Jan 15, 2024")
+ * Returns "YouTube" if date is not available
  */
 export function formatPublishedDate(dateString: string | undefined): string {
-  if (!dateString) return '';
+  if (!dateString) return 'YouTube';
 
   try {
     const date = new Date(dateString);
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'YouTube';
+    }
     // Use short month format for compact display
     return date.toLocaleDateString('en-US', {
       month: 'short',
@@ -31,7 +36,7 @@ export function formatPublishedDate(dateString: string | undefined): string {
       year: 'numeric'
     });
   } catch {
-    return '';
+    return 'YouTube';
   }
 }
 
