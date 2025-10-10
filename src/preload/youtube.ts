@@ -96,6 +96,7 @@ const PlayerSchema = z.object({
 const PlaylistItemSchema = z.object({
   id: z.string(),
   snippet: z.object({
+    publishedAt: z.string().optional(),
     resourceId: z.object({
       videoId: z.string(),
     }),
@@ -367,7 +368,7 @@ export class YouTubeAPI {
     throw new Error('getVideoStreams is not available in preload/browser context');
   }
 
-  static async getPlaylistVideos(playlistId: string, maxResults?: number, pageToken?: string, signal?: AbortSignal): Promise<{ videoIds: string[], totalResults: number, nextPageToken?: string }> {
+  static async getPlaylistVideos(playlistId: string, maxResults?: number, pageToken?: string, signal?: AbortSignal): Promise<{ videoIds: string[], publishedDates: Map<string, string>, totalResults: number, nextPageToken?: string }> {
     const params: Record<string, string> = {
       part: 'snippet',
       playlistId,
@@ -379,8 +380,20 @@ export class YouTubeAPI {
     }
 
     const data = await YouTubeAPI.fetch<YouTubePlaylist>('playlistItems', params, signal);
+
+    // Create a map of video ID to publishedAt date
+    const publishedDates = new Map<string, string>();
+    data.items.forEach(item => {
+      const videoId = item.snippet.resourceId.videoId;
+      const publishedAt = item.snippet.publishedAt;
+      if (publishedAt) {
+        publishedDates.set(videoId, publishedAt);
+      }
+    });
+
     return {
       videoIds: data.items.map(item => item.snippet.resourceId.videoId),
+      publishedDates,
       totalResults: data.pageInfo.totalResults,
       nextPageToken: data.nextPageToken
     };
@@ -514,6 +527,7 @@ export class YouTubeAPI {
     logVerbose(`[YouTubeAPI] ⏱️ Video ID fetch (page ${pageNumber}): ${fetchTime.toFixed(1)}ms`);
 
     const pageVideoIds = result.videoIds;
+    const publishedDates = result.publishedDates;
     const totalResults = result.totalResults;
     const nextPageToken = result.nextPageToken;
 
@@ -544,7 +558,9 @@ export class YouTubeAPI {
     // Process results and create fallback entries for failed videos
     const videos = videoResults.map((result, index) => {
       const videoId = pageVideoIds[index];
-      
+      // Get publishedAt from the playlistItems response
+      const publishedAt = publishedDates.get(videoId) || '';
+
       if (result.status === 'fulfilled' && result.value.success && result.value.video) {
         // Successful video load - transform to expected format
         const video = result.value.video;
@@ -553,7 +569,7 @@ export class YouTubeAPI {
           type: 'youtube',
           title: video.snippet.title,
           description: video.snippet.description || '',
-          publishedAt: ((video.snippet as any).publishedAt || ''),
+          publishedAt, // Use publishedAt from playlistItems, not from video details
           thumbnail: video.snippet.thumbnails.high.url,
           duration: YouTubeAPI.parseDuration(video.contentDetails.duration),
           url: `https://www.youtube.com/watch?v=${video.id}`,
