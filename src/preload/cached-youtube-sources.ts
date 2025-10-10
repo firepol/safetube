@@ -485,12 +485,12 @@ export class CachedYouTubeSources {
     }
     
     const videos = [...(cache?.videos || []), ...newVideos];
-    
+
     // Get thumbnail from first video if available
     if (videos.length > 0 && videos[0].thumbnail) {
       sourceThumbnail = videos[0].thumbnail;
     }
-    
+
     const updatedCache: YouTubeSourceCache = {
       sourceId: source.id,
       type: source.type,
@@ -503,6 +503,35 @@ export class CachedYouTubeSources {
       fetchedNewData: fetchedNewInfo, // Flag to indicate if we fetched new data from API
       apiErrorFallback: usingCachedData && !fetchedNewInfo // Only true if using cache due to API error
     };
+
+    // Write videos to database if we fetched new data from API
+    if (fetchedNewInfo && newVideos.length > 0) {
+      try {
+        // Add sourceId to videos for database insertion
+        const videosWithSourceId = newVideos.map(video => ({
+          ...video,
+          sourceId: source.id
+        }));
+
+        if (typeof process !== 'undefined' && process.type === 'browser') {
+          // Main process: direct database access
+          const { writeVideosToDatabase } = await import('../main/services/videoDataService');
+          await writeVideosToDatabase(videosWithSourceId);
+          logVerbose(`[CachedYouTubeSources] Wrote ${videosWithSourceId.length} new videos to database for ${source.id}`);
+        } else if (typeof window !== 'undefined' && (window as any).electron?.batchUpsertVideos) {
+          // Renderer process: use IPC
+          const result = await (window as any).electron.batchUpsertVideos(videosWithSourceId);
+          if (result.success) {
+            logVerbose(`[CachedYouTubeSources] Wrote ${videosWithSourceId.length} new videos via IPC for ${source.id}`);
+          } else {
+            logVerbose(`[CachedYouTubeSources] Failed to write videos via IPC: ${result.error}`);
+          }
+        }
+      } catch (error) {
+        logVerbose(`[CachedYouTubeSources] Error writing videos to database: ${error}`);
+      }
+    }
+
     // Write to database
     try {
       await writeCacheToDatabase(source.id, updatedCache);
