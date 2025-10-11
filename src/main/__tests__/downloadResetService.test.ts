@@ -3,6 +3,24 @@ import { DownloadResetService } from '../downloadResetService';
 import { DownloadedVideo, DownloadStatus } from '../../shared/types';
 import * as fileUtils from '../fileUtils';
 
+// Create mock database instance
+const mockDbRun = vi.fn().mockResolvedValue(undefined);
+const mockDbGet = vi.fn().mockResolvedValue(null);
+const mockDbAll = vi.fn().mockResolvedValue([]);
+
+const mockDatabaseService = {
+  run: mockDbRun,
+  get: mockDbGet,
+  all: mockDbAll
+};
+
+// Mock DatabaseService
+vi.mock('../services/DatabaseService', () => ({
+  DatabaseService: {
+    getInstance: vi.fn(() => mockDatabaseService)
+  }
+}));
+
 // Mock electron app
 vi.mock('electron', () => ({
   app: {
@@ -33,6 +51,10 @@ describe('DownloadResetService', () => {
 
   beforeEach(async () => {
     vi.clearAllMocks();
+    // Reset database mocks
+    mockDbRun.mockResolvedValue(undefined);
+    mockDbGet.mockResolvedValue(null);
+    mockDbAll.mockResolvedValue([]);
     // Get the mocked fs.access function
     const fs = await import('fs');
     mockFsAccess = vi.mocked(fs.promises.access);
