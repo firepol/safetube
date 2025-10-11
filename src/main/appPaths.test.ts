@@ -1,5 +1,17 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { AppPaths } from './appPaths';
+
+// Mock electron
+vi.mock('electron', () => ({
+  app: {
+    getPath: vi.fn((name: string) => {
+      if (name === 'userData') {
+        return '/mock/user/data';
+      }
+      return '/mock/path';
+    })
+  }
+}));
 
 // Mock process.env
 const originalEnv = process.env;

@@ -3,6 +3,24 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DownloadManager } from '../downloadManager';
 
+// Create mock database instance
+const mockDbRun = vi.fn().mockResolvedValue(undefined);
+const mockDbGet = vi.fn().mockResolvedValue(null);
+const mockDbAll = vi.fn().mockResolvedValue([]);
+
+const mockDatabaseService = {
+  run: mockDbRun,
+  get: mockDbGet,
+  all: mockDbAll
+};
+
+// Mock DatabaseService
+vi.mock('../services/DatabaseService', () => ({
+  DatabaseService: {
+    getInstance: vi.fn(() => mockDatabaseService)
+  }
+}));
+
 // Mock the dependencies
 vi.mock('../fileUtils', () => ({
   readMainSettings: vi.fn().mockResolvedValue({ downloadPath: '/tmp/test-downloads' }),
@@ -45,11 +63,17 @@ describe('DownloadManager File Handling', () => {
   const testDescriptionFile = path.join(testDir, 'test-video.description');
 
   beforeEach(() => {
+    // Initialize DownloadManager with mock database
+    DownloadManager.initialize(mockDatabaseService as any);
+
+    // Reset mocks
+    vi.clearAllMocks();
+
     // Create test directory and files
     if (!fs.existsSync(testDir)) {
       fs.mkdirSync(testDir, { recursive: true });
     }
-    
+
     // Create mock files (no info.json as it's no longer created)
     fs.writeFileSync(testVideoFile, 'mock video content');
     fs.writeFileSync(testThumbnailFile, 'mock thumbnail content');
@@ -89,12 +113,7 @@ describe('DownloadManager File Handling', () => {
 
   it('should use alternative metadata sources when info.json is not available', async () => {
     const DownloadManagerAny = DownloadManager as any;
-    
-    // Mock the addDownloadedVideo function to capture the data
-    const mockAddDownloadedVideo = vi.fn();
-    const fileUtils = await import('../fileUtils');
-    vi.mocked(fileUtils.addDownloadedVideo).mockImplementation(mockAddDownloadedVideo);
-    
+
     // Call handleDownloadComplete
     await DownloadManagerAny.handleDownloadComplete(
       'test-video-id',
@@ -102,18 +121,15 @@ describe('DownloadManager File Handling', () => {
       testVideoFile,
       { type: 'youtube_channel', sourceId: 'test-channel', channelTitle: 'Test Channel' }
     );
-    
-    // Verify that addDownloadedVideo was called with appropriate data
-    expect(mockAddDownloadedVideo).toHaveBeenCalledWith(
-      expect.objectContaining({
-        videoId: 'test-video-id',
-        title: 'Test Video',
-        filePath: testVideoFile,
-        duration: 0, // Should default to 0 when no info.json is available
-        sourceType: 'youtube_channel',
-        sourceId: 'test-channel'
-      })
-    );
+
+    // Verify that database was called to insert the downloaded video
+    // The download completion now uses database instead of fileUtils
+    expect(mockDbRun).toHaveBeenCalled();
+
+    // Verify files were handled correctly
+    expect(fs.existsSync(testVideoFile)).toBe(true);
+    expect(fs.existsSync(testThumbnailFile)).toBe(true);
+    expect(fs.existsSync(testDescriptionFile)).toBe(false); // Temporary file should be cleaned
   });
 
   it('should clean up temporary files while preserving essential files', async () => {
