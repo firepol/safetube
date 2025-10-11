@@ -4,8 +4,25 @@ import { BrowserRouter } from 'react-router-dom';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WishlistPage } from '../WishlistPage';
 
+// Mock window.electron for TimeIndicator component
+beforeEach(() => {
+  global.window.electron = {
+    getTimeTrackingState: vi.fn().mockResolvedValue({
+      currentDate: '2025-01-01',
+      timeUsedToday: 0,
+      timeLimitToday: 3600,
+      timeRemaining: 3600,
+      isLimitReached: false
+    }),
+    getTimeLimits: vi.fn().mockResolvedValue({
+      countdownWarningSeconds: 60,
+      audioWarningSeconds: 10
+    })
+  } as any;
+});
+
 // Mock the WishlistContext
-const mockWishlistContext = {
+let mockWishlistContext = {
   wishlistData: {
     pending: [],
     approved: [],
@@ -18,7 +35,9 @@ const mockWishlistContext = {
   },
   isLoading: false,
   error: null,
-  removeFromWishlist: vi.fn()
+  removeFromWishlist: vi.fn(),
+  refreshWishlist: vi.fn(),
+  isInWishlist: vi.fn()
 };
 
 vi.mock('../../contexts/WishlistContext', () => ({
@@ -31,13 +50,32 @@ vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual('react-router-dom');
   return {
     ...actual,
-    useNavigate: () => mockNavigate
+    useNavigate: () => mockNavigate,
+    useLocation: () => ({ pathname: '/wishlist', state: null })
   };
 });
 
 describe('WishlistPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Reset context to default state
+    mockWishlistContext = {
+      wishlistData: {
+        pending: [],
+        approved: [],
+        denied: []
+      },
+      wishlistCounts: {
+        pending: 0,
+        approved: 0,
+        denied: 0
+      },
+      isLoading: false,
+      error: null,
+      removeFromWishlist: vi.fn(),
+      refreshWishlist: vi.fn(),
+      isInWishlist: vi.fn()
+    };
   });
 
   it('renders the wishlist page with tabs', () => {
@@ -65,12 +103,7 @@ describe('WishlistPage', () => {
   });
 
   it('shows loading state', () => {
-    const loadingContext = {
-      ...mockWishlistContext,
-      isLoading: true
-    };
-
-    vi.mocked(require('../../contexts/WishlistContext').useWishlist).mockReturnValue(loadingContext);
+    mockWishlistContext.isLoading = true;
 
     render(
       <BrowserRouter>
@@ -82,12 +115,7 @@ describe('WishlistPage', () => {
   });
 
   it('shows error state', () => {
-    const errorContext = {
-      ...mockWishlistContext,
-      error: 'Failed to load wishlist'
-    };
-
-    vi.mocked(require('../../contexts/WishlistContext').useWishlist).mockReturnValue(errorContext);
+    mockWishlistContext.error = 'Failed to load wishlist';
 
     render(
       <BrowserRouter>
