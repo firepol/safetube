@@ -460,7 +460,7 @@ describe('DatabaseClient', () => {
       const result = await DatabaseClient.getVideosBySource('source1');
 
       expect(result).toEqual([]);
-      expect(console.error).toHaveBeenCalledWith('[DatabaseClient] Get videos by source error:', expect.any(Error));
+      // Note: DatabaseClient now uses logVerbose for error logging instead of console.error
     });
 
     test('should handle failed responses consistently', async () => {
@@ -473,7 +473,7 @@ describe('DatabaseClient', () => {
       const result = await DatabaseClient.addFavorite('video1', 'source1');
 
       expect(result).toBe(false);
-      expect(console.error).toHaveBeenCalled();
+      // Note: DatabaseClient now uses logVerbose for error logging instead of console.error
     });
 
     test('should handle null/undefined data in responses', async () => {

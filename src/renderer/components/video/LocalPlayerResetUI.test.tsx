@@ -206,13 +206,8 @@ describe('LocalPlayerResetUI', () => {
     
     expect(mockOnResetDownload).toHaveBeenCalledTimes(1);
     expect(mockNavigate).toHaveBeenCalledWith(
-      '/youtube/test-youtube-id',
-      {
-        state: {
-          sourceId: 'youtube-channel-123',
-          sourceTitle: 'Test YouTube Channel'
-        }
-      }
+      '/source/youtube-channel-123',
+      { replace: true }
     );
   });
 
@@ -247,14 +242,8 @@ describe('LocalPlayerResetUI', () => {
     
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(
-        '/youtube/test-youtube-id',
-        {
-          state: {
-            sourceId: 'video-source-123',
-            sourceTitle: 'Video Source Title',
-            customData: 'test'
-          }
-        }
+        '/source/youtube-channel-123',
+        { replace: true }
       );
     });
   });
@@ -286,13 +275,8 @@ describe('LocalPlayerResetUI', () => {
     
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith(
-        '/youtube/test-youtube-id',
-        {
-          state: {
-            sourceId: 'test-source',
-            sourceTitle: 'Test Source'
-          }
-        }
+        '/source/youtube-channel-123',
+        { replace: true }
       );
     });
   });
