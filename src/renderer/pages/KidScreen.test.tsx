@@ -98,7 +98,7 @@ const mockElectronFunctions = {
     warningThresholdMinutes: 3,
     countdownWarningSeconds: 60
   }),
-  loadVideosFromSources: vi.fn().mockResolvedValue({
+  loadSourcesForKidScreen: vi.fn().mockResolvedValue({
     videosBySource: [
       {
         id: 'sample-source-1',
@@ -140,7 +140,7 @@ beforeEach(() => {
     warningThresholdMinutes: 3,
     countdownWarningSeconds: 60
   });
-  mockElectronFunctions.loadVideosFromSources.mockResolvedValue({
+  mockElectronFunctions.loadSourcesForKidScreen.mockResolvedValue({
     videosBySource: [
       {
         id: 'sample-source-1',
