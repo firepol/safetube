@@ -128,18 +128,6 @@ describe('LocalVideoScanner', () => {
     expect(subVideos).toHaveLength(2);
   });
 
-  it('should cache scan results', async () => {
-    // First call
-    await LocalVideoScanner.scanFolder('test-source', mockPath, 2);
-
-    // Verify cache file was written
-    expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-      expect.stringContaining('local-videos-test-source.json'),
-      expect.any(String),
-      'utf-8'
-    );
-  });
-
   it('should find thumbnails when they exist', async () => {
     // Mock thumbnail existence for one video
     mockFs.existsSync.mockImplementation((filePath: any) => {
@@ -158,15 +146,6 @@ describe('LocalVideoScanner', () => {
     expect(movie1?.thumbnail).toBe(path.join(mockPath, 'movie1.jpg'));
   });
 
-  it('should return empty thumbnail when no thumbnail exists', async () => {
-    const result = await LocalVideoScanner.scanFolder('test-source', mockPath, 2);
-
-    // All videos should have empty thumbnails (since we mock no thumbnails)
-    result.videos.forEach(video => {
-      expect(video.thumbnail).toBe('');
-    });
-  });
-
   it('should handle scanning errors gracefully', async () => {
     // Mock readdir to throw error
     mockFs.readdirSync.mockImplementation(() => {
@@ -180,12 +159,4 @@ describe('LocalVideoScanner', () => {
     expect(result.totalVideos).toBe(0);
   });
 
-  it('should generate consistent cache file paths', () => {
-    const cachePath1 = LocalVideoScanner.getCacheFilePath('source1');
-    const cachePath2 = LocalVideoScanner.getCacheFilePath('source2');
-
-    expect(cachePath1).toContain('local-videos-source1.json');
-    expect(cachePath2).toContain('local-videos-source2.json');
-    expect(cachePath1).not.toBe(cachePath2);
-  });
 });

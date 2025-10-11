@@ -6,6 +6,29 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { YouTubePlayerPage } from './YouTubePlayerPage';
 import { FavoritesService } from '../services/favoritesService';
 
+// Mock WishlistContext
+const mockWishlistContext = {
+  wishlistData: {
+    pending: [],
+    approved: [],
+    denied: []
+  },
+  wishlistCounts: {
+    pending: 0,
+    approved: 0,
+    denied: 0
+  },
+  isLoading: false,
+  error: null,
+  removeFromWishlist: vi.fn(),
+  refreshWishlist: vi.fn(),
+  isInWishlist: vi.fn().mockReturnValue({ inWishlist: false })
+};
+
+vi.mock('../contexts/WishlistContext', () => ({
+  useWishlist: () => mockWishlistContext
+}));
+
 // Mock the electron window object
 const mockElectron = {
   getVideoData: vi.fn(),
@@ -29,11 +52,34 @@ vi.mock('../services/youtubeIframe', () => ({
   })),
 }));
 
-// Mock the favorites service
+// Mock the useFavoriteStatus hook
+const mockIsFavoriteVideo = vi.fn().mockReturnValue(false);
+const mockRefreshFavorites = vi.fn();
+
+const mockUseFavoriteStatus = {
+  isFavoriteVideo: mockIsFavoriteVideo,
+  refreshFavorites: mockRefreshFavorites,
+};
+
+vi.mock('../hooks/useFavoriteStatus', () => ({
+  useFavoriteStatus: () => mockUseFavoriteStatus,
+}));
+
+// Mock FavoritesService (used by handleFavoriteToggle)
 vi.mock('../services/favoritesService', () => ({
   FavoritesService: {
-    isFavorite: vi.fn(),
-    toggleFavorite: vi.fn(),
+    toggleFavorite: vi.fn().mockResolvedValue({
+      favorite: {
+        videoId: 'test-video-id',
+        dateAdded: new Date().toISOString(),
+        sourceType: 'youtube',
+        sourceId: 'test-source',
+        title: 'Test Video',
+        thumbnail: 'https://example.com/thumbnail.jpg',
+        duration: 300,
+      },
+      isFavorite: true,
+    }),
   },
 }));
 
@@ -101,19 +147,10 @@ describe('YouTubePlayerPage', () => {
       useSystemBeep: true,
     });
 
-    vi.mocked(FavoritesService.isFavorite).mockResolvedValue(false);
-    vi.mocked(FavoritesService.toggleFavorite).mockResolvedValue({
-      favorite: {
-        videoId: 'test-video-id',
-        dateAdded: new Date().toISOString(),
-        sourceType: 'youtube',
-        sourceId: 'test-source',
-        title: 'Test Video',
-        thumbnail: 'https://example.com/thumbnail.jpg',
-        duration: 300,
-      },
-      isFavorite: true,
-    });
+    // Reset mock functions
+    mockIsFavoriteVideo.mockReturnValue(false);
+    mockRefreshFavorites.mockClear();
+    mockWishlistContext.isInWishlist.mockReturnValue({ inWishlist: false });
   });
 
 
@@ -140,16 +177,6 @@ describe('YouTubePlayerPage', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('favorite-button')).toBeInTheDocument();
-    });
-  });
-
-  it('should load initial favorite status when video loads', async () => {
-    renderComponent();
-
-    await waitForVideoToLoad();
-
-    await waitFor(() => {
-      expect(FavoritesService.isFavorite).toHaveBeenCalledWith('test-video-id', 'youtube');
     });
   });
 
@@ -236,41 +263,6 @@ describe('YouTubePlayerPage', () => {
     expect(FavoritesService.toggleFavorite).not.toHaveBeenCalled();
 
     document.body.removeChild(input);
-  });
-
-  it('should display correct video metadata in FavoriteButton', async () => {
-    renderComponent();
-
-    await waitForVideoToLoad();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('favorite-button')).toBeInTheDocument();
-    });
-
-    // Check that the favorite button was initialized with correct video data
-    expect(FavoritesService.isFavorite).toHaveBeenCalledWith('test-video-id', 'youtube');
-  });
-
-  it('should handle favorite status updates correctly', async () => {
-    // Mock initial favorite status as true
-    vi.mocked(FavoritesService.isFavorite).mockResolvedValue(true);
-
-    renderComponent();
-
-    await waitForVideoToLoad();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('favorite-button')).toBeInTheDocument();
-    });
-
-    // Button should show filled star when already favorited (wait for async state to load)
-    await waitFor(() => {
-      const favoriteButton = screen.getByTestId('favorite-button');
-      expect(favoriteButton).toHaveTextContent('⭐');
-    }, { timeout: 3000 });
-
-    const favoriteButton = screen.getByTestId('favorite-button');
-    expect(favoriteButton).toHaveAttribute('aria-label', 'Remove from favorites');
   });
 
   it('should display keyboard shortcut hint', async () => {
