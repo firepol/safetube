@@ -9,16 +9,95 @@ import { screen } from '@testing-library/react';
 vi.mock('../services/playerConfig');
 vi.mock('../services/youtubeIframe');
 
+// Mock WishlistContext
+const mockWishlistContext = {
+  wishlistData: {
+    pending: [],
+    approved: [],
+    denied: []
+  },
+  wishlistCounts: {
+    pending: 0,
+    approved: 0,
+    denied: 0
+  },
+  isLoading: false,
+  error: null,
+  removeFromWishlist: vi.fn(),
+  refreshWishlist: vi.fn(),
+  isInWishlist: vi.fn().mockReturnValue({ inWishlist: false })
+};
+
+vi.mock('../contexts/WishlistContext', () => ({
+  useWishlist: () => mockWishlistContext
+}));
+
+// Mock the useFavoriteStatus hook
+const mockIsFavorite = vi.fn().mockReturnValue(false);
+const mockRefreshFavorites = vi.fn();
+
+vi.mock('../hooks/useFavoriteStatus', () => ({
+  useFavoriteStatus: () => ({
+    isFavorite: mockIsFavorite,
+    refreshFavorites: mockRefreshFavorites,
+  }),
+}));
+
+// Mock FavoritesService
+vi.mock('../services/favoritesService', () => ({
+  FavoritesService: {
+    toggleFavorite: vi.fn().mockResolvedValue({
+      favorite: {
+        videoId: 'test-video-id',
+        dateAdded: new Date().toISOString(),
+        sourceType: 'youtube',
+        sourceId: 'test-source',
+        title: 'Test Video',
+        thumbnail: 'https://example.com/thumbnail.jpg',
+        duration: 300,
+      },
+      isFavorite: true,
+    }),
+  },
+}));
+
+// Mock audio warning service
+vi.mock('../services/audioWarning', () => ({
+  audioWarningService: {
+    checkAudioWarnings: vi.fn(),
+    initialize: vi.fn(),
+    resetState: vi.fn(),
+    destroy: vi.fn(),
+  },
+}));
+
+// Mock the download hook
+vi.mock('../hooks/useDownload', () => ({
+  useDownload: () => ({
+    downloadStatus: { status: 'idle' },
+    isDownloading: false,
+    checkDownloadStatus: vi.fn(),
+    handleStartDownload: vi.fn(),
+    handleCancelDownload: vi.fn(),
+    handleResetDownload: vi.fn(),
+  }),
+}));
+
+// Mock logger
+vi.mock('../lib/logging', () => ({
+  logVerbose: vi.fn(),
+}));
+
 // Mock the electron API
 const mockElectron = {
   getVideoData: vi.fn(),
   getPlayerConfig: vi.fn(),
   getTimeLimits: vi.fn(),
-  getTimeTrackingState: vi.fn().mockResolvedValue({ 
-    timeRemaining: 1800, 
+  getTimeTrackingState: vi.fn().mockResolvedValue({
+    timeRemaining: 1800,
     timeLimitToday: 3600,
     timeUsedToday: 1800,
-    isLimitReached: false 
+    isLimitReached: false
   }),
   recordVideoWatching: vi.fn().mockResolvedValue({ success: true }),
   getLocalFile: vi.fn().mockResolvedValue('file:///test/video.mp4'),
@@ -29,6 +108,8 @@ const mockElectron = {
     ],
     audioTracks: []
   }),
+  favoritesGetAll: vi.fn().mockResolvedValue({ data: [] }),
+  favoritesToggle: vi.fn(),
 };
 
 // Mock window.electron
@@ -77,7 +158,7 @@ describe('PlayerRouter', () => {
     });
 
     await waitFor(() => {
-      expect(mockElectron.getVideoData).toHaveBeenCalledWith('test-youtube');
+      expect(mockElectron.getVideoData).toHaveBeenCalledWith('test-youtube', null);
     });
   });
 
@@ -116,7 +197,7 @@ describe('PlayerRouter', () => {
     });
 
     await waitFor(() => {
-      expect(mockElectron.getVideoData).toHaveBeenCalledWith('test-local');
+      expect(mockElectron.getVideoData).toHaveBeenCalledWith('test-local', null);
     });
   });
 

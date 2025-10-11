@@ -1,15 +1,34 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import './services/__tests__/setup.ts';
-import fs from 'fs';
-import { spawn } from 'child_process';
-import { ThumbnailGenerator } from './thumbnailGenerator';
 
-// Mock child_process
-vi.mock('child_process');
-const mockSpawn = vi.mocked(spawn);
+// Hoist the mock to ensure it's available before module import
+const mockSpawn = vi.hoisted(() => vi.fn());
+
+// Mock child_process with hoisted spawn
+vi.mock('child_process', async (importOriginal) => {
+  const actual = await importOriginal() as any;
+  return {
+    ...actual,
+    spawn: mockSpawn
+  };
+});
 
 // Mock fs
 vi.mock('fs');
+
+// Mock FFmpegManager
+vi.mock('./ffmpegManager', () => ({
+  FFmpegManager: {
+    isFFmpegAvailable: vi.fn().mockResolvedValue(true),
+    ensureFFmpegAvailable: vi.fn().mockResolvedValue(undefined),
+    getFFmpegCommand: vi.fn().mockReturnValue('ffmpeg'),
+    getFFprobeCommand: vi.fn().mockReturnValue('ffprobe'),
+  },
+}));
+
+import fs from 'fs';
+import { ThumbnailGenerator } from './thumbnailGenerator';
+
 const mockFs = vi.mocked(fs);
 
 describe('ThumbnailGenerator', () => {

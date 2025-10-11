@@ -53,11 +53,11 @@ vi.mock('../services/youtubeIframe', () => ({
 }));
 
 // Mock the useFavoriteStatus hook
-const mockIsFavoriteVideo = vi.fn().mockReturnValue(false);
+const mockIsFavorite = vi.fn().mockReturnValue(false);
 const mockRefreshFavorites = vi.fn();
 
 const mockUseFavoriteStatus = {
-  isFavoriteVideo: mockIsFavoriteVideo,
+  isFavorite: mockIsFavorite,
   refreshFavorites: mockRefreshFavorites,
 };
 
@@ -148,7 +148,7 @@ describe('YouTubePlayerPage', () => {
     });
 
     // Reset mock functions
-    mockIsFavoriteVideo.mockReturnValue(false);
+    mockIsFavorite.mockReturnValue(false);
     mockRefreshFavorites.mockClear();
     mockWishlistContext.isInWishlist.mockReturnValue({ inWishlist: false });
   });
@@ -195,7 +195,7 @@ describe('YouTubePlayerPage', () => {
     await waitFor(() => {
       expect(FavoritesService.toggleFavorite).toHaveBeenCalledWith(
         'test-video-id',
-        'https://youtube.com/watch?v=test-video-id',
+        'youtube', // video.sourceId || 'youtube'
         'youtube',
         'Test Video',
         'https://example.com/thumbnail.jpg',
@@ -271,9 +271,14 @@ describe('YouTubePlayerPage', () => {
     await waitForVideoToLoad();
 
     await waitFor(() => {
-      expect(screen.getByText('Press')).toBeInTheDocument();
-      expect(screen.getByText('F')).toBeInTheDocument();
-      expect(screen.getByText('to toggle favorite')).toBeInTheDocument();
+      // Check for the keyboard shortcut hint text (using regex for flexibility)
+      expect(screen.getByText(/Press/)).toBeInTheDocument();
+      expect(screen.getByText(/to toggle favorite/)).toBeInTheDocument();
+
+      // Find the kbd element directly
+      const kbdElement = document.querySelector('kbd');
+      expect(kbdElement).toBeTruthy();
+      expect(kbdElement?.textContent).toBe('F');
     });
   });
 
