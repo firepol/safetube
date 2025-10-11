@@ -40,6 +40,29 @@ const MockRateLimitProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   );
 };
 
+// Mock WishlistContext
+const mockWishlistContext = {
+  wishlistData: {
+    pending: [],
+    approved: [],
+    denied: []
+  },
+  wishlistCounts: {
+    pending: 0,
+    approved: 0,
+    denied: 0
+  },
+  isLoading: false,
+  error: null,
+  removeFromWishlist: vi.fn(),
+  refreshWishlist: vi.fn(),
+  isInWishlist: vi.fn()
+};
+
+vi.mock('../contexts/WishlistContext', () => ({
+  useWishlist: () => mockWishlistContext
+}));
+
 // Mock the useRateLimit hook
 vi.mock('../App', () => ({
   useRateLimit: () => {
@@ -63,45 +86,85 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-// Mock window.electron
+// Initialize window.electron globally before tests run
+const mockElectronFunctions = {
+  getTimeTrackingState: vi.fn().mockResolvedValue({
+    timeRemaining: 1800,
+    timeLimitToday: 3600,
+    timeUsedToday: 1800,
+    isLimitReached: false
+  }),
+  getTimeLimits: vi.fn().mockResolvedValue({
+    warningThresholdMinutes: 3,
+    countdownWarningSeconds: 60
+  }),
+  loadVideosFromSources: vi.fn().mockResolvedValue({
+    videosBySource: [
+      {
+        id: 'sample-source-1',
+        title: 'Sample Source 1',
+        type: 'youtube_channel',
+        videos: [
+          {
+            id: 'video-1',
+            title: 'The Top 10 Goals of May | Top Goals | Serie A 2024/25',
+            thumbnail: 'test-thumbnail-1.jpg',
+            duration: '00:05:30'
+          },
+          {
+            id: 'video-2',
+            title: 'Venturino scores',
+            thumbnail: 'test-thumbnail-2.jpg',
+            duration: '00:03:45'
+          }
+        ],
+        videoCount: 2
+      }
+    ],
+    debug: []
+  })
+};
+
+// Set global window.electron
+global.window.electron = mockElectronFunctions as any;
+
 beforeEach(() => {
-  window.electron = {
-    getTimeTrackingState: vi.fn().mockResolvedValue({
-      timeRemaining: 1800,
-      timeLimitToday: 3600,
-      timeUsedToday: 1800,
-      isLimitReached: false
-    }),
-    getTimeLimits: vi.fn().mockResolvedValue({
-      warningThresholdMinutes: 3,
-      countdownWarningSeconds: 60
-    }),
-    loadVideosFromSources: vi.fn().mockResolvedValue({
-      videosBySource: [
-        {
-          id: 'sample-source-1',
-          title: 'Sample Source 1',
-          type: 'youtube_channel',
-          videos: [
-            {
-              id: 'video-1',
-              title: 'The Top 10 Goals of May | Top Goals | Serie A 2024/25',
-              thumbnail: 'test-thumbnail-1.jpg',
-              duration: '00:05:30'
-            },
-            {
-              id: 'video-2',
-              title: 'Venturino scores',
-              thumbnail: 'test-thumbnail-2.jpg',
-              duration: '00:03:45'
-            }
-          ],
-          videoCount: 2
-        }
-      ],
-      debug: []
-    })
-  } as any;
+  // Reset mocks while keeping the structure
+  mockElectronFunctions.getTimeTrackingState.mockResolvedValue({
+    timeRemaining: 1800,
+    timeLimitToday: 3600,
+    timeUsedToday: 1800,
+    isLimitReached: false
+  });
+  mockElectronFunctions.getTimeLimits.mockResolvedValue({
+    warningThresholdMinutes: 3,
+    countdownWarningSeconds: 60
+  });
+  mockElectronFunctions.loadVideosFromSources.mockResolvedValue({
+    videosBySource: [
+      {
+        id: 'sample-source-1',
+        title: 'Sample Source 1',
+        type: 'youtube_channel',
+        videos: [
+          {
+            id: 'video-1',
+            title: 'The Top 10 Goals of May | Top Goals | Serie A 2024/25',
+            thumbnail: 'test-thumbnail-1.jpg',
+            duration: '00:05:30'
+          },
+          {
+            id: 'video-2',
+            title: 'Venturino scores',
+            thumbnail: 'test-thumbnail-2.jpg',
+            duration: '00:03:45'
+          }
+        ],
+        videoCount: 2
+      }
+    ],
+    debug: []
+  });
   mockNavigate.mockReset();
 });
 
@@ -149,7 +212,7 @@ describe('KidScreen', () => {
 
   it('shows time in red when time is low', async () => {
     // Mock low time remaining (2 minutes)
-    window.electron.getTimeTrackingState = vi.fn().mockResolvedValue({
+    mockElectronFunctions.getTimeTrackingState.mockResolvedValue({
       timeRemaining: 120,
       timeLimitToday: 3600,
       timeUsedToday: 3480,
@@ -170,7 +233,7 @@ describe('KidScreen', () => {
 
   it('redirects to time up page when limit is reached', async () => {
     // Mock time limit reached
-    window.electron.getTimeTrackingState = vi.fn().mockResolvedValue({
+    mockElectronFunctions.getTimeTrackingState.mockResolvedValue({
       timeRemaining: 0,
       timeLimitToday: 3600,
       timeUsedToday: 3600,
