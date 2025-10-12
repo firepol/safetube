@@ -2,23 +2,24 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SearchBar } from './SearchBar';
+import { vi, beforeEach, afterEach, describe } from 'vitest';
 
 // Mock lucide-react icons
-jest.mock('lucide-react', () => ({
+vi.mock('lucide-react', () => ({
   Search: ({ className }: { className?: string }) => <div data-testid="search-icon" className={className} />,
   X: ({ className }: { className?: string }) => <div data-testid="clear-icon" className={className} />
 }));
 
 describe('SearchBar', () => {
-  const mockOnSearch = jest.fn();
+  const mockOnSearch = vi.fn();
 
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   it('renders with default props', () => {
@@ -47,7 +48,7 @@ describe('SearchBar', () => {
   });
 
   it('handles input changes', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<SearchBar onSearch={mockOnSearch} />);
     
     const input = screen.getByRole('textbox');
@@ -57,19 +58,19 @@ describe('SearchBar', () => {
   });
 
   it('debounces search calls', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<SearchBar onSearch={mockOnSearch} debounceMs={300} />);
-    
+
     const input = screen.getByRole('textbox');
-    
+
     // Type multiple characters quickly
     await user.type(input, 'test');
-    
+
     // Should not have called onSearch yet
     expect(mockOnSearch).not.toHaveBeenCalled();
-    
+
     // Advance timers by debounce time
-    jest.advanceTimersByTime(300);
+    vi.advanceTimersByTime(300);
     
     // Now should have called onSearch
     await waitFor(() => {
@@ -79,7 +80,7 @@ describe('SearchBar', () => {
   });
 
   it('shows clear button when text is present', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<SearchBar onSearch={mockOnSearch} />);
     
     const input = screen.getByRole('textbox');
@@ -95,7 +96,7 @@ describe('SearchBar', () => {
   });
 
   it('clears input when clear button is clicked', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<SearchBar onSearch={mockOnSearch} />);
     
     const input = screen.getByRole('textbox');
@@ -137,9 +138,9 @@ describe('SearchBar', () => {
 
   it('prevents default behavior for keyboard shortcuts', () => {
     render(<SearchBar onSearch={mockOnSearch} />);
-    
+
     const event = new KeyboardEvent('keydown', { key: 'k', ctrlKey: true });
-    const preventDefaultSpy = jest.spyOn(event, 'preventDefault');
+    const preventDefaultSpy = vi.spyOn(event, 'preventDefault');
     
     fireEvent(document, event);
     
@@ -161,32 +162,32 @@ describe('SearchBar', () => {
   });
 
   it('does not trigger search for empty queries', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<SearchBar onSearch={mockOnSearch} />);
-    
+
     const input = screen.getByRole('textbox');
-    
+
     // Type spaces only
     await user.type(input, '   ');
-    
+
     // Advance timers
-    jest.advanceTimersByTime(300);
+    vi.advanceTimersByTime(300);
     
     // Should not call onSearch for empty/whitespace-only query
     expect(mockOnSearch).not.toHaveBeenCalled();
   });
 
   it('trims whitespace from search queries', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<SearchBar onSearch={mockOnSearch} />);
-    
+
     const input = screen.getByRole('textbox');
-    
+
     // Type query with leading/trailing spaces
     await user.type(input, '  test query  ');
-    
+
     // Advance timers
-    jest.advanceTimersByTime(300);
+    vi.advanceTimersByTime(300);
     
     // Should call onSearch with trimmed query
     await waitFor(() => {
@@ -195,23 +196,23 @@ describe('SearchBar', () => {
   });
 
   it('handles rapid typing correctly', async () => {
-    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime });
     render(<SearchBar onSearch={mockOnSearch} debounceMs={300} />);
-    
+
     const input = screen.getByRole('textbox');
-    
+
     // Type rapidly
     await user.type(input, 'a');
-    jest.advanceTimersByTime(100);
+    vi.advanceTimersByTime(100);
     await user.type(input, 'b');
-    jest.advanceTimersByTime(100);
+    vi.advanceTimersByTime(100);
     await user.type(input, 'c');
-    
+
     // Should not have called onSearch yet
     expect(mockOnSearch).not.toHaveBeenCalled();
-    
+
     // Advance by full debounce time
-    jest.advanceTimersByTime(300);
+    vi.advanceTimersByTime(300);
     
     // Should call onSearch only once with final value
     await waitFor(() => {

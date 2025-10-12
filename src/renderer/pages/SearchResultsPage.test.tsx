@@ -4,9 +4,10 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchResultsPage } from './SearchResultsPage';
 import { SearchResult } from '../../shared/types';
+import { vi, beforeEach } from 'vitest';
 
 // Mock the SearchBar component
-jest.mock('../components/search/SearchBar', () => ({
+vi.mock('../components/search/SearchBar', () => ({
   SearchBar: ({ onSearch, isLoading, autoFocus }: any) => (
     <div data-testid="search-bar">
       <input
@@ -22,8 +23,8 @@ jest.mock('../components/search/SearchBar', () => ({
 
 // Mock electron API
 const mockElectron = {
-  searchDatabase: jest.fn(),
-  searchYouTube: jest.fn(),
+  searchDatabase: vi.fn(),
+  searchYouTube: vi.fn(),
 };
 
 Object.defineProperty(window, 'electron', {
@@ -31,16 +32,42 @@ Object.defineProperty(window, 'electron', {
   writable: true,
 });
 
+// Mock WishlistContext
+const mockWishlistContext = {
+  wishlistData: {
+    pending: [],
+    approved: [],
+    denied: []
+  },
+  wishlistCounts: {
+    pending: 0,
+    approved: 0,
+    denied: 0
+  },
+  isLoading: false,
+  error: null,
+  removeFromWishlist: vi.fn(),
+  refreshWishlist: vi.fn(),
+  isInWishlist: vi.fn().mockReturnValue({ inWishlist: false })
+};
+
+vi.mock('../contexts/WishlistContext', () => ({
+  useWishlist: () => mockWishlistContext
+}));
+
 // Mock react-router-dom hooks
-const mockNavigate = jest.fn();
-const mockSetSearchParams = jest.fn();
+const mockNavigate = vi.fn();
+const mockSetSearchParams = vi.fn();
 const mockSearchParams = new URLSearchParams();
 
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-  useSearchParams: () => [mockSearchParams, mockSetSearchParams],
-}));
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual('react-router-dom');
+  return {
+    ...actual,
+    useNavigate: () => mockNavigate,
+    useSearchParams: () => [mockSearchParams, mockSetSearchParams],
+  };
+});
 
 const mockSearchResults: SearchResult[] = [
   {
@@ -80,7 +107,7 @@ const renderWithRouter = (initialEntries = ['/search']) => {
 
 describe('SearchResultsPage', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockSearchParams.delete('q');
   });
 

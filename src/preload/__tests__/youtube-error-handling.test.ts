@@ -171,6 +171,7 @@ describe('YouTube API Error Handling', () => {
       // Mock playlist videos fetch to return video IDs
       const mockPlaylistFetch = vi.spyOn(YouTubeAPI, 'getPlaylistVideos').mockResolvedValue({
         videoIds: ['valid_video_1', 'deleted_video', 'valid_video_2', 'private_video'],
+        publishedDates: new Map(),
         totalResults: 4,
         nextPageToken: undefined
       });
@@ -270,6 +271,7 @@ describe('YouTube API Error Handling', () => {
       // Mock playlist videos fetch
       const mockPlaylistFetch = vi.spyOn(YouTubeAPI, 'getPlaylistVideos').mockResolvedValue({
         videoIds: ['deleted_1', 'deleted_2', 'private_1'],
+        publishedDates: new Map(),
         totalResults: 3,
         nextPageToken: undefined
       });
@@ -298,6 +300,7 @@ describe('YouTube API Error Handling', () => {
       // Mock empty playlist
       const mockPlaylistFetch = vi.spyOn(YouTubeAPI, 'getPlaylistVideos').mockResolvedValue({
         videoIds: [],
+        publishedDates: new Map(),
         totalResults: 0,
         nextPageToken: undefined
       });
@@ -320,6 +323,7 @@ describe('YouTube API Error Handling', () => {
             // First batch (page 1 equivalent)
             return {
               videoIds: Array.from({ length: 50 }, (_, i) => `video_${i + 1}`),
+              publishedDates: new Map(),
               totalResults: 150,
               nextPageToken: 'token_page_2'
             };
@@ -327,11 +331,12 @@ describe('YouTube API Error Handling', () => {
             // Second batch (page 2 equivalent)
             return {
               videoIds: Array.from({ length: 50 }, (_, i) => `video_${i + 51}`),
+              publishedDates: new Map(),
               totalResults: 150,
               nextPageToken: 'token_page_3'
             };
           }
-          return { videoIds: [], totalResults: 150 };
+          return { videoIds: [], publishedDates: new Map(), totalResults: 150 };
         });
 
       // Mock getVideoDetails to simulate mixed success/failure
@@ -576,6 +581,7 @@ describe('YouTube API Error Handling', () => {
       // Mock playlist videos fetch
       const mockPlaylistFetch = vi.spyOn(YouTubeAPI, 'getPlaylistVideos').mockResolvedValue({
         videoIds: ['video1', 'video2'],
+        publishedDates: new Map(),
         totalResults: 2,
         nextPageToken: undefined
       });

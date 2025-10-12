@@ -3,7 +3,7 @@
  * Tests end-to-end IPC communication between main and renderer processes
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from '@jest/globals';
+import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { ipcMain } from 'electron';
 import DatabaseService from '../../src/main/services/DatabaseService';
 import { registerSearchHandlers } from '../../src/main/ipc/searchHandlers';
