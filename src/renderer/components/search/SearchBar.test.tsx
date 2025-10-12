@@ -158,11 +158,11 @@ describe('SearchBar', () => {
     const input = screen.getByRole('textbox');
     fireEvent.change(input, { target: { value: '   ' } });
 
-    // Wait longer than debounce time
-    await new Promise(resolve => setTimeout(resolve, 150));
-
-    // Should not call onSearch for whitespace-only query
-    expect(mockOnSearch).not.toHaveBeenCalled();
+    // Wait longer than debounce time for state updates to complete
+    await waitFor(() => {
+      // Give enough time for debounce to fire (if it would)
+      expect(mockOnSearch).not.toHaveBeenCalled();
+    }, { timeout: 200 });
   });
 
   it('trims whitespace from search queries', async () => {

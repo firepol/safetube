@@ -153,21 +153,28 @@ describe('SearchResultsPage', () => {
     });
   });
 
-  it('renders initial state without search query', () => {
+  it('renders initial state without search query', async () => {
     renderWithRouter();
-    
+
     expect(screen.getByText('Search for Videos')).toBeInTheDocument();
     expect(screen.getByText('Enter a search term to find videos from your approved sources or YouTube.')).toBeInTheDocument();
     expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+
+    // Wait for async state updates to complete (TimeIndicator, etc)
+    await waitFor(() => {
+      expect(screen.getByTestId('search-bar')).toBeInTheDocument();
+    });
   });
 
-  it('renders with search query from URL params', () => {
+  it('renders with search query from URL params', async () => {
     mockSearchParams.set('q', 'test query');
     mockElectron.searchDatabase.mockResolvedValue({ success: true, data: mockSearchResults });
 
     renderWithRouter(['/search?q=test%20query']);
 
-    expect(mockElectron.searchDatabase).toHaveBeenCalledWith('test query', undefined);
+    await waitFor(() => {
+      expect(mockElectron.searchDatabase).toHaveBeenCalledWith('test query', undefined);
+    });
   });
 
   it('handles manual YouTube search button click', async () => {
