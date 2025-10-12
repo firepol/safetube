@@ -34,7 +34,7 @@ let mockWishlistContext = {
     denied: 0
   },
   isLoading: false,
-  error: null,
+  error: null as string | null,
   removeFromWishlist: vi.fn(),
   refreshWishlist: vi.fn(),
   isInWishlist: vi.fn()
@@ -71,7 +71,7 @@ describe('WishlistPage', () => {
         denied: 0
       },
       isLoading: false,
-      error: null,
+      error: null as string | null,
       removeFromWishlist: vi.fn(),
       refreshWishlist: vi.fn(),
       isInWishlist: vi.fn()

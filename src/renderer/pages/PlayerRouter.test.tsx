@@ -4,6 +4,7 @@ import { PlayerRouter } from './PlayerRouter';
 import { loadPlayerConfig } from '../services/playerConfig';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { screen } from '@testing-library/react';
+import * as Tooltip from '@radix-ui/react-tooltip';
 
 // Mock the services
 vi.mock('../services/playerConfig');
@@ -118,6 +119,15 @@ Object.defineProperty(window, 'electron', {
   writable: true,
 });
 
+// Helper to render with required providers
+const renderWithProviders = (ui: React.ReactElement) => {
+  return render(
+    <Tooltip.Provider>
+      {ui}
+    </Tooltip.Provider>
+  );
+};
+
 describe('PlayerRouter', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -145,7 +155,7 @@ describe('PlayerRouter', () => {
       weekly: 25200
     });
 
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/player/test-youtube']}>
         <Routes>
           <Route path="/player/:id" element={<PlayerRouter />} />
@@ -184,7 +194,7 @@ describe('PlayerRouter', () => {
       weekly: 25200
     });
 
-    render(
+    renderWithProviders(
       <MemoryRouter initialEntries={['/player/test-local']}>
         <Routes>
           <Route path="/player/:id" element={<PlayerRouter />} />
@@ -204,8 +214,8 @@ describe('PlayerRouter', () => {
   it('should handle missing video data gracefully', async () => {
     // Mock getVideoData to return null (no video found)
     mockElectron.getVideoData.mockResolvedValue(null);
-    
-    render(
+
+    renderWithProviders(
       <MemoryRouter initialEntries={['/player/missing-video']}>
         <Routes>
           <Route path="/player/:id" element={<PlayerRouter />} />

@@ -42,7 +42,7 @@ describe('FavoritesService', () => {
       }
     ];
 
-    mockElectron.favoritesGetAll.mockResolvedValue(mockFavorites);
+    mockElectron.favoritesGetAll.mockResolvedValue({ success: true, data: mockFavorites });
 
     const result = await FavoritesService.getFavorites();
 
@@ -66,7 +66,7 @@ describe('FavoritesService', () => {
       duration: 180
     };
 
-    mockElectron.favoritesAdd.mockResolvedValue(mockFavorite);
+    mockElectron.favoritesAdd.mockResolvedValue({ success: true, data: mockFavorite });
 
     const result = await FavoritesService.addFavorite(
       'test-video-2',
@@ -86,7 +86,8 @@ describe('FavoritesService', () => {
       180,
       undefined
     );
-    expect(result).toEqual(mockFavorite);
+    expect(result.videoId).toEqual(mockFavorite.videoId);
+    expect(result.title).toEqual(mockFavorite.title);
   });
 
   it('should check if video is favorite using cache', async () => {
@@ -102,7 +103,7 @@ describe('FavoritesService', () => {
       }
     ];
 
-    mockElectron.favoritesGetAll.mockResolvedValue(mockFavorites);
+    mockElectron.favoritesGetAll.mockResolvedValue({ success: true, data: mockFavorites });
 
     // First call to populate cache
     await FavoritesService.getFavorites();
@@ -127,8 +128,8 @@ describe('FavoritesService', () => {
       duration: 240
     };
 
-    mockElectron.favoritesIsFavorite.mockResolvedValue(false);
-    mockElectron.favoritesToggle.mockResolvedValue(mockFavorite);
+    mockElectron.favoritesIsFavorite.mockResolvedValue({ success: true, data: false });
+    mockElectron.favoritesToggle.mockResolvedValue({ success: true, data: { isFavorite: true } });
 
     const result = await FavoritesService.toggleFavorite(
       'toggle-video',
@@ -148,7 +149,7 @@ describe('FavoritesService', () => {
       240,
       undefined
     );
-    expect(result.favorite).toEqual(mockFavorite);
+    expect(result.favorite?.videoId).toEqual('toggle-video');
     expect(result.isFavorite).toBe(true);
   });
 
@@ -180,7 +181,7 @@ describe('FavoritesService', () => {
       }
     ];
 
-    mockElectron.favoritesGetAll.mockResolvedValue(mockFavorites);
+    mockElectron.favoritesGetAll.mockResolvedValue({ success: true, data: mockFavorites });
 
     const source = await FavoritesService.getFavoritesSource();
 

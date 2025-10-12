@@ -72,7 +72,7 @@ const TestComponent: React.FC = () => {
 describe('WishlistContext', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Default mock implementations
     mockElectron.wishlistGetByStatus.mockImplementation((status: string) => {
       const mockItems: Record<string, WishlistItem[]> = {
@@ -118,7 +118,7 @@ describe('WishlistContext', () => {
         ],
         denied: []
       };
-      return Promise.resolve(mockItems[status] || []);
+      return Promise.resolve({ success: true, data: mockItems[status] || [] });
     });
 
     mockElectron.wishlistAdd.mockResolvedValue({ success: true });

@@ -65,10 +65,6 @@ describe('FavoriteButton', () => {
 
   it('should toggle favorite status when clicked', async () => {
     const mockToggle = vi.fn();
-    mockFavoritesService.toggleFavorite.mockResolvedValue({
-      favorite: { videoId: 'test-video', isFavorite: true },
-      isFavorite: true
-    });
 
     render(
       <FavoriteButton
@@ -81,19 +77,13 @@ describe('FavoriteButton', () => {
     const button = screen.getByRole('button');
     fireEvent.click(button);
 
-    expect(mockFavoritesService.toggleFavorite).toHaveBeenCalledWith(
-      'test-video',
-      'test-source',
-      'youtube',
-      'Test Video',
-      'https://example.com/thumb.jpg',
-      120,
-      undefined
-    );
-
+    // When onToggle is provided, it's called instead of FavoritesService
     await waitFor(() => {
       expect(mockToggle).toHaveBeenCalledWith('test-video', true);
     });
+
+    // FavoritesService.toggleFavorite should NOT be called when onToggle is provided
+    expect(mockFavoritesService.toggleFavorite).not.toHaveBeenCalled();
   });
 
   it('should show loading state during toggle', async () => {
