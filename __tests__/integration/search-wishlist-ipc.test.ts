@@ -3,9 +3,51 @@
  * Tests end-to-end IPC communication between main and renderer processes
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+
+// Mock Electron before any imports that use it
+vi.mock('electron', () => {
+  const mockIpcMain = {
+    _events: {} as Record<string, any>,
+    handle: vi.fn(function(this: any, channel: string, handler: any) {
+      this._events[channel] = handler;
+    }),
+    on: vi.fn(function(this: any, channel: string, handler: any) {
+      this._events[channel] = handler;
+    }),
+    removeListener: vi.fn(),
+  };
+
+  // Bind the handle and on methods to mockIpcMain context
+  mockIpcMain.handle = mockIpcMain.handle.bind(mockIpcMain);
+  mockIpcMain.on = mockIpcMain.on.bind(mockIpcMain);
+
+  return {
+    app: {
+      getPath: (name: string) => {
+        if (name === 'userData') {
+          return '/tmp/claude/safetube-test';
+        }
+        if (name === 'logs') {
+          return '/tmp/claude/safetube-test/logs';
+        }
+        return '/tmp/claude/safetube-test';
+      },
+      whenReady: async () => Promise.resolve(),
+    },
+    ipcMain: mockIpcMain,
+    BrowserWindow: {
+      getAllWindows: () => [],
+      fromWebContents: () => ({
+        isDestroyed: () => false,
+      }),
+    },
+  };
+});
+
 import { ipcMain } from 'electron';
 import DatabaseService from '../../src/main/services/DatabaseService';
+import SimpleSchemaManager from '../../src/main/database/SimpleSchemaManager';
 import { registerSearchHandlers } from '../../src/main/ipc/searchHandlers';
 import { registerWishlistHandlers } from '../../src/main/ipc/wishlistHandlers';
 import { IPC } from '../../src/shared/ipc-channels';
@@ -13,11 +55,16 @@ import { VideoData, WishlistStatus } from '../../src/shared/types';
 
 describe('Search and Wishlist IPC Handlers Integration', () => {
   let db: DatabaseService;
+  let schemaManager: SimpleSchemaManager;
 
   beforeAll(async () => {
     // Initialize in-memory database
-    db = DatabaseService.getInstance(':memory:');
-    await db.initialize();
+    db = DatabaseService.getInstance();
+    await db.initialize({ path: ':memory:' });
+
+    // Initialize schema
+    schemaManager = new SimpleSchemaManager(db);
+    await schemaManager.initializeSchema();
 
     // Register IPC handlers
     registerSearchHandlers();
@@ -35,10 +82,19 @@ describe('Search and Wishlist IPC Handlers Integration', () => {
     await db.run('DELETE FROM wishlist');
     await db.run('DELETE FROM search_results_cache');
     await db.run('DELETE FROM videos');
+    await db.run('DELETE FROM sources');
   });
 
   describe('Search IPC Handlers', () => {
     beforeEach(async () => {
+      // Insert test sources first (required for foreign key constraints)
+      await db.run(`
+        INSERT INTO sources (id, type, title, url, created_at, updated_at)
+        VALUES
+          ('source1', 'youtube_channel', 'Test Source 1', 'https://youtube.com/channel/test1', datetime('now'), datetime('now')),
+          ('source2', 'youtube_channel', 'Test Source 2', 'https://youtube.com/channel/test2', datetime('now'), datetime('now'))
+      `);
+
       // Insert test videos for database search
       await db.run(`
         INSERT INTO videos (id, title, description, thumbnail, duration, source_id, url, published_at)
@@ -234,6 +290,12 @@ describe('Search and Wishlist IPC Handlers Integration', () => {
 
   describe('Integration: Search and Wishlist Workflow', () => {
     it('should allow searching and adding result to wishlist', async () => {
+      // Insert test source
+      await db.run(`
+        INSERT INTO sources (id, type, title, url, created_at, updated_at)
+        VALUES ('source1', 'youtube_channel', 'Test Source 1', 'https://youtube.com/channel/test1', datetime('now'), datetime('now'))
+      `);
+
       // Insert test video
       await db.run(`
         INSERT INTO videos (id, title, description, thumbnail, duration, source_id, url, published_at)
