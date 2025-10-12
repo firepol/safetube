@@ -861,28 +861,6 @@ export const PlayerPage: React.FC = () => {
     fetchCountdownConfig();
   }, []);
 
-  // Update video play state
-  useEffect(() => {
-    if (!videoRef.current) return;
-
-    const handlePlay = () => {
-      setIsVideoPlaying(true);
-    };
-
-    const handlePause = () => {
-      setIsVideoPlaying(false);
-    };
-
-    const videoElement = videoRef.current;
-    videoElement.addEventListener('play', handlePlay);
-    videoElement.addEventListener('pause', handlePause);
-
-    return () => {
-      videoElement.removeEventListener('play', handlePlay);
-      videoElement.removeEventListener('pause', handlePause);
-    };
-  }, [videoRef.current]);
-
   // Keyboard shortcuts for favorites (F key)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -920,6 +898,13 @@ export const PlayerPage: React.FC = () => {
     isTracking: false,
     lastUpdateTime: 0
   });
+
+  // Reset time tracking state when video changes
+  useEffect(() => {
+    if (timeTrackingRef.current.isTracking) {
+      timeTrackingRef.current.isTracking = false;
+    }
+  }, [video?.id]);
 
   // Time tracking functions
   const startTimeTracking = useCallback(() => {
@@ -961,6 +946,36 @@ export const PlayerPage: React.FC = () => {
       timeTrackingRef.current.isTracking = false;
     }
   }, [updateTimeTracking]);
+
+  // Update video play state
+  useEffect(() => {
+    if (!videoRef.current) return;
+
+    const handlePlay = () => {
+      setIsVideoPlaying(true);
+    };
+
+    const handlePause = () => {
+      setIsVideoPlaying(false);
+    };
+
+    const videoElement = videoRef.current;
+    videoElement.addEventListener('play', handlePlay);
+    videoElement.addEventListener('pause', handlePause);
+
+    return () => {
+      stopTimeTracking();
+      videoElement.removeEventListener('play', handlePlay);
+      videoElement.removeEventListener('pause', handlePause);
+    };
+  }, [videoRef.current, stopTimeTracking]);
+
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      stopTimeTracking();
+    };
+  }, [stopTimeTracking]);
 
   // Extract thumbnail from video streams as fallback
   const extractThumbnailFromStreams = useCallback((video: Video): string => {

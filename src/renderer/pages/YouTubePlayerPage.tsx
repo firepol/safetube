@@ -205,6 +205,13 @@ export const YouTubePlayerPage: React.FC = () => {
     lastVideoTime: 0
   });
 
+  // Reset time tracking state when video changes
+  useEffect(() => {
+    if (timeTrackingRef.current.isTracking) {
+      timeTrackingRef.current.isTracking = false;
+    }
+  }, [video?.id]);
+
   // Time tracking functions
   const startTimeTracking = useCallback(() => {
     if (!timeTrackingRef.current.isTracking) {
@@ -398,6 +405,9 @@ export const YouTubePlayerPage: React.FC = () => {
 
       playerRef.current.mount(videoId, playerOptions);
       cleanup = () => {
+        // Stop time tracking before destroying player
+        stopTimeTracking();
+
         if (playerRef.current) {
           playerRef.current.destroy();
           playerRef.current = null;
@@ -445,7 +455,12 @@ export const YouTubePlayerPage: React.FC = () => {
     };
   }, []);
 
-
+  // Cleanup on component unmount
+  useEffect(() => {
+    return () => {
+      stopTimeTracking();
+    };
+  }, [stopTimeTracking]);
 
   return (
     <BasePlayerPage
