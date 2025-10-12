@@ -2,11 +2,13 @@ import { describe, test, expect, vi, beforeEach } from 'vitest';
 import './services/__tests__/setup.ts';
 
 // Hoist the mocks to ensure they're available before module import
-const mockSpawn = vi.hoisted(() => vi.fn());
-const mockIsFFmpegAvailable = vi.hoisted(() => vi.fn());
-const mockEnsureFFmpegAvailable = vi.hoisted(() => vi.fn());
-const mockGetFFmpegCommand = vi.hoisted(() => vi.fn());
-const mockGetFFprobeCommand = vi.hoisted(() => vi.fn());
+const { mockSpawn, mockIsFFmpegAvailable, mockEnsureFFmpegAvailable, mockGetFFmpegCommand, mockGetFFprobeCommand } = vi.hoisted(() => ({
+  mockSpawn: vi.fn(),
+  mockIsFFmpegAvailable: vi.fn(),
+  mockEnsureFFmpegAvailable: vi.fn(),
+  mockGetFFmpegCommand: vi.fn(),
+  mockGetFFprobeCommand: vi.fn(),
+}));
 
 // Mock child_process with hoisted spawn
 vi.mock('child_process', async (importOriginal) => {
@@ -38,6 +40,7 @@ const mockFs = vi.mocked(fs);
 describe('ThumbnailGenerator', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSpawn.mockReset();
     // Set default mock return values
     mockIsFFmpegAvailable.mockResolvedValue(true);
     mockEnsureFFmpegAvailable.mockResolvedValue(undefined);
@@ -80,20 +83,27 @@ describe('ThumbnailGenerator', () => {
 
   describe('getVideoDuration', () => {
     test('should return video duration when FFprobe succeeds', async () => {
+      const stdoutHandlers: any[] = [];
+      const closeHandlers: any[] = [];
+
       const mockFFprobe = {
-        on: vi.fn(),
-        stdout: { on: vi.fn() },
+        on: vi.fn((event: string, handler: any) => {
+          if (event === 'close') closeHandlers.push(handler);
+          return mockFFprobe;
+        }),
+        stdout: {
+          on: vi.fn((event: string, handler: any) => {
+            if (event === 'data') stdoutHandlers.push(handler);
+            return mockFFprobe.stdout;
+          })
+        },
         stderr: { on: vi.fn() }
       };
 
       mockSpawn.mockImplementation(() => {
-        // Trigger events immediately after creation
         setImmediate(() => {
-          const stdoutHandler = mockFFprobe.stdout.on.mock.calls.find(call => call[0] === 'data')?.[1];
-          stdoutHandler?.(Buffer.from('120.5\n'));
-
-          const closeHandler = mockFFprobe.on.mock.calls.find(call => call[0] === 'close')?.[1];
-          closeHandler?.(0);
+          stdoutHandlers.forEach(h => h(Buffer.from('120.5\n')));
+          closeHandlers.forEach(h => h(0));
         });
         return mockFFprobe as any;
       });
@@ -103,38 +113,50 @@ describe('ThumbnailGenerator', () => {
     });
 
     test('should reject when FFprobe fails', async () => {
+      const closeHandlers: any[] = [];
+
       const mockFFprobe = {
-        on: vi.fn(),
-        stdout: { on: vi.fn() },
-        stderr: { on: vi.fn() }
-      };
-
-      mockSpawn.mockReturnValue(mockFFprobe as any);
-
-      const promise = ThumbnailGenerator.getVideoDuration('/path/to/video.mp4');
-
-      // Trigger close event with error
-      const closeHandler = mockFFprobe.on.mock.calls.find(call => call[0] === 'close')?.[1];
-      closeHandler?.(1);
-
-      await expect(promise).rejects.toThrow('FFprobe failed with code 1');
-    });
-
-    test('should handle invalid duration output', async () => {
-      const mockFFprobe = {
-        on: vi.fn(),
+        on: vi.fn((event: string, handler: any) => {
+          if (event === 'close') closeHandlers.push(handler);
+          return mockFFprobe;
+        }),
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() }
       };
 
       mockSpawn.mockImplementation(() => {
-        // Trigger events immediately after creation
         setImmediate(() => {
-          const stdoutHandler = mockFFprobe.stdout.on.mock.calls.find(call => call[0] === 'data')?.[1];
-          stdoutHandler?.(Buffer.from('invalid\n'));
+          closeHandlers.forEach(h => h(1));
+        });
+        return mockFFprobe as any;
+      });
 
-          const closeHandler = mockFFprobe.on.mock.calls.find(call => call[0] === 'close')?.[1];
-          closeHandler?.(0);
+      await expect(ThumbnailGenerator.getVideoDuration('/path/to/video.mp4'))
+        .rejects.toThrow('FFprobe failed with code 1');
+    });
+
+    test('should handle invalid duration output', async () => {
+      const stdoutHandlers: any[] = [];
+      const closeHandlers: any[] = [];
+
+      const mockFFprobe = {
+        on: vi.fn((event: string, handler: any) => {
+          if (event === 'close') closeHandlers.push(handler);
+          return mockFFprobe;
+        }),
+        stdout: {
+          on: vi.fn((event: string, handler: any) => {
+            if (event === 'data') stdoutHandlers.push(handler);
+            return mockFFprobe.stdout;
+          })
+        },
+        stderr: { on: vi.fn() }
+      };
+
+      mockSpawn.mockImplementation(() => {
+        setImmediate(() => {
+          stdoutHandlers.forEach(h => h(Buffer.from('invalid\n')));
+          closeHandlers.forEach(h => h(0));
         });
         return mockFFprobe as any;
       });

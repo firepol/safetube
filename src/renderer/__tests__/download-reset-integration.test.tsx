@@ -356,16 +356,11 @@ describe('Download Reset Integration Tests', () => {
         expect(mockElectron.resetDownloadStatus).toHaveBeenCalledWith('test-youtube-video-id');
       });
 
-      // Should navigate to YouTube player
+      // Should navigate back to source page after reset
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith(
-          '/youtube/test-youtube-video-id',
-          expect.objectContaining({
-            state: expect.objectContaining({
-              sourceId: 'test-youtube-channel',
-              sourceTitle: 'Test YouTube Channel'
-            })
-          })
+          '/source/test-youtube-channel',
+          { replace: true }
         );
       });
     });
@@ -401,7 +396,7 @@ describe('Download Reset Integration Tests', () => {
       expect(mockNavigate).not.toHaveBeenCalled();
     });
 
-    test('should handle navigation context preservation during reset', async () => {
+    test('should navigate to source page during reset', async () => {
       const customNavigationContext = {
         sourceId: 'custom-source',
         sourceTitle: 'Custom Source',
@@ -433,12 +428,11 @@ describe('Download Reset Integration Tests', () => {
       const resetButton = screen.getByText('Reset Download');
       fireEvent.click(resetButton);
 
+      // Should navigate to source page based on downloaded video's sourceId
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith(
-          '/youtube/test-youtube-video-id',
-          expect.objectContaining({
-            state: customNavigationContext
-          })
+          '/source/test-youtube-channel',
+          { replace: true }
         );
       });
     });
