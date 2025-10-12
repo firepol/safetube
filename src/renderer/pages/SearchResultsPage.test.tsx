@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -153,21 +153,27 @@ describe('SearchResultsPage', () => {
     });
   });
 
-  it('renders initial state without search query', () => {
-    renderWithRouter();
-    
+  it('renders initial state without search query', async () => {
+    await act(async () => {
+      renderWithRouter();
+    });
+
     expect(screen.getByText('Search for Videos')).toBeInTheDocument();
     expect(screen.getByText('Enter a search term to find videos from your approved sources or YouTube.')).toBeInTheDocument();
     expect(screen.getByTestId('search-bar')).toBeInTheDocument();
   });
 
-  it('renders with search query from URL params', () => {
+  it('renders with search query from URL params', async () => {
     mockSearchParams.set('q', 'test query');
     mockElectron.searchDatabase.mockResolvedValue({ success: true, data: mockSearchResults });
 
-    renderWithRouter(['/search?q=test%20query']);
+    await act(async () => {
+      renderWithRouter(['/search?q=test%20query']);
+    });
 
-    expect(mockElectron.searchDatabase).toHaveBeenCalledWith('test query', undefined);
+    await waitFor(() => {
+      expect(mockElectron.searchDatabase).toHaveBeenCalledWith('test query', undefined);
+    });
   });
 
   it('handles manual YouTube search button click', async () => {
@@ -175,14 +181,18 @@ describe('SearchResultsPage', () => {
     mockElectron.searchDatabase.mockResolvedValue({ success: true, data: mockSearchResults });
     mockElectron.searchYouTube.mockResolvedValue({ success: true, data: [] });
 
-    renderWithRouter(['/search?q=test%20query']);
+    await act(async () => {
+      renderWithRouter(['/search?q=test%20query']);
+    });
 
     await waitFor(() => {
       expect(screen.getByText('Search YouTube')).toBeInTheDocument();
     });
 
     const youtubeButton = screen.getByText('Search YouTube');
-    await userEvent.click(youtubeButton);
+    await act(async () => {
+      await userEvent.click(youtubeButton);
+    });
 
     expect(mockElectron.searchYouTube).toHaveBeenCalledWith('test query');
   });
@@ -191,10 +201,14 @@ describe('SearchResultsPage', () => {
     mockElectron.searchDatabase.mockResolvedValue({ success: true, data: [] });
     mockElectron.searchYouTube.mockResolvedValue({ success: true, data: [] });
 
-    renderWithRouter();
+    await act(async () => {
+      renderWithRouter();
+    });
 
     const searchInput = screen.getByTestId('search-input');
-    await userEvent.type(searchInput, 'test query');
+    await act(async () => {
+      await userEvent.type(searchInput, 'test query');
+    });
 
     await waitFor(() => {
       expect(screen.getByText('No results found')).toBeInTheDocument();
@@ -204,10 +218,14 @@ describe('SearchResultsPage', () => {
   it('updates URL search params when searching', async () => {
     mockElectron.searchDatabase.mockResolvedValue({ success: true, data: [] });
 
-    renderWithRouter();
+    await act(async () => {
+      renderWithRouter();
+    });
 
     const searchInput = screen.getByTestId('search-input');
-    await userEvent.type(searchInput, 'test query');
+    await act(async () => {
+      await userEvent.type(searchInput, 'test query');
+    });
 
     await waitFor(() => {
       expect(mockSetSearchParams).toHaveBeenCalledWith({ q: 'test query' });
