@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SearchBar } from './SearchBar';
 import { vi, beforeEach, describe, it, expect } from 'vitest';
@@ -159,9 +159,7 @@ describe('SearchBar', () => {
     fireEvent.change(input, { target: { value: '   ' } });
 
     // Wait longer than debounce time
-    await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 150));
-    });
+    await new Promise(resolve => setTimeout(resolve, 150));
 
     // Should not call onSearch for whitespace-only query
     expect(mockOnSearch).not.toHaveBeenCalled();
