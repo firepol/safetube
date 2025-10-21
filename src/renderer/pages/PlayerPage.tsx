@@ -737,7 +737,31 @@ export const PlayerPage: React.FC = () => {
           };
         } catch (error) {
           console.error('Error loading YouTube video:', error);
-          setError('Failed to load YouTube video');
+
+          // Extract detailed error message from the error object
+          let errorMessage = 'Failed to load YouTube video';
+
+          if (error instanceof Error) {
+            errorMessage = error.message;
+          } else if (typeof error === 'string') {
+            errorMessage = error;
+          } else if (error && typeof error === 'object') {
+            const err = error as any;
+            errorMessage = err.message || err.error || err.statusText || String(error);
+          }
+
+          // Check if error is about regional unavailability
+          if (errorMessage.includes('not available') || errorMessage.includes('country') || errorMessage.includes('region')) {
+            errorMessage = 'This video is not available in your region. The uploader has restricted it.';
+          } else if (errorMessage.includes('not found')) {
+            errorMessage = 'Video not found. It may have been deleted or made private.';
+          } else if (errorMessage.includes('private')) {
+            errorMessage = 'This video is private and not available for viewing.';
+          } else if (errorMessage.includes('removed')) {
+            errorMessage = 'This video has been removed and is no longer available.';
+          }
+
+          setError(errorMessage);
           setIsLoading(false);
         }
       }

@@ -259,6 +259,9 @@ export interface ElectronAPI {
   // Wishlist events
   onWishlistUpdated: (callback: () => void) => any;
   offWishlistUpdated: (wrappedCallback: any) => void;
+
+  // Video window functionality
+  openVideoInWindow: (url: string) => Promise<{ success: boolean }>;
 }
 declare global {
   interface Window {

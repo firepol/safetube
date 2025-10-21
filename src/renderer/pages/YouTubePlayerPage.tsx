@@ -392,7 +392,35 @@ export const YouTubePlayerPage: React.FC = () => {
           },
           onError: (event: any) => {
             console.error('YouTube player error:', event);
-            setError('Failed to load YouTube video');
+
+            // Extract detailed error message
+            let errorMessage = 'Failed to load YouTube video';
+
+            if (event?.data === 150) {
+              // Error 150: same as 101 (see below)
+              errorMessage = 'This video cannot be played here due to YouTube restrictions.';
+            } else if (event?.data === 101 || event?.data === 100) {
+              // Error 101: The video requested was not found
+              // Error 100: The video requested is no longer available
+              errorMessage = 'This video is no longer available.';
+            } else if (event?.data === 2) {
+              // Error 2: Invalid parameter
+              errorMessage = 'Invalid video parameter.';
+            } else if (event?.data === 5) {
+              // Error 5: HTML5 player error
+              errorMessage = 'HTML5 player error. Your browser may not support this video.';
+            } else if (event?.data === 150 || event?.data === 101) {
+              errorMessage = 'This video is restricted from being played here.';
+            } else if (event && typeof event === 'object') {
+              const err = event.message || event.error || event.reason || String(event);
+              if (err && err.includes('not available') || err.includes('country') || err.includes('region')) {
+                errorMessage = 'This video is not available in your region.';
+              } else if (err && typeof err === 'string') {
+                errorMessage = err;
+              }
+            }
+
+            setError(errorMessage);
             setIsLoading(false);
           },
         },

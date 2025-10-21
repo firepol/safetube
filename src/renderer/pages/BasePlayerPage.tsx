@@ -4,6 +4,7 @@ import { Video } from '../types';
 import { TimeIndicator } from '../components/layout/TimeIndicator';
 import { CountdownOverlay } from '../components/video/CountdownOverlay';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
+import { VideoPlayerError } from '../components/video/VideoPlayerError';
 import { audioWarningService } from '../services/audioWarning';
 import { logVerbose } from '../lib/logging';
 import { NavigationCache } from '../services/navigationCache';
@@ -198,11 +199,24 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
   }
 
   if (error || !video) {
+    // Show friendly error page if there's an error
+    if (error) {
+      return (
+        <VideoPlayerError
+          errorMessage={error}
+          videoUrl={video?.url || video?.id}
+          onRetry={() => window.location.reload()}
+          videoTitle={video?.title}
+        />
+      );
+    }
+
+    // Fallback for missing video
     return (
       <div className="flex flex-col min-h-screen bg-gray-100">
         <div className="p-4">
           <BreadcrumbNavigation items={getBreadcrumbItems()} className="mb-4" />
-          <div className="text-red-500">{error || 'Video not found'}</div>
+          <div className="text-red-500">Video not found</div>
         </div>
       </div>
     );

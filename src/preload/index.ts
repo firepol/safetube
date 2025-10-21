@@ -317,6 +317,14 @@ const IPC = {
   },
 
   // ============================================================================
+  // UI / WINDOWS
+  // ============================================================================
+
+  UI: {
+    OPEN_VIDEO_IN_WINDOW: 'open-video-in-window',
+  },
+
+  // ============================================================================
   // TESTING
   // ============================================================================
 
@@ -505,6 +513,9 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.invoke(IPC.FAVORITES.TOGGLE, videoId, sourceId),
     // Path utilities for cross-platform compatibility
     pathJoin: (...paths: string[]) => ipcRenderer.invoke(IPC.UTILS.PATH_JOIN, ...paths),
+
+    // Open video in external window
+    openVideoInWindow: (url: string) => ipcRenderer.invoke(IPC.UI.OPEN_VIDEO_IN_WINDOW, url),
 
     // Search handlers
     searchDatabase: (query: string, sourceId?: string) => ipcRenderer.invoke(IPC.SEARCH.DATABASE, query, sourceId),

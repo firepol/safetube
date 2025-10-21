@@ -240,6 +240,53 @@ ipcMain.handle(IPC.VIDEO_LOADING.LOAD_VIDEOS_FOR_SOURCE, async (_, sourceId: str
   }
 });
 
+// Handler for opening external videos in a controlled Electron window
+ipcMain.handle(IPC.UI.OPEN_VIDEO_IN_WINDOW, async (_, videoUrl: string) => {
+  try {
+    const videoWindow = new BrowserWindow({
+      width: 1280,
+      height: 720,
+      webPreferences: {
+        nodeIntegration: false,
+        contextIsolation: true,
+        webSecurity: true,
+        allowRunningInsecureContent: false
+      }
+    });
+
+    // Prevent navigation away from the video URL domain
+    videoWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+      // Allow navigation within the same domain
+      try {
+        const videoUrlDomain = new URL(videoUrl).hostname;
+        const navUrlDomain = new URL(navigationUrl).hostname;
+
+        if (videoUrlDomain !== navUrlDomain) {
+          event.preventDefault();
+          console.log('[Main] Blocked navigation to different domain:', navUrlDomain);
+        }
+      } catch (error) {
+        event.preventDefault();
+      }
+    });
+
+    // Block new windows from opening (related videos, advertisements)
+    videoWindow.webContents.setWindowOpenHandler(({ url }) => {
+      console.log('[Main] Blocked attempt to open new window for:', url);
+      return { action: 'deny' };
+    });
+
+    // Load the video URL
+    await videoWindow.loadURL(videoUrl);
+
+    console.log('[Main] Video window opened for:', videoUrl);
+    return { success: true };
+  } catch (error) {
+    console.error('[Main] Error opening video window:', error);
+    throw error;
+  }
+});
+
 console.log('[Main] IPC handlers registered successfully');
 
 // Register IPC handlers function (for app.whenReady if needed)
