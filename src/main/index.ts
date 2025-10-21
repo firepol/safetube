@@ -1436,19 +1436,19 @@ ipcMain.handle(IPC.UI.OPEN_VIDEO_IN_WINDOW, async (_, videoUrl: string) => {
       }
     });
 
-    // Prevent navigation away from the video URL domain
-    videoWindow.webContents.on('will-navigate', (event, navigationUrl) => {
-      // Allow navigation within the same domain
-      try {
-        const videoUrlDomain = new URL(videoUrl).hostname;
-        const navUrlDomain = new URL(navigationUrl).hostname;
+    // Track if initial page has loaded
+    let initialLoadComplete = false;
 
-        if (videoUrlDomain !== navUrlDomain) {
-          event.preventDefault();
-          console.log('[Main] Blocked navigation to different domain:', navUrlDomain);
-        }
-      } catch (error) {
+    videoWindow.webContents.on('did-finish-load', () => {
+      initialLoadComplete = true;
+      console.log('[Main] Initial video page load complete');
+    });
+
+    // Block ALL navigation after initial load (prevents clicking related videos, channels, etc.)
+    videoWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+      if (initialLoadComplete) {
         event.preventDefault();
+        console.log('[Main] Blocked navigation to:', navigationUrl);
       }
     });
 
