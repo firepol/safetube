@@ -1442,13 +1442,49 @@ ipcMain.handle(IPC.UI.OPEN_VIDEO_IN_WINDOW, async (_, videoUrl: string) => {
     videoWindow.webContents.on('did-finish-load', () => {
       initialLoadComplete = true;
       console.log('[Main] Initial video page load complete');
+
+      // Inject CSS to disable pointer events on all links and clickable elements
+      videoWindow.webContents.insertCSS(`
+        a, button:not(video *):not(.ytp-button):not([class*="player"]):not([class*="video"]) {
+          pointer-events: none !important;
+          cursor: default !important;
+        }
+        /* Allow only video player controls */
+        video, video *, .ytp-button, [class*="html5-video-player"] * {
+          pointer-events: auto !important;
+        }
+      `).catch(err => console.error('[Main] Failed to inject CSS:', err));
+
+      // Inject JavaScript to block all navigation attempts
+      videoWindow.webContents.executeJavaScript(`
+        document.addEventListener('click', (e) => {
+          // Allow clicks on video player elements
+          if (e.target.closest('video') ||
+              e.target.closest('.html5-video-player') ||
+              e.target.classList.contains('ytp-button')) {
+            return;
+          }
+          // Block all other clicks
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('[Video Window] Blocked click on:', e.target);
+        }, true);
+      `).catch(err => console.error('[Main] Failed to inject JavaScript:', err));
     });
 
-    // Block ALL navigation after initial load (prevents clicking related videos, channels, etc.)
-    videoWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+    // Block ALL navigation after initial load using did-start-navigation (more comprehensive)
+    videoWindow.webContents.on('did-start-navigation', (event, navigationUrl) => {
       if (initialLoadComplete) {
         event.preventDefault();
         console.log('[Main] Blocked navigation to:', navigationUrl);
+      }
+    });
+
+    // Also block will-navigate as backup
+    videoWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+      if (initialLoadComplete) {
+        event.preventDefault();
+        console.log('[Main] Blocked will-navigate to:', navigationUrl);
       }
     });
 
