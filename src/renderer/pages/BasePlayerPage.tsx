@@ -199,15 +199,21 @@ export const BasePlayerPage: React.FC<BasePlayerPageProps> = ({
   }
 
   if (error || !video) {
-    // Show friendly error page if there's an error
+    // Show friendly error page if there's an error, with breadcrumbs visible
     if (error) {
       return (
-        <VideoPlayerError
-          errorMessage={error}
-          videoUrl={video?.url || video?.id}
-          onRetry={() => window.location.reload()}
-          videoTitle={video?.title}
-        />
+        <div className="flex flex-col min-h-screen bg-gray-100">
+          <div className="p-4">
+            <BreadcrumbNavigation items={getBreadcrumbItems()} className="mb-6" />
+            <h1 className="text-2xl font-bold mb-4">{video?.title || 'Video Player'}</h1>
+            <VideoPlayerError
+              errorMessage={error}
+              videoUrl={video?.url || video?.id}
+              onRetry={() => window.location.reload()}
+              videoTitle={video?.title}
+            />
+          </div>
+        </div>
       );
     }
 
