@@ -64,7 +64,15 @@ export const YouTubePlayerPage: React.FC = () => {
         setVideo(videoData);
         setError(null);
       } catch (err) {
-        console.error('[YouTubePlayerPage] Error loading video data:', err);
+        const errorMsg = err instanceof Error ? err.message : JSON.stringify(err);
+        const errorType = err instanceof Error ? err.constructor.name : typeof err;
+        console.error('[YouTubePlayerPage] Error loading video data:', {
+          message: errorMsg,
+          videoId: videoId,
+          type: errorType,
+          fullError: err
+        });
+        logVerbose('[YouTubePlayerPage] Error loading video data:', { message: errorMsg, type: errorType, videoId });
         setError('Video not found');
       } finally {
         setIsLoading(false);

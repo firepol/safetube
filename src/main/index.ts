@@ -427,7 +427,15 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_VIDEO_DATA, async (_, videoId: string, navi
 
     return videoWithResume;
   } catch (error) {
-    log.error('[Main] Error loading video data:', error);
+    const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+    log.error('[Main] Error loading video data:', {
+      message: errorMsg,
+      videoId: videoId,
+      hasNavigationContext: !!navigationContext,
+      stack: errorStack,
+      errorType: error instanceof Error ? error.constructor.name : typeof error
+    });
     throw error;
   }
 })
@@ -1181,7 +1189,15 @@ ipcMain.handle(IPC.VIDEO_LOADING.GET_PAGINATED_VIDEOS, async (event, sourceId: s
       throw new Error(`Unsupported source type: ${source.type}`);
     }
   } catch (error) {
-    log.error('[Main] Error getting paginated videos:', error);
+    const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+    const errorStack = error instanceof Error ? error.stack : '';
+    log.error('[Main] Error getting paginated videos:', {
+      message: errorMsg,
+      sourceId: sourceId,
+      pageNumber: pageNumber,
+      stack: errorStack,
+      errorType: error instanceof Error ? error.constructor.name : typeof error
+    });
     throw error;
   }
 });
@@ -1566,6 +1582,43 @@ function recordApiRequest(videoId: string): void {
   });
 }
 
+// Helper function to describe Electron error codes
+function getErrorCodeDescription(errorCode: number): string {
+  // Electron error codes reference
+  // https://www.electronjs.org/docs/api/structures/web-preferences
+  const errorDescriptions: Record<number, string> = {
+    1: 'UNKNOWN_ERROR',
+    2: 'SECURITY_ERROR',
+    3: 'ABORTED_ERROR',
+    4: 'NOT_FOUND_ERROR',
+    5: 'NOT_ALLOWED_ERROR',
+    6: 'NOT_SUPPORTED_ERROR',
+    7: 'FETCH_ERROR',
+    8: 'BLOCKED_BY_CLIENT',
+    9: 'BLOCKED_BY_RESPONSE'
+  };
+
+  // Handle negative error codes
+  const negativeDescriptions: Record<number, string> = {
+    [-1]: 'ERR_INVALID_URL',
+    [-2]: 'ERR_DISALLOWED_URL_SCHEME',
+    [-3]: 'ERR_UNKNOWN_PROTOCOL',
+    [-4]: 'ERR_FAILED',
+    [-5]: 'ERR_NOT_IMPLEMENTED',
+    [-6]: 'ERR_ABORTED',
+    [-7]: 'ERR_NOT_FOUND',
+    [-8]: 'ERR_TIMED_OUT',
+    [-501]: 'ERR_HTTP_NOT_MODIFIED',
+    [-502]: 'ERR_HTTP_TEMPORARY_REDIRECT',
+    [-503]: 'ERR_HTTP_PERMANENT_REDIRECT',
+    [-504]: 'ERR_HTTP_RANGE_NOT_SATISFIABLE',
+    [-505]: 'ERR_HTTP_REQUEST_RANGE_INVALID',
+    [-506]: 'ERR_HTTP_RESPONSE_TIMEOUT'
+  };
+
+  return errorDescriptions[errorCode] || negativeDescriptions[errorCode] || `ERR_CODE_${errorCode}`;
+}
+
 // Helper functions for parsing YouTube URLs
 const createWindow = (): void => {
   const preloadPath = path.join(__dirname, '../../preload/preload/index.js');
@@ -1891,8 +1944,20 @@ const createWindow = (): void => {
 
   // Log any errors that occur during page load
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-    log.error('Failed to load page:', { errorCode, errorDescription })
-  })
+    // Ensure errorDescription is a string
+    const descriptionStr = typeof errorDescription === 'string'
+      ? errorDescription
+      : (errorDescription && typeof errorDescription === 'object'
+          ? JSON.stringify(errorDescription)
+          : String(errorDescription || 'Unknown error'));
+
+    log.error('[Main] Failed to load page:', {
+      errorCode,
+      errorCodeDescription: getErrorCodeDescription(errorCode),
+      errorDescription: descriptionStr,
+      errorDescriptionType: typeof errorDescription
+    });
+  });
 
   // Set up YouTube handlers (may already be registered)
   try {

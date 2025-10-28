@@ -192,7 +192,15 @@ export const PlayerPage: React.FC = () => {
           setError('Video not found');
         }
       } catch (err) {
-        console.error('[PlayerPage] Error loading video data:', err);
+        const errorMsg = err instanceof Error ? err.message : JSON.stringify(err);
+        const errorType = err instanceof Error ? err.constructor.name : typeof err;
+        console.error('[PlayerPage] Error loading video data:', {
+          message: errorMsg,
+          videoId: videoId,
+          type: errorType,
+          fullError: err
+        });
+        logVerbose('[PlayerPage] Error loading video data:', { message: errorMsg, type: errorType, videoId });
         setError('Video not found');
       } finally {
         setIsLoading(false);
@@ -263,21 +271,31 @@ export const PlayerPage: React.FC = () => {
 
               // Add event listeners for debugging
               videoRef.current.addEventListener('error', (e) => {
-                console.error('Video element error:', e);
-                const error = videoRef.current?.error;
-                if (error) {
-                  console.error('Error code:', error.code);
-                  console.error('Error message:', error.message);
-                }
+                const videoError = videoRef.current?.error;
+                const errorCode = videoError?.code;
+                const errorMessage = videoError?.message;
+                console.error('[PlayerPage] Video element error event (dual-stream):', {
+                  eventType: e.type,
+                  errorCode: errorCode,
+                  errorMessage: errorMessage,
+                  mediaElementState: videoRef.current?.readyState,
+                  networkState: videoRef.current?.networkState,
+                  videoUrl: videoRef.current?.src
+                });
+                logVerbose('[PlayerPage] Video element error (dual-stream):', { errorCode, errorMessage });
               });
 
               audioElement.addEventListener('error', (e) => {
-                console.error('Audio element error:', e);
-                const error = audioElement.error;
-                if (error) {
-                  console.error('Error code:', error.code);
-                  console.error('Error message:', error.message);
-                }
+                const audioError = audioElement.error;
+                const errorCode = audioError?.code;
+                const errorMessage = audioError?.message;
+                console.error('[PlayerPage] Audio element error event (dual-stream):', {
+                  eventType: e.type,
+                  errorCode: errorCode,
+                  errorMessage: errorMessage,
+                  audioUrl: audioElement.src
+                });
+                logVerbose('[PlayerPage] Audio element error (dual-stream):', { errorCode, errorMessage });
               });
 
               videoRef.current.addEventListener('loadedmetadata', () => {
@@ -360,12 +378,18 @@ export const PlayerPage: React.FC = () => {
               }
               // Add event listeners for debugging
               videoRef.current.addEventListener('error', (e) => {
-                console.error('Video element error:', e);
-                const error = videoRef.current?.error;
-                if (error) {
-                  console.error('Error code:', error.code);
-                  console.error('Error message:', error.message);
-                }
+                const videoError = videoRef.current?.error;
+                const errorCode = videoError?.code;
+                const errorMessage = videoError?.message;
+                console.error('[PlayerPage] Video element error event (single-file):', {
+                  eventType: e.type,
+                  errorCode: errorCode,
+                  errorMessage: errorMessage,
+                  mediaElementState: videoRef.current?.readyState,
+                  networkState: videoRef.current?.networkState,
+                  videoUrl: videoRef.current?.src
+                });
+                logVerbose('[PlayerPage] Video element error (single-file):', { errorCode, errorMessage });
               });
               videoRef.current.addEventListener('loadedmetadata', () => {
                 // console.log('Video metadata loaded');
