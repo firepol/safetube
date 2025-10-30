@@ -116,10 +116,7 @@ export class YouTubePageFetcher {
         logVerbose(`[YouTubePageFetcher] 🔄 Filling pages ${firstUncachedPage}-${pageNumber} to maximize cache benefit`);
         await this.fetchAndCachePageRange(source, firstUncachedPage, pageNumber, pageSize);
 
-        // Add a small delay to allow cache writes to propagate
-        await new Promise(resolve => setTimeout(resolve, 50));
-
-        // Now return the cached target page
+        // Cache writes are properly awaited, so we can safely read immediately
         const finalCached = await YouTubePageCache.getCachedPage(sourceId, pageNumber);
         if (finalCached && finalCached.videos && finalCached.videos.length > 0) {
           return {
@@ -195,7 +192,7 @@ export class YouTubePageFetcher {
 
       // Cache the successful result
       const cacheWriteStart = performance.now();
-      YouTubePageCache.cachePage(sourceId, pageNumber, result.videos, result.totalResults, source.type);
+      await YouTubePageCache.cachePage(sourceId, pageNumber, result.videos, result.totalResults, source.type);
 
       // Cache the next page token if available
       if (result.nextPageToken) {
