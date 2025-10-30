@@ -1929,7 +1929,12 @@ const createWindow = (): void => {
 
 
           // Try loading as file:// URL instead of loadFile
-          const fileUrl = `file://${indexPath.replace(/\\/g, '/')}`;
+          // On Windows, convert backslashes to forward slashes and ensure proper file:// format
+          const normalizedPath = indexPath.replace(/\\/g, '/');
+          const fileUrl = normalizedPath.startsWith('/')
+            ? `file://${normalizedPath}`
+            : `file:///${normalizedPath}`;
+          logVerbose(`[Main] Loading built app from: ${fileUrl}`);
           await mainWindow.loadURL(fileUrl);
 
           // Note: 'crashed' event is not available in this Electron version
