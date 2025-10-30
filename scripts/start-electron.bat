@@ -4,7 +4,7 @@ REM Read .env file and set variables
 if exist .env (
     echo Loading environment variables from .env file...
     for /f "usebackq tokens=1,2 delims==" %%a in (.env) do (
-        if not "%%a"=="" if not "%%a:~0,1%"=="#" (
+        if not "%%a"=="" if not "%%a:~0,1%%"=="#" (
             set "%%a=%%b"
         )
     )
