@@ -95,8 +95,8 @@ export class YouTubePageFetcher {
 
     // If requesting page > 1 and we should fill intermediate pages, check which pages are missing
     if (fillIntermediatePages && pageNumber > 1) {
-      // Find the first uncached page
-      let firstUncachedPage = 1;
+      // Find the first uncached or expired page
+      let firstUncachedPage: number | null = null;
       for (let p = 1; p < pageNumber; p++) {
         const cached = await YouTubePageCache.getCachedPage(sourceId, p);
         if (!cached || !cached.timestamp) {
@@ -109,17 +109,19 @@ export class YouTubePageFetcher {
           firstUncachedPage = p;
           break;
         }
-        firstUncachedPage = p + 1;
       }
 
-      // If there are uncached pages before our target, fetch them all
-      if (firstUncachedPage < pageNumber) {
+      // If there are uncached or expired pages before our target, fetch them all
+      if (firstUncachedPage !== null && firstUncachedPage < pageNumber) {
         logVerbose(`[YouTubePageFetcher] 🔄 Filling pages ${firstUncachedPage}-${pageNumber} to maximize cache benefit`);
         await this.fetchAndCachePageRange(source, firstUncachedPage, pageNumber, pageSize);
 
+        // Add a small delay to allow cache writes to propagate
+        await new Promise(resolve => setTimeout(resolve, 50));
+
         // Now return the cached target page
         const finalCached = await YouTubePageCache.getCachedPage(sourceId, pageNumber);
-        if (finalCached) {
+        if (finalCached && finalCached.videos && finalCached.videos.length > 0) {
           return {
             videos: finalCached.videos,
             pageNumber: finalCached.pageNumber,
