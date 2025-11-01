@@ -344,6 +344,15 @@ export const IPC = {
   TEST: {
     TEST_HANDLER: 'test-handler',
   },
+
+  // ============================================================================
+  // HTTP SERVER
+  // ============================================================================
+
+  SERVER: {
+    GET_SERVER_INFO: 'server:get-info',
+    GET_NETWORK_INFO: 'server:get-network-info',
+  },
 } as const;
 
 /**
