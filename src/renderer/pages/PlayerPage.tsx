@@ -175,21 +175,36 @@ export const PlayerPage: React.FC = () => {
 
   // Load video data when component mounts or ID changes
   useEffect(() => {
+    logVerbose('[PlayerPage] Mounting with videoId:', videoId);
+
     const loadVideoData = async () => {
-      if (!videoId) return;
-      
+      if (!videoId) {
+        logVerbose('[PlayerPage] No videoId provided, returning');
+        return;
+      }
+
       try {
+        logVerbose('[PlayerPage] Starting video data load for:', videoId);
         setIsLoading(true);
         const videoData = await window.electron.getVideoData(videoId);
-        logVerbose('[PlayerPage] Loaded video data:', videoData);
+        logVerbose('[PlayerPage] Loaded video data successfully:', {
+          id: videoData?.id,
+          type: videoData?.type,
+          title: videoData?.title,
+          url: videoData?.url,
+          duration: videoData?.duration,
+          resumeAt: videoData?.resumeAt
+        });
         if (videoData) {
           setVideo(videoData);
           setError(null);
           // Reset resume flag for new video
           resumeAttemptedRef.current = false;
+          logVerbose('[PlayerPage] Video state updated, ready to play');
         } else {
           setVideo(null);
           setError('Video not found');
+          logVerbose('[PlayerPage] Video data returned null');
         }
       } catch (err) {
         const errorMsg = err instanceof Error ? err.message : JSON.stringify(err);
@@ -230,17 +245,34 @@ export const PlayerPage: React.FC = () => {
 
   useEffect(() => {
     const loadLocalFile = async () => {
-      logVerbose('[PlayerPage] loadLocalFile called, video:', video);
+      logVerbose('[PlayerPage] ▶️ loadLocalFile called, video:', video);
+      if (!video) {
+        logVerbose('[PlayerPage] ❌ loadLocalFile: video is null/undefined');
+        return;
+      }
+
       if (video?.type === 'local') {
-        logVerbose('[PlayerPage] Processing local video:', { id: video.id, title: video.title, video: video.video, audio: video.audio, url: video.url, resumeAt: video.resumeAt });
+        logVerbose('[PlayerPage] 🎬 Processing local video:', {
+          id: video.id,
+          title: video.title,
+          hasVideoFile: !!video.video,
+          hasAudioFile: !!video.audio,
+          hasUrl: !!video.url,
+          resumeAt: video.resumeAt
+        });
         try {
           // Handle separate video and audio files
           if (video.video && video.audio) {
+            logVerbose('[PlayerPage] 🔊 Loading dual-stream video (video + audio files)');
             // Get video file URL
+            logVerbose('[PlayerPage] 📹 Getting video file path:', video.video);
             const videoPath = await window.electron.getLocalFile(video.video);
-            
+            logVerbose('[PlayerPage] ✅ Video path resolved:', videoPath);
+
             // Get audio file URL
+            logVerbose('[PlayerPage] 🔈 Getting audio file path:', video.audio);
             const audioPath = await window.electron.getLocalFile(video.audio);
+            logVerbose('[PlayerPage] ✅ Audio path resolved:', audioPath);
 
             if (videoRef.current) {
               // Create a hidden audio element
@@ -248,10 +280,13 @@ export const PlayerPage: React.FC = () => {
               audioElement.src = getSrc(audioPath);
               audioElement.style.display = 'none';
               document.body.appendChild(audioElement);
+              logVerbose('[PlayerPage] 🎧 Audio element created and appended to DOM');
 
               // Set up video element
+              logVerbose('[PlayerPage] 🎬 Setting video element src:', getSrc(videoPath));
               videoRef.current.src = getSrc(videoPath);
               videoRef.current.muted = true; // Mute the video element since we'll play audio separately
+              logVerbose('[PlayerPage] ✅ Video element configured');
 
               // Sync audio with video
               videoRef.current.addEventListener('play', () => {
@@ -315,6 +350,11 @@ export const PlayerPage: React.FC = () => {
               });
 
               videoRef.current.addEventListener('canplay', () => {
+                logVerbose('[PlayerPage] ▶️ canplay event fired (dual-stream)', {
+                  duration: videoRef.current?.duration,
+                  resumeAt: video.resumeAt,
+                  hasResumeAttempted: resumeAttemptedRef.current
+                });
                 // Set resume time if available - use a small delay to ensure video is ready
                 if (video.resumeAt && video.resumeAt > 0 && videoRef.current && !resumeAttemptedRef.current) {
                   resumeAttemptedRef.current = true; // Prevent infinite loop
@@ -323,15 +363,21 @@ export const PlayerPage: React.FC = () => {
                       if (videoRef.current && video.resumeAt && videoRef.current.duration > 0) {
                         // Only resume if the position is within the video duration
                         if (video.resumeAt < videoRef.current.duration) {
+                          logVerbose('[PlayerPage] ⏩ Setting resume position (dual-stream):', video.resumeAt);
                           videoRef.current.currentTime = video.resumeAt;
+                          logVerbose('[PlayerPage] ✅ Resume position set');
+                        } else {
+                          logVerbose('[PlayerPage] ⚠️ Resume position exceeds video duration');
                         }
                       }
                     } catch (error) {
                       console.warn('[PlayerPage] Failed to set resume time for separate streams:', error);
+                      logVerbose('[PlayerPage] ❌ Error setting resume time:', error);
                       // Continue with normal playback even if resume fails
                     }
                   }, 100);
                 }
+                logVerbose('[PlayerPage] ✅ Dual-stream video ready for playback');
                 setIsLoading(false);
               });
 
@@ -342,33 +388,45 @@ export const PlayerPage: React.FC = () => {
             }
           } else if (video.url) {
             // Handle single file
+            logVerbose('[PlayerPage] 📽️ Loading single-file video');
+            logVerbose('[PlayerPage] 📁 Getting local file path:', video.url);
             const path = await window.electron.getLocalFile(video.url);
-            
+            logVerbose('[PlayerPage] ✅ File path resolved:', path);
+
             if (videoRef.current) {
               try {
                 // Check if video needs conversion for compatibility
+                logVerbose('[PlayerPage] 🔍 Checking if video needs conversion');
                 const needsConversion = await window.electron.needsVideoConversion(video.url);
+                logVerbose('[PlayerPage] Conversion check result:', needsConversion);
                 
                 if (needsConversion) {
+                  logVerbose('[PlayerPage] 🎥 Video needs conversion, checking for existing converted version');
                   // Check if converted video already exists
                   const hasConverted = await window.electron.hasConvertedVideo(video.url);
-                  
+                  logVerbose('[PlayerPage] Has converted version:', hasConverted);
+
                   if (hasConverted) {
                     // Use existing converted video
+                    logVerbose('[PlayerPage] 🔄 Using existing converted video');
                     const convertedPath = await window.electron.getExistingConvertedVideoPath(video.url);
                     if (convertedPath) {
                       const convertedFileUrl = await window.electron.getLocalFile(convertedPath);
+                      logVerbose('[PlayerPage] 🎬 Setting src to converted file:', getSrc(convertedFileUrl));
                       videoRef.current.src = getSrc(convertedFileUrl);
                     } else {
                       // Fallback to original (shouldn't happen)
+                      logVerbose('[PlayerPage] ⚠️ Could not get converted path, falling back to original');
                       videoRef.current.src = getSrc(path);
                     }
                   } else {
                     // Try to load original file - it will likely fail and show error UI
+                    logVerbose('[PlayerPage] ⚠️ Video needs conversion but not available, loading original (may fail)');
                     videoRef.current.src = getSrc(path);
                   }
                 } else {
                   // Use original file
+                  logVerbose('[PlayerPage] 🎬 Video does not need conversion, loading original file');
                   videoRef.current.src = getSrc(path);
                 }
               } catch (conversionError) {
@@ -398,6 +456,11 @@ export const PlayerPage: React.FC = () => {
                 // console.log('Video data loaded');
               });
               videoRef.current.addEventListener('canplay', () => {
+                logVerbose('[PlayerPage] ▶️ canplay event fired (single-file)', {
+                  duration: videoRef.current?.duration,
+                  resumeAt: video.resumeAt,
+                  hasResumeAttempted: resumeAttemptedRef.current
+                });
                 // Set resume time if available - use a small delay to ensure video is ready
                 if (video.resumeAt && video.resumeAt > 0 && videoRef.current && !resumeAttemptedRef.current) {
                   resumeAttemptedRef.current = true; // Prevent infinite loop
@@ -406,15 +469,21 @@ export const PlayerPage: React.FC = () => {
                       if (videoRef.current && video.resumeAt && videoRef.current.duration > 0) {
                         // Only resume if the position is within the video duration
                         if (video.resumeAt < videoRef.current.duration) {
+                          logVerbose('[PlayerPage] ⏩ Setting resume position (single-file):', video.resumeAt);
                           videoRef.current.currentTime = video.resumeAt;
+                          logVerbose('[PlayerPage] ✅ Resume position set');
+                        } else {
+                          logVerbose('[PlayerPage] ⚠️ Resume position exceeds video duration');
                         }
                       }
                     } catch (error) {
                       console.warn('[PlayerPage] Failed to set resume time for single file:', error);
+                      logVerbose('[PlayerPage] ❌ Error setting resume time:', error);
                       // Continue with normal playback even if resume fails
                     }
                   }, 100);
                 }
+                logVerbose('[PlayerPage] ✅ Single-file video ready for playback');
                 setIsLoading(false);
               });
             }
