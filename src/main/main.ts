@@ -359,14 +359,24 @@ function createWindow() {
     });
   });
 
-  // Handle CORS preflight requests
+  // Handle CORS preflight requests and CSP
   mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
         'Access-Control-Allow-Origin': ['*'],
         'Access-Control-Allow-Methods': ['GET, POST, OPTIONS'],
-        'Access-Control-Allow-Headers': ['Content-Type']
+        'Access-Control-Allow-Headers': ['Content-Type'],
+        // Set CSP to allow file:// protocol for downloaded YouTube videos
+        // This fixes "Refused to load media from 'file://...' because it violates CSP" error
+        'Content-Security-Policy': [
+          "default-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+          "media-src 'self' file: blob: data: http://localhost:* https://*.youtube.com https://*.googlevideo.com; " +
+          "img-src 'self' file: blob: data: https: http:; " +
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com; " +
+          "frame-src 'self' https://www.youtube.com; " +
+          "connect-src 'self' http://localhost:* https://*.googlevideo.com https://www.youtube.com https://youtube.com;"
+        ]
       }
     });
   });
