@@ -74,7 +74,7 @@ describe('Server IPC Handlers', () => {
       };
 
       registerServerHandlers(mockServerManager as HttpServerManager);
-      const handler = handlers.get('server:get-info');
+      const handler = handlers.get('server:get-info')!;
 
       const result = await handler();
 
@@ -87,7 +87,7 @@ describe('Server IPC Handlers', () => {
       };
 
       registerServerHandlers(mockServerManager as HttpServerManager);
-      const handler = handlers.get('server:get-info');
+      const handler = handlers.get('server:get-info')!;
 
       const result = await handler();
 
@@ -96,7 +96,7 @@ describe('Server IPC Handlers', () => {
 
     it('should return null when server manager is null', async () => {
       registerServerHandlers(null);
-      const handler = handlers.get('server:get-info');
+      const handler = handlers.get('server:get-info')!;
 
       const result = await handler();
 
@@ -111,7 +111,7 @@ describe('Server IPC Handlers', () => {
       };
 
       registerServerHandlers(mockServerManager as HttpServerManager);
-      const handler = handlers.get('server:get-info');
+      const handler = handlers.get('server:get-info')!;
 
       const result = await handler();
 
@@ -133,7 +133,7 @@ describe('Server IPC Handlers', () => {
       };
 
       registerServerHandlers(mockServerManager as HttpServerManager);
-      const handler = handlers.get('server:get-network-info');
+      const handler = handlers.get('server:get-network-info')!;
 
       const result = await handler();
 
@@ -157,7 +157,7 @@ describe('Server IPC Handlers', () => {
       };
 
       registerServerHandlers(mockServerManager as HttpServerManager);
-      const handler = handlers.get('server:get-network-info');
+      const handler = handlers.get('server:get-network-info')!;
 
       const result = await handler();
 
@@ -170,7 +170,7 @@ describe('Server IPC Handlers', () => {
       };
 
       registerServerHandlers(mockServerManager as HttpServerManager);
-      const handler = handlers.get('server:get-network-info');
+      const handler = handlers.get('server:get-network-info')!;
 
       const result = await handler();
 
@@ -179,7 +179,7 @@ describe('Server IPC Handlers', () => {
 
     it('should return null when server manager is null', async () => {
       registerServerHandlers(null);
-      const handler = handlers.get('server:get-network-info');
+      const handler = handlers.get('server:get-network-info')!;
 
       const result = await handler();
 
@@ -199,7 +199,7 @@ describe('Server IPC Handlers', () => {
       };
 
       registerServerHandlers(mockServerManager as HttpServerManager);
-      const handler = handlers.get('server:get-network-info');
+      const handler = handlers.get('server:get-network-info')!;
 
       const result = await handler();
 
@@ -217,7 +217,7 @@ describe('Server IPC Handlers', () => {
       };
 
       registerServerHandlers(mockServerManager as HttpServerManager);
-      const handler = handlers.get('server:get-network-info');
+      const handler = handlers.get('server:get-network-info')!;
 
       const result = await handler();
 
