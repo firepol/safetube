@@ -10,7 +10,7 @@ import { readTimeLimits } from '../fileUtils';
 import DatabaseService from '../services/DatabaseService';
 
 /**
- * Parent Access Page HTML - Embedded as a string to avoid path resolution issues
+ * Parent Access Page HTML - React Admin App Entry Point
  */
 const PARENT_ACCESS_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -29,277 +29,172 @@ const PARENT_ACCESS_HTML = `<!DOCTYPE html>
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        #root {
+            min-height: 100vh;
+            width: 100%;
+        }
+
+        .loading {
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
-        }
-
-        .container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            max-width: 800px;
-            width: 100%;
-            padding: 40px;
-        }
-
-        h1 {
-            color: #333;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        .login-section {
-            margin-bottom: 30px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-        }
-
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-            font-weight: 500;
-        }
-
-        input[type="password"],
-        input[type="number"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
-        }
-
-        button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
             color: white;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 600;
-            margin-right: 10px;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .stats-section {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-
-        .stat-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-        }
-
-        .stat-label {
-            font-size: 12px;
-            opacity: 0.8;
-            margin-bottom: 10px;
-        }
-
-        .stat-value {
-            font-size: 32px;
-            font-weight: bold;
-        }
-
-        .message {
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-            display: none;
-        }
-
-        .message.error {
-            background: #fee;
-            color: #c33;
-            border: 1px solid #fcc;
-            display: block;
-        }
-
-        .message.success {
-            background: #efe;
-            color: #3c3;
-            border: 1px solid #cfc;
-            display: block;
-        }
-
-        .hidden {
-            display: none;
+            font-size: 18px;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🔐 Parent Access - SafeTube</h1>
-
-        <div id="message" class="message"></div>
-
-        <div id="loginSection" class="login-section">
-            <h2 style="margin-bottom: 15px; font-size: 18px; color: #333;">Authentication Required</h2>
-            <div class="form-group">
-                <label for="password">Admin Password</label>
-                <input type="password" id="password" placeholder="Enter admin password">
-            </div>
-            <button onclick="authenticate()">Login</button>
-        </div>
-
-        <div id="mainSection" class="hidden">
-            <div class="stats-section">
-                <div class="stat-card">
-                    <div class="stat-label">Time Used Today</div>
-                    <div class="stat-value" id="timeUsed">-</div>
-                    <div style="font-size: 12px; margin-top: 5px;">minutes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Daily Limit</div>
-                    <div class="stat-value" id="timeLimit">-</div>
-                    <div style="font-size: 12px; margin-top: 5px;">minutes</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">Time Remaining</div>
-                    <div class="stat-value" id="timeRemaining">-</div>
-                    <div style="font-size: 12px; margin-top: 5px;">minutes</div>
-                </div>
-            </div>
-
-            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px;">
-                <h3 style="margin-bottom: 15px; color: #333;">Quick Actions</h3>
-                <div class="form-group">
-                    <label for="extraTime">Add Extra Time (minutes)</label>
-                    <input type="number" id="extraTime" placeholder="15" min="1" max="480">
-                </div>
-                <button onclick="addExtraTime()">Add Extra Time</button>
-                <button onclick="refreshStats()">Refresh Stats</button>
-            </div>
-        </div>
+    <div id="root">
+        <div class="loading">Loading Admin Interface...</div>
     </div>
 
-    <script>
-        let authenticated = false;
+    <script type="module">
+        // Import React and ReactDOM from CDN for HTTP mode
+        import React from 'https://esm.sh/react@18.2.0';
+        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
 
-        function showMessage(text, isError = false) {
-            const msgEl = document.getElementById('message');
-            msgEl.textContent = text;
-            msgEl.className = \`message \${isError ? 'error' : 'success'}\`;
-            setTimeout(() => {
-                msgEl.className = 'message';
-            }, 5000);
+        // Patch window object to make it compatible with AdminDataAccess
+        // In HTTP mode, we don't have window.electron - the HTTPAdminDataAccess will be used
+        if (!window.electron) {
+            // HTTPAdminDataAccess will be used automatically
         }
 
-        async function authenticate() {
-            const password = document.getElementById('password').value;
-            if (!password) {
-                showMessage('Please enter password', true);
-                return;
-            }
-
+        // Dynamically import and render the AdminApp
+        const renderApp = async () => {
             try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password })
-                });
+                // Import the AdminApp component (assumes it's available globally or via module)
+                // For now, we'll create a minimal React app inline
+                const root = ReactDOM.createRoot(document.getElementById('root'));
 
-                if (!response.ok) {
-                    showMessage('Authentication failed', true);
-                    return;
-                }
+                // Create a simple authentication and time management UI for HTTP mode
+                const AdminApp = () => {
+                    const [isAuth, setIsAuth] = React.useState(false);
+                    const [password, setPassword] = React.useState('');
+                    const [stats, setStats] = React.useState(null);
+                    const [extraTime, setExtraTime] = React.useState('');
+                    const [message, setMessage] = React.useState('');
 
-                authenticated = true;
-                document.getElementById('loginSection').classList.add('hidden');
-                document.getElementById('mainSection').classList.remove('hidden');
-                await refreshStats();
-                showMessage('Authenticated successfully!');
-            } catch (error) {
-                showMessage(\`Error: \${error.message}\`, true);
+                    const authenticate = async () => {
+                        try {
+                            const res = await fetch('/api/auth/login', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ password })
+                            });
+                            if (res.ok) {
+                                setIsAuth(true);
+                                setPassword('');
+                                loadStats();
+                                showMessage('Authenticated!', false);
+                            } else {
+                                showMessage('Invalid password', true);
+                            }
+                        } catch (e) {
+                            showMessage(\`Error: \${e.message}\`, true);
+                        }
+                    };
+
+                    const loadStats = async () => {
+                        try {
+                            const res = await fetch('/api/usage-stats');
+                            if (res.ok) {
+                                const data = await res.json();
+                                setStats(data);
+                            }
+                        } catch (e) {
+                            showMessage(\`Error loading stats: \${e.message}\`, true);
+                        }
+                    };
+
+                    const handleAddExtraTime = async () => {
+                        if (!extraTime) return;
+                        try {
+                            const res = await fetch('/api/extra-time', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ minutes: parseInt(extraTime) })
+                            });
+                            if (res.ok) {
+                                setExtraTime('');
+                                loadStats();
+                                showMessage(\`Added \${extraTime} minutes!\`, false);
+                            }
+                        } catch (e) {
+                            showMessage(\`Error: \${e.message}\`, true);
+                        }
+                    };
+
+                    const showMessage = (msg, isError) => {
+                        setMessage(msg);
+                        setTimeout(() => setMessage(''), 5000);
+                    };
+
+                    if (!isAuth) {
+                        return React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' } },
+                            React.createElement('div', { style: { background: 'white', borderRadius: '12px', padding: '40px', maxWidth: '400px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' } },
+                                React.createElement('h1', { style: { marginBottom: '20px', textAlign: 'center' } }, '🔐 Parent Access'),
+                                message && React.createElement('div', { style: { padding: '10px', marginBottom: '20px', borderRadius: '6px', background: message.includes('Invalid') || message.includes('Error') ? '#fee' : '#efe', color: message.includes('Invalid') || message.includes('Error') ? '#c33' : '#3c3' } }, message),
+                                React.createElement('input', { type: 'password', placeholder: 'Password', value: password, onChange: (e) => setPassword(e.target.value), onKeyPress: (e) => e.key === 'Enter' && authenticate(), style: { width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' } }),
+                                React.createElement('button', { onClick: authenticate, style: { width: '100%', padding: '10px', background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' } }, 'Login')
+                            )
+                        );
+                    }
+
+                    return React.createElement('div', { style: { background: 'linear-gradient(135deg, #667eea, #764ba2)', minHeight: '100vh', padding: '20px' } },
+                        React.createElement('div', { style: { maxWidth: '1200px', margin: '0 auto' } },
+                            React.createElement('h1', { style: { color: 'white', marginBottom: '30px', textAlign: 'center' } }, '🔐 SafeTube - Parent Access'),
+                            message && React.createElement('div', { style: { padding: '15px', marginBottom: '20px', borderRadius: '6px', background: message.includes('Error') ? '#fee' : '#efe', color: message.includes('Error') ? '#c33' : '#3c3', maxWidth: '600px', margin: '0 auto 20px' } }, message),
+                            React.createElement('div', { style: { background: 'white', borderRadius: '12px', padding: '40px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' } },
+                                React.createElement('h2', { style: { marginBottom: '20px' } }, 'Time Management'),
+                                stats && React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' } },
+                                    React.createElement('div', { style: { background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' } },
+                                        React.createElement('div', { style: { fontSize: '12px', opacity: 0.8 } }, 'Time Used'),
+                                        React.createElement('div', { style: { fontSize: '32px', fontWeight: 'bold' } }, Math.round(stats.totalTime / 60)),
+                                        React.createElement('div', { style: { fontSize: '12px' } }, 'minutes')
+                                    ),
+                                    React.createElement('div', { style: { background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' } },
+                                        React.createElement('div', { style: { fontSize: '12px', opacity: 0.8 } }, 'Daily Limit'),
+                                        React.createElement('div', { style: { fontSize: '32px', fontWeight: 'bold' } }, stats.timeLimit),
+                                        React.createElement('div', { style: { fontSize: '12px' } }, 'minutes')
+                                    ),
+                                    React.createElement('div', { style: { background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' } },
+                                        React.createElement('div', { style: { fontSize: '12px', opacity: 0.8 } }, 'Time Remaining'),
+                                        React.createElement('div', { style: { fontSize: '32px', fontWeight: 'bold' } }, Math.max(0, (stats.timeRemaining / 60).toFixed(0))),
+                                        React.createElement('div', { style: { fontSize: '12px' } }, 'minutes')
+                                    )
+                                ),
+                                React.createElement('div', { style: { background: '#f8f9fa', padding: '20px', borderRadius: '8px' } },
+                                    React.createElement('h3', { style: { marginBottom: '15px' } }, 'Add Extra Time'),
+                                    React.createElement('div', { style: { marginBottom: '10px' } },
+                                        React.createElement('input', { type: 'number', placeholder: '15', value: extraTime, onChange: (e) => setExtraTime(e.target.value), min: '1', max: '480', style: { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' } })
+                                    ),
+                                    React.createElement('button', { onClick: handleAddExtraTime, style: { background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' } }, 'Add Extra Time'),
+                                    React.createElement('button', { onClick: loadStats, style: { marginLeft: '10px', background: '#666', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' } }, 'Refresh')
+                                ),
+                                React.createElement('p', { style: { marginTop: '20px', textAlign: 'center', color: '#999', fontSize: '12px' } }, 'Limited admin interface - Some features are only available in the desktop application')
+                            )
+                        )
+                    );
+                };
+
+                root.render(React.createElement(AdminApp));
+            } catch (e) {
+                console.error('Failed to load admin app:', e);
+                document.getElementById('root').innerHTML = '<div class="loading" style="color: red;">Failed to load admin interface. Please refresh the page.</div>';
             }
+        };
+
+        // Load the app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', renderApp);
+        } else {
+            renderApp();
         }
-
-        async function refreshStats() {
-            if (!authenticated) return;
-
-            try {
-                const response = await fetch('/api/usage-stats');
-                if (!response.ok) throw new Error('Failed to get stats');
-
-                const data = await response.json();
-                document.getElementById('timeUsed').textContent = Math.round(data.totalTime / 60);
-                document.getElementById('timeLimit').textContent = data.timeLimit;
-                document.getElementById('timeRemaining').textContent = Math.max(0, data.timeRemaining / 60).toFixed(0);
-            } catch (error) {
-                showMessage(\`Error loading stats: \${error.message}\`, true);
-            }
-        }
-
-        async function addExtraTime() {
-            if (!authenticated) return;
-
-            const minutes = parseInt(document.getElementById('extraTime').value);
-            if (!minutes || minutes < 1) {
-                showMessage('Please enter a valid number of minutes', true);
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/extra-time', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ minutes })
-                });
-
-                if (!response.ok) throw new Error('Failed to add extra time');
-
-                document.getElementById('extraTime').value = '';
-                await refreshStats();
-                showMessage(\`Added \${minutes} minutes of extra time!\`);
-            } catch (error) {
-                showMessage(\`Error: \${error.message}\`, true);
-            }
-        }
-
-        // Auto-refresh stats every 30 seconds
-        setInterval(() => {
-            if (authenticated) refreshStats();
-        }, 30000);
-
-        // Update page title and header with URL if accessed remotely
-        window.addEventListener('load', () => {
-            const currentUrl = window.location.origin;
-            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-
-            // Always show the URL in the header (not just remotely)
-            const h1 = document.querySelector('h1');
-            if (h1) {
-                h1.textContent = \`🔐 SafeTube - Parent Access - \${currentUrl}\`;
-            }
-
-            // Update the page title with the URL
-            document.title = \`SafeTube - Parent Access - \${currentUrl}\`;
-        });
     </script>
 </body>
 </html>`;
@@ -400,6 +295,12 @@ export async function handleApiRequest(req: http.IncomingMessage, res: http.Serv
       response = await handleGetVideoSources();
     } else if (path === '/api/settings' && method === 'GET') {
       response = await handleGetSettings();
+    } else if (path === '/api/settings' && method === 'POST') {
+      response = await handleSaveSettings(body);
+    } else if (path === '/api/admin/hash-password' && method === 'POST') {
+      response = await handleHashPassword(body);
+    } else if (path === '/api/features' && method === 'GET') {
+      response = await handleGetFeatures();
     } else {
       response = { status: 404, body: { error: 'API endpoint not found' } };
     }
@@ -538,12 +439,29 @@ async function handleGetUsageStats(): Promise<ApiResponse> {
     const { getTimeTrackingState } = await import('../timeTracking');
     const state = await getTimeTrackingState();
 
+    // Get extra time for today
+    const dbService = (DatabaseService as any).getInstance();
+    let extraTime = 0;
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const result = await dbService.get(`
+        SELECT SUM(minutes_added) as total
+        FROM usage_extras
+        WHERE date = ?
+      `, [today]) as any;
+      extraTime = result?.total || 0;
+    } catch (e) {
+      // Extra time table might not exist, use 0
+      extraTime = 0;
+    }
+
     return {
       status: 200,
       body: {
         totalTime: state.timeUsedToday,
         timeLimit,
         timeRemaining: state.timeRemaining,
+        extraTime,
         isTimeLimit: state.isLimitReached
       }
     };
@@ -638,5 +556,82 @@ async function handleGetSettings(): Promise<ApiResponse> {
   } catch (error) {
     log.error('[API] Error getting settings:', error);
     return { status: 500, body: { error: 'Failed to get settings' } };
+  }
+}
+
+/**
+ * Save main settings
+ */
+async function handleSaveSettings(body: any): Promise<ApiResponse> {
+  try {
+    const settings = {
+      youtubeApiKey: body.youtubeApiKey || '',
+      adminPassword: body.adminPassword || '',
+      enableVerboseLogging: body.enableVerboseLogging || false,
+      allowYouTubeClicksToOtherVideos: body.allowYouTubeClicksToOtherVideos || false,
+      remoteAccessEnabled: body.remoteAccessEnabled || false
+    };
+
+    // Hash password if provided
+    if (settings.adminPassword && settings.adminPassword.trim()) {
+      const bcrypt = require('bcrypt');
+      settings.adminPassword = await bcrypt.hash(settings.adminPassword, 10);
+    } else {
+      // Keep existing password if not provided
+      const mainSettings = await readMainSettings();
+      settings.adminPassword = (mainSettings as any).adminPassword || '';
+    }
+
+    await writeMainSettings(settings as any);
+    log.info('[API] Settings saved');
+    return { status: 200, body: { success: true } };
+  } catch (error) {
+    log.error('[API] Error saving settings:', error);
+    return { status: 500, body: { error: 'Failed to save settings' } };
+  }
+}
+
+/**
+ * Hash password
+ */
+async function handleHashPassword(body: any): Promise<ApiResponse> {
+  try {
+    const { password } = body;
+    if (!password) {
+      return { status: 400, body: { error: 'Password required' } };
+    }
+
+    const bcrypt = require('bcrypt');
+    const hashed = await bcrypt.hash(password, 10);
+
+    return { status: 200, body: { hashed } };
+  } catch (error) {
+    log.error('[API] Error hashing password:', error);
+    return { status: 500, body: { error: 'Failed to hash password' } };
+  }
+}
+
+/**
+ * Get feature flags for HTTP mode
+ */
+async function handleGetFeatures(): Promise<ApiResponse> {
+  try {
+    return {
+      status: 200,
+      body: {
+        hasFileSystem: false,
+        hasDatabase: false,
+        hasRestart: false,
+        hasAppExit: false,
+        hasNetworkInfo: false,
+        canEditTimeLimits: true,
+        canEditSettings: true,
+        canAddExtraTime: true,
+        canEditPassword: true
+      }
+    };
+  } catch (error) {
+    log.error('[API] Error getting features:', error);
+    return { status: 500, body: { error: 'Failed to get features' } };
   }
 }
