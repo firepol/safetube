@@ -414,9 +414,12 @@ app.whenReady().then(async () => {
       const remoteAccessEnabled = await getSetting(dbService, 'main.remoteAccessEnabled', false);
 
       // Determine paths
-      const distPath = fs.existsSync(path.join(process.cwd(), 'dist', 'renderer'))
-        ? path.join(process.cwd(), 'dist', 'renderer')
-        : path.join(process.resourcesPath, 'app.asar', 'dist', 'renderer');
+      // Use __dirname (which is /dist/main) to navigate to /dist/renderer
+      // In production: __dirname = /dist/main, so .. gets us to /dist, then ../renderer gets us to /dist/renderer
+      // In asar: similar logic applies
+      const distPath = fs.existsSync(path.join(__dirname, '../renderer'))
+        ? path.join(__dirname, '../renderer')
+        : path.join(process.resourcesPath, 'app.asar.unpacked', 'dist', 'renderer');
 
       log.info('[Main] HTTP server config:', {
         port: 3000,
