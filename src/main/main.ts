@@ -373,11 +373,11 @@ function createWindow() {
         // This fixes "Refused to load media from 'file://...' because it violates CSP" error
         'Content-Security-Policy': [
           "default-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
-          "media-src 'self' file: blob: data: http://localhost:* https://*.youtube.com https://*.googlevideo.com; " +
+          "media-src 'self' file: blob: data: http://localhost:* https://*.youtube.com https://*.youtube-nocookie.com https://*.googlevideo.com; " +
           "img-src 'self' file: blob: data: https: http:; " +
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://s.ytimg.com; " +
-          "frame-src 'self' https://www.youtube.com; " +
-          "connect-src 'self' http://localhost:* https://*.googlevideo.com https://www.youtube.com https://youtube.com;"
+          "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.youtube.com https://www.youtube-nocookie.com https://s.ytimg.com; " +
+          "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com; " +
+          "connect-src 'self' http://localhost:* https://*.googlevideo.com https://www.youtube.com https://www.youtube-nocookie.com https://youtube.com;"
         ]
       }
     });

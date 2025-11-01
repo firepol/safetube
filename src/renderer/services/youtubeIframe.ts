@@ -94,7 +94,7 @@ export class YouTubeIframePlayer {
 
         this.player = new (window as any).YT.Player(this.elementId, {
           videoId,
-          host: 'https://www.youtube.com',
+          host: 'https://www.youtube-nocookie.com',
           playerVars: {
             autoplay: 1,
             modestbranding: 1,
@@ -133,7 +133,7 @@ export class YouTubeIframePlayer {
         }
         
         // Build iframe URL with start time if provided
-        let iframeUrl = `https://www.youtube.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&controls=1&showinfo=1&fs=1`;
+        let iframeUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&modestbranding=1&rel=0&controls=1&showinfo=1&fs=1`;
         if (options.startSeconds) {
           iframeUrl += `&start=${Math.floor(options.startSeconds)}`;
         }
