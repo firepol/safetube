@@ -2078,9 +2078,10 @@ app.on('ready', async () => {
 
     // Determine dist path (local or asar)
     // Note: In compiled code, __dirname is /dist/main/main, so ../../ gets us to /dist
+    // In production, files are inside app.asar, not in an unpacked directory
     const distPath = isDev
       ? path.join(__dirname, '../../renderer')
-      : path.join(process.resourcesPath, 'app.asar.unpacked/dist/renderer');
+      : path.join(process.resourcesPath, 'app.asar', 'dist', 'renderer');
 
     log.info('[Main] HTTP server distPath:', {
       distPath,
