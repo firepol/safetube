@@ -94,7 +94,13 @@ export class HttpServerManager {
   /**
    * Handle incoming HTTP requests
    */
-  private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
+  private async handleRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<void> {
+    // Check if this is an API request
+    const { handleApiRequest } = await import('../http/apiHandler');
+    if (await handleApiRequest(req, res)) {
+      return;
+    }
+
     // Parse URL
     const parsedUrl = url.parse(req.url || '/');
     const originalPathname = parsedUrl.pathname || '/';
@@ -179,8 +185,8 @@ export class HttpServerManager {
       const port = await this.findAvailablePort(this.config.port, 4);
 
       return new Promise((resolve, reject) => {
-        this.server = http.createServer((req, res) => {
-          this.handleRequest(req, res);
+        this.server = http.createServer(async (req, res) => {
+          await this.handleRequest(req, res);
         });
 
         this.server.on('error', (err: NodeJS.ErrnoException) => {
