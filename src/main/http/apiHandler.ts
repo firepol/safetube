@@ -18,7 +18,7 @@ import DatabaseService from '../services/DatabaseService';
 function getParentAccessHTML(): string {
   try {
     // Try to load the built admin bundle first
-    const distPath = path.join(__dirname, '../../dist/renderer/admin.html');
+    const distPath = path.join(__dirname, '../../dist/renderer/admin-http.html');
     if (fs.existsSync(distPath)) {
       return fs.readFileSync(distPath, 'utf-8');
     }
