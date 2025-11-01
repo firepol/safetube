@@ -36,6 +36,7 @@ export const AdminPage: React.FC = () => {
   const [isLoadingMainSettings, setIsLoadingMainSettings] = useState(false);
   const [mainSettingsSaveMessage, setMainSettingsSaveMessage] = useState<string | null>(null);
   const [restartRequired, setRestartRequired] = useState(false);
+  const [networkInfo, setNetworkInfo] = useState<{ url: string } | null>(null);
 
   useEffect(() => {
     // Always start unauthenticated - no need to check
@@ -325,6 +326,25 @@ export const AdminPage: React.FC = () => {
       loadMainSettings();
     }
   }, [isAuthenticated, activeTab]);
+
+  // Fetch network info when remote access is enabled
+  useEffect(() => {
+    async function fetchNetworkInfo() {
+      try {
+        if (mainSettings.remoteAccessEnabled) {
+          const info = await (window.electron as any).invoke('server:get-network-info');
+          setNetworkInfo(info);
+        } else {
+          setNetworkInfo(null);
+        }
+      } catch (error) {
+        console.error('[AdminPage] Error fetching network info:', error);
+        setNetworkInfo(null);
+      }
+    }
+
+    fetchNetworkInfo();
+  }, [mainSettings.remoteAccessEnabled]);
 
   if (!isAuthenticated) {
     return (
@@ -794,7 +814,7 @@ export const AdminPage: React.FC = () => {
                           {mainSettings.remoteAccessEnabled && (
                             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
                               <p className="text-xs text-blue-800 font-medium">
-                                ℹ️ When remote access is enabled, the app will be accessible from other devices on your LAN. A network info footer will display the access URL.
+                                ✓ Remote access is enabled. Access URL: <span className="font-mono">{networkInfo?.url || 'Loading...'}</span>
                               </p>
                             </div>
                           )}

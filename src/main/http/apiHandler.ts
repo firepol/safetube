@@ -285,6 +285,21 @@ const PARENT_ACCESS_HTML = `<!DOCTYPE html>
         setInterval(() => {
             if (authenticated) refreshStats();
         }, 30000);
+
+        // Update page title and header with URL if accessed remotely
+        window.addEventListener('load', () => {
+            const currentUrl = window.location.origin;
+            const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+            // Always show the URL in the header (not just remotely)
+            const h1 = document.querySelector('h1');
+            if (h1) {
+                h1.textContent = \`🔐 SafeTube - Parent Access - \${currentUrl}\`;
+            }
+
+            // Update the page title with the URL
+            document.title = \`SafeTube - Parent Access - \${currentUrl}\`;
+        });
     </script>
 </body>
 </html>`;
