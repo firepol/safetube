@@ -1945,6 +1945,16 @@ const createWindow = (): void => {
           await mainWindow.loadURL('data:text/html,<h1>SafeTube</h1><p>Loading...</p>');
         }
       }
+
+      // Check if dev tools should be opened in production via env variable
+      // This allows debugging production builds by setting OPEN_DEV_TOOLS=true
+      const openDevToolsInProduction = process.env.OPEN_DEV_TOOLS === 'true' || process.env.ELECTRON_OPEN_DEV_TOOLS === 'true';
+      if (openDevToolsInProduction) {
+        logVerbose('[Main] 🔧 Opening dev tools in production build (OPEN_DEV_TOOLS=true)');
+        setTimeout(() => {
+          mainWindow.webContents.openDevTools();
+        }, 500); // Delay slightly to ensure page is loaded
+      }
     })()
 
   // Log any errors that occur during page load
