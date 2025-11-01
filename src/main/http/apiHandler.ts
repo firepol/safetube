@@ -329,7 +329,21 @@ async function parseBody(req: http.IncomingMessage): Promise<any> {
 export async function handleApiRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<boolean> {
   const path = req.url || '/';
 
-  // Handle parent access page
+  // Handle admin/parent access page (remote access - public route)
+  if (path === '/admin' || path === '/admin/') {
+    try {
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(PARENT_ACCESS_HTML);
+      return true;
+    } catch (error) {
+      log.error('[API] Error serving admin page:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to load page' }));
+      return true;
+    }
+  }
+
+  // Handle parent access page (internal electron route)
   if (path === '/parent-access' || path === '/parent-access/') {
     try {
       res.writeHead(200, { 'Content-Type': 'text/html' });
