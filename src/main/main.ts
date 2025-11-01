@@ -367,6 +367,8 @@ function createWindow() {
         'Access-Control-Allow-Origin': ['*'],
         'Access-Control-Allow-Methods': ['GET, POST, OPTIONS'],
         'Access-Control-Allow-Headers': ['Content-Type'],
+        // Set Referrer-Policy for YouTube iframe API (fixes error 153)
+        'Referrer-Policy': ['strict-origin-when-cross-origin'],
         // Set CSP to allow file:// protocol for downloaded YouTube videos
         // This fixes "Refused to load media from 'file://...' because it violates CSP" error
         'Content-Security-Policy': [

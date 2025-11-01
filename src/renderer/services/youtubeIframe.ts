@@ -85,8 +85,26 @@ export class YouTubeIframePlayer {
         
         // Merge internal and external event handlers
         const userEvents = (options && options.events) || {};
+
+        // For file:// protocol (production), don't send origin as YouTube doesn't accept it
+        // For http/https (development), send the proper origin
+        const playerVarsOrigin = window.location.protocol === 'file:'
+          ? {}
+          : { origin: window.location.origin };
+
         this.player = new (window as any).YT.Player(this.elementId, {
           videoId,
+          host: 'https://www.youtube.com',
+          playerVars: {
+            autoplay: 1,
+            modestbranding: 1,
+            rel: 0,
+            controls: 1,
+            showinfo: 1,
+            fs: 1,
+            ...playerVarsOrigin,
+            ...(options.playerVars || {})
+          },
           ...options,
           events: {
             onReady: (event: any) => {
@@ -119,6 +137,10 @@ export class YouTubeIframePlayer {
         if (options.startSeconds) {
           iframeUrl += `&start=${Math.floor(options.startSeconds)}`;
         }
+        // Add origin parameter for non-file:// protocols
+        if (window.location.protocol !== 'file:') {
+          iframeUrl += `&origin=${encodeURIComponent(window.location.origin)}`;
+        }
         
         const iframe = document.createElement('iframe');
         iframe.width = '100%';
@@ -127,6 +149,7 @@ export class YouTubeIframePlayer {
         iframe.frameBorder = '0';
         iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
         iframe.allowFullscreen = true;
+        iframe.referrerPolicy = 'strict-origin-when-cross-origin';
         
         element.appendChild(iframe);
         this.player = iframe;
