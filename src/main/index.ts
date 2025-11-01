@@ -2076,8 +2076,8 @@ app.on('ready', async () => {
 
     // Determine dist path (local or asar)
     const distPath = isDev
-      ? path.join(__dirname, '../../dist/out/main')
-      : path.join(process.resourcesPath, 'app.asar.unpacked/dist/out/main');
+      ? path.join(__dirname, '../../dist/renderer')
+      : path.join(process.resourcesPath, 'app.asar.unpacked/dist/renderer');
 
     // Create and start HTTP server
     httpServerManager = new HttpServerManager({
