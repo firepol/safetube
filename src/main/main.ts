@@ -10,8 +10,13 @@ import { FirstRunSetup } from './firstRunSetup';
 import { getYouTubeApiKey } from './helpers/settingsHelper';
 import log from './logger';
 import { IPC } from '../shared/ipc-channels';
+import { HttpServerManager } from './services/HttpServerManager';
+import { DatabaseService } from './services/DatabaseService';
 
 log.info('[Main] Main process starting...');
+
+// Global HTTP server manager instance
+let httpServerManager: HttpServerManager | null = null;
 
 // Run first-time setup if needed (before any config files are read)
 (async () => {
@@ -323,26 +328,31 @@ function createWindow() {
     mainWindow.loadURL(devUrl);
     mainWindow.webContents.openDevTools();
   } else {
-    // In production, load the built index.html
-    // Try to load from local dist folder first (for development builds)
-    const localPath = path.join(process.cwd(), 'dist', 'renderer', 'index.html');
-    const asarPath = path.join(process.resourcesPath, 'app.asar', 'dist', 'renderer', 'index.html');
-    
-    log.info('[Main] Checking local path:', localPath);
-    log.info('[Main] Checking asar path:', asarPath);
-    log.info('[Main] Process cwd:', process.cwd());
-    log.info('[Main] Resources path:', process.resourcesPath);
-    
-    if (fs.existsSync(localPath)) {
-      log.info('[Main] Loading from local dist folder:', localPath);
-      mainWindow.loadFile(localPath);
-    } else if (fs.existsSync(asarPath)) {
-      log.info('[Main] Loading from asar:', asarPath);
-      mainWindow.loadFile(asarPath);
+    // In production, load from HTTP server if available
+    const serverInfo = httpServerManager?.getInfo();
+    if (serverInfo && serverInfo.started) {
+      log.info('[Main] Loading from local HTTP server:', serverInfo.url);
+      mainWindow.loadURL(serverInfo.url);
     } else {
-      log.error('[Main] Could not find index.html in any expected location');
-      // Fallback: load a simple HTML page
-      mainWindow.loadURL('data:text/html,<h1>SafeTube</h1><p>Loading...</p>');
+      // Fallback: Try to load the built index.html
+      log.warn('[Main] HTTP server not available, falling back to file:// protocol');
+      const localPath = path.join(process.cwd(), 'dist', 'renderer', 'index.html');
+      const asarPath = path.join(process.resourcesPath, 'app.asar', 'dist', 'renderer', 'index.html');
+
+      log.info('[Main] Checking local path:', localPath);
+      log.info('[Main] Checking asar path:', asarPath);
+
+      if (fs.existsSync(localPath)) {
+        log.info('[Main] Loading from local dist folder:', localPath);
+        mainWindow.loadFile(localPath);
+      } else if (fs.existsSync(asarPath)) {
+        log.info('[Main] Loading from asar:', asarPath);
+        mainWindow.loadFile(asarPath);
+      } else {
+        log.error('[Main] Could not find index.html in any expected location');
+        // Fallback: load a simple HTML page
+        mainWindow.loadURL('data:text/html,<h1>SafeTube</h1><p>Loading...</p>');
+      }
     }
   }
 
@@ -386,10 +396,49 @@ function createWindow() {
 
 app.whenReady().then(async () => {
   console.log('[Main] App is ready, registering IPC handlers...');
-  
+
   // Register IPC handlers first
   registerIpcHandlers();
-  
+
+  // Start HTTP server in production mode
+  if (process.env.NODE_ENV !== 'development') {
+    try {
+      log.info('[Main] Starting HTTP server in production mode...');
+
+      // Initialize database service
+      const dbService = await DatabaseService.getInstance();
+
+      // Get remote access setting from database
+      const { getSetting } = await import('./database/queries/settingsQueries');
+      const remoteAccessEnabled = await getSetting(dbService, 'main.remoteAccessEnabled', false);
+
+      // Determine paths
+      const distPath = fs.existsSync(path.join(process.cwd(), 'dist', 'renderer'))
+        ? path.join(process.cwd(), 'dist', 'renderer')
+        : path.join(process.resourcesPath, 'app.asar', 'dist', 'renderer');
+
+      log.info('[Main] HTTP server config:', {
+        port: 3000,
+        host: remoteAccessEnabled ? '0.0.0.0' : '127.0.0.1',
+        distPath,
+        remoteAccessEnabled
+      });
+
+      // Create and start HTTP server
+      httpServerManager = new HttpServerManager({
+        port: 3000,
+        host: remoteAccessEnabled ? '0.0.0.0' : '127.0.0.1',
+        distPath
+      });
+
+      const serverInfo = await httpServerManager.start();
+      log.info('[Main] HTTP server started successfully:', serverInfo);
+    } catch (error) {
+      log.error('[Main] Failed to start HTTP server:', error instanceof Error ? error.message : error);
+      // Continue without HTTP server - will fallback to file:// protocol
+    }
+  }
+
   // Initialize video sources on startup
   try {
     console.log('[Main] Initializing video sources...');
@@ -405,12 +454,12 @@ app.whenReady().then(async () => {
     const { loadAllVideosFromSourcesMain } = await import('../main/index');
     const result = await loadAllVideosFromSourcesMain(AppPaths.getConfigPath('videoSources.json'), apiKey);
     console.log('[Main] Videos loaded on startup:', { totalVideos: result.videosBySource?.length || 0, sources: result.videosBySource?.length || 0 });
-    
+
     // Store videos globally for access by other handlers
     // Extract all videos from the videosBySource structure
     const allVideos = result.videosBySource?.flatMap(source => source.videos || []) || [];
     global.currentVideos = allVideos;
-    
+
     if (allVideos.length > 0) {
       const sampleVideos = allVideos.slice(0, 5);
     }
@@ -445,5 +494,17 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+// Clean up HTTP server on application quit
+app.on('will-quit', async () => {
+  if (httpServerManager) {
+    try {
+      await httpServerManager.stop();
+      log.info('[Main] HTTP server stopped successfully');
+    } catch (error) {
+      log.error('[Main] Error stopping HTTP server:', error instanceof Error ? error.message : error);
+    }
   }
 }); 
