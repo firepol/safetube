@@ -410,11 +410,14 @@ async function handleGetSettings(): Promise<ApiResponse> {
   try {
     const mainSettings = await readMainSettings();
 
-    // Return only non-sensitive settings
+    // Return all non-sensitive settings
     const safeSettings = {
+      youtubeApiKey: (mainSettings as any).youtubeApiKey || '',
+      enableVerboseLogging: (mainSettings as any).enableVerboseLogging || false,
+      allowYouTubeClicksToOtherVideos: (mainSettings as any).allowYouTubeClicksToOtherVideos || false,
       remoteAccessEnabled: (mainSettings as any).remoteAccessEnabled || false,
-      downloadPath: (mainSettings as any).downloadPath,
-      verbose_logging: (mainSettings as any).verbose_logging || false
+      downloadPath: (mainSettings as any).downloadPath || '',
+      adminPassword: '' // Never return the actual password, leave blank for editing
     };
 
     return { status: 200, body: safeSettings };
@@ -484,15 +487,13 @@ async function handleGetFeatures(): Promise<ApiResponse> {
     return {
       status: 200,
       body: {
-        hasFileSystem: false,
-        hasDatabase: false,
-        hasRestart: false,
-        hasAppExit: false,
-        hasNetworkInfo: false,
-        canEditTimeLimits: true,
-        canEditSettings: true,
-        canAddExtraTime: true,
-        canEditPassword: true
+        // Feature flags for what this access mode supports
+        hasDatabase: true,           // Can access database features (video sources, etc.)
+        hasFileSystem: false,        // Cannot access file system over HTTP
+        hasAppRestart: false,        // Cannot restart app over HTTP
+        canManageVideoSources: true, // Can manage video sources (database available)
+        canViewSearchHistory: true,  // Can view search history (database available)
+        canModerateWishlist: true    // Can moderate wishlist (database available)
       }
     };
   } catch (error) {
