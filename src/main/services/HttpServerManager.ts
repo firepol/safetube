@@ -123,13 +123,25 @@ export class HttpServerManager {
       filePath = path.join(this.config.distPath, 'index.html');
     }
 
+    log.debug('[HttpServer] Handling request', {
+      originalPathname,
+      isRouteWithoutExtension,
+      resolvedPath: filePath,
+      distPath: this.config.distPath,
+      fileExists: fs.existsSync(filePath)
+    });
+
     // Serve file with appropriate Content-Type
     fs.readFile(filePath, (err, data) => {
       if (err) {
         if (err.code === 'ENOENT') {
           // If we were trying to serve index.html for SPA and it doesn't exist
           if (isRouteWithoutExtension) {
-            log.error('[HttpServer] Failed to serve index.html for SPA route', { path: originalPathname });
+            log.error('[HttpServer] Failed to serve index.html for SPA route', {
+              path: originalPathname,
+              attemptedPath: filePath,
+              distPath: this.config.distPath
+            });
             res.writeHead(500);
             res.end('Server error');
           } else {
@@ -146,6 +158,11 @@ export class HttpServerManager {
       } else {
         const ext = path.extname(filePath);
         const contentType = getContentType(ext);
+        log.debug('[HttpServer] Serving file successfully', {
+          path: originalPathname,
+          contentType,
+          size: data.length
+        });
         res.writeHead(200, { 'Content-Type': contentType });
         res.end(data);
       }

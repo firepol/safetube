@@ -2071,13 +2071,21 @@ app.on('ready', async () => {
     const remoteAccessEnabled = settings?.remoteAccessEnabled ?? false;
 
     log.info('[Main] Initializing HTTP server...', {
-      remoteAccessEnabled
+      remoteAccessEnabled,
+      isDev,
+      __dirname
     });
 
     // Determine dist path (local or asar)
     const distPath = isDev
       ? path.join(__dirname, '../../dist/renderer')
       : path.join(process.resourcesPath, 'app.asar.unpacked/dist/renderer');
+
+    log.info('[Main] HTTP server distPath:', {
+      distPath,
+      distPathExists: fs.existsSync(distPath),
+      isDev
+    });
 
     // Create and start HTTP server
     httpServerManager = new HttpServerManager({
