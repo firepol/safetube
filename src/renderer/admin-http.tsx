@@ -8,10 +8,15 @@
 
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import { AdminApp } from '@/renderer/components/admin/AdminApp';
 import '@/renderer/index.css';
 
-// Render the AdminApp - it will automatically detect HTTP mode
-// and use HTTPAdminDataAccess for all API calls
+// Render the AdminApp wrapped in BrowserRouter
+// The AdminApp will automatically detect HTTP mode and use HTTPAdminDataAccess for all API calls
 const root = ReactDOM.createRoot(document.getElementById('root')!);
-root.render(<AdminApp />);
+root.render(
+  <BrowserRouter basename="/admin">
+    <AdminApp />
+  </BrowserRouter>
+);
