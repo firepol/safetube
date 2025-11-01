@@ -48,6 +48,23 @@ async function parseBody(req: http.IncomingMessage): Promise<any> {
 export async function handleApiRequest(req: http.IncomingMessage, res: http.ServerResponse): Promise<boolean> {
   const path = req.url || '/';
 
+  // Handle parent access page
+  if (path === '/parent-access' || path === '/parent-access/') {
+    try {
+      const fs = await import('fs');
+      const htmlPath = require('path').join(__dirname, 'parentAccessPage.html');
+      const html = fs.readFileSync(htmlPath, 'utf8');
+      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.end(html);
+      return true;
+    } catch (error) {
+      log.error('[API] Error serving parent access page:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Failed to load page' }));
+      return true;
+    }
+  }
+
   // Only handle /api routes
   if (!path.startsWith('/api/')) {
     return false;
