@@ -31,6 +31,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: path.join(__dirname, 'src/renderer/index.html'),
+        admin: path.join(__dirname, 'src/renderer/admin-http.html'),
       },
     },
   },

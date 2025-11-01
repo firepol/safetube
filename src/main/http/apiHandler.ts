@@ -4,200 +4,55 @@
  */
 
 import http from 'http';
+import fs from 'fs';
+import path from 'path';
 import log from '../logger';
 import { readMainSettings, writeMainSettings } from '../fileUtils';
 import { readTimeLimits } from '../fileUtils';
 import DatabaseService from '../services/DatabaseService';
 
 /**
- * Parent Access Page HTML - React Admin App Entry Point
+ * Get Parent Access HTML Bundle
+ * Loads the built React admin app bundle
  */
-const PARENT_ACCESS_HTML = `<!DOCTYPE html>
+function getParentAccessHTML(): string {
+  try {
+    // Try to load the built admin bundle first
+    const distPath = path.join(__dirname, '../../dist/renderer/admin.html');
+    if (fs.existsSync(distPath)) {
+      return fs.readFileSync(distPath, 'utf-8');
+    }
+  } catch (e) {
+    log.warn('[API] Failed to load built admin bundle, falling back to main page:', e);
+  }
+
+  // Fallback to main page HTML if admin bundle doesn't exist yet
+  try {
+    const mainPath = path.join(__dirname, '../../dist/renderer/index.html');
+    if (fs.existsSync(mainPath)) {
+      return fs.readFileSync(mainPath, 'utf-8');
+    }
+  } catch (e) {
+    log.error('[API] Failed to load main page:', e);
+  }
+
+  // Final fallback: serve a minimal loading page
+  return `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Parent Access - SafeTube</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            margin: 0;
-            padding: 0;
-        }
-
-        #root {
-            min-height: 100vh;
-            width: 100%;
-        }
-
-        .loading {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            color: white;
-            font-size: 18px;
-        }
-    </style>
 </head>
-<body>
-    <div id="root">
-        <div class="loading">Loading Admin Interface...</div>
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); font-family: system-ui, sans-serif; color: white;">
+    <div style="text-align: center;">
+        <h1>SafeTube Parent Access</h1>
+        <p>Loading admin interface...</p>
+        <p style="font-size: 12px; opacity: 0.7; margin-top: 20px;">If this page doesn't load, please try refreshing.</p>
     </div>
-
-    <script type="module">
-        // Import React and ReactDOM from CDN for HTTP mode
-        import React from 'https://esm.sh/react@18.2.0';
-        import ReactDOM from 'https://esm.sh/react-dom@18.2.0/client';
-
-        // Patch window object to make it compatible with AdminDataAccess
-        // In HTTP mode, we don't have window.electron - the HTTPAdminDataAccess will be used
-        if (!window.electron) {
-            // HTTPAdminDataAccess will be used automatically
-        }
-
-        // Dynamically import and render the AdminApp
-        const renderApp = async () => {
-            try {
-                // Import the AdminApp component (assumes it's available globally or via module)
-                // For now, we'll create a minimal React app inline
-                const root = ReactDOM.createRoot(document.getElementById('root'));
-
-                // Create a simple authentication and time management UI for HTTP mode
-                const AdminApp = () => {
-                    const [isAuth, setIsAuth] = React.useState(false);
-                    const [password, setPassword] = React.useState('');
-                    const [stats, setStats] = React.useState(null);
-                    const [extraTime, setExtraTime] = React.useState('');
-                    const [message, setMessage] = React.useState('');
-
-                    const authenticate = async () => {
-                        try {
-                            const res = await fetch('/api/auth/login', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ password })
-                            });
-                            if (res.ok) {
-                                setIsAuth(true);
-                                setPassword('');
-                                loadStats();
-                                showMessage('Authenticated!', false);
-                            } else {
-                                showMessage('Invalid password', true);
-                            }
-                        } catch (e) {
-                            showMessage(\`Error: \${e.message}\`, true);
-                        }
-                    };
-
-                    const loadStats = async () => {
-                        try {
-                            const res = await fetch('/api/usage-stats');
-                            if (res.ok) {
-                                const data = await res.json();
-                                setStats(data);
-                            }
-                        } catch (e) {
-                            showMessage(\`Error loading stats: \${e.message}\`, true);
-                        }
-                    };
-
-                    const handleAddExtraTime = async () => {
-                        if (!extraTime) return;
-                        try {
-                            const res = await fetch('/api/extra-time', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ minutes: parseInt(extraTime) })
-                            });
-                            if (res.ok) {
-                                setExtraTime('');
-                                loadStats();
-                                showMessage(\`Added \${extraTime} minutes!\`, false);
-                            }
-                        } catch (e) {
-                            showMessage(\`Error: \${e.message}\`, true);
-                        }
-                    };
-
-                    const showMessage = (msg, isError) => {
-                        setMessage(msg);
-                        setTimeout(() => setMessage(''), 5000);
-                    };
-
-                    if (!isAuth) {
-                        return React.createElement('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '20px' } },
-                            React.createElement('div', { style: { background: 'white', borderRadius: '12px', padding: '40px', maxWidth: '400px', width: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' } },
-                                React.createElement('h1', { style: { marginBottom: '20px', textAlign: 'center' } }, '🔐 Parent Access'),
-                                message && React.createElement('div', { style: { padding: '10px', marginBottom: '20px', borderRadius: '6px', background: message.includes('Invalid') || message.includes('Error') ? '#fee' : '#efe', color: message.includes('Invalid') || message.includes('Error') ? '#c33' : '#3c3' } }, message),
-                                React.createElement('input', { type: 'password', placeholder: 'Password', value: password, onChange: (e) => setPassword(e.target.value), onKeyPress: (e) => e.key === 'Enter' && authenticate(), style: { width: '100%', padding: '10px', marginBottom: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' } }),
-                                React.createElement('button', { onClick: authenticate, style: { width: '100%', padding: '10px', background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' } }, 'Login')
-                            )
-                        );
-                    }
-
-                    return React.createElement('div', { style: { background: 'linear-gradient(135deg, #667eea, #764ba2)', minHeight: '100vh', padding: '20px' } },
-                        React.createElement('div', { style: { maxWidth: '1200px', margin: '0 auto' } },
-                            React.createElement('h1', { style: { color: 'white', marginBottom: '30px', textAlign: 'center' } }, '🔐 SafeTube - Parent Access'),
-                            message && React.createElement('div', { style: { padding: '15px', marginBottom: '20px', borderRadius: '6px', background: message.includes('Error') ? '#fee' : '#efe', color: message.includes('Error') ? '#c33' : '#3c3', maxWidth: '600px', margin: '0 auto 20px' } }, message),
-                            React.createElement('div', { style: { background: 'white', borderRadius: '12px', padding: '40px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' } },
-                                React.createElement('h2', { style: { marginBottom: '20px' } }, 'Time Management'),
-                                stats && React.createElement('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '30px' } },
-                                    React.createElement('div', { style: { background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' } },
-                                        React.createElement('div', { style: { fontSize: '12px', opacity: 0.8 } }, 'Time Used'),
-                                        React.createElement('div', { style: { fontSize: '32px', fontWeight: 'bold' } }, Math.round(stats.totalTime / 60)),
-                                        React.createElement('div', { style: { fontSize: '12px' } }, 'minutes')
-                                    ),
-                                    React.createElement('div', { style: { background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' } },
-                                        React.createElement('div', { style: { fontSize: '12px', opacity: 0.8 } }, 'Daily Limit'),
-                                        React.createElement('div', { style: { fontSize: '32px', fontWeight: 'bold' } }, stats.timeLimit),
-                                        React.createElement('div', { style: { fontSize: '12px' } }, 'minutes')
-                                    ),
-                                    React.createElement('div', { style: { background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', padding: '20px', borderRadius: '8px', textAlign: 'center' } },
-                                        React.createElement('div', { style: { fontSize: '12px', opacity: 0.8 } }, 'Time Remaining'),
-                                        React.createElement('div', { style: { fontSize: '32px', fontWeight: 'bold' } }, Math.max(0, (stats.timeRemaining / 60).toFixed(0))),
-                                        React.createElement('div', { style: { fontSize: '12px' } }, 'minutes')
-                                    )
-                                ),
-                                React.createElement('div', { style: { background: '#f8f9fa', padding: '20px', borderRadius: '8px' } },
-                                    React.createElement('h3', { style: { marginBottom: '15px' } }, 'Add Extra Time'),
-                                    React.createElement('div', { style: { marginBottom: '10px' } },
-                                        React.createElement('input', { type: 'number', placeholder: '15', value: extraTime, onChange: (e) => setExtraTime(e.target.value), min: '1', max: '480', style: { width: '100%', padding: '10px', border: '1px solid #ddd', borderRadius: '6px', fontSize: '14px' } })
-                                    ),
-                                    React.createElement('button', { onClick: handleAddExtraTime, style: { background: 'linear-gradient(135deg, #667eea, #764ba2)', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' } }, 'Add Extra Time'),
-                                    React.createElement('button', { onClick: loadStats, style: { marginLeft: '10px', background: '#666', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' } }, 'Refresh')
-                                ),
-                                React.createElement('p', { style: { marginTop: '20px', textAlign: 'center', color: '#999', fontSize: '12px' } }, 'Limited admin interface - Some features are only available in the desktop application')
-                            )
-                        )
-                    );
-                };
-
-                root.render(React.createElement(AdminApp));
-            } catch (e) {
-                console.error('Failed to load admin app:', e);
-                document.getElementById('root').innerHTML = '<div class="loading" style="color: red;">Failed to load admin interface. Please refresh the page.</div>';
-            }
-        };
-
-        // Load the app when DOM is ready
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', renderApp);
-        } else {
-            renderApp();
-        }
-    </script>
 </body>
 </html>`;
+}
 
 
 interface ApiRequest {
@@ -242,8 +97,9 @@ export async function handleApiRequest(req: http.IncomingMessage, res: http.Serv
   // Handle admin/parent access page (remote access - public route)
   if (path === '/admin' || path === '/admin/') {
     try {
+      const html = getParentAccessHTML();
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(PARENT_ACCESS_HTML);
+      res.end(html);
       return true;
     } catch (error) {
       log.error('[API] Error serving admin page:', error);
@@ -256,8 +112,9 @@ export async function handleApiRequest(req: http.IncomingMessage, res: http.Serv
   // Handle parent access page (internal electron route)
   if (path === '/parent-access' || path === '/parent-access/') {
     try {
+      const html = getParentAccessHTML();
       res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(PARENT_ACCESS_HTML);
+      res.end(html);
       return true;
     } catch (error) {
       log.error('[API] Error serving parent access page:', error);
