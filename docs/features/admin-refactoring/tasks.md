@@ -442,7 +442,7 @@ Phase 6: Polish, Documentation & Cleanup
 
 #### 4.1 Enhance API Endpoints
 
-- [ ] **Task**: Add `POST /api/settings` endpoint to `src/main/http/apiHandler.ts`
+- [x] **Task**: Add `POST /api/settings` endpoint to `src/main/http/apiHandler.ts`
   - Accept main settings updates
   - Validate input
   - Call `writeMainSettings()` with provided settings
@@ -452,7 +452,7 @@ Phase 6: Polish, Documentation & Cleanup
   - **Tests Required**: API endpoint tests with various inputs
   - **Code Review**: Verify input validation and error handling
 
-- [ ] **Task**: Add `POST /api/admin/hash-password` endpoint
+- [x] **Task**: Add `POST /api/admin/hash-password` endpoint
   - Accept password in request body
   - Hash password using bcrypt
   - Return hashed password
@@ -460,14 +460,14 @@ Phase 6: Polish, Documentation & Cleanup
   - **Tests Required**: API endpoint tests verify bcrypt usage
   - **Code Review**: Verify security of password handling
 
-- [ ] **Task**: Enhance `GET /api/usage-stats` endpoint
+- [x] **Task**: Enhance `GET /api/usage-stats` endpoint
   - Add `extraTime` field to response
   - Ensure response matches `TimeTrackingState` interface
   - **Definition of Done**: Response includes all required fields
   - **Tests Required**: API endpoint tests verify response structure
   - **Code Review**: Verify response format
 
-- [ ] **Task**: Add `GET /api/features` endpoint (optional)
+- [x] **Task**: Add `GET /api/features` endpoint (optional)
   - Return feature flags for HTTP mode
   - **Definition of Done**: Endpoint returns correct feature flags
   - **Tests Required**: API endpoint tests
@@ -475,7 +475,7 @@ Phase 6: Polish, Documentation & Cleanup
 
 #### 4.2 Create HTTP Bundle for React Admin
 
-- [ ] **Task**: Configure build for HTTP admin bundle
+- [x] **Task**: Configure build for HTTP admin bundle
   - Create separate entry point for HTTP mode (if needed)
   - Configure Vite/Webpack to bundle for HTTP delivery
   - Ensure bundle includes all admin components
@@ -484,7 +484,7 @@ Phase 6: Polish, Documentation & Cleanup
   - **Tests Required**: Build tests verify bundle is valid HTML
   - **Code Review**: Verify build configuration
 
-- [ ] **Task**: Update `/parent-access` route in `apiHandler.ts`
+- [x] **Task**: Update `/parent-access` route in `apiHandler.ts`
   - Load React admin bundle (replace embedded HTML string)
   - Serve bundle as HTML response
   - Ensure bundle has correct base path for asset loading
@@ -494,7 +494,7 @@ Phase 6: Polish, Documentation & Cleanup
 
 #### 4.3 Test HTTP Bundle Loading
 
-- [ ] **Task**: Manual testing of HTTP bundle
+- [x] **Task**: Manual testing of HTTP bundle
   - Start HTTP server
   - Navigate to `http://localhost:PORT/parent-access`
   - Verify React admin UI loads
