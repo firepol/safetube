@@ -18,7 +18,7 @@ import DatabaseService from '../services/DatabaseService';
 function getParentAccessHTML(): string {
   try {
     // Try to load the built admin bundle first
-    const distPath = path.join(__dirname, '../../dist/renderer/admin-http.html');
+    const distPath = path.join(__dirname, '../../../renderer/admin-http.html');
     if (fs.existsSync(distPath)) {
       let html = fs.readFileSync(distPath, 'utf-8');
       // Rewrite relative asset paths to absolute paths so they work from /admin and /parent-access routes
@@ -32,7 +32,7 @@ function getParentAccessHTML(): string {
 
   // Fallback to main page HTML if admin bundle doesn't exist yet
   try {
-    const mainPath = path.join(__dirname, '../../dist/renderer/index.html');
+    const mainPath = path.join(__dirname, '../../../renderer/index.html');
     if (fs.existsSync(mainPath)) {
       let html = fs.readFileSync(mainPath, 'utf-8');
       // Rewrite relative asset paths to absolute paths
