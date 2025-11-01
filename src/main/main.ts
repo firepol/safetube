@@ -12,6 +12,7 @@ import log from './logger';
 import { IPC } from '../shared/ipc-channels';
 import { HttpServerManager } from './services/HttpServerManager';
 import { DatabaseService } from './services/DatabaseService';
+import { registerServerHandlers } from './ipc/serverHandlers';
 
 log.info('[Main] Main process starting...');
 
@@ -438,6 +439,9 @@ app.whenReady().then(async () => {
       // Continue without HTTP server - will fallback to file:// protocol
     }
   }
+
+  // Register server IPC handlers
+  registerServerHandlers(httpServerManager);
 
   // Initialize video sources on startup
   try {
