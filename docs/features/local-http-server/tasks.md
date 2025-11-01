@@ -5,7 +5,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
 
 ## Tasks
 
-- [ ] 1. Set up project structure and core type definitions
+- [x] 1. Set up project structure and core type definitions
   - Create `src/shared/types/server.ts` with `ServerConfig`, `ServerInfo`, and `NetworkInfo` interfaces
   - Add new `IPC.SERVER` section to `src/shared/ipc-channels.ts` with `GET_SERVER_INFO` and `GET_NETWORK_INFO` channels
   - **Requirements**: Req 1.2, Req 1.3, Req 4.5
@@ -13,7 +13,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Unit tests for type exports and IPC channel constant verification
   - **Code Review**: Architecture review by peer developer, TypeScript type safety review
 
-- [ ] 2. Implement NetworkUtils service
+- [x] 2. Implement NetworkUtils service
   - Create `src/main/services/NetworkUtils.ts` with `getLocalIPAddress()` and `getAllNetworkInterfaces()` methods
   - Implement IPv4 filtering and private network address preference (192.168.x.x, 10.x.x.x, 172.x.x.x)
   - Add fallback to 127.0.0.1 when no suitable network interface found
@@ -22,7 +22,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Unit tests covering multiple network interface scenarios, no network interface scenario, IPv4/IPv6 filtering, private address preference
   - **Code Review**: Logic review by peer developer, edge case handling review
 
-- [ ] 2.1 Create unit tests for NetworkUtils
+- [x] 2.1 Create unit tests for NetworkUtils
   - Test `getLocalIPAddress()` with mocked network interfaces
   - Test IPv4 vs IPv6 filtering
   - Test private network address preference
@@ -32,7 +32,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: At least 5 test cases covering different network configurations
   - **Code Review**: Test coverage review by peer developer
 
-- [ ] 3. Implement HttpServerManager service
+- [x] 3. Implement HttpServerManager service
   - Create `src/main/services/HttpServerManager.ts` with class structure matching design document
   - Implement constructor with `ServerConfig` parameter
   - Implement `isPortAvailable()` private method for port availability checking
@@ -42,7 +42,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Unit tests for port availability checking, port fallback logic (mock socket binding)
   - **Code Review**: Architecture review by senior developer, error handling review
 
-- [ ] 3.1 Implement static file serving in HttpServerManager
+- [x] 3.1 Implement static file serving in HttpServerManager
   - Implement `handleRequest()` method with MIME type detection
   - Implement `getContentType()` helper function for common file extensions (.html, .js, .css, .json, images, fonts)
   - Add directory traversal protection (path normalization and validation)
@@ -52,7 +52,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Unit tests for MIME type mapping, directory traversal rejection, SPA fallback behavior, file serving with various extensions
   - **Code Review**: Security review for path traversal protection, performance review
 
-- [ ] 3.2 Implement server lifecycle methods in HttpServerManager
+- [x] 3.2 Implement server lifecycle methods in HttpServerManager
   - Implement `start()` method with error handling and port selection logic
   - Implement `stop()` method with graceful shutdown
   - Implement `getInfo()` method to return current server state
@@ -62,7 +62,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Unit tests for start/stop lifecycle, error scenarios (port in use, permission denied), state management
   - **Code Review**: Error handling review by senior developer, resource cleanup verification
 
-- [ ] 3.3 Create comprehensive unit tests for HttpServerManager
+- [x] 3.3 Create comprehensive unit tests for HttpServerManager
   - Test server starts on preferred port (3000)
   - Test port fallback when 3000 is in use (3001, 3002, 3003, then OS-assigned)
   - Test server stops and releases port correctly
@@ -76,7 +76,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Minimum 12 test cases covering happy path, error scenarios, security edge cases
   - **Code Review**: Test coverage review, security test verification
 
-- [ ] 4. Integrate HttpServerManager into main process
+- [x] 4. Integrate HttpServerManager into main process
   - Modify `src/main/main.ts` to import and instantiate HttpServerManager
   - Add server initialization in `app.whenReady()` handler (production mode only)
   - Determine correct distPath (check `dist/renderer/` vs `app.asar/dist/renderer/`)
@@ -88,7 +88,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Integration tests for server initialization in production mode, settings loading, error fallback behavior
   - **Code Review**: Main process integration review by senior developer, settings integration verification
 
-- [ ] 4.1 Update window loading logic to use HTTP server
+- [x] 4.1 Update window loading logic to use HTTP server
   - Modify `createWindow()` in `src/main/main.ts` to check server status
   - Use `mainWindow.loadURL('http://localhost:[port]')` in production when server started successfully
   - Maintain existing `mainWindow.loadURL('http://localhost:5173')` for development mode
@@ -99,7 +99,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Integration tests for window loading in production mode, development mode, and fallback scenarios
   - **Code Review**: Window lifecycle review, error handling verification
 
-- [ ] 4.2 Add server cleanup on application quit
+- [x] 4.2 Add server cleanup on application quit
   - Add `app.on('will-quit')` handler to call `httpServerManager.stop()`
   - Ensure port is properly released before application exits
   - Add logging for cleanup operations
@@ -108,7 +108,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Integration tests for cleanup on quit event, port release verification
   - **Code Review**: Resource cleanup review, memory leak verification
 
-- [ ] 5. Implement server IPC handlers
+- [x] 5. Implement server IPC handlers
   - Create `src/main/ipc/serverHandlers.ts` with `registerServerHandlers()` function
   - Implement `IPC.SERVER.GET_SERVER_INFO` handler returning current server state
   - Implement `IPC.SERVER.GET_NETWORK_INFO` handler with conditional logic (only return info if remote access enabled and host is 0.0.0.0)
@@ -118,7 +118,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Unit tests for each IPC handler with mocked server manager, test conditional logic for network info
   - **Code Review**: IPC contract review, data flow verification
 
-- [ ] 5.1 Register server IPC handlers in main process
+- [x] 5.1 Register server IPC handlers in main process
   - Call `registerServerHandlers(httpServerManager)` in `src/main/main.ts` after server initialization
   - Ensure handlers registered before window creation
   - Verify handlers are accessible from renderer process
@@ -127,7 +127,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Integration tests verifying IPC communication from renderer to main for server info
   - **Code Review**: IPC registration order review
 
-- [ ] 6. Update Content Security Policy for HTTP server
+- [x] 6. Update Content Security Policy for HTTP server
   - Modify CSP configuration in `src/main/main.ts` to create dynamic CSP based on server port
   - Implement `getCSP(port: number)` function with all required CSP directives
   - Add `connect-src` allowing `http://localhost:[port]`
@@ -137,7 +137,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Manual testing of CSP violations in DevTools, verify YouTube iframes load, verify static assets load
   - **Code Review**: Security review of CSP configuration, YouTube domain coverage verification
 
-- [ ] 6.1 Configure Referrer-Policy and CORS headers
+- [x] 6.1 Configure Referrer-Policy and CORS headers
   - Implement `configureSecurityHeaders()` function in `src/main/main.ts`
   - Set `Referrer-Policy: strict-origin-when-cross-origin` header for YouTube iframe compatibility
   - Maintain existing CORS headers (`Access-Control-Allow-Origin: *`, etc.)
@@ -147,7 +147,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Manual verification of headers in DevTools, integration test for YouTube iframe loading
   - **Code Review**: Security headers review, YouTube iframe compatibility verification
 
-- [ ] 7. Implement NetworkInfoFooter component
+- [x] 7. Implement NetworkInfoFooter component
   - Create `src/renderer/components/NetworkInfoFooter.tsx` component
   - Implement state management for network info (localIP, port, url)
   - Add useEffect hook to fetch network info via `IPC.SERVER.GET_NETWORK_INFO`
@@ -158,7 +158,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: React component tests for rendering logic, IPC call mocking, conditional display, polling behavior
   - **Code Review**: React component review, state management verification
 
-- [ ] 7.1 Style NetworkInfoFooter component
+- [x] 7.1 Style NetworkInfoFooter component
   - Add CSS for fixed bottom positioning
   - Style with semi-transparent black background (rgba(0, 0, 0, 0.7))
   - Use small gray monospace font for network info text (11px, #999)
@@ -169,7 +169,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Visual regression tests (if available), manual testing on different screen sizes
   - **Code Review**: UI/UX review, accessibility review
 
-- [ ] 7.2 Integrate NetworkInfoFooter into main App component
+- [x] 7.2 Integrate NetworkInfoFooter into main App component
   - Import NetworkInfoFooter in `src/renderer/App.tsx` (or main app component)
   - Add `<NetworkInfoFooter />` at root level of app (after main content)
   - Verify footer appears correctly in both main app and admin panel
@@ -178,7 +178,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Integration tests for app component with footer, visual verification
   - **Code Review**: Component integration review
 
-- [ ] 8. Add Remote Access control to Admin Panel
+- [x] 8. Add Remote Access control to Admin Panel
   - Modify `src/renderer/components/AdminPanel.tsx` to add Network Settings section
   - Add state for `remoteAccessEnabled` boolean and `restartRequired` flag
   - Load `main.remoteAccessEnabled` setting from database on component mount
@@ -189,7 +189,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: React component tests for settings loading, checkbox interaction, conditional info display
   - **Code Review**: Admin panel UI review, settings integration verification
 
-- [ ] 8.1 Implement Remote Access toggle handler
+- [x] 8.1 Implement Remote Access toggle handler
   - Create `handleRemoteAccessToggle()` function to update setting in database
   - Call `IPC.DB_SETTINGS.SET_SETTING` with 'main.remoteAccessEnabled' key
   - Set `restartRequired` flag to true when setting changes
@@ -199,7 +199,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Unit tests for toggle handler with mocked IPC, verify database persistence call
   - **Code Review**: Settings persistence review, error handling verification
 
-- [ ] 8.2 Add restart required notification in Admin Panel
+- [x] 8.2 Add restart required notification in Admin Panel
   - Display warning message when `restartRequired` is true
   - Add "Restart Now" button that calls `app:restart` IPC handler
   - Style warning message with appropriate visual indicator (warning icon, yellow/orange color)
@@ -209,7 +209,7 @@ This implementation plan breaks down the local HTTP server feature into incremen
   - **Tests Required**: Component tests for restart notification display, button click handling
   - **Code Review**: UX review for restart flow, restart handler verification
 
-- [ ] 9. Implement app restart IPC handler (if not exists)
+- [x] 9. Implement app restart IPC handler (if not exists)
   - Check if `app:restart` IPC handler exists in `src/main/ipc/` handlers
   - If missing, implement handler that calls `app.relaunch()` followed by `app.quit()`
   - Register handler in main process IPC setup
