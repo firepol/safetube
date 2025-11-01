@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { NetworkInfoFooter } from '../NetworkInfoFooter';
+import styles from '../NetworkInfoFooter.module.css';
 
 // Mock window.electron
 const mockInvoke = vi.fn();
@@ -97,8 +98,8 @@ describe('NetworkInfoFooter Component', () => {
     const { container } = render(<NetworkInfoFooter />);
 
     await waitFor(() => {
-      expect(container.querySelector('.network-info-footer')).toBeInTheDocument();
-      expect(container.querySelector('.network-info-text')).toBeInTheDocument();
+      expect(container.querySelector(`.${styles['network-info-footer']}`)).toBeInTheDocument();
+      expect(container.querySelector(`.${styles['network-info-text']}`)).toBeInTheDocument();
     });
   });
 

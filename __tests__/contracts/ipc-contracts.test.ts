@@ -127,6 +127,11 @@ describe('IPC Contract Tests', () => {
     const { registerAllHandlers } = await import('../../src/main/services/ipcHandlerRegistry');
     await registerAllHandlers();
 
+    // Register server handlers (these are called in app.on('ready') at runtime,
+    // but we need to register them here for testing)
+    const { registerServerHandlers } = await import('../../src/main/ipc/serverHandlers');
+    registerServerHandlers(null); // Pass null since HTTP server isn't running in tests
+
     // Also import main.ts to register its handlers (they register at module load)
     // We need to catch errors since these files have side effects
     try {

@@ -27,6 +27,8 @@ import { registerAllHandlers } from './services/ipcHandlerRegistry'
 import { DatabaseService } from './services/DatabaseService'
 import { findApprovedWishlistVideo } from './database/queries/wishlistQueries'
 import { IPC } from '../shared/ipc-channels'
+import { HttpServerManager } from './services/HttpServerManager'
+import { registerServerHandlers } from './ipc/serverHandlers'
 
 /**
  * Write video metadata to database for persistence and search
@@ -203,6 +205,9 @@ if (process.platform === 'win32') {
 }
 
 const isDev = process.env.NODE_ENV === 'development'
+
+// Global HTTP server manager instance
+let httpServerManager: HttpServerManager | null = null
 
 // All IPC handlers are now registered in the ipcHandlerRegistry service
 // See registerAllHandlers() call in the app.on('ready') event below
@@ -1902,47 +1907,66 @@ const createWindow = (): void => {
         mainWindow.webContents.openDevTools()
       } else {
 
-        // Try multiple possible paths for the HTML file
-        const possiblePaths = [
-          path.join(__dirname, '../../../dist/renderer/index.html'),
-          path.join(process.cwd(), 'dist/renderer/index.html'),
-          path.join(process.resourcesPath, 'dist/renderer/index.html')
-        ];
+        // Add debugging for renderer process BEFORE loading
+        mainWindow.webContents.on('did-finish-load', () => {
+        });
 
-        let indexPath = null;
-        for (const testPath of possiblePaths) {
-          if (fs.existsSync(testPath)) {
-            indexPath = testPath;
-            break;
+        mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+          log.error('[Main] Failed to load HTML:', errorCode, errorDescription);
+        });
+
+        // Try to load from HTTP server first (if available), then fall back to file://
+        let loaded = false;
+
+        if (httpServerManager) {
+          try {
+            const serverInfo = httpServerManager.getInfo();
+            if (serverInfo && serverInfo.started) {
+              const httpUrl = `http://${serverInfo.host === '0.0.0.0' ? 'localhost' : serverInfo.host}:${serverInfo.port}`;
+              logVerbose(`[Main] Loading built app from HTTP: ${httpUrl}`);
+              await mainWindow.loadURL(httpUrl);
+              loaded = true;
+              log.info('[Main] Successfully loaded app from HTTP server');
+            }
+          } catch (error) {
+            log.warn('[Main] Could not load from HTTP server, falling back to file://', error instanceof Error ? error.message : error);
           }
         }
 
-        if (indexPath) {
+        // Fall back to file:// if HTTP failed
+        if (!loaded) {
+          // Try multiple possible paths for the HTML file
+          const possiblePaths = [
+            path.join(__dirname, '../../../dist/renderer/index.html'),
+            path.join(process.cwd(), 'dist/renderer/index.html'),
+            path.join(process.resourcesPath, 'dist/renderer/index.html')
+          ];
 
-          // Add debugging for renderer process BEFORE loading
-          mainWindow.webContents.on('did-finish-load', () => {
-          });
+          let indexPath = null;
+          for (const testPath of possiblePaths) {
+            if (fs.existsSync(testPath)) {
+              indexPath = testPath;
+              break;
+            }
+          }
 
-          mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
-            log.error('[Main] Failed to load HTML:', errorCode, errorDescription);
-          });
+          if (indexPath) {
+            // Try loading as file:// URL instead of loadFile
+            // On Windows, convert backslashes to forward slashes and ensure proper file:// format
+            const normalizedPath = indexPath.replace(/\\/g, '/');
+            const fileUrl = normalizedPath.startsWith('/')
+              ? `file://${normalizedPath}`
+              : `file:///${normalizedPath}`;
+            logVerbose(`[Main] Loading built app from: ${fileUrl}`);
+            await mainWindow.loadURL(fileUrl);
 
+            // Note: 'crashed' event is not available in this Electron version
 
-          // Try loading as file:// URL instead of loadFile
-          // On Windows, convert backslashes to forward slashes and ensure proper file:// format
-          const normalizedPath = indexPath.replace(/\\/g, '/');
-          const fileUrl = normalizedPath.startsWith('/')
-            ? `file://${normalizedPath}`
-            : `file:///${normalizedPath}`;
-          logVerbose(`[Main] Loading built app from: ${fileUrl}`);
-          await mainWindow.loadURL(fileUrl);
-
-          // Note: 'crashed' event is not available in this Electron version
-
-        } else {
-          log.error('[Main] Could not find index.html in any expected location');
-          // Fallback: load a simple HTML page
-          await mainWindow.loadURL('data:text/html,<h1>SafeTube</h1><p>Loading...</p>');
+          } else {
+            log.error('[Main] Could not find index.html in any expected location');
+            // Fallback: load a simple HTML page
+            await mainWindow.loadURL('data:text/html,<h1>SafeTube</h1><p>Loading...</p>');
+          }
         }
       }
 
@@ -2041,6 +2065,35 @@ app.on('ready', async () => {
     log.error('[Main] Error during first-time setup:', error);
   }
 
+  // Initialize HTTP server for serving renderer over HTTP instead of file://
+  try {
+    // TODO: Get remoteAccess setting from database when Admin Panel control is added
+    // For now, default to false to keep HTTP server bound to localhost only
+    const remoteAccessEnabled = false;
+
+    log.info('[Main] Initializing HTTP server...', {
+      remoteAccessEnabled
+    });
+
+    // Determine dist path (local or asar)
+    const distPath = isDev
+      ? path.join(__dirname, '../../dist/out/main')
+      : path.join(process.resourcesPath, 'app.asar.unpacked/dist/out/main');
+
+    // Create and start HTTP server
+    httpServerManager = new HttpServerManager({
+      port: 3000,
+      host: remoteAccessEnabled ? '0.0.0.0' : '127.0.0.1',
+      distPath
+    });
+
+    const serverInfo = await httpServerManager.start();
+    log.info('[Main] HTTP server started successfully:', serverInfo);
+  } catch (error) {
+    log.error('[Main] Failed to start HTTP server:', error instanceof Error ? error.message : error);
+    // Continue without HTTP server - will fallback to file:// protocol
+  }
+
   // Run background channel ID migration (non-blocking)
   try {
     migrateChannelIds();
@@ -2051,6 +2104,9 @@ app.on('ready', async () => {
   // Register all IPC handlers
   try {
     registerAllHandlers();
+
+    // Register server IPC handlers (needs httpServerManager instance)
+    registerServerHandlers(httpServerManager);
   } catch (error) {
     log.error('[Main] Error registering IPC handlers:', error);
   }
@@ -2106,6 +2162,19 @@ app.on('ready', async () => {
   }
 
   createWindow()
+})
+
+// Clean up HTTP server before quitting
+app.on('before-quit', async () => {
+  if (httpServerManager) {
+    try {
+      log.info('[Main] Stopping HTTP server...')
+      await httpServerManager.stop()
+      log.info('[Main] HTTP server stopped')
+    } catch (error) {
+      log.error('[Main] Error stopping HTTP server:', error instanceof Error ? error.message : error)
+    }
+  }
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common
