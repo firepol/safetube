@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IPC } from '../../shared/ipc-channels';
+import styles from './NetworkInfoFooter.module.css';
 
 interface NetworkInfo {
   localIP: string;
@@ -16,7 +16,7 @@ export function NetworkInfoFooter() {
   useEffect(() => {
     async function fetchNetworkInfo() {
       try {
-        const info = await window.electron.invoke(IPC.SERVER.GET_NETWORK_INFO);
+        const info = await (window.electron as any).invoke('server:get-network-info');
         setNetworkInfo(info);
       } catch (error) {
         console.error('[NetworkInfoFooter] Error fetching network info:', error);
@@ -37,8 +37,8 @@ export function NetworkInfoFooter() {
   }
 
   return (
-    <div className="network-info-footer">
-      <span className="network-info-text">
+    <div className={styles['network-info-footer']}>
+      <span className={styles['network-info-text']}>
         Network: {networkInfo.url}
       </span>
     </div>

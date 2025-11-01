@@ -1,0 +1,16 @@
+.network-info-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  padding: 4px 12px;
+  text-align: center;
+  z-index: 1000;
+}
+
+.network-info-text {
+  color: #999;
+  font-size: 11px;
+  font-family: monospace;
+}

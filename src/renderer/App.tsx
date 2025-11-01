@@ -5,6 +5,7 @@ import { PlayerRouter } from './pages/PlayerRouter';
 import { TimeUpPage } from './pages/TimeUpPage';
 import { SourcePage } from './pages/SourcePage';
 import { AdminPage } from './pages/AdminPage';
+import { NetworkInfoFooter } from './components/NetworkInfoFooter';
 import { WatchedVideosPage } from './components/video/WatchedVideosPage';
 import { HistoryPage } from './pages/HistoryPage';
 import { SearchResultsPage } from './pages/SearchResultsPage';
@@ -222,6 +223,7 @@ function App() {
                   <Route path="*" element={<ErrorFallbackPage />} />
                 </Routes>
               </ErrorBoundary>
+              <NetworkInfoFooter />
             </div>
           </HashRouter>
         </WishlistProvider>
