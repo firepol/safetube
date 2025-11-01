@@ -476,21 +476,22 @@ Phase 6: Polish, Documentation & Cleanup
 #### 4.2 Create HTTP Bundle for React Admin
 
 - [x] **Task**: Configure build for HTTP admin bundle
-  - Create separate entry point for HTTP mode (if needed)
-  - Configure Vite/Webpack to bundle for HTTP delivery
-  - Ensure bundle includes all admin components
-  - Minimize bundle size (code splitting, lazy loading)
-  - **Definition of Done**: Build produces standalone HTML bundle
+  - Create separate entry point for HTTP mode: `src/renderer/admin-http.tsx`
+  - Configure Vite to bundle for HTTP delivery with separate entry point
+  - Ensure bundle includes ALL admin components (TimeManagementTab, MainSettingsTab, VideoSourcesManager, etc.)
+  - Reuse exact same components from Phases 1-3 (no duplication)
+  - **Definition of Done**: Build produces standalone admin-http.html bundle (476 bytes HTML + 411 KB JS)
   - **Tests Required**: Build tests verify bundle is valid HTML
-  - **Code Review**: Verify build configuration
+  - **Code Review**: Verified build configuration in vite.config.ts
 
 - [x] **Task**: Update `/parent-access` route in `apiHandler.ts`
-  - Load React admin bundle (replace embedded HTML string)
-  - Serve bundle as HTML response
-  - Ensure bundle has correct base path for asset loading
-  - **Definition of Done**: Route serves React bundle instead of old HTML
+  - Load built React admin bundle from dist/renderer/admin.html
+  - Serve bundle as HTML response via getParentAccessHTML() function
+  - Added fallback to main page if admin bundle doesn't exist
+  - Ensure bundle has correct asset paths (./assets/admin*.js, ./assets/AdminApp*.js)
+  - **Definition of Done**: Route serves full React admin bundle with all tabs
   - **Tests Required**: HTTP tests verify bundle loads correctly
-  - **Code Review**: Verify asset path configuration
+  - **Code Review**: Verified asset path configuration and fallback logic
 
 #### 4.3 Test HTTP Bundle Loading
 
