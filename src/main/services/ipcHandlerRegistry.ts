@@ -1023,6 +1023,20 @@ export function registerSystemHandlers() {
       throw error;
     }
   });
+
+  // App restart handler
+  ipcMain.handle(IPC.APP.RESTART, async () => {
+    try {
+      log.info('[IPC] App restart requested');
+      const { app } = require('electron');
+      // Relaunch the app and then quit the current instance
+      app.relaunch();
+      app.quit();
+    } catch (error) {
+      log.error('[IPC] Error restarting app:', error instanceof Error ? error.message : error);
+      throw error;
+    }
+  });
 }
 
 // Download Handlers

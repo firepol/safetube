@@ -262,6 +262,9 @@ export interface ElectronAPI {
 
   // Video window functionality
   openVideoInWindow: (url: string) => Promise<{ success: boolean }>;
+
+  // Generic invoke for IPC communication
+  invoke: (channel: string, ...args: any[]) => Promise<any>;
 }
 declare global {
   interface Window {

@@ -163,6 +163,7 @@ export interface MainSettings {
   adminPassword?: string; // Admin access password
   enableVerboseLogging?: boolean; // Enable detailed logging
   allowYouTubeClicksToOtherVideos?: boolean; // Allow clicks to non-approved channels (default: false - most restrictive)
+  remoteAccessEnabled?: boolean; // Enable HTTP server on 0.0.0.0 for LAN access (default: false - localhost only)
 }
 
 // Download status tracking

@@ -2067,9 +2067,8 @@ app.on('ready', async () => {
 
   // Initialize HTTP server for serving renderer over HTTP instead of file://
   try {
-    // TODO: Get remoteAccess setting from database when Admin Panel control is added
-    // For now, default to false to keep HTTP server bound to localhost only
-    const remoteAccessEnabled = false;
+    const settings = await readMainSettings();
+    const remoteAccessEnabled = settings?.remoteAccessEnabled ?? false;
 
     log.info('[Main] Initializing HTTP server...', {
       remoteAccessEnabled

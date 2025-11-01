@@ -30,10 +30,12 @@ export const AdminPage: React.FC = () => {
     adminPassword?: string;
     enableVerboseLogging?: boolean;
     allowYouTubeClicksToOtherVideos?: boolean;
+    remoteAccessEnabled?: boolean;
   }>({});
   const [originalAdminPasswordHash, setOriginalAdminPasswordHash] = useState<string>('');
   const [isLoadingMainSettings, setIsLoadingMainSettings] = useState(false);
   const [mainSettingsSaveMessage, setMainSettingsSaveMessage] = useState<string | null>(null);
+  const [restartRequired, setRestartRequired] = useState(false);
 
   useEffect(() => {
     // Always start unauthenticated - no need to check
@@ -288,6 +290,10 @@ export const AdminPage: React.FC = () => {
           // Clear the password field after successful save
           setMainSettings(prev => ({ ...prev, adminPassword: '' }));
         }
+
+        // Set restart required flag if remoteAccessEnabled was changed
+        // This will be needed to restart the HTTP server with the new binding
+        setRestartRequired(true);
 
         // Clear message after 3 seconds
         setTimeout(() => setMainSettingsSaveMessage(null), 3000);
@@ -763,6 +769,68 @@ export const AdminPage: React.FC = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* Network Settings Section */}
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="flex items-start">
+                      <input
+                        type="checkbox"
+                        id="remoteAccessEnabled"
+                        checked={mainSettings.remoteAccessEnabled || false}
+                        onChange={(e) => setMainSettings(prev => ({ ...prev, remoteAccessEnabled: e.target.checked }))}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
+                      />
+                      <div className="ml-2 flex-1">
+                        <label htmlFor="remoteAccessEnabled" className="block text-sm font-medium text-gray-700">
+                          Enable Remote LAN Access
+                        </label>
+                        <div className="mt-2 space-y-2">
+                          <p className="text-xs text-gray-600">
+                            <strong>When unchecked (default, most secure):</strong> The app is only accessible from localhost (127.0.0.1). Remote devices cannot access the app.
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            <strong>When checked (less secure):</strong> The app is accessible from other devices on your local network. Other devices can access the app using your computer's IP address.
+                          </p>
+                          {mainSettings.remoteAccessEnabled && (
+                            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                              <p className="text-xs text-blue-800 font-medium">
+                                ℹ️ When remote access is enabled, the app will be accessible from other devices on your LAN. A network info footer will display the access URL.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Restart Required Notification */}
+                  {restartRequired && (
+                    <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                      <div className="flex items-start">
+                        <div className="flex-1">
+                          <p className="text-sm font-medium text-yellow-800">
+                            ⚠️ App Restart Required
+                          </p>
+                          <p className="mt-1 text-sm text-yellow-700">
+                            Network settings have been changed. Please restart the app for changes to take effect.
+                          </p>
+                        </div>
+                        <button
+                          onClick={async () => {
+                            try {
+                              await window.electron.invoke('app:restart');
+                            } catch (error) {
+                              console.error('Error restarting app:', error);
+                              setError('Failed to restart app');
+                            }
+                          }}
+                          className="ml-2 whitespace-nowrap px-3 py-2 bg-yellow-600 text-white text-sm font-medium rounded-md hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition-colors duration-200"
+                        >
+                          Restart Now
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Save Button */}
                   <div className="pt-4 border-t border-gray-200">
