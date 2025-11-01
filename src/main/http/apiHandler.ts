@@ -20,7 +20,11 @@ function getParentAccessHTML(): string {
     // Try to load the built admin bundle first
     const distPath = path.join(__dirname, '../../dist/renderer/admin-http.html');
     if (fs.existsSync(distPath)) {
-      return fs.readFileSync(distPath, 'utf-8');
+      let html = fs.readFileSync(distPath, 'utf-8');
+      // Rewrite relative asset paths to absolute paths so they work from /admin and /parent-access routes
+      html = html.replace(/src="\.\/assets\//g, 'src="/assets/');
+      html = html.replace(/href="\.\/assets\//g, 'href="/assets/');
+      return html;
     }
   } catch (e) {
     log.warn('[API] Failed to load built admin bundle, falling back to main page:', e);
@@ -30,7 +34,11 @@ function getParentAccessHTML(): string {
   try {
     const mainPath = path.join(__dirname, '../../dist/renderer/index.html');
     if (fs.existsSync(mainPath)) {
-      return fs.readFileSync(mainPath, 'utf-8');
+      let html = fs.readFileSync(mainPath, 'utf-8');
+      // Rewrite relative asset paths to absolute paths
+      html = html.replace(/src="\.\/assets\//g, 'src="/assets/');
+      html = html.replace(/href="\.\/assets\//g, 'href="/assets/');
+      return html;
     }
   } catch (e) {
     log.error('[API] Failed to load main page:', e);
