@@ -4,9 +4,12 @@ import { VideoSourceForm } from './VideoSourceForm';
 import { VideoSourceList } from './VideoSourceList';
 import { SourceValidationService } from '../../services/sourceValidationService';
 import { VideoSource, VideoSourceFormData, VideoSourceManagementState } from '@/shared/types';
-import { DatabaseClient } from '@/renderer/services/DatabaseClient';
+import { useAdminDataAccess } from '@/renderer/hooks/admin/useAdminDataAccess';
+import { useAdminContext } from '@/renderer/contexts/AdminContext';
 
 export const VideoSourcesManager: React.FC = () => {
+  const dataAccess = useAdminDataAccess();
+  const { addMessage } = useAdminContext();
   const [state, setState] = useState<VideoSourceManagementState>({
     sources: [],
     isLoading: true,
@@ -17,19 +20,20 @@ export const VideoSourcesManager: React.FC = () => {
 
   useEffect(() => {
     loadVideoSources();
-  }, []);
+  }, [dataAccess]);
 
   const loadVideoSources = async () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      const sources = await window.electron.videoSourcesGetAll();
+      const sources = await dataAccess.getVideoSources();
       setState(prev => ({ ...prev, sources, isLoading: false }));
     } catch (error) {
       console.error('Error loading video sources:', error);
-      setState(prev => ({ 
-        ...prev, 
-        isLoading: false, 
-        error: 'Failed to load video sources' 
+      addMessage('Failed to load video sources', 'error');
+      setState(prev => ({
+        ...prev,
+        isLoading: false,
+        error: 'Failed to load video sources'
       }));
     }
   };
@@ -69,19 +73,19 @@ export const VideoSourcesManager: React.FC = () => {
     }
 
     try {
-      // Remove from DB
-      await DatabaseClient.deleteSource(sourceId);
       // Remove from local state
       const updatedSources = state.sources.filter(s => s.id !== sourceId);
-      // Reassign position and persist
-      await persistPosition(updatedSources);
+      // Save all remaining sources (positions will be handled by backend)
+      await dataAccess.saveVideoSources(updatedSources);
       setState(prev => ({ ...prev, sources: updatedSources }));
       SourceValidationService.clearCache();
+      addMessage('Video source deleted successfully', 'success', 3000);
     } catch (error) {
       console.error('Error deleting video source:', error);
-      setState(prev => ({ 
-        ...prev, 
-        error: 'Failed to delete video source' 
+      addMessage('Failed to delete video source', 'error');
+      setState(prev => ({
+        ...prev,
+        error: 'Failed to delete video source'
       }));
     }
   };
@@ -96,27 +100,17 @@ export const VideoSourcesManager: React.FC = () => {
     try {
       const updatedSources = [...state.sources];
       [updatedSources[currentIndex], updatedSources[newIndex]] = [updatedSources[newIndex], updatedSources[currentIndex]];
-      // Reassign position and persist
-      await persistPosition(updatedSources);
+      // Save all sources (positions will be handled by backend based on array order)
+      await dataAccess.saveVideoSources(updatedSources);
       setState(prev => ({ ...prev, sources: updatedSources }));
+      addMessage('Video source order updated', 'success', 3000);
     } catch (error) {
       console.error('Error moving video source:', error);
-      setState(prev => ({ 
-        ...prev, 
-        error: 'Failed to move video source' 
+      addMessage('Failed to move video source', 'error');
+      setState(prev => ({
+        ...prev,
+        error: 'Failed to move video source'
       }));
-    }
-  };
-
-  // Helper to reassign and persist position for all sources
-  const persistPosition = async (sources: VideoSource[]) => {
-    for (let i = 0; i < sources.length; i++) {
-      const s = sources[i];
-      // Only update if position is different or missing (assume undefined for new/migrated sources)
-      if ((s as any).position !== i + 1) {
-        await DatabaseClient.updateSource(s.id, { position: i + 1 });
-        // Do not assign to s.position, keep UI type clean
-      }
     }
   };
 
@@ -195,7 +189,7 @@ export const VideoSourcesManager: React.FC = () => {
         });
       }
 
-      await window.electron.videoSourcesSaveAll(updatedSources);
+      await dataAccess.saveVideoSources(updatedSources);
       setState(prev => ({
         ...prev,
         sources: updatedSources,
@@ -205,11 +199,17 @@ export const VideoSourcesManager: React.FC = () => {
 
       // Clear source validation cache to immediately reflect the added/updated source
       SourceValidationService.clearCache();
+      addMessage(
+        state.isAdding ? 'Video source added successfully' : 'Video source updated successfully',
+        'success',
+        3000
+      );
     } catch (error) {
       console.error('Error saving video source:', error);
-      setState(prev => ({ 
-        ...prev, 
-        error: 'Failed to save video source' 
+      addMessage('Failed to save video source', 'error');
+      setState(prev => ({
+        ...prev,
+        error: 'Failed to save video source'
       }));
     }
   };
