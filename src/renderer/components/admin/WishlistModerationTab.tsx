@@ -60,17 +60,18 @@ export const WishlistModerationTab: React.FC = () => {
     load();
   }, [load]);
 
+  // Reload data when returning to the wishlist moderation tab
+  useEffect(() => {
+    load();
+    setSelectedVideos(new Set());
+  }, [activeTab, load]);
+
   // Handle hook errors
   useEffect(() => {
     if (hookError) {
       setError(hookError);
     }
   }, [hookError]);
-
-  // Clear selection when tab changes
-  useEffect(() => {
-    setSelectedVideos(new Set());
-  }, [activeTab]);
 
 
 
@@ -86,6 +87,8 @@ export const WishlistModerationTab: React.FC = () => {
     try {
       await approve(videoId);
       setError(null);
+      // Refresh data after approval
+      await load();
     } catch (err) {
       // Error is already set by the hook
     }
@@ -105,6 +108,8 @@ export const WishlistModerationTab: React.FC = () => {
       await deny(denyDialog.video.video_id, reason);
       setDenyDialog({ isOpen: false, video: null });
       setError(null);
+      // Refresh data after denial
+      await load();
     } catch (err) {
       // Error is already set by the hook
     }
@@ -126,7 +131,13 @@ export const WishlistModerationTab: React.FC = () => {
 
   const handleWatchInBrowser = async (videoUrl: string) => {
     try {
-      await window.electron.openVideoInWindow(videoUrl, { disableBlocking: true });
+      // Check if running in Electron mode
+      if (window.electron && window.electron.openVideoInWindow) {
+        await window.electron.openVideoInWindow(videoUrl, { disableBlocking: true });
+      } else {
+        // HTTP mode: open URL directly in new window
+        window.open(videoUrl, '_blank');
+      }
     } catch (err) {
       console.error('Error opening video window:', err);
       setError('Failed to open video in browser. Please try again.');
@@ -180,6 +191,8 @@ export const WishlistModerationTab: React.FC = () => {
       // Clear selection
       setSelectedVideos(new Set());
       setError(null);
+      // Refresh data after bulk approval
+      await load();
     } catch (err) {
       // Error is already set by the hook
     } finally {
@@ -211,6 +224,8 @@ export const WishlistModerationTab: React.FC = () => {
       // Clear selection
       setSelectedVideos(new Set());
       setError(null);
+      // Refresh data after bulk denial
+      await load();
     } catch (err) {
       // Error is already set by the hook
     } finally {
@@ -282,20 +297,11 @@ export const WishlistModerationTab: React.FC = () => {
       <div className="bg-white rounded-lg shadow-lg">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900">Wishlist Moderation</h2>
-              <p className="text-sm text-gray-600 mt-1">
-                Review and moderate your child's video requests
-              </p>
-            </div>
-            <button
-              onClick={load}
-              disabled={isLoading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLoading ? 'Loading...' : 'Refresh'}
-            </button>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">Wishlist Moderation</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Review and moderate your child's video requests
+            </p>
           </div>
         </div>
 

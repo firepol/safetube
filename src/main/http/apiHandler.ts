@@ -10,7 +10,6 @@ import log from '../logger';
 import { readMainSettings, writeMainSettings } from '../fileUtils';
 import { readTimeLimits } from '../fileUtils';
 import DatabaseService from '../services/DatabaseService';
-import WishlistService from '../services/wishlistService';
 import { YouTubeAPI } from '../youtube-api';
 import { extractChannelId, extractPlaylistId } from '../../shared/videoSourceUtils';
 
@@ -897,7 +896,6 @@ async function handleApproveWishlistItem(videoId: string): Promise<ApiResponse> 
     log.debug(`[API] Approving wishlist item: ${videoId}`);
 
     const dbService = (DatabaseService as any).getInstance();
-    const wishlistService = (WishlistService as any).getInstance();
 
     // Update the wishlist item status
     const result = await dbService.run(`
@@ -909,9 +907,6 @@ async function handleApproveWishlistItem(videoId: string): Promise<ApiResponse> 
     if (!result || result.changes === 0) {
       return { status: 404, body: { error: 'Wishlist item not found' } };
     }
-
-    // Emit update event
-    wishlistService.emitWishlistUpdate();
 
     log.debug(`[API] Successfully approved wishlist item: ${videoId}`);
     return { status: 200, body: { success: true } };
@@ -929,7 +924,6 @@ async function handleDenyWishlistItem(videoId: string, reason?: string): Promise
     log.debug(`[API] Denying wishlist item: ${videoId}${reason ? ` with reason: ${reason}` : ''}`);
 
     const dbService = (DatabaseService as any).getInstance();
-    const wishlistService = (WishlistService as any).getInstance();
 
     // Update the wishlist item status
     const result = await dbService.run(`
@@ -941,9 +935,6 @@ async function handleDenyWishlistItem(videoId: string, reason?: string): Promise
     if (!result || result.changes === 0) {
       return { status: 404, body: { error: 'Wishlist item not found' } };
     }
-
-    // Emit update event
-    wishlistService.emitWishlistUpdate();
 
     log.debug(`[API] Successfully denied wishlist item: ${videoId}`);
     return { status: 200, body: { success: true } };
@@ -966,7 +957,6 @@ async function handleBulkApproveWishlist(body: any): Promise<ApiResponse> {
     log.debug(`[API] Bulk approving ${videoIds.length} wishlist items`);
 
     const dbService = (DatabaseService as any).getInstance();
-    const wishlistService = (WishlistService as any).getInstance();
 
     const placeholders = videoIds.map(() => '?').join(',');
     const result = await dbService.run(`
@@ -974,9 +964,6 @@ async function handleBulkApproveWishlist(body: any): Promise<ApiResponse> {
       SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = 'admin'
       WHERE video_id IN (${placeholders})
     `, videoIds);
-
-    // Emit update event
-    wishlistService.emitWishlistUpdate();
 
     log.debug(`[API] Successfully bulk approved ${videoIds.length} wishlist items`);
     return { status: 200, body: { success: true, count: result?.changes || 0 } };
@@ -1001,18 +988,13 @@ async function handleBulkDenyWishlist(body: any): Promise<ApiResponse> {
     log.debug(`[API] Bulk denying ${videoIds.length} wishlist items${reason ? ` with reason: ${reason}` : ''}`);
 
     const dbService = (DatabaseService as any).getInstance();
-    const wishlistService = (WishlistService as any).getInstance();
 
     const placeholders = videoIds.map(() => '?').join(',');
-    const params = [...videoIds, reason || null];
     const result = await dbService.run(`
       UPDATE wishlist
       SET status = 'denied', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = 'admin', denial_reason = ?
       WHERE video_id IN (${placeholders})
     `, [reason || null, ...videoIds]);
-
-    // Emit update event
-    wishlistService.emitWishlistUpdate();
 
     log.debug(`[API] Successfully bulk denied ${videoIds.length} wishlist items`);
     return { status: 200, body: { success: true, count: result?.changes || 0 } };
