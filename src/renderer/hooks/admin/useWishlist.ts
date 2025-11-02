@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { WishlistItem, WishlistStatus } from '@/shared/types';
 import { useAdminDataAccess } from './useAdminDataAccess';
 
@@ -38,7 +38,7 @@ export function useWishlist(): UseWishlistReturn {
   const [isOperating, setIsOperating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -62,9 +62,9 @@ export function useWishlist(): UseWishlistReturn {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [dataAccess]);
 
-  const loadByStatus = async (status: WishlistStatus) => {
+  const loadByStatus = useCallback(async (status: WishlistStatus) => {
     try {
       setIsLoading(true);
       setError(null);
@@ -81,9 +81,9 @@ export function useWishlist(): UseWishlistReturn {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [dataAccess]);
 
-  const approve = async (videoId: string) => {
+  const approve = useCallback(async (videoId: string) => {
     try {
       setIsOperating(true);
       setError(null);
@@ -106,9 +106,9 @@ export function useWishlist(): UseWishlistReturn {
     } finally {
       setIsOperating(false);
     }
-  };
+  }, [dataAccess]);
 
-  const deny = async (videoId: string, reason?: string) => {
+  const deny = useCallback(async (videoId: string, reason?: string) => {
     try {
       setIsOperating(true);
       setError(null);
@@ -131,9 +131,9 @@ export function useWishlist(): UseWishlistReturn {
     } finally {
       setIsOperating(false);
     }
-  };
+  }, [dataAccess]);
 
-  const bulkApprove = async (videoIds: string[]) => {
+  const bulkApprove = useCallback(async (videoIds: string[]) => {
     try {
       setIsOperating(true);
       setError(null);
@@ -156,9 +156,9 @@ export function useWishlist(): UseWishlistReturn {
     } finally {
       setIsOperating(false);
     }
-  };
+  }, [dataAccess]);
 
-  const bulkDeny = async (videoIds: string[], reason?: string) => {
+  const bulkDeny = useCallback(async (videoIds: string[], reason?: string) => {
     try {
       setIsOperating(true);
       setError(null);
@@ -181,7 +181,7 @@ export function useWishlist(): UseWishlistReturn {
     } finally {
       setIsOperating(false);
     }
-  };
+  }, [dataAccess]);
 
   return {
     wishlistItems,
