@@ -148,6 +148,15 @@ export const WishlistModerationTab: React.FC = () => {
     }
   };
 
+  const handleWatchInBrowser = async (videoUrl: string) => {
+    try {
+      await window.electron.openVideoInWindow(videoUrl, { disableBlocking: false });
+    } catch (err) {
+      console.error('Error opening video window:', err);
+      setError('Failed to open video in browser. Please try again.');
+    }
+  };
+
   // Selection handlers
   const handleSelectionChange = (videoId: string, selected: boolean) => {
     const newSelection = new Set(selectedVideos);
@@ -433,6 +442,7 @@ export const WishlistModerationTab: React.FC = () => {
         video={previewModal.video}
         onApprove={handlePreviewModalApprove}
         onDeny={handlePreviewModalDeny}
+        onWatchInBrowser={handleWatchInBrowser}
       />
 
       {/* Deny Reason Dialog */}

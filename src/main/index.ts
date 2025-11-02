@@ -1444,8 +1444,10 @@ ipcMain.handle(IPC.VIDEO_LOADING.LOAD_SOURCES_FOR_KID_SCREEN, async () => {
 });
 
 // Handler for opening external videos in a controlled Electron window
-ipcMain.handle(IPC.UI.OPEN_VIDEO_IN_WINDOW, async (_, videoUrl: string) => {
+ipcMain.handle(IPC.UI.OPEN_VIDEO_IN_WINDOW, async (_, videoUrl: string, options?: { disableBlocking?: boolean }) => {
   try {
+    const disableBlocking = options?.disableBlocking ?? false;
+
     const videoWindow = new BrowserWindow({
       width: 1280,
       height: 720,
@@ -1464,61 +1466,67 @@ ipcMain.handle(IPC.UI.OPEN_VIDEO_IN_WINDOW, async (_, videoUrl: string) => {
       initialLoadComplete = true;
       console.log('[Main] Initial video page load complete');
 
-      // Inject CSS to disable pointer events on all links and clickable elements
-      videoWindow.webContents.insertCSS(`
-        a, button:not(video *):not(.ytp-button):not([class*="player"]):not([class*="video"]) {
-          pointer-events: none !important;
-          cursor: default !important;
-        }
-        /* Allow only video player controls */
-        video, video *, .ytp-button, [class*="html5-video-player"] * {
-          pointer-events: auto !important;
-        }
-      `).catch(err => console.error('[Main] Failed to inject CSS:', err));
-
-      // Inject JavaScript to block all navigation attempts
-      videoWindow.webContents.executeJavaScript(`
-        document.addEventListener('click', (e) => {
-          // Allow clicks on video player elements
-          if (e.target.closest('video') ||
-              e.target.closest('.html5-video-player') ||
-              e.target.classList.contains('ytp-button')) {
-            return;
+      // Only apply navigation blocking if not disabled
+      if (!disableBlocking) {
+        // Inject CSS to disable pointer events on all links and clickable elements
+        videoWindow.webContents.insertCSS(`
+          a, button:not(video *):not(.ytp-button):not([class*="player"]):not([class*="video"]) {
+            pointer-events: none !important;
+            cursor: default !important;
           }
-          // Block all other clicks
-          e.preventDefault();
-          e.stopPropagation();
-          console.log('[Video Window] Blocked click on:', e.target);
-        }, true);
-      `).catch(err => console.error('[Main] Failed to inject JavaScript:', err));
+          /* Allow only video player controls */
+          video, video *, .ytp-button, [class*="html5-video-player"] * {
+            pointer-events: auto !important;
+          }
+        `).catch(err => console.error('[Main] Failed to inject CSS:', err));
+
+        // Inject JavaScript to block all navigation attempts
+        videoWindow.webContents.executeJavaScript(`
+          document.addEventListener('click', (e) => {
+            // Allow clicks on video player elements
+            if (e.target.closest('video') ||
+                e.target.closest('.html5-video-player') ||
+                e.target.classList.contains('ytp-button')) {
+              return;
+            }
+            // Block all other clicks
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[Video Window] Blocked click on:', e.target);
+          }, true);
+        `).catch(err => console.error('[Main] Failed to inject JavaScript:', err));
+      }
     });
 
     // Block ALL navigation after initial load using did-start-navigation (more comprehensive)
-    videoWindow.webContents.on('did-start-navigation', (event, navigationUrl) => {
-      if (initialLoadComplete) {
-        event.preventDefault();
-        console.log('[Main] Blocked navigation to:', navigationUrl);
-      }
-    });
+    // Only apply if blocking is enabled
+    if (!disableBlocking) {
+      videoWindow.webContents.on('did-start-navigation', (event, navigationUrl) => {
+        if (initialLoadComplete) {
+          event.preventDefault();
+          console.log('[Main] Blocked navigation to:', navigationUrl);
+        }
+      });
 
-    // Also block will-navigate as backup
-    videoWindow.webContents.on('will-navigate', (event, navigationUrl) => {
-      if (initialLoadComplete) {
-        event.preventDefault();
-        console.log('[Main] Blocked will-navigate to:', navigationUrl);
-      }
-    });
+      // Also block will-navigate as backup
+      videoWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+        if (initialLoadComplete) {
+          event.preventDefault();
+          console.log('[Main] Blocked will-navigate to:', navigationUrl);
+        }
+      });
 
-    // Block new windows from opening (related videos, advertisements)
-    videoWindow.webContents.setWindowOpenHandler(({ url }) => {
-      console.log('[Main] Blocked attempt to open new window for:', url);
-      return { action: 'deny' };
-    });
+      // Block new windows from opening (related videos, advertisements)
+      videoWindow.webContents.setWindowOpenHandler(({ url }) => {
+        console.log('[Main] Blocked attempt to open new window for:', url);
+        return { action: 'deny' };
+      });
+    }
 
     // Load the video URL
     await videoWindow.loadURL(videoUrl);
 
-    console.log('[Main] Video window opened for:', videoUrl);
+    console.log('[Main] Video window opened for:', videoUrl, disableBlocking ? '(blocking disabled)' : '(blocking enabled)');
     return { success: true };
   } catch (error) {
     console.error('[Main] Error opening video window:', error);

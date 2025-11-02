@@ -532,7 +532,7 @@ contextBridge.exposeInMainWorld(
     pathJoin: (...paths: string[]) => ipcRenderer.invoke(IPC.UTILS.PATH_JOIN, ...paths),
 
     // Open video in external window
-    openVideoInWindow: (url: string) => ipcRenderer.invoke(IPC.UI.OPEN_VIDEO_IN_WINDOW, url),
+    openVideoInWindow: (url: string, options?: { disableBlocking?: boolean }) => ipcRenderer.invoke(IPC.UI.OPEN_VIDEO_IN_WINDOW, url, options),
 
     // Search handlers
     searchDatabase: (query: string, sourceId?: string) => ipcRenderer.invoke(IPC.SEARCH.DATABASE, query, sourceId),

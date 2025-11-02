@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { SearchBar } from '../components/search/SearchBar';
+import { SearchVideoPreviewModal } from '../components/search/SearchVideoPreviewModal';
 import { VideoCardBase, VideoCardBaseProps } from '../components/video/VideoCardBase';
 import { TimeIndicator, TimeTrackingState } from '../components/layout/TimeIndicator';
 import { BreadcrumbNavigation, BreadcrumbItem } from '../components/layout/BreadcrumbNavigation';
@@ -19,6 +20,11 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [timeTrackingState, setTimeTrackingState] = useState<TimeTrackingState | undefined>(undefined);
   const { isInWishlist } = useWishlist();
+
+  // Video preview modal state
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<SearchResult | null>(null);
+  const [isAddingToWishlist, setIsAddingToWishlist] = useState(false);
 
   const query = searchParams.get('q') || '';
   const sourceId = searchParams.get('source');
@@ -142,9 +148,13 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
     performYouTubeSearch(query);
   }, [query, performYouTubeSearch]);
 
-  // Handle video click
+  // Handle video click - opens preview modal
   const handleVideoClick = useCallback((video: VideoCardBaseProps) => {
-    if (video.isApprovedSource) {
+    const searchResult = results.find(r => r.id === video.id);
+    if (searchResult) {
+      setSelectedVideo(searchResult);
+      setIsPreviewOpen(true);
+    } else if (video.isApprovedSource) {
       // Navigate to video player for approved sources
       navigate(`/player/${encodeURIComponent(video.id)}`, {
         state: {
@@ -152,12 +162,75 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
           returnTo: `/search?q=${encodeURIComponent(query)}${sourceId ? `&source=${sourceId}` : ''}`,
         }
       });
-    } else {
-      // Show video details dialog for unapproved sources
-      // This will be implemented when we extend VideoCardBase
-      console.log('Show video details dialog for:', video);
     }
-  }, [navigate, query, sourceId]);
+  }, [navigate, query, sourceId, results]);
+
+  // Handle watch in browser with blocking enabled
+  const handleWatchInBrowser = useCallback(async (videoUrl: string) => {
+    try {
+      const result = await window.electron.openVideoInWindow(videoUrl, { disableBlocking: false });
+      if (!result.success) {
+        setError('Failed to open video window');
+      }
+    } catch (err) {
+      console.error('Error opening video window:', err);
+      setError(err instanceof Error ? err.message : 'Failed to open video window');
+    }
+  }, []);
+
+  // Handle watch with no restrictions (blocking disabled)
+  const handleWatchNoRestrictions = useCallback(async (videoUrl: string) => {
+    try {
+      const result = await window.electron.openVideoInWindow(videoUrl, { disableBlocking: true });
+      if (!result.success) {
+        setError('Failed to open video window');
+      }
+    } catch (err) {
+      console.error('Error opening video window:', err);
+      setError(err instanceof Error ? err.message : 'Failed to open video window');
+    }
+  }, []);
+
+  // Handle add to wishlist
+  const handleAddToWishlist = useCallback(async (video: SearchResult) => {
+    setIsAddingToWishlist(true);
+    try {
+      const result = await window.electron.wishlistAdd({
+        id: video.id,
+        title: video.title,
+        thumbnail: video.thumbnail,
+        description: video.description || '',
+        channelId: video.channelId || '',
+        channelName: video.channelName || '',
+        duration: video.duration,
+        url: video.url || '',
+        publishedAt: video.publishedAt || new Date().toISOString(),
+      });
+
+      if (result.success) {
+        // Update local state to reflect wishlist addition
+        setResults(prevResults =>
+          prevResults.map(v =>
+            v.id === video.id
+              ? { ...v, isInWishlist: true, wishlistStatus: 'pending' as const }
+              : v
+          )
+        );
+        // Update selected video state
+        setSelectedVideo(prev => prev && prev.id === video.id
+          ? { ...prev, isInWishlist: true, wishlistStatus: 'pending' as const }
+          : prev
+        );
+      } else {
+        setError(result.error || 'Failed to add to wishlist');
+      }
+    } catch (err) {
+      console.error('Failed to add to wishlist:', err);
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+    } finally {
+      setIsAddingToWishlist(false);
+    }
+  }, []);
 
   // Search on initial load if query exists
   useEffect(() => {
@@ -393,6 +466,17 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
           </div>
         </div>
       )}
+
+      {/* Video Preview Modal */}
+      <SearchVideoPreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        video={selectedVideo}
+        onWatchInBrowser={handleWatchInBrowser}
+        onWatchNoRestrictions={handleWatchNoRestrictions}
+        onAddToWishlist={selectedVideo && !selectedVideo.isApprovedSource ? handleAddToWishlist : undefined}
+        isAddingToWishlist={isAddingToWishlist}
+      />
     </div>
   );
 };

@@ -261,7 +261,7 @@ export interface ElectronAPI {
   offWishlistUpdated: (wrappedCallback: any) => void;
 
   // Video window functionality
-  openVideoInWindow: (url: string) => Promise<{ success: boolean }>;
+  openVideoInWindow: (url: string, options?: { disableBlocking?: boolean }) => Promise<{ success: boolean }>;
 
   // Generic invoke for IPC communication
   invoke: (channel: string, ...args: any[]) => Promise<any>;

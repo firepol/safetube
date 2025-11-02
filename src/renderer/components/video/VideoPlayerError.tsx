@@ -6,6 +6,7 @@ interface VideoPlayerErrorProps {
   videoUrl?: string;
   onRetry?: () => void;
   videoTitle?: string;
+  disableBlocking?: boolean;
 }
 
 export const VideoPlayerError: React.FC<VideoPlayerErrorProps> = ({
@@ -13,6 +14,7 @@ export const VideoPlayerError: React.FC<VideoPlayerErrorProps> = ({
   videoUrl,
   onRetry,
   videoTitle,
+  disableBlocking = false,
 }) => {
   const navigate = useNavigate();
   const [showPasswordPrompt, setShowPasswordPrompt] = useState(false);
@@ -24,7 +26,7 @@ export const VideoPlayerError: React.FC<VideoPlayerErrorProps> = ({
     if (!videoUrl) return;
 
     try {
-      await window.electron.openVideoInWindow(videoUrl);
+      await window.electron.openVideoInWindow(videoUrl, { disableBlocking });
       // If successful, close the password prompt
       setShowPasswordPrompt(false);
       setPassword('');
@@ -34,7 +36,7 @@ export const VideoPlayerError: React.FC<VideoPlayerErrorProps> = ({
       // Fallback to default window.open if IPC fails
       window.open(videoUrl, '_blank');
     }
-  }, [videoUrl]);
+  }, [videoUrl, disableBlocking]);
 
   const handleWatchInBrowserClick = useCallback(() => {
     // Show password prompt instead of opening immediately
