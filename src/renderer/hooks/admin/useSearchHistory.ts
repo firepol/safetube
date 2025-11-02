@@ -43,11 +43,8 @@ export function useSearchHistory(limit: number = 100): UseSearchHistoryReturn {
     try {
       setIsLoadingResults(true);
       setError(null);
-      console.log('[useSearchHistory] Loading cached results for:', { query, searchType });
       const results = await dataAccess.getCachedSearchResults(query, searchType);
-      console.log('[useSearchHistory] Received results:', results);
       setCachedResults(results);
-      console.log('[useSearchHistory] Results state updated, count:', results.length);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load cached results';
       console.error('[useSearchHistory] Error loading cached results:', err);

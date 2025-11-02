@@ -20,17 +20,12 @@ export const CachedResultsModal: React.FC<CachedResultsModalProps> = ({
   isLoading = false,
   error = null
 }) => {
-  console.log('[CachedResultsModal] Rendered with:', { isOpen, search, resultsCount: results.length, isLoading, hasError: !!error });
-
   if (!isOpen || !search) {
     return null;
   }
 
-  console.log('[CachedResultsModal] Modal is open, search:', search.query, 'results:', results);
-
   // Convert SearchResult to VideoCardBaseProps for VideoGrid
   const videoCards: VideoCardBaseProps[] = results.map((result) => {
-    console.log('[CachedResultsModal] Converting result:', result);
     return {
       id: result.id,
       thumbnail: result.thumbnail,
