@@ -20,28 +20,35 @@ export const CachedResultsModal: React.FC<CachedResultsModalProps> = ({
   isLoading = false,
   error = null
 }) => {
+  console.log('[CachedResultsModal] Rendered with:', { isOpen, search, resultsCount: results.length, isLoading, hasError: !!error });
+
   if (!isOpen || !search) {
     return null;
   }
 
+  console.log('[CachedResultsModal] Modal is open, search:', search.query, 'results:', results);
+
   // Convert SearchResult to VideoCardBaseProps for VideoGrid
-  const videoCards: VideoCardBaseProps[] = results.map((result) => ({
-    id: result.id,
-    thumbnail: result.thumbnail,
-    title: result.title,
-    duration: result.duration,
-    type: 'youtube' as const, // Search results are always YouTube videos
-    description: result.description,
-    channelId: result.channelId,
-    channelName: result.channelName,
-    url: result.url,
-    publishedAt: result.publishedAt,
-    isApprovedSource: result.isApprovedSource,
-    // Disable clicking since these are just for viewing
-    onVideoClick: () => {
-      // Do nothing - these are cached results for admin viewing only
-    }
-  }));
+  const videoCards: VideoCardBaseProps[] = results.map((result) => {
+    console.log('[CachedResultsModal] Converting result:', result);
+    return {
+      id: result.id,
+      thumbnail: result.thumbnail,
+      title: result.title,
+      duration: result.duration,
+      type: 'youtube' as const, // Search results are always YouTube videos
+      description: result.description,
+      channelId: result.channelId,
+      channelName: result.channelName,
+      url: result.url,
+      publishedAt: result.publishedAt,
+      isApprovedSource: result.isApprovedSource,
+      // Disable clicking since these are just for viewing
+      onVideoClick: () => {
+        // Do nothing - these are cached results for admin viewing only
+      }
+    };
+  });
 
   const formatDate = (dateString: string) => {
     try {

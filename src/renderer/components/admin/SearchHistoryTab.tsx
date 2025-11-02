@@ -19,10 +19,20 @@ export const SearchHistoryTab: React.FC<SearchHistoryTabProps> = ({ className = 
     load();
   }, []);
 
+  // Show modal when results are loaded
+  useEffect(() => {
+    if (!isLoadingResults && selectedSearch) {
+      console.log('[SearchHistoryTab] Results loaded, showing modal. Results count:', cachedResults.length);
+      setShowResultsModal(true);
+    }
+  }, [isLoadingResults, selectedSearch, cachedResults]);
+
   const handleViewCachedResults = async (search: Search) => {
+    console.log('[SearchHistoryTab] View results clicked for:', search);
     setSelectedSearch(search);
+    setShowResultsModal(false); // Close modal if already open
+    console.log('[SearchHistoryTab] Loading cached results for query:', search.query, 'type:', search.search_type);
     await loadCachedResults(search.query, search.search_type);
-    setShowResultsModal(true);
   };
 
   const formatDate = (dateString: string) => {
