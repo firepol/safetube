@@ -14,6 +14,7 @@ import {
   MainSettings,
   FeatureFlags,
 } from '@/renderer/hooks/admin/types';
+import { VideoSource } from '@/shared/types';
 
 /**
  * Core data access interface that abstracts IPC vs HTTP differences.
@@ -92,6 +93,17 @@ export interface IAdminDataAccess {
    * @throws Error in HTTP mode
    */
   getLastWatchedVideoWithSource(): Promise<any>;
+
+  /**
+   * Get all video sources
+   */
+  getVideoSources(): Promise<VideoSource[]>;
+
+  /**
+   * Save all video sources
+   * @param sources - Array of video sources to save
+   */
+  saveVideoSources(sources: VideoSource[]): Promise<void>;
 }
 
 /**
@@ -186,6 +198,14 @@ export class IPCAdminDataAccess implements IAdminDataAccess {
   async getLastWatchedVideoWithSource(): Promise<any> {
     return await window.electron.adminGetLastWatchedVideoWithSource();
   }
+
+  async getVideoSources(): Promise<VideoSource[]> {
+    return await window.electron.videoSourcesGetAll();
+  }
+
+  async saveVideoSources(sources: VideoSource[]): Promise<void> {
+    await window.electron.videoSourcesSaveAll(sources);
+  }
 }
 
 /**
@@ -201,10 +221,10 @@ export class HTTPAdminDataAccess implements IAdminDataAccess {
 
   getFeatureFlags(): FeatureFlags {
     return {
-      hasDatabase: false,
+      hasDatabase: true,
       hasFileSystem: false,
       hasAppRestart: false,
-      canManageVideoSources: false,
+      canManageVideoSources: true,
       canViewSearchHistory: false,
       canModerateWishlist: false,
     };
@@ -318,6 +338,21 @@ export class HTTPAdminDataAccess implements IAdminDataAccess {
 
   async getLastWatchedVideoWithSource(): Promise<any> {
     throw new Error('Smart exit not available in HTTP mode');
+  }
+
+  async getVideoSources(): Promise<VideoSource[]> {
+    const response = await fetch('/api/video-sources');
+    if (!response.ok) throw new Error('Failed to get video sources');
+    return await response.json();
+  }
+
+  async saveVideoSources(sources: VideoSource[]): Promise<void> {
+    const response = await fetch('/api/video-sources', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sources),
+    });
+    if (!response.ok) throw new Error('Failed to save video sources');
   }
 }
 

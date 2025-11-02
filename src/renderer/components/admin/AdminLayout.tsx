@@ -12,7 +12,7 @@ import { MessageBanner } from './MessageBanner';
 import { TabNavigation } from './TabNavigation';
 import { TimeManagementTab } from './TimeManagementTab';
 import { MainSettingsTab } from './MainSettingsTab';
-import { VideoSourcesManager } from './VideoSourcesManager';
+import { VideoSourcesTab } from './VideoSourcesTab';
 import { SearchHistoryTab } from './SearchHistoryTab';
 import { WishlistModerationTab } from './WishlistModerationTab';
 
@@ -26,7 +26,7 @@ export const AdminLayout: React.FC = () => {
       case 'main':
         return <MainSettingsTab />;
       case 'sources':
-        return <VideoSourcesManager />;
+        return <VideoSourcesTab />;
       case 'search':
         return <SearchHistoryTab />;
       case 'wishlist':

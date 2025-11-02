@@ -158,6 +158,8 @@ export async function handleApiRequest(req: http.IncomingMessage, res: http.Serv
       response = await handleAddExtraTime(body);
     } else if (path === '/api/video-sources' && method === 'GET') {
       response = await handleGetVideoSources();
+    } else if (path === '/api/video-sources' && method === 'POST') {
+      response = await handleSaveVideoSources(body);
     } else if (path === '/api/settings' && method === 'GET') {
       response = await handleGetSettings();
     } else if (path === '/api/settings' && method === 'POST') {
@@ -388,18 +390,104 @@ async function handleGetVideoSources(): Promise<ApiResponse> {
     const status = await dbService.getHealthStatus();
 
     if (dbService && status.initialized) {
-      const sources = await (dbService as any).all(`
-        SELECT id, type, title
+      const rows = await (dbService as any).all(`
+        SELECT id, type, title, url, path, channel_id, sort_preference, max_depth, position
         FROM sources
         ORDER BY position ASC, title ASC
       `) as any;
-      return { status: 200, body: sources || [] };
+
+      // Transform database rows to VideoSource objects
+      const sources = (rows || []).map((row: any) => {
+        const base = {
+          id: row.id,
+          type: row.type,
+          title: row.title,
+        };
+
+        if (row.type === 'youtube_channel') {
+          return {
+            ...base,
+            url: row.url,
+            channelId: row.channel_id,
+            sortPreference: row.sort_preference || 'newestFirst',
+          };
+        } else if (row.type === 'youtube_playlist') {
+          return {
+            ...base,
+            url: row.url,
+            sortPreference: row.sort_preference || 'playlistOrder',
+          };
+        } else if (row.type === 'local') {
+          return {
+            ...base,
+            path: row.path,
+            sortPreference: row.sort_preference || 'alphabetical',
+            maxDepth: row.max_depth || 2,
+          };
+        }
+        return base;
+      });
+
+      return { status: 200, body: sources };
     }
 
     return { status: 200, body: [] };
   } catch (error) {
     log.error('[API] Error getting video sources:', error);
     return { status: 500, body: { error: 'Failed to get video sources' } };
+  }
+}
+
+/**
+ * Save all video sources
+ */
+async function handleSaveVideoSources(body: any): Promise<ApiResponse> {
+  try {
+    if (!Array.isArray(body)) {
+      return { status: 400, body: { error: 'Sources must be an array' } };
+    }
+
+    const dbService = (DatabaseService as any).getInstance();
+    const status = await dbService.getHealthStatus();
+
+    if (!dbService || !status.initialized) {
+      return { status: 500, body: { error: 'Database not initialized' } };
+    }
+
+    // Delete all existing sources first
+    await (dbService as any).run('DELETE FROM sources');
+
+    // Insert new sources with position
+    for (let i = 0; i < body.length; i++) {
+      const source = body[i];
+      const position = i + 1;
+
+      if (source.type === 'youtube_channel') {
+        await (dbService as any).run(`
+          INSERT INTO sources (id, type, title, url, channel_id, sort_preference, position)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [source.id, source.type, source.title, source.url, source.channelId || null,
+            source.sortPreference || 'newestFirst', position]);
+      } else if (source.type === 'youtube_playlist') {
+        await (dbService as any).run(`
+          INSERT INTO sources (id, type, title, url, sort_preference, position)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `, [source.id, source.type, source.title, source.url,
+            source.sortPreference || 'playlistOrder', position]);
+      } else if (source.type === 'local') {
+        await (dbService as any).run(`
+          INSERT INTO sources (id, type, title, path, sort_preference, max_depth, position)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `, [source.id, source.type, source.title, source.path,
+            source.sortPreference || 'alphabetical', source.maxDepth || 2, position]);
+      }
+    }
+
+    log.info('[API] Video sources saved successfully');
+    return { status: 200, body: { success: true, message: 'Sources saved' } };
+  } catch (error) {
+    log.error('[API] Error saving video sources:', error);
+    return { status: 500, body: { error: 'Failed to save video sources' } };
   }
 }
 
