@@ -456,7 +456,9 @@ export const VideoCardBase: React.FC<VideoCardBaseProps> = memo(({
           thumbnail,
           description: description || '',
           duration,
+          channelId: channelId,
           channelName: channelName || '',
+          url: url || '',
           publishedAt: publishedAt || ''
         } : null}
         onAddToWishlist={onWishlistAdd}

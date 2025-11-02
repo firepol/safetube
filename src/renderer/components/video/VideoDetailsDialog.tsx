@@ -11,7 +11,9 @@ interface VideoDetailsDialogProps {
     description: string;
     duration: number;
     channelName: string;
+    channelId?: string;
     publishedAt: string;
+    url: string;
   } | null;
   onAddToWishlist?: (video: any) => void;
   isInWishlist?: boolean;
