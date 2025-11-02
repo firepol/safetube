@@ -816,6 +816,8 @@ async function handleGetSearchResults(body: any): Promise<ApiResponse> {
         return {
           ...videoData,
           id: videoData.id || `result-${result.id}`,
+          type: 'youtube' as const, // Search cache results are always youtube videos
+          isApprovedSource: false, // Mark as not from approved source for admin review
         };
       } catch (e) {
         log.warn('[API] Failed to parse video_data for search result:', e);
