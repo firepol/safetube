@@ -168,7 +168,7 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
   // Handle watch in browser with blocking enabled
   const handleWatchInBrowser = useCallback(async (videoUrl: string) => {
     try {
-      const result = await window.electron.openVideoInWindow(videoUrl, { disableBlocking: false });
+      const result = await window.electron.openVideoInWindow(videoUrl, { disableBlocking: true });
       if (!result.success) {
         setError('Failed to open video window');
       }

@@ -150,7 +150,7 @@ export const WishlistModerationTab: React.FC = () => {
 
   const handleWatchInBrowser = async (videoUrl: string) => {
     try {
-      await window.electron.openVideoInWindow(videoUrl, { disableBlocking: false });
+      await window.electron.openVideoInWindow(videoUrl, { disableBlocking: true });
     } catch (err) {
       console.error('Error opening video window:', err);
       setError('Failed to open video in browser. Please try again.');
