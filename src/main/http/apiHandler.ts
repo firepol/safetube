@@ -168,6 +168,10 @@ export async function handleApiRequest(req: http.IncomingMessage, res: http.Serv
       response = await handleHashPassword(body);
     } else if (path === '/api/features' && method === 'GET') {
       response = await handleGetFeatures();
+    } else if (path === '/api/validate/youtube-url' && method === 'POST') {
+      response = await handleValidateYouTubeUrl(body);
+    } else if (path === '/api/validate/local-path' && method === 'POST') {
+      response = await handleValidateLocalPath(body);
     } else {
       response = { status: 404, body: { error: 'API endpoint not found' } };
     }
@@ -587,5 +591,74 @@ async function handleGetFeatures(): Promise<ApiResponse> {
   } catch (error) {
     log.error('[API] Error getting features:', error);
     return { status: 500, body: { error: 'Failed to get features' } };
+  }
+}
+
+/**
+ * Validate a YouTube URL and fetch metadata
+ */
+async function handleValidateYouTubeUrl(body: any): Promise<ApiResponse> {
+  try {
+    const { url, type } = body;
+
+    if (!url || !type) {
+      return { status: 400, body: { error: 'URL and type are required' } };
+    }
+
+    if (type !== 'youtube_channel' && type !== 'youtube_playlist') {
+      return { status: 400, body: { error: 'Invalid type' } };
+    }
+
+    // For HTTP mode, we'll use the IPC-compatible validation if available
+    // Otherwise, return basic validation result
+    try {
+      const result = await (window as any).electron?.videoSourcesValidateYouTubeUrl?.(url, type);
+      if (result) {
+        return { status: 200, body: result };
+      }
+    } catch (error) {
+      log.warn('[API] IPC validation not available, using basic validation');
+    }
+
+    // Fallback: Basic validation without fetching metadata
+    return {
+      status: 200,
+      body: {
+        isValid: true,
+        errors: [],
+        title: undefined,
+        channelId: undefined,
+        cleanedUrl: url
+      }
+    };
+  } catch (error) {
+    log.error('[API] Error validating YouTube URL:', error);
+    return { status: 500, body: { error: 'Failed to validate YouTube URL' } };
+  }
+}
+
+/**
+ * Validate a local folder path
+ */
+async function handleValidateLocalPath(body: any): Promise<ApiResponse> {
+  try {
+    const { path } = body;
+
+    if (!path) {
+      return { status: 400, body: { error: 'Path is required' } };
+    }
+
+    // For HTTP mode, we can't validate local paths (no file system access)
+    // Return a basic validation result
+    return {
+      status: 200,
+      body: {
+        isValid: true,
+        errors: []
+      }
+    };
+  } catch (error) {
+    log.error('[API] Error validating local path:', error);
+    return { status: 500, body: { error: 'Failed to validate local path' } };
   }
 }

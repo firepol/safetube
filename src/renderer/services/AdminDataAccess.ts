@@ -104,6 +104,24 @@ export interface IAdminDataAccess {
    * @param sources - Array of video sources to save
    */
   saveVideoSources(sources: VideoSource[]): Promise<void>;
+
+  /**
+   * Validate a YouTube URL and fetch metadata
+   * @param url - YouTube channel or playlist URL
+   * @param type - Type of YouTube source (youtube_channel or youtube_playlist)
+   * @returns Validation result with title, channelId, and cleaned URL if valid
+   */
+  validateYouTubeUrl(
+    url: string,
+    type: 'youtube_channel' | 'youtube_playlist'
+  ): Promise<{ isValid: boolean; errors?: string[]; title?: string; channelId?: string; cleanedUrl?: string }>;
+
+  /**
+   * Validate a local folder path
+   * @param path - Folder path to validate
+   * @returns Validation result
+   */
+  validateLocalPath(path: string): Promise<{ isValid: boolean; errors?: string[] }>;
 }
 
 /**
@@ -205,6 +223,17 @@ export class IPCAdminDataAccess implements IAdminDataAccess {
 
   async saveVideoSources(sources: VideoSource[]): Promise<void> {
     await window.electron.videoSourcesSaveAll(sources);
+  }
+
+  async validateYouTubeUrl(
+    url: string,
+    type: 'youtube_channel' | 'youtube_playlist'
+  ): Promise<{ isValid: boolean; errors?: string[]; title?: string; channelId?: string; cleanedUrl?: string }> {
+    return await window.electron.videoSourcesValidateYouTubeUrl(url, type);
+  }
+
+  async validateLocalPath(path: string): Promise<{ isValid: boolean; errors?: string[] }> {
+    return await window.electron.videoSourcesValidateLocalPath(path);
   }
 }
 
@@ -353,6 +382,35 @@ export class HTTPAdminDataAccess implements IAdminDataAccess {
       body: JSON.stringify(sources),
     });
     if (!response.ok) throw new Error('Failed to save video sources');
+  }
+
+  async validateYouTubeUrl(
+    url: string,
+    type: 'youtube_channel' | 'youtube_playlist'
+  ): Promise<{ isValid: boolean; errors?: string[]; title?: string; channelId?: string; cleanedUrl?: string }> {
+    const response = await fetch('/api/validate/youtube-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url, type }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      return { isValid: false, errors: [error.error || 'Failed to validate YouTube URL'] };
+    }
+    return await response.json();
+  }
+
+  async validateLocalPath(path: string): Promise<{ isValid: boolean; errors?: string[] }> {
+    const response = await fetch('/api/validate/local-path', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path }),
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      return { isValid: false, errors: [error.error || 'Failed to validate local path'] };
+    }
+    return await response.json();
   }
 }
 

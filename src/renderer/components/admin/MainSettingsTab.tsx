@@ -51,24 +51,26 @@ export const MainSettingsTab: React.FC = () => {
       <h3 className="text-xl font-bold mb-6">Main Settings</h3>
 
       <div className="space-y-6">
-        {/* Download Path - IPC only */}
-        {features.hasFileSystem && (
+        {/* Download Path */}
+        {settings.downloadPath && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Download Path</label>
             <div className="flex gap-2">
               <input
                 type="text"
-                value={settings.downloadPath || ''}
+                value={settings.downloadPath}
                 readOnly
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
               />
-              <button
-                onClick={handleResetDownloadPath}
-                disabled={isSaving}
-                className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg disabled:opacity-50"
-              >
-                Reset
-              </button>
+              {features.hasFileSystem && (
+                <button
+                  onClick={handleResetDownloadPath}
+                  disabled={isSaving}
+                  className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg disabled:opacity-50"
+                >
+                  Reset
+                </button>
+              )}
             </div>
             <p className="text-xs text-gray-500 mt-1">Location where videos are downloaded</p>
           </div>

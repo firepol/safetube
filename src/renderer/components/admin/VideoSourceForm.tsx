@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 
 import { VideoSourceFormData, VideoSourceType, VideoSourceFormType } from '@/shared/types';
 import { validateVideoSource, getDefaultSortOrder, isValidYouTubeChannelUrl, isValidYouTubePlaylistUrl, detectYouTubeUrlType } from '@/shared/videoSourceUtils';
+import { useAdminDataAccess } from '@/renderer/hooks/admin/useAdminDataAccess';
 
 interface VideoSourceFormProps {
   source: VideoSourceFormData;
@@ -16,6 +17,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
   onSave,
   onCancel
 }) => {
+  const dataAccess = useAdminDataAccess();
   const [formData, setFormData] = useState<VideoSourceFormData>(source);
   const [validation, setValidation] = useState<{ isValid: boolean; errors: string[]; warnings?: string[] }>({
     isValid: true,
@@ -137,7 +139,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
       }
 
       // Advanced validation with YouTube API to fetch metadata
-      const result = await window.electron.videoSourcesValidateYouTubeUrl(
+      const result = await dataAccess.validateYouTubeUrl(
         formData.url,
         detectedType as 'youtube_channel' | 'youtube_playlist'
       );
@@ -207,7 +209,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
       // Advanced validation based on type
       if (formData.type === 'youtube_channel' || formData.type === 'youtube_playlist') {
         if (formData.url) {
-          const result = await window.electron.videoSourcesValidateYouTubeUrl(
+          const result = await dataAccess.validateYouTubeUrl(
             formData.url,
             formData.type
           );
@@ -227,7 +229,7 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
           }
         }
       } else if (formData.type === 'local' && formData.path) {
-        const result = await window.electron.videoSourcesValidateLocalPath(formData.path);
+        const result = await dataAccess.validateLocalPath(formData.path);
         
         if (!result.isValid) {
           setValidation({
