@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { WishlistItem, WishlistStatus } from '@/shared/types';
+import { useWishlist } from '@/renderer/hooks/admin/useWishlist';
 import { ModerationVideoCard } from './ModerationVideoCard';
 import { VideoPreviewModal } from './VideoPreviewModal';
 import { DenyReasonDialog } from './DenyReasonDialog';
@@ -8,16 +9,17 @@ import { BulkDenyReasonDialog } from './BulkDenyReasonDialog';
 
 export const WishlistModerationTab: React.FC = () => {
   const [activeTab, setActiveTab] = useState<WishlistStatus>('pending');
-  const [wishlistItems, setWishlistItems] = useState<{
-    pending: WishlistItem[];
-    approved: WishlistItem[];
-    denied: WishlistItem[];
-  }>({
-    pending: [],
-    approved: [],
-    denied: []
-  });
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    wishlistItems,
+    isLoading,
+    isOperating,
+    error: hookError,
+    load,
+    approve,
+    deny,
+    bulkApprove,
+    bulkDeny
+  } = useWishlist();
   const [error, setError] = useState<string | null>(null);
 
   // Modal states
@@ -53,42 +55,17 @@ export const WishlistModerationTab: React.FC = () => {
     isOpen: false
   });
 
-  // Load wishlist data
-  const loadWishlistData = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      // Load data for all statuses
-      const [pendingResponse, approvedResponse, deniedResponse] = await Promise.all([
-        window.electron.wishlistGetByStatus('pending'),
-        window.electron.wishlistGetByStatus('approved'),
-        window.electron.wishlistGetByStatus('denied')
-      ]);
-
-      // Check if all responses are successful
-      if (!pendingResponse.success || !approvedResponse.success || !deniedResponse.success) {
-        const errorMessage = pendingResponse.error || approvedResponse.error || deniedResponse.error || 'Failed to load wishlist data';
-        throw new Error(errorMessage);
-      }
-
-      setWishlistItems({
-        pending: pendingResponse.data || [],
-        approved: approvedResponse.data || [],
-        denied: deniedResponse.data || []
-      });
-    } catch (err) {
-      console.error('Error loading wishlist data:', err);
-      setError('Failed to load wishlist data. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Load data on component mount
   useEffect(() => {
-    loadWishlistData();
-  }, []);
+    load();
+  }, [load]);
+
+  // Handle hook errors
+  useEffect(() => {
+    if (hookError) {
+      setError(hookError);
+    }
+  }, [hookError]);
 
   // Clear selection when tab changes
   useEffect(() => {
@@ -107,11 +84,10 @@ export const WishlistModerationTab: React.FC = () => {
 
   const handleApprove = async (videoId: string) => {
     try {
-      await window.electron.wishlistApprove(videoId);
-      await loadWishlistData(); // Refresh data
+      await approve(videoId);
+      setError(null);
     } catch (err) {
-      console.error('Error approving video:', err);
-      setError('Failed to approve video. Please try again.');
+      // Error is already set by the hook
     }
   };
 
@@ -126,11 +102,11 @@ export const WishlistModerationTab: React.FC = () => {
     if (!denyDialog.video) return;
 
     try {
-      await window.electron.wishlistDeny(denyDialog.video.video_id, reason);
-      await loadWishlistData(); // Refresh data
+      await deny(denyDialog.video.video_id, reason);
+      setDenyDialog({ isOpen: false, video: null });
+      setError(null);
     } catch (err) {
-      console.error('Error denying video:', err);
-      setError('Failed to deny video. Please try again.');
+      // Error is already set by the hook
     }
   };
 
@@ -190,7 +166,7 @@ export const WishlistModerationTab: React.FC = () => {
     if (selectedVideos.size === 0) return;
 
     const videoIds = Array.from(selectedVideos);
-    
+
     try {
       setIsBulkOperationInProgress(true);
       setBulkOperationProgress({
@@ -199,29 +175,13 @@ export const WishlistModerationTab: React.FC = () => {
         failed: []
       });
 
-      const response: any = await window.electron.wishlistBulkApprove(videoIds);
-      
-      if (response.success && response.data) {
-        setBulkOperationProgress({
-          total: videoIds.length,
-          completed: response.data.success.length,
-          failed: response.data.failed
-        });
+      await bulkApprove(videoIds);
 
-        // Show success/error feedback
-        if (response.data.failed.length > 0) {
-          setError(`${response.data.failed.length} videos failed to approve. Please try again.`);
-        }
-      } else {
-        throw new Error(response.error || 'Bulk approve failed');
-      }
-
-      // Refresh data and clear selection
-      await loadWishlistData();
+      // Clear selection
       setSelectedVideos(new Set());
+      setError(null);
     } catch (err) {
-      console.error('Error bulk approving videos:', err);
-      setError('Failed to approve videos. Please try again.');
+      // Error is already set by the hook
     } finally {
       setIsBulkOperationInProgress(false);
       setBulkOperationProgress(undefined);
@@ -237,7 +197,7 @@ export const WishlistModerationTab: React.FC = () => {
     if (selectedVideos.size === 0) return;
 
     const videoIds = Array.from(selectedVideos);
-    
+
     try {
       setIsBulkOperationInProgress(true);
       setBulkOperationProgress({
@@ -246,29 +206,13 @@ export const WishlistModerationTab: React.FC = () => {
         failed: []
       });
 
-      const response: any = await window.electron.wishlistBulkDeny(videoIds, reason);
-      
-      if (response.success && response.data) {
-        setBulkOperationProgress({
-          total: videoIds.length,
-          completed: response.data.success.length,
-          failed: response.data.failed
-        });
+      await bulkDeny(videoIds, reason);
 
-        // Show success/error feedback
-        if (response.data.failed.length > 0) {
-          setError(`${response.data.failed.length} videos failed to deny. Please try again.`);
-        }
-      } else {
-        throw new Error(response.error || 'Bulk deny failed');
-      }
-
-      // Refresh data and clear selection
-      await loadWishlistData();
+      // Clear selection
       setSelectedVideos(new Set());
+      setError(null);
     } catch (err) {
-      console.error('Error bulk denying videos:', err);
-      setError('Failed to deny videos. Please try again.');
+      // Error is already set by the hook
     } finally {
       setIsBulkOperationInProgress(false);
       setBulkOperationProgress(undefined);
@@ -346,10 +290,11 @@ export const WishlistModerationTab: React.FC = () => {
               </p>
             </div>
             <button
-              onClick={loadWishlistData}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              onClick={load}
+              disabled={isLoading}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Refresh
+              {isLoading ? 'Loading...' : 'Refresh'}
             </button>
           </div>
         </div>

@@ -10,6 +10,7 @@ import log from '../logger';
 import { readMainSettings, writeMainSettings } from '../fileUtils';
 import { readTimeLimits } from '../fileUtils';
 import DatabaseService from '../services/DatabaseService';
+import WishlistService from '../services/wishlistService';
 import { YouTubeAPI } from '../youtube-api';
 import { extractChannelId, extractPlaylistId } from '../../shared/videoSourceUtils';
 
@@ -180,6 +181,28 @@ export async function handleApiRequest(req: http.IncomingMessage, res: http.Serv
       response = await handleGetSearchHistory(limit);
     } else if (path === '/api/search-results' && method === 'POST') {
       response = await handleGetSearchResults(body);
+    } else if (path.startsWith('/api/wishlist') && method === 'GET' && path.includes('?status=')) {
+      const statusMatch = path.match(/status=([^&]+)/);
+      const status = statusMatch ? decodeURIComponent(statusMatch[1]) : 'pending';
+      response = await handleGetWishlist(status);
+    } else if (path.match(/^\/api\/wishlist\/[^/]+\/approve$/) && method === 'POST') {
+      const videoId = path.match(/\/api\/wishlist\/([^/]+)\/approve/)?.[1];
+      if (videoId) {
+        response = await handleApproveWishlistItem(decodeURIComponent(videoId));
+      } else {
+        response = { status: 400, body: { error: 'Invalid video ID' } };
+      }
+    } else if (path.match(/^\/api\/wishlist\/[^/]+\/deny$/) && method === 'POST') {
+      const videoId = path.match(/\/api\/wishlist\/([^/]+)\/deny/)?.[1];
+      if (videoId) {
+        response = await handleDenyWishlistItem(decodeURIComponent(videoId), body?.reason);
+      } else {
+        response = { status: 400, body: { error: 'Invalid video ID' } };
+      }
+    } else if (path === '/api/wishlist/bulk/approve' && method === 'POST') {
+      response = await handleBulkApproveWishlist(body);
+    } else if (path === '/api/wishlist/bulk/deny' && method === 'POST') {
+      response = await handleBulkDenyWishlist(body);
     } else {
       response = { status: 404, body: { error: 'API endpoint not found' } };
     }
@@ -831,5 +854,170 @@ async function handleGetSearchResults(body: any): Promise<ApiResponse> {
   } catch (error) {
     log.error('[API] Error getting search results:', error);
     return { status: 500, body: { error: 'Failed to get search results' } };
+  }
+}
+
+
+/**
+ * Handle GET /api/wishlist?status=pending|approved|denied
+ */
+async function handleGetWishlist(status: string): Promise<ApiResponse> {
+  try {
+    const validStatuses = ['pending', 'approved', 'denied'];
+    if (!validStatuses.includes(status)) {
+      return { status: 400, body: { error: 'Invalid status. Must be pending, approved, or denied' } };
+    }
+
+    const dbService = (DatabaseService as any).getInstance();
+    log.debug(`[API] Getting wishlist items with status: ${status}`);
+
+    const items = await dbService.all(`
+      SELECT id, video_id, title, thumbnail, description, channel_id, channel_name, 
+             duration, url, status, requested_at, reviewed_at, reviewed_by, denial_reason,
+             created_at, updated_at
+      FROM wishlist
+      WHERE status = ?
+      ORDER BY requested_at DESC
+    `, [status]) as any[];
+
+    log.debug(`[API] Found ${items ? items.length : 0} wishlist items with status "${status}"`);
+
+    return { status: 200, body: items || [] };
+  } catch (error) {
+    log.error('[API] Error getting wishlist:', error);
+    return { status: 500, body: { error: 'Failed to get wishlist items' } };
+  }
+}
+
+/**
+ * Handle POST /api/wishlist/{videoId}/approve
+ */
+async function handleApproveWishlistItem(videoId: string): Promise<ApiResponse> {
+  try {
+    log.debug(`[API] Approving wishlist item: ${videoId}`);
+
+    const dbService = (DatabaseService as any).getInstance();
+    const wishlistService = (WishlistService as any).getInstance();
+
+    // Update the wishlist item status
+    const result = await dbService.run(`
+      UPDATE wishlist
+      SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = 'admin'
+      WHERE video_id = ?
+    `, [videoId]);
+
+    if (!result || result.changes === 0) {
+      return { status: 404, body: { error: 'Wishlist item not found' } };
+    }
+
+    // Emit update event
+    wishlistService.emitWishlistUpdate();
+
+    log.debug(`[API] Successfully approved wishlist item: ${videoId}`);
+    return { status: 200, body: { success: true } };
+  } catch (error) {
+    log.error('[API] Error approving wishlist item:', error);
+    return { status: 500, body: { error: 'Failed to approve wishlist item' } };
+  }
+}
+
+/**
+ * Handle POST /api/wishlist/{videoId}/deny
+ */
+async function handleDenyWishlistItem(videoId: string, reason?: string): Promise<ApiResponse> {
+  try {
+    log.debug(`[API] Denying wishlist item: ${videoId}${reason ? ` with reason: ${reason}` : ''}`);
+
+    const dbService = (DatabaseService as any).getInstance();
+    const wishlistService = (WishlistService as any).getInstance();
+
+    // Update the wishlist item status
+    const result = await dbService.run(`
+      UPDATE wishlist
+      SET status = 'denied', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = 'admin', denial_reason = ?
+      WHERE video_id = ?
+    `, [reason || null, videoId]);
+
+    if (!result || result.changes === 0) {
+      return { status: 404, body: { error: 'Wishlist item not found' } };
+    }
+
+    // Emit update event
+    wishlistService.emitWishlistUpdate();
+
+    log.debug(`[API] Successfully denied wishlist item: ${videoId}`);
+    return { status: 200, body: { success: true } };
+  } catch (error) {
+    log.error('[API] Error denying wishlist item:', error);
+    return { status: 500, body: { error: 'Failed to deny wishlist item' } };
+  }
+}
+
+/**
+ * Handle POST /api/wishlist/bulk/approve
+ */
+async function handleBulkApproveWishlist(body: any): Promise<ApiResponse> {
+  try {
+    const videoIds = body?.videoIds;
+    if (!Array.isArray(videoIds) || videoIds.length === 0) {
+      return { status: 400, body: { error: 'videoIds must be a non-empty array' } };
+    }
+
+    log.debug(`[API] Bulk approving ${videoIds.length} wishlist items`);
+
+    const dbService = (DatabaseService as any).getInstance();
+    const wishlistService = (WishlistService as any).getInstance();
+
+    const placeholders = videoIds.map(() => '?').join(',');
+    const result = await dbService.run(`
+      UPDATE wishlist
+      SET status = 'approved', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = 'admin'
+      WHERE video_id IN (${placeholders})
+    `, videoIds);
+
+    // Emit update event
+    wishlistService.emitWishlistUpdate();
+
+    log.debug(`[API] Successfully bulk approved ${videoIds.length} wishlist items`);
+    return { status: 200, body: { success: true, count: result?.changes || 0 } };
+  } catch (error) {
+    log.error('[API] Error bulk approving wishlist items:', error);
+    return { status: 500, body: { error: 'Failed to bulk approve wishlist items' } };
+  }
+}
+
+/**
+ * Handle POST /api/wishlist/bulk/deny
+ */
+async function handleBulkDenyWishlist(body: any): Promise<ApiResponse> {
+  try {
+    const videoIds = body?.videoIds;
+    const reason = body?.reason;
+
+    if (!Array.isArray(videoIds) || videoIds.length === 0) {
+      return { status: 400, body: { error: 'videoIds must be a non-empty array' } };
+    }
+
+    log.debug(`[API] Bulk denying ${videoIds.length} wishlist items${reason ? ` with reason: ${reason}` : ''}`);
+
+    const dbService = (DatabaseService as any).getInstance();
+    const wishlistService = (WishlistService as any).getInstance();
+
+    const placeholders = videoIds.map(() => '?').join(',');
+    const params = [...videoIds, reason || null];
+    const result = await dbService.run(`
+      UPDATE wishlist
+      SET status = 'denied', reviewed_at = CURRENT_TIMESTAMP, reviewed_by = 'admin', denial_reason = ?
+      WHERE video_id IN (${placeholders})
+    `, [reason || null, ...videoIds]);
+
+    // Emit update event
+    wishlistService.emitWishlistUpdate();
+
+    log.debug(`[API] Successfully bulk denied ${videoIds.length} wishlist items`);
+    return { status: 200, body: { success: true, count: result?.changes || 0 } };
+  } catch (error) {
+    log.error('[API] Error bulk denying wishlist items:', error);
+    return { status: 500, body: { error: 'Failed to bulk deny wishlist items' } };
   }
 }

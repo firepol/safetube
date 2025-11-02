@@ -137,6 +137,39 @@ export interface IAdminDataAccess {
    * @returns Array of cached search results
    */
   getCachedSearchResults(query: string, searchType: SearchType): Promise<SearchResult[]>;
+
+  /**
+   * Get wishlist items by status
+   * @param status - Wishlist status filter ('pending' | 'approved' | 'denied')
+   * @returns Array of wishlist items with the specified status
+   */
+  getWishlistByStatus(status: 'pending' | 'approved' | 'denied'): Promise<any[]>;
+
+  /**
+   * Approve a wishlist item
+   * @param videoId - ID of the video to approve
+   */
+  approveWishlistItem(videoId: string): Promise<void>;
+
+  /**
+   * Deny a wishlist item
+   * @param videoId - ID of the video to deny
+   * @param reason - Optional reason for denial
+   */
+  denyWishlistItem(videoId: string, reason?: string): Promise<void>;
+
+  /**
+   * Bulk approve wishlist items
+   * @param videoIds - IDs of videos to approve
+   */
+  bulkApproveWishlist(videoIds: string[]): Promise<void>;
+
+  /**
+   * Bulk deny wishlist items
+   * @param videoIds - IDs of videos to deny
+   * @param reason - Optional reason for denials
+   */
+  bulkDenyWishlist(videoIds: string[], reason?: string): Promise<void>;
 }
 
 /**
@@ -266,6 +299,43 @@ export class IPCAdminDataAccess implements IAdminDataAccess {
     }
     throw new Error(response.error || 'Failed to get cached search results');
   }
+
+
+  async getWishlistByStatus(status: 'pending' | 'approved' | 'denied'): Promise<any[]> {
+    const response = await window.electron.wishlistGetByStatus(status);
+    if (response.success && response.data) {
+      return response.data;
+    }
+    throw new Error(response.error || 'Failed to get wishlist items');
+  }
+
+  async approveWishlistItem(videoId: string): Promise<void> {
+    const response = await window.electron.wishlistApprove(videoId);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to approve wishlist item');
+    }
+  }
+
+  async denyWishlistItem(videoId: string, reason?: string): Promise<void> {
+    const response = await window.electron.wishlistDeny(videoId, reason);
+    if (!response.success) {
+      throw new Error(response.error || 'Failed to deny wishlist item');
+    }
+  }
+
+  async bulkApproveWishlist(videoIds: string[]): Promise<void> {
+    const response = await window.electron.wishlistBulkApprove(videoIds);
+    if (!response.success || (response.failed && response.failed.length > 0)) {
+      throw new Error('Failed to bulk approve some or all wishlist items');
+    }
+  }
+
+  async bulkDenyWishlist(videoIds: string[], reason?: string): Promise<void> {
+    const response = await window.electron.wishlistBulkDeny(videoIds, reason);
+    if (!response.success || (response.failed && response.failed.length > 0)) {
+      throw new Error('Failed to bulk deny some or all wishlist items');
+    }
+  }
 }
 
 /**
@@ -286,7 +356,7 @@ export class HTTPAdminDataAccess implements IAdminDataAccess {
       hasAppRestart: false,
       canManageVideoSources: true,
       canViewSearchHistory: true,
-      canModerateWishlist: false,
+      canModerateWishlist: true,
     };
   }
 
@@ -458,6 +528,48 @@ export class HTTPAdminDataAccess implements IAdminDataAccess {
     });
     if (!response.ok) throw new Error('Failed to get cached search results');
     return await response.json();
+  }
+
+
+  async getWishlistByStatus(status: 'pending' | 'approved' | 'denied'): Promise<any[]> {
+    const response = await fetch(`/api/wishlist?status=${status}`);
+    if (!response.ok) throw new Error('Failed to get wishlist items');
+    return await response.json();
+  }
+
+  async approveWishlistItem(videoId: string): Promise<void> {
+    const response = await fetch(`/api/wishlist/${videoId}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) throw new Error('Failed to approve wishlist item');
+  }
+
+  async denyWishlistItem(videoId: string, reason?: string): Promise<void> {
+    const response = await fetch(`/api/wishlist/${videoId}/deny`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reason }),
+    });
+    if (!response.ok) throw new Error('Failed to deny wishlist item');
+  }
+
+  async bulkApproveWishlist(videoIds: string[]): Promise<void> {
+    const response = await fetch('/api/wishlist/bulk/approve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoIds }),
+    });
+    if (!response.ok) throw new Error('Failed to bulk approve wishlist items');
+  }
+
+  async bulkDenyWishlist(videoIds: string[], reason?: string): Promise<void> {
+    const response = await fetch('/api/wishlist/bulk/deny', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ videoIds, reason }),
+    });
+    if (!response.ok) throw new Error('Failed to bulk deny wishlist items');
   }
 }
 
