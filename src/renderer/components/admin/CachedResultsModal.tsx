@@ -43,7 +43,9 @@ export const CachedResultsModal: React.FC<CachedResultsModalProps> = ({
       channelName: result.channelName,
       url: result.url,
       publishedAt: result.publishedAt,
-      isApprovedSource: result.isApprovedSource,
+      // Set isApprovedSource to true so it uses custom onVideoClick handler
+      // (prevents default "unapproved source" dialog)
+      isApprovedSource: true,
       // Click to open preview dialog
       onVideoClick: () => {
         setSelectedVideo(result);
