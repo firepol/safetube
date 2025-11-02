@@ -51,7 +51,6 @@ export const WishlistPage: React.FC = () => {
     publishedAt: item.created_at,
     isApprovedSource: item.status === 'approved',
     isInWishlist: true,
-    wishlistStatus: item.status,
     showWishlistButton: false, // Don't show wishlist button on wishlist page
   });
 
@@ -65,7 +64,7 @@ export const WishlistPage: React.FC = () => {
   };
 
   const handleVideoClick = (video: VideoCardBaseProps) => {
-    if (video.wishlistStatus === 'approved') {
+    if (activeTab === 'approved') {
       // Navigate to video player for approved videos with proper breadcrumb data
       navigate(`/player/${encodeURIComponent(video.id)}`, {
         state: {
@@ -100,7 +99,7 @@ export const WishlistPage: React.FC = () => {
       });
     } else {
       // For pending/denied videos, just show info (no action)
-      console.log('Video not approved for playbook:', video);
+      console.log('Video not approved for playback:', video);
     }
   };
 
