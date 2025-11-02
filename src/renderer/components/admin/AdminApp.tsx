@@ -9,6 +9,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import * as Tooltip from '@radix-ui/react-tooltip';
 import { createAdminDataAccess, IAdminDataAccess } from '@/renderer/services/AdminDataAccess';
 import { AdminDataAccessContext } from '@/renderer/hooks/admin/useAdminDataAccess';
 import { AdminContext } from '@/renderer/contexts/AdminContext';
@@ -86,10 +87,12 @@ export const AdminApp: React.FC = () => {
   }
 
   return (
-    <AdminDataAccessContext.Provider value={dataAccess}>
-      <AdminContext.Provider value={contextValue}>
-        <AuthGate onAuthenticated={() => <AdminLayout />} />
-      </AdminContext.Provider>
-    </AdminDataAccessContext.Provider>
+    <Tooltip.Provider>
+      <AdminDataAccessContext.Provider value={dataAccess}>
+        <AdminContext.Provider value={contextValue}>
+          <AuthGate onAuthenticated={() => <AdminLayout />} />
+        </AdminContext.Provider>
+      </AdminDataAccessContext.Provider>
+    </Tooltip.Provider>
   );
 };
