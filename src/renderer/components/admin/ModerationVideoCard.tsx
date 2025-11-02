@@ -39,7 +39,6 @@ export const ModerationVideoCard: React.FC<ModerationVideoCardProps> = ({
     progress: 0,
     showFavoriteIcon: false,
     isInWishlist: true,
-    wishlistStatus: item.status,
     onWishlistAdd: undefined,
     description: item.description || undefined,
     channelId: item.channel_id || undefined,
