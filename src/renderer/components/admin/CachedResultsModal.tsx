@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Search, SearchResult } from '@/shared/types';
 import { VideoGrid } from '../layout/VideoGrid';
 import { VideoCardBaseProps } from '../video/VideoCardBase';
@@ -20,9 +20,15 @@ export const CachedResultsModal: React.FC<CachedResultsModalProps> = ({
   isLoading = false,
   error = null
 }) => {
+  const [selectedVideo, setSelectedVideo] = useState<SearchResult | null>(null);
+
   if (!isOpen || !search) {
     return null;
   }
+
+  const handleWatchInBrowser = (url: string) => {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   // Convert SearchResult to VideoCardBaseProps for VideoGrid
   const videoCards: VideoCardBaseProps[] = results.map((result) => {
@@ -38,9 +44,9 @@ export const CachedResultsModal: React.FC<CachedResultsModalProps> = ({
       url: result.url,
       publishedAt: result.publishedAt,
       isApprovedSource: result.isApprovedSource,
-      // Disable clicking since these are just for viewing
+      // Click to open preview dialog
       onVideoClick: () => {
-        // Do nothing - these are cached results for admin viewing only
+        setSelectedVideo(result);
       }
     };
   });
@@ -190,8 +196,165 @@ export const CachedResultsModal: React.FC<CachedResultsModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Video Preview Dialog */}
+      {selectedVideo && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+            onClick={() => setSelectedVideo(null)}
+          />
+
+          {/* Modal */}
+          <div className="flex min-h-full items-center justify-center p-4">
+            <div className="relative bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex-1">
+                    <h2 className="text-xl font-semibold text-gray-900">
+                      Video Preview
+                    </h2>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Search result from: {search.query}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedVideo(null)}
+                    className="ml-4 text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Content */}
+              <div className="px-6 py-4 overflow-y-auto max-h-[calc(90vh-200px)]">
+                <div className="space-y-6">
+                  {/* Video Player */}
+                  <div className="aspect-video bg-black rounded-lg overflow-hidden">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${extractYouTubeVideoId(selectedVideo.url)}?rel=0&modestbranding=1`}
+                      title={selectedVideo.title}
+                      className="w-full h-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+
+                  {/* Video Metadata */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Left Column */}
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                          {selectedVideo.title}
+                        </h3>
+                        {selectedVideo.description && (
+                          <p className="text-gray-700 text-sm leading-relaxed">
+                            {selectedVideo.description}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        {selectedVideo.channelName && (
+                          <div className="flex items-center text-sm">
+                            <span className="font-medium text-gray-600 w-20">Channel:</span>
+                            <span className="text-gray-900">{selectedVideo.channelName}</span>
+                          </div>
+                        )}
+
+                        {selectedVideo.duration && (
+                          <div className="flex items-center text-sm">
+                            <span className="font-medium text-gray-600 w-20">Duration:</span>
+                            <span className="text-gray-900">{formatDuration(selectedVideo.duration)}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center text-sm">
+                          <span className="font-medium text-gray-600 w-24">Published:</span>
+                          <span className="text-gray-900">{formatDate(selectedVideo.publishedAt)}</span>
+                        </div>
+
+                        {selectedVideo.isApprovedSource !== undefined && (
+                          <div className="flex items-center text-sm">
+                            <span className="font-medium text-gray-600 w-24">Source:</span>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              selectedVideo.isApprovedSource
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}>
+                              {selectedVideo.isApprovedSource ? 'Approved' : 'Unapproved'}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Video URL */}
+                      <div className="text-sm">
+                        <span className="font-medium text-gray-600">URL:</span>
+                        <button
+                          onClick={() => handleWatchInBrowser(selectedVideo.url)}
+                          className="text-blue-600 hover:text-blue-800 underline ml-2 break-all text-left"
+                        >
+                          {selectedVideo.url}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+                <div className="flex justify-between items-center">
+                  <div className="text-sm text-gray-500">
+                    ℹ️ This is a search result. Click the URL to open in a new window.
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedVideo(null)}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
+// Helper function to extract YouTube video ID
+function extractYouTubeVideoId(url: string): string {
+  const regex = /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
+  const match = url.match(regex);
+  return match ? match[1] : '';
+}
+
+// Helper function to format duration
+function formatDuration(seconds: number): string {
+  if (!seconds) return 'Unknown';
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  const secs = seconds % 60;
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }
+  return `${minutes}:${secs.toString().padStart(2, '0')}`;
+}
 
 export default CachedResultsModal;
