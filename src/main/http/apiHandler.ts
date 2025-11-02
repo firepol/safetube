@@ -174,6 +174,12 @@ export async function handleApiRequest(req: http.IncomingMessage, res: http.Serv
       response = await handleValidateYouTubeUrl(body);
     } else if (path === '/api/validate/local-path' && method === 'POST') {
       response = await handleValidateLocalPath(body);
+    } else if (path.startsWith('/api/search-history') && method === 'GET') {
+      const limitMatch = path.match(/limit=(\d+)/);
+      const limit = limitMatch ? parseInt(limitMatch[1]) : 100;
+      response = await handleGetSearchHistory(limit);
+    } else if (path === '/api/search-results' && method === 'POST') {
+      response = await handleGetSearchResults(body);
     } else {
       response = { status: 404, body: { error: 'API endpoint not found' } };
     }
@@ -744,5 +750,84 @@ async function handleValidateLocalPath(body: any): Promise<ApiResponse> {
   } catch (error) {
     log.error('[API] Error validating local path:', error);
     return { status: 500, body: { error: 'Failed to validate local path' } };
+  }
+}
+
+/**
+ * Get search history
+ */
+async function handleGetSearchHistory(limit: number): Promise<ApiResponse> {
+  try {
+    const dbService = (DatabaseService as any).getInstance();
+    log.debug(`[API] Getting search history with limit: ${limit}`);
+
+    const searches = await dbService.all(`
+      SELECT id, query, search_type, result_count, timestamp, created_at
+      FROM searches
+      ORDER BY created_at DESC
+      LIMIT ?
+    `, [limit]) as any[];
+
+    log.debug(`[API] Found ${searches ? searches.length : 0} searches`);
+
+    if (!searches) {
+      return { status: 200, body: [] };
+    }
+
+    return { status: 200, body: searches };
+  } catch (error) {
+    log.error('[API] Error getting search history:', error);
+    return { status: 500, body: { error: 'Failed to get search history' } };
+  }
+}
+
+/**
+ * Get cached search results for a specific search
+ */
+async function handleGetSearchResults(body: any): Promise<ApiResponse> {
+  try {
+    const { query, searchType } = body;
+
+    if (!query || !searchType) {
+      return { status: 400, body: { error: 'Query and searchType are required' } };
+    }
+
+    log.debug(`[API] Getting cached results for query="${query}" type="${searchType}"`);
+
+    const dbService = (DatabaseService as any).getInstance();
+    const results = await dbService.all(`
+      SELECT id, video_data, position
+      FROM search_results_cache
+      WHERE search_query = ? AND search_type = ?
+      ORDER BY position ASC
+      LIMIT 100
+    `, [query, searchType]) as any[];
+
+    log.debug(`[API] Found ${results ? results.length : 0} cached results for query="${query}"`);
+
+    if (!results || results.length === 0) {
+      return { status: 200, body: [] };
+    }
+
+    // Parse video_data JSON for each result
+    const parsedResults = results.map((result: any) => {
+      try {
+        const videoData = typeof result.video_data === 'string' ? JSON.parse(result.video_data) : result.video_data;
+        return {
+          ...videoData,
+          id: videoData.id || `result-${result.id}`,
+        };
+      } catch (e) {
+        log.warn('[API] Failed to parse video_data for search result:', e);
+        return null;
+      }
+    }).filter(Boolean);
+
+    log.debug(`[API] Parsed ${parsedResults.length} results for query="${query}"`);
+
+    return { status: 200, body: parsedResults };
+  } catch (error) {
+    log.error('[API] Error getting search results:', error);
+    return { status: 500, body: { error: 'Failed to get search results' } };
   }
 }

@@ -1,66 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Search, SearchResult } from '@/shared/types';
+import { Search } from '@/shared/types';
 import { CachedResultsModal } from './CachedResultsModal';
+import { useSearchHistory } from '@/renderer/hooks/admin/useSearchHistory';
 
 interface SearchHistoryTabProps {
   className?: string;
 }
 
 export const SearchHistoryTab: React.FC<SearchHistoryTabProps> = ({ className = '' }) => {
-  const [searchHistory, setSearchHistory] = useState<Search[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { searchHistory, cachedResults, isLoading, isLoadingResults, error, load, loadCachedResults } = useSearchHistory(100);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedSearch, setSelectedSearch] = useState<Search | null>(null);
-  const [cachedResults, setCachedResults] = useState<SearchResult[]>([]);
-  const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [showResultsModal, setShowResultsModal] = useState(false);
 
   const itemsPerPage = 20;
 
   useEffect(() => {
-    loadSearchHistory();
+    load();
   }, []);
 
-  const loadSearchHistory = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      const response = await window.electron.getSearchHistory(100);
-      
-      if (response.success && response.data) {
-        setSearchHistory(response.data);
-      } else {
-        setError(response.error || 'Failed to load search history');
-      }
-    } catch (err) {
-      console.error('Error loading search history:', err);
-      setError('Failed to load search history');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleViewCachedResults = async (search: Search) => {
-    try {
-      setIsLoadingResults(true);
-      setSelectedSearch(search);
-      
-      const response = await window.electron.getCachedSearchResults(search.query, search.search_type);
-      
-      if (response.success && response.data) {
-        setCachedResults(response.data);
-        setShowResultsModal(true);
-      } else {
-        setError(response.error || 'Failed to load cached results');
-      }
-    } catch (err) {
-      console.error('Error loading cached results:', err);
-      setError('Failed to load cached results');
-    } finally {
-      setIsLoadingResults(false);
-    }
+    setSelectedSearch(search);
+    await loadCachedResults(search.query, search.search_type);
+    setShowResultsModal(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -119,7 +81,7 @@ export const SearchHistoryTab: React.FC<SearchHistoryTabProps> = ({ className = 
             <h3 className="text-sm font-medium text-red-800">Error</h3>
             <p className="mt-1 text-sm text-red-700">{error}</p>
             <button
-              onClick={loadSearchHistory}
+              onClick={load}
               className="mt-2 text-sm text-red-600 hover:text-red-500 underline"
             >
               Try again
@@ -142,7 +104,7 @@ export const SearchHistoryTab: React.FC<SearchHistoryTabProps> = ({ className = 
               </p>
             </div>
             <button
-              onClick={loadSearchHistory}
+              onClick={load}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
             >
               Refresh
@@ -287,10 +249,11 @@ export const SearchHistoryTab: React.FC<SearchHistoryTabProps> = ({ className = 
         onClose={() => {
           setShowResultsModal(false);
           setSelectedSearch(null);
-          setCachedResults([]);
         }}
         search={selectedSearch}
         results={cachedResults}
+        isLoading={isLoadingResults}
+        error={error}
       />
     </div>
   );

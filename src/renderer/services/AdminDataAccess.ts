@@ -14,7 +14,7 @@ import {
   MainSettings,
   FeatureFlags,
 } from '@/renderer/hooks/admin/types';
-import { VideoSource } from '@/shared/types';
+import { VideoSource, Search, SearchResult, SearchType } from '@/shared/types';
 
 /**
  * Core data access interface that abstracts IPC vs HTTP differences.
@@ -122,6 +122,21 @@ export interface IAdminDataAccess {
    * @returns Validation result
    */
   validateLocalPath(path: string): Promise<{ isValid: boolean; errors?: string[] }>;
+
+  /**
+   * Get search history
+   * @param limit - Maximum number of searches to return
+   * @returns Array of search history entries
+   */
+  getSearchHistory(limit: number): Promise<Search[]>;
+
+  /**
+   * Get cached search results for a specific search
+   * @param query - Search query string
+   * @param searchType - Type of search (youtube or database)
+   * @returns Array of cached search results
+   */
+  getCachedSearchResults(query: string, searchType: SearchType): Promise<SearchResult[]>;
 }
 
 /**
@@ -235,6 +250,22 @@ export class IPCAdminDataAccess implements IAdminDataAccess {
   async validateLocalPath(path: string): Promise<{ isValid: boolean; errors?: string[] }> {
     return await window.electron.videoSourcesValidateLocalPath(path);
   }
+
+  async getSearchHistory(limit: number): Promise<Search[]> {
+    const response = await window.electron.getSearchHistory(limit);
+    if (response.success && response.data) {
+      return response.data;
+    }
+    throw new Error(response.error || 'Failed to get search history');
+  }
+
+  async getCachedSearchResults(query: string, searchType: SearchType): Promise<SearchResult[]> {
+    const response = await window.electron.getCachedSearchResults(query, searchType);
+    if (response.success && response.data) {
+      return response.data;
+    }
+    throw new Error(response.error || 'Failed to get cached search results');
+  }
 }
 
 /**
@@ -254,7 +285,7 @@ export class HTTPAdminDataAccess implements IAdminDataAccess {
       hasFileSystem: false,
       hasAppRestart: false,
       canManageVideoSources: true,
-      canViewSearchHistory: false,
+      canViewSearchHistory: true,
       canModerateWishlist: false,
     };
   }
@@ -410,6 +441,22 @@ export class HTTPAdminDataAccess implements IAdminDataAccess {
       const error = await response.json();
       return { isValid: false, errors: [error.error || 'Failed to validate local path'] };
     }
+    return await response.json();
+  }
+
+  async getSearchHistory(limit: number): Promise<Search[]> {
+    const response = await fetch(`/api/search-history?limit=${limit}`);
+    if (!response.ok) throw new Error('Failed to get search history');
+    return await response.json();
+  }
+
+  async getCachedSearchResults(query: string, searchType: SearchType): Promise<SearchResult[]> {
+    const response = await fetch('/api/search-results', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, searchType }),
+    });
+    if (!response.ok) throw new Error('Failed to get cached search results');
     return await response.json();
   }
 }
