@@ -134,13 +134,13 @@ export const SearchResultsPage: React.FC<SearchResultsPageProps> = () => {
   // Handle search from SearchBar
   const handleSearch = useCallback((searchQuery: string) => {
     if (!searchQuery.trim()) return;
-    
-    // Update URL with search query
+
+    // Reset search state to allow useEffect to trigger
+    setHasSearched(false);
+    // Update URL - the useEffect will handle the actual search
+    // to avoid double-triggering performDatabaseSearch
     setSearchParams({ q: searchQuery });
-    
-    // Perform database search (with auto-fallback to YouTube)
-    performDatabaseSearch(searchQuery);
-  }, [setSearchParams, performDatabaseSearch]);
+  }, [setSearchParams]);
 
   // Handle manual YouTube search button
   const handleYouTubeSearch = useCallback(() => {

@@ -350,7 +350,7 @@ export class SearchService {
       const cached = await this.getSearchCache(query, 'youtube');
       if (cached && cached.length > 0) {
         log.info(`[SearchService] Found ${cached.length} results in cache`);
-        // Still record search in history for audit trail
+        // Record search in history for cached results
         await this.recordSearch(query, 'youtube', cached.length);
         return cached;
       }
@@ -370,6 +370,7 @@ export class SearchService {
 
       if (!videos || videos.length === 0) {
         log.info('[SearchService] No YouTube results found');
+        // Record search for no results case
         await this.recordSearch(query, 'youtube', 0);
         return [];
       }
@@ -402,7 +403,7 @@ export class SearchService {
       // Cache results for 24 hours
       await this.cacheSearchResults(query, 'youtube', searchResults);
 
-      // Record search in history
+      // Record search in history (only once at the end)
       await this.recordSearch(query, 'youtube', searchResults.length);
 
       return searchResults;
