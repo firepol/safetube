@@ -192,14 +192,26 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
                   {/* Video URL */}
                   <div className="text-sm">
                     <span className="font-medium text-gray-600">URL:</span>
-                    <a 
-                      href={video.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-800 underline ml-2 break-all"
-                    >
-                      {video.url}
-                    </a>
+                    {onWatchInBrowser ? (
+                      <button
+                        onClick={() => {
+                          onWatchInBrowser(video.url);
+                          onClose();
+                        }}
+                        className="text-blue-600 hover:text-blue-800 underline ml-2 break-all text-left"
+                      >
+                        {video.url}
+                      </button>
+                    ) : (
+                      <a
+                        href={video.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline ml-2 break-all"
+                      >
+                        {video.url}
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
@@ -214,18 +226,6 @@ export const VideoPreviewModal: React.FC<VideoPreviewModalProps> = ({
               </div>
 
               <div className="flex gap-3">
-                {onWatchInBrowser && (
-                  <button
-                    onClick={() => {
-                      onWatchInBrowser(video.url);
-                      onClose();
-                    }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                  >
-                    Watch in Browser
-                  </button>
-                )}
-
                 {video.status === 'pending' && (
                   <>
                     <button
