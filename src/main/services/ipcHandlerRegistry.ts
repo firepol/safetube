@@ -1125,8 +1125,30 @@ export function registerSettingsHandlers() {
       const { default: DatabaseService } = await import('../services/DatabaseService');
       const db = DatabaseService.getInstance();
 
+      // Handle password validation and existing password preservation
+      let processedSettings = { ...settings };
+
+      if ('adminPassword' in processedSettings) {
+        const newPassword = processedSettings.adminPassword ? String(processedSettings.adminPassword).trim() : '';
+
+        if (newPassword) {
+          // Validate minimum password length (4 characters)
+          if (newPassword.length < 4) {
+            throw new Error('Password must be at least 4 characters long');
+          }
+
+          // Hash the new password
+          const bcrypt = require('bcrypt');
+          processedSettings.adminPassword = await bcrypt.hash(newPassword, 10);
+        } else {
+          // Keep existing password if not provided or empty
+          const existingSettings = await readMainSettings();
+          processedSettings.adminPassword = (existingSettings as any).adminPassword || '';
+        }
+      }
+
       // Convert settings object to individual key-value pairs with 'main.' prefix
-      const queries = Object.entries(settings).map(([key, value]) => ({
+      const queries = Object.entries(processedSettings).map(([key, value]) => ({
         sql: `
           INSERT OR REPLACE INTO settings (key, value, type)
           VALUES (?, ?, ?)

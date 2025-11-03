@@ -556,23 +556,29 @@ async function handleSaveSettings(body: any): Promise<ApiResponse> {
   try {
     const settings = {
       youtubeApiKey: body.youtubeApiKey || '',
-      adminPassword: body.adminPassword || '',
       enableVerboseLogging: body.enableVerboseLogging || false,
       allowYouTubeClicksToOtherVideos: body.allowYouTubeClicksToOtherVideos || false,
       remoteAccessEnabled: body.remoteAccessEnabled || false
-    };
+    } as any;
 
-    // Hash password if provided
-    if (settings.adminPassword && settings.adminPassword.trim()) {
+    // Handle password: only update if provided and meets minimum length
+    const newPassword = body.adminPassword ? body.adminPassword.trim() : '';
+
+    if (newPassword) {
+      // Validate minimum password length (4 characters)
+      if (newPassword.length < 4) {
+        return { status: 400, body: { error: 'Password must be at least 4 characters long' } };
+      }
+
       const bcrypt = require('bcrypt');
-      settings.adminPassword = await bcrypt.hash(settings.adminPassword, 10);
+      settings.adminPassword = await bcrypt.hash(newPassword, 10);
     } else {
-      // Keep existing password if not provided
+      // Keep existing password if not provided or empty
       const mainSettings = await readMainSettings();
       settings.adminPassword = (mainSettings as any).adminPassword || '';
     }
 
-    await writeMainSettings(settings as any);
+    await writeMainSettings(settings);
     log.info('[API] Settings saved');
     return { status: 200, body: { success: true } };
   } catch (error) {

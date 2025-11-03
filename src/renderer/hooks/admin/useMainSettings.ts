@@ -54,8 +54,17 @@ export function useMainSettings(): UseMainSettingsReturn {
 
         // Hash password if provided and not empty
         if (updates.adminPassword && updates.adminPassword.trim()) {
+          const password = updates.adminPassword.trim();
+
+          // Validate minimum password length (4 characters)
+          if (password.length < 4) {
+            setError('Password must be at least 4 characters long');
+            setIsLoading(false);
+            return false;
+          }
+
           try {
-            const hashed = await dataAccess.hashPassword(updates.adminPassword);
+            const hashed = await dataAccess.hashPassword(password);
             settingsToSave = { ...settingsToSave, adminPassword: hashed };
           } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to hash password';
@@ -63,7 +72,7 @@ export function useMainSettings(): UseMainSettingsReturn {
             return false;
           }
         } else {
-          // Remove password from update if empty
+          // Remove password from update if empty - let backend preserve existing password
           const { adminPassword, ...rest } = settingsToSave;
           settingsToSave = rest;
         }
