@@ -1052,10 +1052,37 @@ export const PlayerPage: React.FC = () => {
             timeWatched,
             video.duration
           );
+          
+          // Immediately check if time limit has been reached after recording
+          try {
+            const state = await window.electron.getTimeTrackingState();
+            if (state.isLimitReached) {
+              // Stop playback immediately
+              videoRef.current.pause();
+              setTimeRemainingSeconds(0);
+              
+              // Exit fullscreen if in fullscreen mode
+              if (document.fullscreenElement) {
+                try {
+                  await document.exitFullscreen();
+                } catch (error) {
+                  console.error('Error exiting fullscreen:', error);
+                }
+              }
+              
+              // Navigate to Time's Up page
+              navigate('/time-up');
+            } else {
+              // Update remaining time for UI
+              setTimeRemainingSeconds(state.timeRemaining);
+            }
+          } catch (error) {
+            console.error('Error checking time limit after recording:', error);
+          }
         }
       }
     }
-  }, [video]);
+  }, [video, navigate]);
 
   const stopTimeTracking = useCallback(async () => {
     if (timeTrackingRef.current.isTracking) {
