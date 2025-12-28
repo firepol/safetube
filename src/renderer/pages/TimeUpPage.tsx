@@ -22,6 +22,11 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
   const [isLoading, setIsLoading] = useState(true);
   const [sourceName, setSourceName] = useState<string | null>(null);
   const [sourceLoadingError, setSourceLoadingError] = useState<string | null>(null);
+  const [showExtensionRequest, setShowExtensionRequest] = useState(false);
+  const [selectedExtensionMinutes, setSelectedExtensionMinutes] = useState<number>(5);
+  const [customExtensionMinutes, setCustomExtensionMinutes] = useState<string>('');
+  const [extensionRequestSent, setExtensionRequestSent] = useState(false);
+  const [extensionRequestLoading, setExtensionRequestLoading] = useState(false);
 
   // Get location state for source-specific blocking
   const locationState = location.state as any;
@@ -82,6 +87,40 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
     const remainingMinutes = minutes % 60;
     if (remainingMinutes === 0) return `${hours} hour${hours > 1 ? 's' : ''}`;
     return `${hours} hour${hours > 1 ? 's' : ''} ${remainingMinutes} minutes`;
+  };
+
+  const handleRequestExtension = async () => {
+    if (!sourceId) return;
+
+    setExtensionRequestLoading(true);
+    try {
+      // Determine which extension amount to request
+      const useCustom = customExtensionMinutes && parseInt(customExtensionMinutes) > 0;
+      const minutesToRequest = useCustom ? parseInt(customExtensionMinutes) : selectedExtensionMinutes;
+
+      // Validate the minutes
+      if (minutesToRequest < 1 || minutesToRequest > 60) {
+        alert('Please request between 1 and 60 minutes');
+        return;
+      }
+
+      // Log the extension request (this would normally be sent to parent via notification)
+      console.log(`[TimeUpPage] Extension request: ${sourceName} needs ${minutesToRequest} more minutes`);
+
+      // Show confirmation message
+      setExtensionRequestSent(true);
+      setShowExtensionRequest(false);
+
+      // Auto-hide confirmation after 3 seconds
+      setTimeout(() => {
+        setExtensionRequestSent(false);
+      }, 3000);
+    } catch (error) {
+      console.error('Error requesting extension:', error);
+      alert('Failed to send extension request');
+    } finally {
+      setExtensionRequestLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -180,26 +219,114 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
           </div>
         ) : (
           // Source limit reached - show action buttons
-          <div className="flex justify-center gap-4 flex-wrap">
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex justify-center gap-4 flex-wrap">
+              <button
+                onClick={() => navigate('/')}
+                className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Choose Another Source
+              </button>
+
+              <button
+                onClick={() => navigate(-1)}
+                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium"
+              >
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Go Back
+              </button>
+            </div>
+
+            {/* Extension request button */}
             <button
-              onClick={() => navigate('/')}
-              className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium"
+              onClick={() => setShowExtensionRequest(true)}
+              className="inline-flex items-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200 font-medium"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              Choose Another Source
+              Request More Time
             </button>
 
-            <button
-              onClick={() => navigate(-1)}
-              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Go Back
-            </button>
+            {/* Extension request confirmation */}
+            {extensionRequestSent && (
+              <div className="bg-green-50 border-2 border-green-300 rounded-lg p-4 max-w-md mx-auto">
+                <div className="text-center">
+                  <p className="text-green-700 font-medium">Extension request sent to parent!</p>
+                  <p className="text-sm text-green-600 mt-1">Your parent will review your request</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Extension Request Modal */}
+        {showExtensionRequest && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-2xl p-8 max-w-md w-full">
+              <h2 className="text-2xl font-bold text-gray-800 mb-4">Request More Time</h2>
+              <p className="text-gray-600 mb-6">How many more minutes would you like for {sourceName}?</p>
+
+              {/* Quick extension options */}
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                {[5, 10, 15, 30].map((minutes) => (
+                  <button
+                    key={minutes}
+                    onClick={() => {
+                      setSelectedExtensionMinutes(minutes);
+                      setCustomExtensionMinutes('');
+                    }}
+                    className={`py-2 px-4 rounded-lg font-medium transition-colors ${
+                      selectedExtensionMinutes === minutes && !customExtensionMinutes
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {minutes}m
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom time input */}
+              <div className="mb-6">
+                <label className="block text-sm text-gray-600 mb-2">Or enter custom minutes (1-60):</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="60"
+                  value={customExtensionMinutes}
+                  onChange={(e) => {
+                    setCustomExtensionMinutes(e.target.value);
+                    setSelectedExtensionMinutes(5); // Reset quick selection
+                  }}
+                  placeholder="Enter minutes"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              {/* Action buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowExtensionRequest(false)}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                  disabled={extensionRequestLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRequestExtension}
+                  className="flex-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-medium disabled:opacity-50"
+                  disabled={extensionRequestLoading}
+                >
+                  {extensionRequestLoading ? 'Sending...' : 'Send Request'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
