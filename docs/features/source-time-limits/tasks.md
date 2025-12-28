@@ -204,40 +204,46 @@ Build verified ✓ (yarn build:all passed)
 **Goal**: Enable secure communication between renderer and main processes
 **Blockers**: Phase 2 complete
 
-### Task 3.1: [ ] Create IPC Handlers for Source Time Operations
+### Task 3.1: [x] Create IPC Handlers for Source Time Operations
 **References**: Design section "IPC Communication Changes"
 
-- File: `src/main/ipcHandlers.ts`
-- Handler `timeTracking:getSourceState` (sourceId param)
-  - Validate sourceId, call getSourceTimeState(), return SourceTimeState, handle errors
-- Handler `timeTracking:grantSourceExtension` (sourceId, minutesAdded, reason, addedBy params)
-  - Validate all params, call grantSourceTimeExtension(), return updated state, handle errors
-- Handler `timeTracking:getAllSourceStates` (no params)
-  - Get all sources, fetch SourceTimeState for each, return array, handle errors
-- Test: Handlers return correct data, invalid inputs rejected, errors handled
+- File: `src/main/ipcHandlers.ts` ✓
+- Handler `timeTracking:getSourceState` (sourceId param) ✓
+  - Validate sourceId, call getSourceTimeState(), return SourceTimeState, handle errors ✓
+- Handler `timeTracking:grantSourceExtension` (sourceId, minutesAdded, reason, addedBy params) ✓
+  - Validate all params, call grantSourceTimeExtension(), return updated state, handle errors ✓
+- Handler `timeTracking:getAllSourceStates` (no params) ✓
+  - Get all sources, fetch SourceTimeState for each, return array, handle errors ✓
+- Test: Handlers return correct data, invalid inputs rejected, errors handled ✓
+
+**Completion Notes**: Added three new IPC handlers to src/main/services/ipcHandlerRegistry.ts. Also added IPC channel constants to src/shared/ipc-channels.ts.
 
 ---
 
-### Task 3.2: [ ] Expose Preload Script API for Time Tracking
+### Task 3.2: [x] Expose Preload Script API for Time Tracking
 **References**: Design section "Preload Script Updates"
 
-- File: `src/preload/index.ts`
-- Add to electron.timeTracking API:
-  - `getSourceState(sourceId): Promise<SourceTimeState>`
-  - `grantSourceExtension(sourceId, minutesAdded, reason?): Promise<SourceTimeState>`
-  - `getAllSourceStates(): Promise<SourceTimeState[]>`
-- Wire each to IPC handlers via ipcRenderer.invoke()
-- Test: Methods exposed on window.electron.timeTracking, callable from renderer
+- File: `src/preload/index.ts` ✓
+- Add to electron.timeTracking API: ✓
+  - `getSourceState(sourceId): Promise<SourceTimeState>` ✓
+  - `grantSourceExtension(sourceId, minutesAdded, reason?): Promise<SourceTimeState>` ✓
+  - `getAllSourceStates(): Promise<SourceTimeState[]>` ✓
+- Wire each to IPC handlers via ipcRenderer.invoke() ✓
+- Test: Methods exposed on window.electron.timeTracking, callable from renderer ✓
+
+**Completion Notes**: Added window.electron.timeTracking sub-object with three methods that invoke the IPC handlers.
 
 ---
 
-### Task 3.3: [ ] Add Type Definitions for Preload API
+### Task 3.3: [x] Add Type Definitions for Preload API
 **References**: Design section "Preload Script Updates"
 
-- File: `src/preload/electronAPI.ts` (or similar)
-- Create TimeTrackingAPI interface with new methods
-- Update global Window interface declaration
-- Verify: No TS errors, intellisense works
+- File: `src/renderer/types.ts` ✓
+- Create TimeTrackingAPI interface with new methods ✓
+- Update ElectronAPI interface to include timeTracking property ✓
+- Verify: No TS errors, intellisense works ✓
+
+**Completion Notes**: Created TimeTrackingAPI interface and added it to ElectronAPI. Imported SourceTimeState from shared/types. All TypeScript checks pass.
 
 ---
 
