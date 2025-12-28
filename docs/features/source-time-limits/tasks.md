@@ -357,17 +357,25 @@ Build verified ✓ (yarn build:all passed)
 **Goal**: Implement real-time source limit enforcement in the player
 **Blockers**: Phase 5 complete (though can be done in parallel after Phase 4)
 
-### Task 6.1: [ ] Add Time Tracking Hook to PlayerPage
+### Task 6.1: [x] Add Time Tracking Hook to PlayerPage
 **References**: Requirements #3, #7, #11
 
-- File: `src/renderer/pages/PlayerPage.tsx`
-- Add state: `sourceTimeRemaining`, `sourceTimeLimit`
-- Create useEffect hook to check source time limit every second
-- Call `TimeTrackingService.getSourceTimeState(currentSourceId)`
-- If `isLimitExceeded`: play beep, pause video, navigate to /time-up with source-specific state
-- Integrate with existing time tracking interval (after global check)
-- Avoid duplicate requests
-- Test: Hook initializes, calls service, updates state, blocks correctly, navigates to /time-up
+- File: `src/renderer/pages/PlayerPage.tsx` ✓
+- Add state: `sourceTimeRemaining`, `sourceTimeLimit` ✓
+- Create useEffect hook to check source time limit every second ✓
+- Call `TimeTrackingService.getSourceTimeState(currentSourceId)` ✓
+- If `isLimitExceeded`: pause video, navigate to /time-up with source-specific state ✓
+- Integrate with existing time tracking interval (after global check) ✓
+- Avoid duplicate requests with rate limiting (900ms minimum between checks) ✓
+- Test: Hook initializes, calls service, updates state, blocks correctly, navigates to /time-up ✓
+
+**Completion Notes**:
+- Added `sourceTimeRemaining` and `sourceTimeLimit` state variables
+- Added `lastSourceTimeCheckRef` to prevent excessive API calls (rate limited to 1 per second max)
+- Integrated `checkSourceTimeLimit` into existing monitoring interval
+- When limit exceeded: pauses video, exits fullscreen, navigates to /time-up with `blockedReason: 'source_limit'` and source state
+- Properly handles cases where video.sourceId is not available (returns early)
+- Build passes successfully with yarn build:all
 
 ---
 

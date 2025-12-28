@@ -13,6 +13,7 @@ import { CompactControlsRow } from '../components/video/CompactControlsRow';
 import { useFavoriteStatus } from '../hooks/useFavoriteStatus';
 import { FavoritesService } from '../services/favoritesService';
 import { useDownload } from '../hooks/useDownload';
+import { TimeTrackingService } from '../services/timeTrackingService';
 
 
 function getSrc(val: unknown): string {
@@ -61,6 +62,11 @@ export const PlayerPage: React.FC = () => {
   const [timeRemainingSeconds, setTimeRemainingSeconds] = useState<number>(0);
   const [countdownWarningSeconds, setCountdownWarningSeconds] = useState<number>(60);
   const [isVideoPlaying, setIsVideoPlaying] = useState<boolean>(false);
+
+  // Source-level time tracking state
+  const [sourceTimeRemaining, setSourceTimeRemaining] = useState<number | null>(null);
+  const [sourceTimeLimit, setSourceTimeLimit] = useState<number | null>(null);
+  const lastSourceTimeCheckRef = useRef<number>(0);
   
   // Flag to prevent infinite loop when setting resume time
   const resumeAttemptedRef = useRef<boolean>(false);
@@ -911,27 +917,27 @@ export const PlayerPage: React.FC = () => {
   // Continuous time limit monitoring during video playback
   useEffect(() => {
     if (!video) return;
-    
+
     let isMounted = true;
     let intervalId: number | undefined;
-    
+
     const monitorTimeLimits = async () => {
       try {
         const state = await window.electron.getTimeTrackingState();
         if (!isMounted) return;
-        
+
         // Update time remaining for countdown overlay
         setTimeRemainingSeconds(state.timeRemaining);
-        
+
         // Check and trigger audio warnings
         audioWarningService.checkAudioWarnings(state.timeRemaining, isVideoPlaying);
-        
+
         if (state.isLimitReached) {
           // Stop video playback
           if (videoRef.current) {
             videoRef.current.pause();
           }
-          
+
           // Exit fullscreen if in fullscreen mode
           if (document.fullscreenElement) {
             try {
@@ -940,7 +946,7 @@ export const PlayerPage: React.FC = () => {
               console.error('Error exiting fullscreen:', error);
             }
           }
-          
+
           // Navigate to Time's Up page
           navigate('/time-up');
         }
@@ -948,19 +954,67 @@ export const PlayerPage: React.FC = () => {
         console.error('Error monitoring time limits:', error);
       }
     };
-    
+
+    // Check source-level time limit every second
+    const checkSourceTimeLimit = async () => {
+      if (!video?.sourceId) return;
+
+      // Avoid excessive API calls with rate limiting
+      const now = Date.now();
+      if (now - lastSourceTimeCheckRef.current < 900) return;
+      lastSourceTimeCheckRef.current = now;
+
+      try {
+        const sourceState = await TimeTrackingService.getSourceTimeState(video.sourceId);
+        if (!isMounted) return;
+
+        setSourceTimeLimit(sourceState.dailyLimitMinutes);
+        setSourceTimeRemaining(sourceState.secondsRemainingToday);
+
+        if (sourceState.isLimitExceeded) {
+          // Stop video playback
+          if (videoRef.current) {
+            videoRef.current.pause();
+          }
+
+          // Exit fullscreen if in fullscreen mode
+          if (document.fullscreenElement) {
+            try {
+              await document.exitFullscreen();
+            } catch (error) {
+              console.error('Error exiting fullscreen:', error);
+            }
+          }
+
+          // Navigate to time-up page with source-specific information
+          navigate('/time-up', {
+            state: {
+              blockedReason: 'source_limit',
+              sourceId: video.sourceId,
+              sourceTimeState: sourceState
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error checking source time limit:', error);
+      }
+    };
+
     // Only poll while playing to ensure fresh play-state in the closure
     if (isVideoPlaying) {
-      intervalId = window.setInterval(monitorTimeLimits, 1000);
+      intervalId = window.setInterval(() => {
+        monitorTimeLimits();
+        checkSourceTimeLimit();
+      }, 1000);
     }
-    
+
     return () => {
       isMounted = false;
       if (intervalId) {
         clearInterval(intervalId);
       }
     };
-  }, [video, isVideoPlaying]);
+  }, [video, isVideoPlaying, navigate]);
 
   // Fetch countdown configuration
   useEffect(() => {
@@ -1457,6 +1511,37 @@ export const PlayerPage: React.FC = () => {
         onStartDownload={handleStartDownload}
         onCancelDownload={handleCancelDownload}
       />
+
+      {/* Source time remaining display */}
+      {video?.sourceId && sourceTimeLimit !== null && (
+        <div className="mt-4">
+          <div className={`p-3 rounded-lg border-2 ${
+            sourceTimeRemaining !== null && sourceTimeRemaining < 300
+              ? 'bg-orange-50 border-orange-300'
+              : 'bg-blue-50 border-blue-300'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-gray-700">Source Time:</span>
+              <span className={`font-semibold ${
+                sourceTimeRemaining !== null && sourceTimeRemaining < 300
+                  ? 'text-orange-600'
+                  : 'text-blue-600'
+              }`}>
+                {sourceTimeRemaining !== null
+                  ? TimeTrackingService.formatTimeRemaining({
+                      dailyLimitMinutes: sourceTimeLimit,
+                      secondsRemainingToday: sourceTimeRemaining,
+                      secondsUsedToday: 0,
+                      isLimitExceeded: false,
+                      sourceId: video.sourceId,
+                      lastResetDate: ''
+                    })
+                  : 'Unlimited'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Compact Controls Row - matches YouTube player layout */}
       {video && (
