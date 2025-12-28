@@ -485,3 +485,47 @@ export async function getSourceTimeState(sourceId: string): Promise<SourceTimeSt
   }
 }
 
+/**
+ * Record watch time for a specific source
+ * @param sourceId - Source ID to record time for
+ * @param secondsWatched - Time watched in seconds
+ */
+export async function recordSourceWatchTime(sourceId: string, secondsWatched: number): Promise<void> {
+  try {
+    const { DatabaseService } = await import('./services/DatabaseService');
+    const dbService = DatabaseService.getInstance();
+
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    // Round seconds to nearest second
+    const roundedSeconds = Math.round(secondsWatched);
+
+    // Check if today's entry exists in usage_logs for this source
+    const existing = await dbService.get<any>(
+      'SELECT id, seconds_used FROM usage_logs WHERE source_id = ? AND date = ?',
+      [sourceId, today]
+    );
+
+    if (existing) {
+      // Increment seconds_used
+      await dbService.run(
+        'UPDATE usage_logs SET seconds_used = seconds_used + ? WHERE source_id = ? AND date = ?',
+        [roundedSeconds, sourceId, today]
+      );
+
+      logVerbose(`[TimeTracking] Updated source usage for ${sourceId} on ${today}: +${roundedSeconds} seconds`);
+    } else {
+      // Create new entry with today's date
+      await dbService.run(
+        'INSERT INTO usage_logs (date, seconds_used, source_id) VALUES (?, ?, ?)',
+        [today, roundedSeconds, sourceId]
+      );
+
+      logVerbose(`[TimeTracking] Created new usage entry for ${sourceId} on ${today}: ${roundedSeconds} seconds`);
+    }
+  } catch (error) {
+    logVerbose(`[TimeTracking] Error recording source watch time for ${sourceId}: ${error}`);
+    throw error;
+  }
+}
+
