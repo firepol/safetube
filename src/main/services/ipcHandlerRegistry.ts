@@ -9,7 +9,7 @@ import { AppPaths } from '../appPaths';
 import { readTimeLimits, readMainSettings, writeMainSettings } from '../fileUtils';
 import { getYouTubeApiKey } from '../helpers/settingsHelper';
 import log from '../logger';
-import { recordVideoWatching, getTimeTrackingState } from '../timeTracking';
+import { recordVideoWatching, getTimeTrackingState, getSourceTimeState, grantSourceTimeExtension } from '../timeTracking';
 import { YouTubeAPI } from '../youtube-api';
 import registerDatabaseHandlers from '../ipc/databaseHandlers';
 import { extractChannelId, extractPlaylistId } from '../../shared/videoSourceUtils';
@@ -278,6 +278,71 @@ export function registerTimeTrackingHandlers() {
       };
     } catch (error) {
       log.error('[IPC] Error reading time limits from database:', error);
+      throw error;
+    }
+  });
+
+  // Get source time state
+  ipcMain.handle(IPC.TIME_TRACKING.GET_SOURCE_STATE, async (_, sourceId: string) => {
+    try {
+      if (!sourceId || typeof sourceId !== 'string') {
+        throw new Error('Invalid sourceId parameter');
+      }
+      const state = await getSourceTimeState(sourceId);
+      return state;
+    } catch (error) {
+      log.error('[IPC] Error getting source time state:', error);
+      throw error;
+    }
+  });
+
+  // Grant source time extension
+  ipcMain.handle(IPC.TIME_TRACKING.GRANT_SOURCE_EXTENSION, async (_, params: any) => {
+    try {
+      const { sourceId, minutesAdded, reason, addedBy } = params;
+
+      // Validate parameters
+      if (!sourceId || typeof sourceId !== 'string') {
+        throw new Error('Invalid sourceId parameter');
+      }
+      if (!minutesAdded || typeof minutesAdded !== 'number' || minutesAdded < 1 || minutesAdded > 60) {
+        throw new Error('Invalid minutesAdded parameter - must be between 1 and 60');
+      }
+      if (!addedBy || typeof addedBy !== 'string') {
+        throw new Error('Invalid addedBy parameter');
+      }
+
+      await grantSourceTimeExtension(sourceId, minutesAdded, reason || '', addedBy);
+      // Return updated state
+      const updatedState = await getSourceTimeState(sourceId);
+      return updatedState;
+    } catch (error) {
+      log.error('[IPC] Error granting source extension:', error);
+      throw error;
+    }
+  });
+
+  // Get all source states
+  ipcMain.handle(IPC.TIME_TRACKING.GET_ALL_SOURCE_STATES, async () => {
+    try {
+      const { default: DatabaseService } = await import('../services/DatabaseService');
+      const db = DatabaseService.getInstance();
+
+      // Get all sources from database
+      const sources = await db.all<any>('SELECT id FROM sources ORDER BY position ASC, title ASC');
+
+      if (!sources || sources.length === 0) {
+        return [];
+      }
+
+      // Fetch time state for each source
+      const states = await Promise.all(
+        sources.map(source => getSourceTimeState(source.id))
+      );
+
+      return states;
+    } catch (error) {
+      log.error('[IPC] Error getting all source states:', error);
       throw error;
     }
   });

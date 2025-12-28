@@ -102,6 +102,9 @@ const IPC = {
     RECORD_VIDEO_WATCHING: 'time-tracking:record-video-watching',
     GET_TIME_TRACKING_STATE: 'time-tracking:get-time-tracking-state',
     GET_TIME_LIMITS: 'time-tracking:get-time-limits',
+    GET_SOURCE_STATE: 'time-tracking:get-source-state',
+    GRANT_SOURCE_EXTENSION: 'time-tracking:grant-source-extension',
+    GET_ALL_SOURCE_STATES: 'time-tracking:get-all-source-states',
   },
 
   // ============================================================================
