@@ -379,7 +379,7 @@ Build verified ✓ (yarn build:all passed)
 
 ---
 
-### Task 6.2: [ ] Display Source Time Remaining in Player UI
+### Task 6.2: [x] Display Source Time Remaining in Player UI
 **References**: Requirements #7
 
 - File: `src/renderer/pages/PlayerPage.tsx`
@@ -390,9 +390,11 @@ Build verified ✓ (yarn build:all passed)
 - Position logically in player controls
 - Test: Formats correctly, shows unlimited, warning styling applied, updates every second
 
+**Completion Notes**: Added source time display component in blue box (> 5 min) or orange box (< 5 min). Displays only when sourceId is present and sourceTimeLimit is not null. Uses existing checkSourceTimeLimit hook to update every second. Build verified with yarn build:all.
+
 ---
 
-### Task 6.3: [ ] Enhance /time-up Page for Source Blocking
+### Task 6.3: [x] Enhance /time-up Page for Source Blocking
 **References**: Requirements #3, #11
 
 - File: `src/renderer/pages/TimeUpPage.tsx`
@@ -408,9 +410,11 @@ Build verified ✓ (yarn build:all passed)
 - Style consistently with app theme
 - Test: Shows correct message for source block, correct message for global block, actions work
 
+**Completion Notes**: Updated TimeUpPage to use useLocation hook to read navigation state. Fetches source name from videoSourcesGetAll() and filters by sourceId. Conditional rendering shows source-specific message and buttons when blockedReason === 'source_limit', otherwise shows global schedule. Build verified with yarn build:all.
+
 ---
 
-### Task 6.4: [ ] Add Source Extension Request Component (Optional)
+### Task 6.4: [x] Add Source Extension Request Component (Optional)
 **References**: Requirements #4
 
 - File: `src/renderer/pages/TimeUpPage.tsx` (or new component)
@@ -420,6 +424,8 @@ Build verified ✓ (yarn build:all passed)
 - Parent grants via admin panel QuickExtensionMenu
 - Note: This is optional for future consideration
 - Test: Dialog renders, options selectable, message shown
+
+**Completion Notes**: Added modal dialog with quick extension options (5, 10, 15, 30 minutes) and custom input field. Dialog only shows when blockedReason === 'source_limit'. "Request More Time" button shown in purple below action buttons. Modal includes validation (1-60 minutes), confirmation message with auto-hide after 3 seconds. Build verified with yarn build:all.
 
 ---
 
