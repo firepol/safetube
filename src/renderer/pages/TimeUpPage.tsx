@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { TimeLimits } from '@/shared/types';
 
 // Utility functions moved here to avoid fs dependency
@@ -16,9 +16,18 @@ const getDayOfWeek = (dateString: string): keyof TimeLimits => {
 // Accept currentDate as a prop for testability
 export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [timeLimits, setTimeLimits] = useState<TimeLimits | null>(null);
   const [date, setDate] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [sourceName, setSourceName] = useState<string | null>(null);
+  const [sourceLoadingError, setSourceLoadingError] = useState<string | null>(null);
+
+  // Get location state for source-specific blocking
+  const locationState = location.state as any;
+  const blockedReason = locationState?.blockedReason;
+  const sourceId = locationState?.sourceId;
+  const sourceTimeState = locationState?.sourceTimeState;
 
   useEffect(() => {
     const loadSchedule = async () => {
@@ -34,6 +43,27 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
     };
     loadSchedule();
   }, [currentDate]);
+
+  // Fetch source name if source-limited
+  useEffect(() => {
+    const loadSourceName = async () => {
+      if (blockedReason === 'source_limit' && sourceId) {
+        try {
+          const sources = await window.electron.videoSourcesGetAll();
+          const source = sources.find((s: any) => s.id === sourceId);
+          if (source) {
+            setSourceName(source.title);
+          } else {
+            setSourceLoadingError('Source not found');
+          }
+        } catch (error) {
+          console.error('Error loading source:', error);
+          setSourceLoadingError('Failed to load source');
+        }
+      }
+    };
+    loadSourceName();
+  }, [blockedReason, sourceId]);
 
   const formatDayName = (day: string): string => {
     return day.charAt(0).toUpperCase() + day.slice(1).toLowerCase();
@@ -79,9 +109,14 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
   }
 
   const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  
+
+  // Determine if this is a source-specific block
+  const isSourceBlocked = blockedReason === 'source_limit';
+
   // Use configurable timeUpMessage with fallback to default
-  const timeUpMessage = timeLimits.timeUpMessage || "Time's up for today! Here's your schedule:";
+  const timeUpMessage = isSourceBlocked
+    ? `Time's up for ${sourceName || 'this source'}!`
+    : timeLimits.timeUpMessage || "Time's up for today! Here's your schedule:";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 p-6 font-sans">
@@ -91,56 +126,91 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
           <h1 className="text-3xl font-bold text-red-600 mb-6">
             {timeUpMessage}
           </h1>
+
+          {isSourceBlocked && (
+            <div className="text-lg text-gray-700 mb-4">
+              <p className="mb-2">You've reached your daily time limit for this source.</p>
+              <p>You can watch other sources or request more time.</p>
+            </div>
+          )}
         </div>
 
-        {/* Weekly Schedule */}
-        <div className="flex justify-center">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-80">
-            <h2 className="text-lg font-semibold mb-4 text-center">Weekly Schedule</h2>
-            <table className="w-full border border-gray-400 border-collapse">
-              <tbody>
-                {days.map((day) => {
-                  const limit = timeLimits[day as keyof TimeLimits] || 0;
-                  const isToday = isCurrentDay(day);
-                  return (
-                    <tr
-                      key={day}
-                      className={
-                        isToday
-                          ? 'bg-red-50 border-l-4 border-red-500'
-                          : ''
-                      }
-                    >
-                      <td
+        {/* Show schedule for global block, show source-specific options for source block */}
+        {!isSourceBlocked ? (
+          // Global time limit reached - show weekly schedule
+          <div className="flex justify-center">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-80">
+              <h2 className="text-lg font-semibold mb-4 text-center">Weekly Schedule</h2>
+              <table className="w-full border border-gray-400 border-collapse">
+                <tbody>
+                  {days.map((day) => {
+                    const limit = timeLimits[day as keyof TimeLimits] || 0;
+                    const isToday = isCurrentDay(day);
+                    return (
+                      <tr
+                        key={day}
                         className={
-                          'border border-gray-300 px-6 py-3' +
-                          (isToday ? ' text-red-700 font-bold' : ' text-gray-700')
+                          isToday
+                            ? 'bg-red-50 border-l-4 border-red-500'
+                            : ''
                         }
                       >
-                        {formatDayName(day)}
-                      </td>
-                      <td
-                        className={
-                          'border border-gray-300 px-6 py-3 text-right' +
-                          (isToday ? ' text-red-700 font-bold' : ' text-gray-600 font-semibold')
-                        }
-                      >
-                        {formatTimeLimit(Number(limit))}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        <td
+                          className={
+                            'border border-gray-300 px-6 py-3' +
+                            (isToday ? ' text-red-700 font-bold' : ' text-gray-700')
+                          }
+                        >
+                          {formatDayName(day)}
+                        </td>
+                        <td
+                          className={
+                            'border border-gray-300 px-6 py-3 text-right' +
+                            (isToday ? ' text-red-700 font-bold' : ' text-gray-600 font-semibold')
+                          }
+                        >
+                          {formatTimeLimit(Number(limit))}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        ) : (
+          // Source limit reached - show action buttons
+          <div className="flex justify-center gap-4 flex-wrap">
+            <button
+              onClick={() => navigate('/')}
+              className="inline-flex items-center px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 font-medium"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Choose Another Source
+            </button>
+
+            <button
+              onClick={() => navigate(-1)}
+              className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium"
+            >
+              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Go Back
+            </button>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="text-center mt-8">
-          <p className="text-gray-500 mb-4">
-            You can watch videos again tomorrow!
-          </p>
-          
+          {!isSourceBlocked && (
+            <p className="text-gray-500 mb-4">
+              You can watch videos again tomorrow!
+            </p>
+          )}
+
           {/* Admin Area Link */}
           <div className="mt-6">
             <button
