@@ -9,6 +9,7 @@ import {
 import { TimeLimits, UsageLog, WatchedVideo, TimeExtra } from '../shared/types';
 import { logVerbose } from '../shared/logging';
 import { parseVideoId, extractPathFromVideoId } from '../shared/fileUtils';
+import { SourceTimeState, SourceTimeEnforcement } from './database/queries/types';
 import fs from 'fs';
 import path from 'path';
 
@@ -397,18 +398,89 @@ export async function addExtraTime(minutes: number): Promise<void> {
   try {
     const timeExtra = await readTimeExtra();
     const today = new Date().toISOString().split('T')[0];
-    
+
     if (!timeExtra[today]) {
       timeExtra[today] = 0;
     }
-    
+
     timeExtra[today] += minutes;
-    
+
     await writeTimeExtra(timeExtra);
-    
+
     logVerbose(`[TimeTracking] Added ${minutes} minutes extra time for ${today}`);
   } catch (error) {
     logVerbose(`[TimeTracking] Error adding extra time: ${error}`);
+    throw error;
+  }
+}
+
+/**
+ * Get current time state for a specific source
+ * Calculates remaining time, checks if limit is exceeded
+ * @param sourceId - Source ID to check
+ * @returns SourceTimeState with current usage and limit info
+ */
+export async function getSourceTimeState(sourceId: string): Promise<SourceTimeState> {
+  try {
+    const { DatabaseService } = await import('./services/DatabaseService');
+    const dbService = DatabaseService.getInstance();
+
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    // Query source table for daily_time_limit_minutes
+    const source = await dbService.get<any>(
+      'SELECT daily_time_limit_minutes FROM sources WHERE id = ?',
+      [sourceId]
+    );
+
+    if (!source) {
+      logVerbose(`[TimeTracking] Source ${sourceId} not found`);
+      throw new Error(`Source ${sourceId} not found`);
+    }
+
+    const dailyLimitMinutes = source.daily_time_limit_minutes;
+
+    // Query usage_logs for today's usage for this source
+    const usageResult = await dbService.get<any>(
+      'SELECT SUM(seconds_used) as total_seconds FROM usage_logs WHERE source_id = ? AND date = ?',
+      [sourceId, today]
+    );
+
+    const secondsUsedToday = usageResult?.total_seconds || 0;
+
+    // Query usage_extras for today's extensions for this source
+    const extrasResult = await dbService.get<any>(
+      'SELECT SUM(minutes_added) as total_minutes FROM usage_extras WHERE source_id = ? AND date = ?',
+      [sourceId, today]
+    );
+
+    const extensionMinutes = extrasResult?.total_minutes || 0;
+    const extensionSeconds = extensionMinutes * 60;
+
+    // Calculate remaining time
+    let secondsRemainingToday: number | null = null;
+    let isLimitExceeded = false;
+
+    if (dailyLimitMinutes === null) {
+      // No limit (unlimited)
+      secondsRemainingToday = null;
+      isLimitExceeded = false;
+    } else {
+      const totalAllowedSeconds = (dailyLimitMinutes * 60) + extensionSeconds;
+      secondsRemainingToday = Math.max(0, totalAllowedSeconds - secondsUsedToday);
+      isLimitExceeded = secondsUsedToday >= totalAllowedSeconds;
+    }
+
+    return {
+      sourceId,
+      dailyLimitMinutes,
+      secondsUsedToday,
+      secondsRemainingToday,
+      isLimitExceeded,
+      lastResetDate: today
+    };
+  } catch (error) {
+    logVerbose(`[TimeTracking] Error getting source time state for ${sourceId}: ${error}`);
     throw error;
   }
 }
