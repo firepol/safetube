@@ -654,3 +654,30 @@ export async function grantSourceTimeExtension(
   }
 }
 
+/**
+ * Reset daily source usage at midnight
+ *
+ * NOTE: Source usage is automatically reset via date-based queries in the usage_logs table.
+ * Each day is tracked separately by the date column (YYYY-MM-DD format).
+ * When a new day begins, queries for today's usage return no results (since there are no records for the new date),
+ * effectively resetting the daily tracking automatically.
+ *
+ * This function is a no-op that documents this behavior and can be called by the daily reset mechanism
+ * if additional logic is needed in the future.
+ *
+ * @example
+ * // Called at midnight as part of the existing daily reset mechanism
+ * await resetDailySourceUsage();
+ * // Result: New day automatically has 0 usage for all sources (date-based queries find no records)
+ */
+export async function resetDailySourceUsage(): Promise<void> {
+  try {
+    logVerbose(`[TimeTracking] Daily source usage reset: automatic via date-based queries`);
+    // No action needed - source usage resets automatically via date column
+    // usage_logs and usage_extras use YYYY-MM-DD format, so new day = new entries
+  } catch (error) {
+    logVerbose(`[TimeTracking] Error resetting daily source usage: ${error}`);
+    throw error;
+  }
+}
+
