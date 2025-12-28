@@ -566,3 +566,50 @@ export async function enforceSourceTimeLimit(sourceId: string): Promise<SourceTi
   }
 }
 
+/**
+ * Grant temporary time extension for a specific source
+ * @param sourceId - Source ID to extend
+ * @param minutesAdded - Minutes to add to today's limit (1-60)
+ * @param reason - Reason for extension
+ * @param addedBy - Parent name/identifier
+ */
+export async function grantSourceTimeExtension(
+  sourceId: string,
+  minutesAdded: number,
+  reason: string,
+  addedBy: string
+): Promise<void> {
+  try {
+    const { DatabaseService } = await import('./services/DatabaseService');
+    const dbService = DatabaseService.getInstance();
+
+    // Validate sourceId exists
+    const source = await dbService.get<any>(
+      'SELECT id FROM sources WHERE id = ?',
+      [sourceId]
+    );
+
+    if (!source) {
+      throw new Error(`Source ${sourceId} not found`);
+    }
+
+    // Validate minutesAdded is 1-60
+    if (!Number.isInteger(minutesAdded) || minutesAdded < 1 || minutesAdded > 60) {
+      throw new Error(`Extension duration must be between 1 and 60 minutes, got: ${minutesAdded}`);
+    }
+
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+
+    // Insert into usage_extras table
+    await dbService.run(
+      'INSERT INTO usage_extras (date, source_id, minutes_added, reason, added_by) VALUES (?, ?, ?, ?, ?)',
+      [today, sourceId, minutesAdded, reason, addedBy]
+    );
+
+    logVerbose(`[TimeTracking] Extension granted: source=${sourceId}, +${minutesAdded} min, reason=${reason}, addedBy=${addedBy}`);
+  } catch (error) {
+    logVerbose(`[TimeTracking] Error granting source time extension for ${sourceId}: ${error}`);
+    throw error;
+  }
+}
+
