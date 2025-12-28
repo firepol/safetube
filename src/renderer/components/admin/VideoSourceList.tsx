@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { VideoSource } from '@/shared/types';
+import { SourceTimeDisplay } from './SourceTimeDisplay';
+import { QuickExtensionMenu } from './QuickExtensionMenu';
 
 interface VideoSourceListProps {
   sources: VideoSource[];
@@ -14,6 +16,15 @@ export const VideoSourceList: React.FC<VideoSourceListProps> = ({
   onDelete,
   onMove
 }) => {
+  const [refreshKey, setRefreshKey] = useState<Record<string, number>>({});
+
+  const triggerRefresh = (sourceId: string) => {
+    setRefreshKey(prev => ({
+      ...prev,
+      [sourceId]: (prev[sourceId] || 0) + 1
+    }));
+  };
+
   const getSourceIcon = (type: string) => {
     switch (type) {
       case 'youtube_channel':
@@ -81,8 +92,27 @@ export const VideoSourceList: React.FC<VideoSourceListProps> = ({
                 <p className="text-sm text-gray-500 truncate">
                   {getSourceDisplayValue(source)}
                 </p>
+                <div className="flex items-center space-x-4 mt-2">
+                  {/* Daily Limit Info */}
+                  <div className="text-xs">
+                    <span className="text-gray-600">Limit: </span>
+                    <span className="font-medium text-gray-900">
+                      {source.dailyTimeLimit ? `${source.dailyTimeLimit} min` : 'Unlimited'}
+                    </span>
+                  </div>
+                  {/* Time Remaining */}
+                  {source.dailyTimeLimit && (
+                    <div className="text-xs flex-1 min-w-[200px]">
+                      <span className="text-gray-600">Time remaining: </span>
+                      <SourceTimeDisplay
+                        key={`${source.id}-${refreshKey[source.id] || 0}`}
+                        sourceId={source.id}
+                      />
+                    </div>
+                  )}
+                </div>
                 {source.sortPreference && (
-                  <p className="text-xs text-gray-400">
+                  <p className="text-xs text-gray-400 mt-1">
                     Sort: {source.sortPreference}
                   </p>
                 )}
@@ -114,6 +144,14 @@ export const VideoSourceList: React.FC<VideoSourceListProps> = ({
                   </svg>
                 </button>
               </div>
+
+              {/* Quick Extension Menu (only show if source has a daily limit) */}
+              {source.dailyTimeLimit && (
+                <QuickExtensionMenu
+                  sourceId={source.id}
+                  onExtensionGranted={() => triggerRefresh(source.id)}
+                />
+              )}
 
               {/* Edit Button */}
               <button
