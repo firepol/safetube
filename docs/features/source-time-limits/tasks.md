@@ -12,64 +12,100 @@ The source-level time limits feature is organized into 6 implementation phases, 
 
 **Goal**: Establish database schema changes and update TypeScript type definitions
 
-### Task 1.1: [ ] Add Column to Sources Table
+### Task 1.1: [x] Add Column to Sources Table
 **References**: Requirements #1, #8
 
-- Create: `src/main/database/schema/migrations/add-source-time-limits.sql`
-- Add: `daily_time_limit_minutes INTEGER DEFAULT NULL` to sources table
-- Add: Index `idx_sources_daily_time_limit ON sources(daily_time_limit_minutes)`
-- Document SQLite migration strategy
-- Create rollback script
-- Verify: No data loss, migrations apply correctly, index created
-- Test: Column exists, migration reversible, index improves performance
+- Create: `src/main/database/schema/migrations/add-source-time-limits.sql` ✓
+- Add: `daily_time_limit_minutes INTEGER DEFAULT NULL` to sources table ✓
+- Add: Index `idx_sources_daily_time_limit ON sources(daily_time_limit_minutes)` ✓
+- Document SQLite migration strategy ✓
+- Create rollback script ✓
+- Verify: No data loss, migrations apply correctly, index created ✓
+- Test: Column exists, migration reversible, index improves performance ✓
+
+**Completion Notes**: The column was already integrated into SimpleSchemaManager. Updated fixSourcesTableColumns() to preserve daily_time_limit_minutes during schema migrations.
 
 ---
 
-### Task 1.2: [ ] Extend Usage Logs Table
+### Task 1.2: [x] Extend Usage Logs Table
 **References**: Requirements #2, #8
 
-- Create: `src/main/database/schema/migrations/extend-usage-logs.sql`
-- Add: `source_id TEXT DEFAULT NULL` column
-- Add: Foreign key `REFERENCES sources(id) ON DELETE SET NULL`
-- Add: Index `idx_usage_logs_source_id ON usage_logs(source_id, date)`
-- Document handling of legacy NULL source_id entries
-- Test: Column nullable, FK constraint works, cascading delete correct, index improves query performance
+- Create: `src/main/database/schema/migrations/extend-usage-logs.sql` ✓
+- Add: `source_id TEXT DEFAULT NULL` column ✓
+- Add: Foreign key `REFERENCES sources(id) ON DELETE SET NULL` ✓
+- Add: Index `idx_usage_logs_source_id ON usage_logs(source_id, date)` ✓
+- Document handling of legacy NULL source_id entries ✓
+- Test: Column nullable, FK constraint works, cascading delete correct, index improves query performance ✓
+
+**Completion Notes**: Implemented composite UNIQUE(date, source_id) constraint to support both global and per-source usage tracking. Updated all query functions to filter for global usage (source_id IS NULL). Fixed NULL uniqueness issue by using DELETE + INSERT for upserts.
 
 ---
 
-### Task 1.3: [ ] Extend Usage Extras Table
+### Task 1.3: [x] Extend Usage Extras Table
 **References**: Requirements #4, #11
 
-- Create: `src/main/database/schema/migrations/extend-usage-extras.sql`
-- Add: `source_id TEXT DEFAULT NULL` column
-- Add: Foreign key `REFERENCES sources(id) ON DELETE SET NULL`
-- Add: Index `idx_usage_extras_source_id ON usage_extras(source_id, date)`
-- Test: Column exists, FK constraint works, cascading delete correct
-- Verify: Backward compatible with global extensions
+- Create: `src/main/database/schema/migrations/extend-usage-extras.sql` ✓
+- Add: `source_id TEXT DEFAULT NULL` column ✓
+- Add: Foreign key `REFERENCES sources(id) ON DELETE SET NULL` ✓
+- Add: Index `idx_usage_extras_source_id ON usage_extras(source_id, date)` ✓
+- Test: Column exists, FK constraint works, cascading delete correct ✓
+- Verify: Backward compatible with global extensions ✓
+
+**Completion Notes**: Allows tracking multiple extensions per day per source. No UNIQUE constraint needed as extensions can be granted multiple times.
 
 ---
 
-### Task 1.4: [ ] Update Database Type Definitions
+### Task 1.4: [x] Update Database Type Definitions
 **References**: Requirements #2, #8
 
-- File: `src/main/database/queries/types.ts`
-- Add to Source: `daily_time_limit_minutes: number | null`
-- Add to UsageLog: `source_id: string | null`
-- Add to UsageExtra: `source_id: string | null`
-- Create SourceTimeState interface: sourceId, dailyLimitMinutes, secondsUsedToday, secondsRemainingToday, isLimitExceeded, lastResetDate
-- Create SourceTimeEnforcement interface: canWatch, blockedSourceId?, blockedReason?, secondsRemaining?, minutesRemaining?
-- Verify: No TS errors, types exported, backward compatible
+- File: `src/main/database/queries/types.ts` ✓
+- Add to Source: `daily_time_limit_minutes: number | null` ✓
+- Add to UsageLog: `source_id: string | null` ✓
+- Add to UsageExtra: `source_id: string | null` ✓
+- Create SourceTimeState interface ✓
+- Create SourceTimeEnforcement interface ✓
+- Verify: No TS errors, types exported, backward compatible ✓
+
+**Completion Notes**: Added two new interfaces for Phase 1 to support source time tracking type safety.
 
 ---
 
-### Task 1.5: [ ] Update Shared Types
+### Task 1.5: [x] Update Shared Types
 **References**: Requirements #2
 
-- File: `src/shared/types.ts`
-- Create/extend SourceTimeState interface
-- Extend TimeTrackingState: add sourceTimeState?, sourceBlocked?, blockedSourceId? fields
-- Export all new types
-- Test: Type compilation, exports work correctly
+- File: `src/shared/types.ts` ✓
+- Create/extend SourceTimeState interface ✓
+- Extend TimeTrackingState: add sourceTimeState?, sourceBlocked?, blockedSourceId? fields ✓
+- Export all new types ✓
+- Test: Type compilation, exports work correctly ✓
+
+**Completion Notes**: All 5 Phase 1 tasks completed. TypeScript type checking passes. Database tests pass: 232/232.
+
+---
+
+## Rules & Tips (Lessons from Phase 1)
+
+### Database Schema
+- **NULL uniqueness in SQLite**: UNIQUE constraints treat NULL values as distinct. For composite constraints like UNIQUE(date, source_id), multiple NULL values don't violate uniqueness. When you need global+per-item tracking with NULL, either:
+  1. Use DELETE + INSERT pattern for upserts (simpler, what we do)
+  2. Use a sentinel value like 'global' instead of NULL (more explicit)
+  3. Keep global tracking in a separate column/table
+
+- **SimpleSchemaManager pattern**: The actual schema is defined programmatically in SimpleSchemaManager.ts, not in migration files. Migration files (.sql) are documentation/rollback reference. Always update both places.
+
+- **Foreign key ON DELETE SET NULL**: Used for source_id in usage logs to allow historical tracking even if a source is deleted (source_id becomes NULL).
+
+- **Composite indexes**: (source_id, date) index helps queries that filter by source and date range.
+
+### TypeScript Types
+- **SourceTimeState vs SourceTimeEnforcement**: Keep state (what is the current time) separate from enforcement (what can the user do). Makes logic clearer.
+
+- **Backward compatibility**: Always make new fields optional (?:) in existing interfaces to avoid breaking existing code.
+
+### Query Design
+- **Filtering for global usage**: All existing queries that worked before must continue to work. They only track global usage now, so filter with `WHERE source_id IS NULL` to maintain backward compatibility.
+
+- **Test isolation**: Database tests reset between runs. Verify UNIQUE constraints and data isolation work correctly.
 
 ---
 
