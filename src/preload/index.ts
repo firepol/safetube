@@ -382,6 +382,20 @@ contextBridge.exposeInMainWorld(
       ipcRenderer.invoke(IPC.TIME_TRACKING.RECORD_VIDEO_WATCHING, videoId, position, timeWatched, duration),
     getTimeTrackingState: () => ipcRenderer.invoke(IPC.TIME_TRACKING.GET_TIME_TRACKING_STATE),
     getTimeLimits: () => ipcRenderer.invoke(IPC.TIME_TRACKING.GET_TIME_LIMITS),
+    // Source time tracking API
+    timeTracking: {
+      getSourceState: (sourceId: string) =>
+        ipcRenderer.invoke(IPC.TIME_TRACKING.GET_SOURCE_STATE, sourceId),
+      grantSourceExtension: (sourceId: string, minutesAdded: number, reason?: string) =>
+        ipcRenderer.invoke(IPC.TIME_TRACKING.GRANT_SOURCE_EXTENSION, {
+          sourceId,
+          minutesAdded,
+          reason,
+          addedBy: 'parent'
+        }),
+      getAllSourceStates: () =>
+        ipcRenderer.invoke(IPC.TIME_TRACKING.GET_ALL_SOURCE_STATES)
+    },
     getWatchedVideos: () => ipcRenderer.invoke(IPC.VIDEO_LOADING.GET_WATCHED_VIDEOS),
     getPlayerConfig: () => ipcRenderer.invoke(IPC.PLAYBACK.GET_PLAYER_CONFIG),
     getVideoData: (videoId: string, navigationContext?: any) => ipcRenderer.invoke(IPC.VIDEO_LOADING.GET_VIDEO_DATA, videoId, navigationContext),
