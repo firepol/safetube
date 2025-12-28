@@ -279,17 +279,26 @@ async function findSourceForLocalVideo(videoPath: string): Promise<string | null
 }
 
 /**
- * Record video watching time with enhanced metadata
+ * Record video watching time with enhanced metadata and optional source-level tracking
+ * @returns Object with global tracking state and optional source-level state
  */
 export async function recordVideoWatching(
   videoId: string,
   position: number,
   timeWatched: number,
-  duration?: number
-): Promise<void> {
+  duration?: number,
+  sourceId?: string
+): Promise<{
+  success?: boolean;
+  globalTimeState?: { timeUsedToday: number; timeRemaining: number; isLimitReached: boolean };
+  sourceBlocked?: boolean;
+  blockedSourceId?: string;
+  sourceTimeState?: SourceTimeState;
+}> {
   try {
     // Get video metadata for enhanced history storage
     const videoMetadata = await getVideoMetadata(videoId);
+    const finalSourceId = sourceId || videoMetadata.source;
 
     const watchedEntry: WatchedVideo = {
       videoId,
@@ -301,7 +310,7 @@ export async function recordVideoWatching(
       // Enhanced metadata for faster history loading
       title: videoMetadata.title,
       thumbnail: videoMetadata.thumbnail,
-      source: videoMetadata.source,
+      source: finalSourceId,
       firstWatched: new Date().toISOString() // Will be overridden for existing entries
     };
 
@@ -320,8 +329,40 @@ export async function recordVideoWatching(
     // Write to database (primary storage)
     await writeViewRecordToDatabase(watchedEntry);
 
-    // Also record in usage log
+    // Record global usage time
     await recordUsageTime(timeWatched);
+
+    // Record source-specific watch time if sourceId is available
+    let sourceTimeState: SourceTimeState | undefined;
+    let sourceBlocked = false;
+    let blockedSourceId: string | undefined;
+
+    if (finalSourceId && finalSourceId !== 'unknown') {
+      try {
+        await recordSourceWatchTime(finalSourceId, timeWatched);
+
+        // Check source time limit enforcement
+        const enforcement = await enforceSourceTimeLimit(finalSourceId);
+        if (!enforcement.canWatch) {
+          sourceBlocked = true;
+          blockedSourceId = enforcement.blockedSourceId;
+        }
+
+        // Get current source time state
+        sourceTimeState = await getSourceTimeState(finalSourceId);
+      } catch (error) {
+        logVerbose(`[TimeTracking] Non-fatal error recording source time for ${finalSourceId}: ${error}`);
+        // Don't throw - continue with global tracking only
+      }
+    }
+
+    // Return object with tracking results (backward compatible with void expectations)
+    return {
+      success: true,
+      sourceBlocked,
+      blockedSourceId,
+      sourceTimeState
+    };
   } catch (error) {
     logVerbose(`[TimeTracking] Error recording video watching: ${error}`);
     throw error;
