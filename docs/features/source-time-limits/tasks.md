@@ -252,21 +252,23 @@ Build verified ✓ (yarn build:all passed)
 **Goal**: Create service class for renderer-side time tracking
 **Blockers**: Phase 3 complete
 
-### Task 4.1: [ ] Create/Enhance TimeTrackingService in Renderer
+### Task 4.1: [x] Create/Enhance TimeTrackingService in Renderer
 **References**: Design section "Renderer Process Changes"
 
-- File: `src/renderer/services/timeTrackingService.ts`
-- Add static method: `getSourceTimeState(sourceId): Promise<SourceTimeState>`
-  - Call window.electron.timeTracking.getSourceState(sourceId)
-- Add static method: `grantSourceExtension(sourceId, minutesAdded, reason?): Promise<SourceTimeState>`
-  - Call window.electron.timeTracking.grantSourceExtension()
-- Add static method: `getAllSourceStates(): Promise<SourceTimeState[]>`
-  - Call window.electron.timeTracking.getAllSourceStates()
-- Add helper: `formatTimeRemaining(sourceTimeState): string`
-  - Return "Unlimited" if no limit, else "Xm Ys"
-- Add helper: `getExtensionOptions(): number[]`
-  - Return [5, 10, 15, 30]
-- Test: Methods call IPC correctly, helpers work, error handling in place
+- File: `src/renderer/services/timeTrackingService.ts` ✓
+- Add static method: `getSourceTimeState(sourceId): Promise<SourceTimeState>` ✓
+  - Call window.electron.timeTracking.getSourceState(sourceId) ✓
+- Add static method: `grantSourceExtension(sourceId, minutesAdded, reason?): Promise<SourceTimeState>` ✓
+  - Call window.electron.timeTracking.grantSourceExtension() ✓
+- Add static method: `getAllSourceStates(): Promise<SourceTimeState[]>` ✓
+  - Call window.electron.timeTracking.getAllSourceStates() ✓
+- Add helper: `formatTimeRemaining(sourceTimeState): string` ✓
+  - Return "Unlimited" if no limit, else "Xm Ys" ✓
+- Add helper: `getExtensionOptions(): number[]` ✓
+  - Return [5, 10, 15, 30] ✓
+- Test: Methods call IPC correctly, helpers work, error handling in place ✓
+
+**Completion Notes**: Created TimeTrackingService class with all required static methods and helpers. Each method includes proper error handling with console logging. formatTimeRemaining handles null limits as "Unlimited". TypeScript compilation passes. Build successful (yarn build:all).
 
 ---
 
