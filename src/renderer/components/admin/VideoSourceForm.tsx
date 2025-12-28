@@ -61,6 +61,19 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
   };
 
   const handleInputChange = (field: keyof VideoSourceFormData, value: string | number) => {
+    // Validate daily time limit range
+    if (field === 'dailyTimeLimit') {
+      const numValue = typeof value === 'string' ? parseInt(value) : value;
+      if (!isNaN(numValue) && (numValue < 0 || numValue > 1440)) {
+        setValidation({
+          isValid: false,
+          errors: ['Daily time limit must be between 0 and 1440 minutes']
+        });
+        return;
+      }
+      setValidation({ isValid: true, errors: [] });
+    }
+
     setFormData(prev => ({ ...prev, [field]: value }));
 
     // Reset validation state when URL changes
@@ -459,6 +472,30 @@ export const VideoSourceForm: React.FC<VideoSourceFormProps> = ({
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Daily Time Limit */}
+        <div>
+          <label htmlFor="dailyTimeLimit" className="block text-sm font-medium text-gray-700 mb-2">
+            Daily Time Limit (Optional)
+          </label>
+          <input
+            type="number"
+            id="dailyTimeLimit"
+            value={formData.dailyTimeLimit ?? ''}
+            onChange={(e) => {
+              const value = e.target.value ? parseInt(e.target.value) : null;
+              setFormData(prev => ({ ...prev, dailyTimeLimit: value }));
+            }}
+            min="0"
+            max="1440"
+            step="1"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="Leave blank for unlimited"
+          />
+          <p className="text-xs text-gray-500 mt-1">
+            Minutes per day (0-1440). Leave blank for no limit.
+          </p>
         </div>
 
         {/* Validation Messages */}

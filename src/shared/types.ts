@@ -60,6 +60,7 @@ export interface YouTubeChannelSource {
   title: string;
   channelId?: string; // YouTube channel ID for validation (fetched from YouTube API)
   sortPreference?: 'newestFirst' | 'oldestFirst';
+  dailyTimeLimit?: number | null; // Daily time limit in minutes (null = unlimited)
 }
 
 export interface YouTubePlaylistSource {
@@ -68,6 +69,7 @@ export interface YouTubePlaylistSource {
   url: string; // e.g. https://www.youtube.com/playlist?list=PLxxxxxx
   title: string;
   sortPreference?: 'playlistOrder' | 'newestFirst' | 'oldestFirst';
+  dailyTimeLimit?: number | null; // Daily time limit in minutes (null = unlimited)
 }
 
 export interface LocalFolderSource {
@@ -77,6 +79,7 @@ export interface LocalFolderSource {
   title: string;
   sortPreference?: 'alphabetical' | 'dateAdded' | 'manual';
   maxDepth?: number; // default 2
+  dailyTimeLimit?: number | null; // Daily time limit in minutes (null = unlimited)
 }
 
 export type VideoSource = YouTubeChannelSource | YouTubePlaylistSource | LocalFolderSource;
@@ -91,6 +94,7 @@ export interface VideoSourceFormData {
   sortPreference?: string;
   maxDepth?: number;
   channelId?: string; // For YouTube channel sources
+  dailyTimeLimit?: number | null; // Daily time limit in minutes (null = unlimited)
 }
 
 export interface VideoSourceValidation {

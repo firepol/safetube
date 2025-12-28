@@ -52,8 +52,8 @@ export const VideoSourcesManager: React.FC = () => {
   };
 
   const handleEditSource = (source: VideoSource) => {
-    setState(prev => ({ 
-      ...prev, 
+    setState(prev => ({
+      ...prev,
       isAdding: false,
       editingSource: {
         id: source.id,
@@ -62,7 +62,8 @@ export const VideoSourcesManager: React.FC = () => {
         url: 'url' in source ? source.url : '',
         path: 'path' in source ? source.path : '',
         sortPreference: source.sortPreference || 'newestFirst',
-        maxDepth: 'maxDepth' in source ? source.maxDepth : undefined
+        maxDepth: 'maxDepth' in source ? source.maxDepth : undefined,
+        dailyTimeLimit: source.dailyTimeLimit || null
       }
     }));
   };
@@ -129,7 +130,8 @@ export const VideoSourcesManager: React.FC = () => {
             title: formData.title,
             path: formData.path!,
             maxDepth: formData.maxDepth || 2,
-            sortPreference: (formData.sortPreference as 'alphabetical' | 'dateAdded' | 'manual') || 'alphabetical'
+            sortPreference: (formData.sortPreference as 'alphabetical' | 'dateAdded' | 'manual') || 'alphabetical',
+            dailyTimeLimit: formData.dailyTimeLimit ?? null
           };
         } else if (formData.type === 'youtube_channel') {
           newSource = {
@@ -138,7 +140,8 @@ export const VideoSourcesManager: React.FC = () => {
             title: formData.title,
             url: formData.url!,
             sortPreference: (formData.sortPreference as 'newestFirst' | 'oldestFirst') || 'newestFirst',
-            channelId: formData.channelId
+            channelId: formData.channelId,
+            dailyTimeLimit: formData.dailyTimeLimit ?? null
           };
         } else if (formData.type === 'youtube_playlist') {
           newSource = {
@@ -146,7 +149,8 @@ export const VideoSourcesManager: React.FC = () => {
             type: 'youtube_playlist',
             title: formData.title,
             url: formData.url!,
-            sortPreference: (formData.sortPreference as 'playlistOrder' | 'newestFirst' | 'oldestFirst') || 'playlistOrder'
+            sortPreference: (formData.sortPreference as 'playlistOrder' | 'newestFirst' | 'oldestFirst') || 'playlistOrder',
+            dailyTimeLimit: formData.dailyTimeLimit ?? null
           };
         } else {
           // Handle the case where type is still 'youtube' (shouldn't happen with proper validation)
@@ -164,7 +168,8 @@ export const VideoSourcesManager: React.FC = () => {
                 title: formData.title,
                 path: formData.path!,
                 maxDepth: formData.maxDepth || 2,
-                sortPreference: (formData.sortPreference as 'alphabetical' | 'dateAdded' | 'manual') || 'alphabetical'
+                sortPreference: (formData.sortPreference as 'alphabetical' | 'dateAdded' | 'manual') || 'alphabetical',
+                dailyTimeLimit: formData.dailyTimeLimit ?? null
               };
             } else if (formData.type === 'youtube_channel') {
               return {
@@ -173,7 +178,8 @@ export const VideoSourcesManager: React.FC = () => {
                 title: formData.title,
                 url: formData.url!,
                 sortPreference: (formData.sortPreference as 'newestFirst' | 'oldestFirst') || 'newestFirst',
-                channelId: formData.channelId
+                channelId: formData.channelId,
+                dailyTimeLimit: formData.dailyTimeLimit ?? null
               };
             } else {
               return {
@@ -181,7 +187,8 @@ export const VideoSourcesManager: React.FC = () => {
                 type: 'youtube_playlist' as const,
                 title: formData.title,
                 url: formData.url!,
-                sortPreference: (formData.sortPreference as 'playlistOrder' | 'newestFirst' | 'oldestFirst') || 'playlistOrder'
+                sortPreference: (formData.sortPreference as 'playlistOrder' | 'newestFirst' | 'oldestFirst') || 'playlistOrder',
+                dailyTimeLimit: formData.dailyTimeLimit ?? null
               };
             }
           }
