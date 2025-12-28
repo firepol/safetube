@@ -127,6 +127,25 @@ export interface YouTubeSourceCache {
   }>;
 }
 
+// Source-level time tracking types (Phase 1 - Feature: source-time-limits)
+export interface SourceTimeState {
+  sourceId: string;
+  dailyLimitMinutes: number | null;
+  secondsUsedToday: number;
+  secondsRemainingToday: number | null;
+  isLimitExceeded: boolean;
+  lastResetDate: string;
+}
+
+// Source-level time enforcement types (Phase 1 - Feature: source-time-limits)
+export interface SourceTimeEnforcement {
+  canWatch: boolean;
+  blockedSourceId?: string;
+  blockedReason?: 'source_limit' | 'global_limit';
+  secondsRemaining?: number;
+  minutesRemaining?: number;
+}
+
 export interface TimeTrackingState {
   currentDate: string;
   timeUsedToday: number; // seconds
@@ -134,6 +153,9 @@ export interface TimeTrackingState {
   timeRemaining: number; // seconds
   isLimitReached: boolean;
   extraTimeToday?: number; // minutes added today
+  sourceTimeState?: SourceTimeState; // Source-level time state (source-time-limits feature)
+  sourceBlocked?: boolean; // Whether current source is blocked due to time limit
+  blockedSourceId?: string; // Which source is blocked (if any)
 }
 
 export interface TimeTrackingConfig {

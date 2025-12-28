@@ -17,6 +17,7 @@ export interface Source {
   position: number | null;
   total_videos: number | null;
   max_depth: number | null;
+  daily_time_limit_minutes: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -76,6 +77,7 @@ export interface UsageLog {
   id: number;
   date: string; // YYYY-MM-DD format
   seconds_used: number;
+  source_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -107,6 +109,7 @@ export interface UsageExtra {
   minutes_added: number;
   reason: string | null;
   added_by: string;
+  source_id: string | null;
   created_at: string;
 }
 
@@ -126,4 +129,23 @@ export interface FavoriteWithVideo extends Favorite {
   video_description?: string;
   source_title?: string;
   source_type?: string;
+}
+
+// Source-level time tracking types (Phase 1 - Feature: source-time-limits)
+export interface SourceTimeState {
+  sourceId: string;
+  dailyLimitMinutes: number | null;
+  secondsUsedToday: number;
+  secondsRemainingToday: number | null;
+  isLimitExceeded: boolean;
+  lastResetDate: string;
+}
+
+// Source-level time enforcement types (Phase 1 - Feature: source-time-limits)
+export interface SourceTimeEnforcement {
+  canWatch: boolean;
+  blockedSourceId?: string;
+  blockedReason?: 'source_limit' | 'global_limit';
+  secondsRemaining?: number;
+  minutesRemaining?: number;
 }

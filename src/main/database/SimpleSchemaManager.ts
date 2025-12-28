@@ -115,6 +115,7 @@ export class SimpleSchemaManager {
       position INTEGER,
       total_videos INTEGER,
       max_depth INTEGER,
+      daily_time_limit_minutes INTEGER DEFAULT NULL,
       created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
       CHECK (
@@ -127,6 +128,7 @@ export class SimpleSchemaManager {
     // Create indexes
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_type ON sources(type)');
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_title ON sources(title)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_daily_time_limit ON sources(daily_time_limit_minutes)');
   }
 
   /**
@@ -278,6 +280,9 @@ export class SimpleSchemaManager {
 
   /**
    * Create usage_logs table
+   * Unique constraint on (date, source_id) allows tracking both global and per-source usage:
+   * - Global usage: source_id = NULL, date = YYYY-MM-DD (one entry per day)
+   * - Per-source usage: source_id = SOURCE_ID, date = YYYY-MM-DD (one entry per source per day)
    */
   private async createUsageLogsTable(): Promise<void> {
     await this.databaseService.run(`
@@ -285,15 +290,18 @@ export class SimpleSchemaManager {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           date TEXT NOT NULL,
           seconds_used INTEGER NOT NULL DEFAULT 0,
+          source_id TEXT DEFAULT NULL,
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          UNIQUE(date)
+          FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE SET NULL,
+          UNIQUE(date, source_id)
       )
     `);
 
     // Create indexes
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_date ON usage_logs(date)');
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_updated_at ON usage_logs(updated_at)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_source_id ON usage_logs(source_id, date)');
   }
 
   /**
@@ -339,12 +347,15 @@ export class SimpleSchemaManager {
           minutes_added INTEGER NOT NULL,
           reason TEXT,
           added_by TEXT DEFAULT 'admin',
-          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+          source_id TEXT DEFAULT NULL,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE SET NULL
       )
     `);
 
-    // Create index
+    // Create indexes
     await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_extras_date ON usage_extras(date)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_extras_source_id ON usage_extras(source_id, date)');
   }
 
   /**
@@ -694,6 +705,7 @@ export class SimpleSchemaManager {
           position INTEGER,
           total_videos INTEGER,
           max_depth INTEGER,
+          daily_time_limit_minutes INTEGER DEFAULT NULL,
           created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
           CHECK (
@@ -728,12 +740,13 @@ export class SimpleSchemaManager {
         await this.databaseService.run(`
           INSERT INTO sources_new (
             id, type, title, url, thumbnail, channel_id, path, sort_preference,
-            position, total_videos, max_depth, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            position, total_videos, max_depth, daily_time_limit_minutes, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
           source.id, source.type, source.title, source.url,
           source.thumbnail, source.channel_id, source.path, sortPreference,
           position, source.total_videos, source.max_depth,
+          source.daily_time_limit_minutes || null,
           source.created_at, source.updated_at
         ]);
       }
@@ -745,6 +758,7 @@ export class SimpleSchemaManager {
       // Recreate indexes
       await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_type ON sources(type)');
       await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_title ON sources(title)');
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_daily_time_limit ON sources(daily_time_limit_minutes)');
 
       log.info('[SimpleSchemaManager] Sources table columns fixed successfully');
     } catch (error) {
