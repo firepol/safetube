@@ -1,4 +1,5 @@
 import { VideoLoadError } from '../shared/videoErrorHandling';
+import { SourceTimeState } from '../shared/types';
 
 // Database response type
 export interface DatabaseResponse<T = any> {
@@ -41,6 +42,24 @@ export interface Video {
   errorInfo?: VideoLoadError;
 }
 
+// Source-level time tracking API interface
+export interface TimeTrackingAPI {
+  /**
+   * Get current time state for a source
+   */
+  getSourceState(sourceId: string): Promise<SourceTimeState>;
+
+  /**
+   * Grant time extension for a source
+   */
+  grantSourceExtension(sourceId: string, minutesAdded: number, reason?: string): Promise<SourceTimeState>;
+
+  /**
+   * Get time states for all sources
+   */
+  getAllSourceStates(): Promise<SourceTimeState[]>;
+}
+
 export interface ElectronAPI {
   send: (channel: string, data: any) => void;
   receive: (channel: string, func: (...args: any[]) => void) => void;
@@ -51,6 +70,8 @@ export interface ElectronAPI {
   recordVideoWatching: (videoId: string, position: number, timeWatched: number, duration?: number) => Promise<void>;
   getTimeTrackingState: () => Promise<any>;
   getTimeLimits: () => Promise<any>;
+  // Source-level time tracking API
+  timeTracking: TimeTrackingAPI;
   getWatchedVideos: () => Promise<any[]>;
   getPlayerConfig: () => Promise<any>;
   getVideoData: (videoId: string, navigationContext?: any) => Promise<any>;
