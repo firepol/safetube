@@ -529,3 +529,40 @@ export async function recordSourceWatchTime(sourceId: string, secondsWatched: nu
   }
 }
 
+/**
+ * Check if source daily time limit has been exceeded
+ * @param sourceId - Source ID to check
+ * @returns Enforcement decision object
+ */
+export async function enforceSourceTimeLimit(sourceId: string): Promise<SourceTimeEnforcement> {
+  try {
+    const sourceTimeState = await getSourceTimeState(sourceId);
+
+    // If no limit (NULL), can watch
+    if (sourceTimeState.dailyLimitMinutes === null) {
+      return { canWatch: true };
+    }
+
+    // Check if limit exceeded
+    if (sourceTimeState.isLimitExceeded) {
+      return {
+        canWatch: false,
+        blockedSourceId: sourceId,
+        blockedReason: 'source_limit'
+      };
+    }
+
+    // Under limit, can watch
+    return {
+      canWatch: true,
+      secondsRemaining: sourceTimeState.secondsRemainingToday || 0,
+      minutesRemaining: sourceTimeState.secondsRemainingToday !== null
+        ? Math.floor(sourceTimeState.secondsRemainingToday / 60)
+        : undefined
+    };
+  } catch (error) {
+    logVerbose(`[TimeTracking] Error enforcing source time limit for ${sourceId}: ${error}`);
+    throw error;
+  }
+}
+
