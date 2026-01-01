@@ -667,6 +667,7 @@ export class SimpleSchemaManager {
 
   /**
    * Fix sources table columns that may have been added manually or have wrong types
+   * Uses non-destructive ALTER TABLE operations to preserve existing data
    */
   private async fixSourcesTableColumns(): Promise<void> {
     try {
@@ -687,81 +688,51 @@ export class SimpleSchemaManager {
         return;
       }
 
-      log.info('[SimpleSchemaManager] Fixing sources table columns (renaming sort_order → position, adding sort_preference)...');
+      log.info('[SimpleSchemaManager] Fixing sources table columns (non-destructive migration)...');
 
-      // Backup existing data
-      const existingSources = await this.databaseService.all(`SELECT * FROM sources`);
-
-      // Create new table with proper schema (optimized column order with correct types)
-      await this.databaseService.run(`
-        CREATE TABLE sources_new (
-          id TEXT PRIMARY KEY,
-          type TEXT NOT NULL,
-          title TEXT NOT NULL,
-          url TEXT,
-          thumbnail TEXT,
-          channel_id TEXT,
-          path TEXT,
-          sort_preference TEXT,
-          position INTEGER,
-          total_videos INTEGER,
-          max_depth INTEGER,
-          daily_time_limit_minutes INTEGER DEFAULT NULL,
-          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-          CHECK (
-            (type = 'local' AND path IS NOT NULL) OR
-            (type IN ('youtube_channel', 'youtube_playlist') AND url IS NOT NULL)
-          )
-        )
-      `);
-
-      // Copy data to new table with proper type conversion and defaults
-      for (const source of existingSources) {
-        // Determine default sort_preference based on source type if not available
-        let sortPreference = source.sort_preference || null;
-        if (!sortPreference) {
-          if (source.type === 'youtube_channel') {
-            sortPreference = 'newestFirst';
-          } else if (source.type === 'youtube_playlist') {
-            sortPreference = 'playlistOrder';
-          } else if (source.type === 'local') {
-            sortPreference = 'alphabetical';
-          }
-        }
-
-        // Convert old sort_order (TEXT) to position (INTEGER)
-        // If sort_order was a number stored as text, parse it; otherwise use null
-        let position = source.position || null;
-        if (!position && source.sort_order !== undefined && source.sort_order !== null) {
-          const parsedOrder = typeof source.sort_order === 'number' ? source.sort_order : parseInt(source.sort_order, 10);
-          position = isNaN(parsedOrder) ? null : parsedOrder;
-        }
-
+      // Add missing columns using ALTER TABLE (non-destructive)
+      if (!hasDailyTimeLimit) {
+        log.debug('[SimpleSchemaManager] Adding missing daily_time_limit_minutes column');
         await this.databaseService.run(`
-          INSERT INTO sources_new (
-            id, type, title, url, thumbnail, channel_id, path, sort_preference,
-            position, total_videos, max_depth, daily_time_limit_minutes, created_at, updated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-          source.id, source.type, source.title, source.url,
-          source.thumbnail, source.channel_id, source.path, sortPreference,
-          position, source.total_videos, source.max_depth,
-          source.daily_time_limit_minutes || null,
-          source.created_at, source.updated_at
-        ]);
+          ALTER TABLE sources ADD COLUMN daily_time_limit_minutes INTEGER DEFAULT NULL
+        `);
       }
 
-      // Replace old table
-      await this.databaseService.run('DROP TABLE sources');
-      await this.databaseService.run('ALTER TABLE sources_new RENAME TO sources');
+      if (!hasValidThumbnail) {
+        log.debug('[SimpleSchemaManager] Adding missing thumbnail column');
+        await this.databaseService.run(`
+          ALTER TABLE sources ADD COLUMN thumbnail TEXT
+        `);
+      }
 
-      // Recreate indexes
+      if (!hasValidTotalVideos) {
+        log.debug('[SimpleSchemaManager] Adding missing total_videos column');
+        await this.databaseService.run(`
+          ALTER TABLE sources ADD COLUMN total_videos INTEGER
+        `);
+      }
+
+      if (!hasNewColumns) {
+        if (!tableInfo.some(col => col.name === 'position')) {
+          log.debug('[SimpleSchemaManager] Adding missing position column');
+          await this.databaseService.run(`
+            ALTER TABLE sources ADD COLUMN position INTEGER
+          `);
+        }
+        if (!tableInfo.some(col => col.name === 'sort_preference')) {
+          log.debug('[SimpleSchemaManager] Adding missing sort_preference column');
+          await this.databaseService.run(`
+            ALTER TABLE sources ADD COLUMN sort_preference TEXT
+          `);
+        }
+      }
+
+      // Recreate indexes (idempotent)
       await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_type ON sources(type)');
       await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_title ON sources(title)');
       await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_sources_daily_time_limit ON sources(daily_time_limit_minutes)');
 
-      log.info('[SimpleSchemaManager] Sources table columns fixed successfully');
+      log.info('[SimpleSchemaManager] Sources table columns fixed successfully (data preserved)');
     } catch (error) {
       log.error('[SimpleSchemaManager] Error fixing sources table columns:', error);
       throw error;
