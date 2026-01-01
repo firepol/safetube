@@ -34,6 +34,7 @@ export class SimpleSchemaManager {
       if (isExistingDatabase) {
         log.debug('[SimpleSchemaManager] Schema version is v1, ensuring all tables exist');
         await this.fixSourcesTableColumns();
+        await this.fixUsageLogsTableColumns();
       }
 
       await this.databaseService.run('BEGIN IMMEDIATE TRANSACTION');
@@ -735,6 +736,47 @@ export class SimpleSchemaManager {
       log.info('[SimpleSchemaManager] Sources table columns fixed successfully (data preserved)');
     } catch (error) {
       log.error('[SimpleSchemaManager] Error fixing sources table columns:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fix usage_logs table columns that may be missing
+   * Uses non-destructive ALTER TABLE operations to preserve existing data
+   */
+  private async fixUsageLogsTableColumns(): Promise<void> {
+    try {
+      // Check if columns exist
+      const tableInfo = await this.databaseService.all<{ name: string; type: string }>(`
+        PRAGMA table_info(usage_logs)
+      `);
+
+      const hasSourceId = tableInfo.some(col => col.name === 'source_id');
+
+      // Check if migration is needed
+      if (hasSourceId) {
+        log.debug('[SimpleSchemaManager] Usage logs table columns are already properly formatted');
+        return;
+      }
+
+      log.info('[SimpleSchemaManager] Fixing usage_logs table columns (non-destructive migration)...');
+
+      // Add missing source_id column
+      if (!hasSourceId) {
+        log.debug('[SimpleSchemaManager] Adding missing source_id column to usage_logs');
+        await this.databaseService.run(`
+          ALTER TABLE usage_logs ADD COLUMN source_id TEXT DEFAULT NULL
+        `);
+      }
+
+      // Recreate indexes (idempotent)
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_date ON usage_logs(date)');
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_updated_at ON usage_logs(updated_at)');
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_source_id ON usage_logs(source_id, date)');
+
+      log.info('[SimpleSchemaManager] Usage logs table columns fixed successfully (data preserved)');
+    } catch (error) {
+      log.error('[SimpleSchemaManager] Error fixing usage_logs table columns:', error);
       throw error;
     }
   }
