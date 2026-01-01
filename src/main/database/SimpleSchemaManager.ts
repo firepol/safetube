@@ -679,9 +679,10 @@ export class SimpleSchemaManager {
       const hasValidTotalVideos = tableInfo.some(col => col.name === 'total_videos' && col.type === 'INTEGER');
       const hasOldSortOrder = tableInfo.some(col => col.name === 'sort_order');
       const hasNewColumns = tableInfo.some(col => col.name === 'position' && col.type === 'INTEGER') && tableInfo.some(col => col.name === 'sort_preference');
+      const hasDailyTimeLimit = tableInfo.some(col => col.name === 'daily_time_limit_minutes');
 
       // Check if migration is needed
-      if (hasValidThumbnail && hasValidTotalVideos && !hasOldSortOrder && hasNewColumns) {
+      if (hasValidThumbnail && hasValidTotalVideos && !hasOldSortOrder && hasNewColumns && hasDailyTimeLimit) {
         log.debug('[SimpleSchemaManager] Sources table columns are already properly formatted');
         return;
       }
