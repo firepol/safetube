@@ -425,7 +425,7 @@ async function handleGetVideoSources(): Promise<ApiResponse> {
 
     if (dbService && status.initialized) {
       const rows = await (dbService as any).all(`
-        SELECT id, type, title, url, path, channel_id, sort_preference, max_depth, position
+        SELECT id, type, title, url, path, channel_id, sort_preference, max_depth, position, daily_time_limit_minutes
         FROM sources
         ORDER BY position ASC, title ASC
       `) as any;
@@ -436,6 +436,7 @@ async function handleGetVideoSources(): Promise<ApiResponse> {
           id: row.id,
           type: row.type,
           title: row.title,
+          dailyTimeLimit: row.daily_time_limit_minutes || null,
         };
 
         if (row.type === 'youtube_channel') {
@@ -498,22 +499,22 @@ async function handleSaveVideoSources(body: any): Promise<ApiResponse> {
 
       if (source.type === 'youtube_channel') {
         await (dbService as any).run(`
-          INSERT INTO sources (id, type, title, url, channel_id, sort_preference, position)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO sources (id, type, title, url, channel_id, sort_preference, position, daily_time_limit_minutes)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `, [source.id, source.type, source.title, source.url, source.channelId || null,
-            source.sortPreference || 'newestFirst', position]);
+            source.sortPreference || 'newestFirst', position, source.dailyTimeLimit || null]);
       } else if (source.type === 'youtube_playlist') {
         await (dbService as any).run(`
-          INSERT INTO sources (id, type, title, url, sort_preference, position)
-          VALUES (?, ?, ?, ?, ?, ?)
+          INSERT INTO sources (id, type, title, url, sort_preference, position, daily_time_limit_minutes)
+          VALUES (?, ?, ?, ?, ?, ?, ?)
         `, [source.id, source.type, source.title, source.url,
-            source.sortPreference || 'playlistOrder', position]);
+            source.sortPreference || 'playlistOrder', position, source.dailyTimeLimit || null]);
       } else if (source.type === 'local') {
         await (dbService as any).run(`
-          INSERT INTO sources (id, type, title, path, sort_preference, max_depth, position)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO sources (id, type, title, path, sort_preference, max_depth, position, daily_time_limit_minutes)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `, [source.id, source.type, source.title, source.path,
-            source.sortPreference || 'alphabetical', source.maxDepth || 2, position]);
+            source.sortPreference || 'alphabetical', source.maxDepth || 2, position, source.dailyTimeLimit || null]);
       }
     }
 

@@ -538,7 +538,7 @@ export function registerVideoSourceHandlers() {
       const status = await dbService.getHealthStatus();
       if (dbService && status.initialized) {
         const sources = await dbService.all<any>(`
-          SELECT id, type, title, sort_preference, position, url, channel_id, path, max_depth
+          SELECT id, type, title, sort_preference, position, url, channel_id, path, max_depth, daily_time_limit_minutes
           FROM sources
           ORDER BY position ASC, title ASC
         `);
@@ -599,8 +599,8 @@ export function registerVideoSourceHandlers() {
             const updatedAt = existingSource?.updated_at || null;
 
             await dbService.run(`
-              INSERT OR REPLACE INTO sources (id, type, title, sort_preference, position, url, channel_id, path, max_depth, total_videos, thumbnail, updated_at)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT OR REPLACE INTO sources (id, type, title, sort_preference, position, url, channel_id, path, max_depth, total_videos, thumbnail, updated_at, daily_time_limit_minutes)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             `, [
               source.id,
               source.type,
@@ -613,7 +613,8 @@ export function registerVideoSourceHandlers() {
               source.maxDepth || null,
               totalVideos,
               thumbnail,
-              updatedAt
+              updatedAt,
+              source.dailyTimeLimit || null
             ]);
           }
           await dbService.run('COMMIT');
