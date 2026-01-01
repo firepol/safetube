@@ -35,6 +35,9 @@ export class SimpleSchemaManager {
         log.debug('[SimpleSchemaManager] Schema version is v1, ensuring all tables exist');
         await this.fixSourcesTableColumns();
         await this.fixUsageLogsTableColumns();
+        await this.fixUsageExtrasTableColumns();
+        await this.fixDownloadsTableColumns();
+        await this.fixDownloadedVideosTableColumns();
       }
 
       await this.databaseService.run('BEGIN IMMEDIATE TRANSACTION');
@@ -777,6 +780,124 @@ export class SimpleSchemaManager {
       log.info('[SimpleSchemaManager] Usage logs table columns fixed successfully (data preserved)');
     } catch (error) {
       log.error('[SimpleSchemaManager] Error fixing usage_logs table columns:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fix usage_extras table columns that may be missing
+   * Uses non-destructive ALTER TABLE operations to preserve existing data
+   */
+  private async fixUsageExtrasTableColumns(): Promise<void> {
+    try {
+      // Check if columns exist
+      const tableInfo = await this.databaseService.all<{ name: string; type: string }>(`
+        PRAGMA table_info(usage_extras)
+      `);
+
+      const hasSourceId = tableInfo.some(col => col.name === 'source_id');
+
+      // Check if migration is needed
+      if (hasSourceId) {
+        log.debug('[SimpleSchemaManager] Usage extras table columns are already properly formatted');
+        return;
+      }
+
+      log.info('[SimpleSchemaManager] Fixing usage_extras table columns (non-destructive migration)...');
+
+      // Add missing source_id column
+      if (!hasSourceId) {
+        log.debug('[SimpleSchemaManager] Adding missing source_id column to usage_extras');
+        await this.databaseService.run(`
+          ALTER TABLE usage_extras ADD COLUMN source_id TEXT DEFAULT NULL
+        `);
+      }
+
+      // Recreate indexes (idempotent)
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_extras_date ON usage_extras(date)');
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_extras_source_id ON usage_extras(source_id, date)');
+
+      log.info('[SimpleSchemaManager] Usage extras table columns fixed successfully (data preserved)');
+    } catch (error) {
+      log.error('[SimpleSchemaManager] Error fixing usage_extras table columns:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fix downloads table columns that may be missing
+   * Uses non-destructive ALTER TABLE operations to preserve existing data
+   */
+  private async fixDownloadsTableColumns(): Promise<void> {
+    try {
+      // Check if columns exist
+      const tableInfo = await this.databaseService.all<{ name: string; type: string }>(`
+        PRAGMA table_info(downloads)
+      `);
+
+      const hasSourceId = tableInfo.some(col => col.name === 'source_id');
+
+      // Check if migration is needed
+      if (hasSourceId) {
+        log.debug('[SimpleSchemaManager] Downloads table columns are already properly formatted');
+        return;
+      }
+
+      log.info('[SimpleSchemaManager] Fixing downloads table columns (non-destructive migration)...');
+
+      // Add missing source_id column
+      if (!hasSourceId) {
+        log.debug('[SimpleSchemaManager] Adding missing source_id column to downloads');
+        await this.databaseService.run(`
+          ALTER TABLE downloads ADD COLUMN source_id TEXT
+        `);
+      }
+
+      log.info('[SimpleSchemaManager] Downloads table columns fixed successfully (data preserved)');
+    } catch (error) {
+      log.error('[SimpleSchemaManager] Error fixing downloads table columns:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fix downloaded_videos table columns that may be missing
+   * Uses non-destructive ALTER TABLE operations to preserve existing data
+   */
+  private async fixDownloadedVideosTableColumns(): Promise<void> {
+    try {
+      // Check if columns exist
+      const tableInfo = await this.databaseService.all<{ name: string; type: string }>(`
+        PRAGMA table_info(downloaded_videos)
+      `);
+
+      const hasSourceId = tableInfo.some(col => col.name === 'source_id');
+
+      // Check if migration is needed
+      if (hasSourceId) {
+        log.debug('[SimpleSchemaManager] Downloaded videos table columns are already properly formatted');
+        return;
+      }
+
+      log.info('[SimpleSchemaManager] Fixing downloaded_videos table columns (non-destructive migration)...');
+
+      // Add missing source_id column
+      if (!hasSourceId) {
+        log.debug('[SimpleSchemaManager] Adding missing source_id column to downloaded_videos');
+        await this.databaseService.run(`
+          ALTER TABLE downloaded_videos ADD COLUMN source_id TEXT NOT NULL DEFAULT ''
+        `);
+      }
+
+      // Recreate indexes (idempotent)
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_video_id ON downloaded_videos(video_id)');
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_source_id ON downloaded_videos(source_id)');
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_downloaded_at ON downloaded_videos(downloaded_at)');
+      await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_downloaded_videos_file_path ON downloaded_videos(file_path)');
+
+      log.info('[SimpleSchemaManager] Downloaded videos table columns fixed successfully (data preserved)');
+    } catch (error) {
+      log.error('[SimpleSchemaManager] Error fixing downloaded_videos table columns:', error);
       throw error;
     }
   }
