@@ -38,7 +38,7 @@ class AudioWarningService {
     // logVerbose('[AudioWarning] Initializing with config:', config);
     this.config = { ...this.config, ...config };
     // logVerbose('[AudioWarning] Final config:', this.config);
-    
+
     // Initialize audio context for system beep
     if (this.config.useSystemBeep && typeof window !== 'undefined') {
       try {
@@ -78,33 +78,47 @@ class AudioWarningService {
    */
   checkAudioWarnings(timeRemainingSeconds: number, isVideoPlaying: boolean): void {
     // logVerbose('[AudioWarning] Checking warnings - timeRemaining:', timeRemainingSeconds, 'isVideoPlaying:', isVideoPlaying, 'config:', this.config);
-    
+
     if (!isVideoPlaying) {
       // logVerbose('[AudioWarning] Video not playing, skipping warnings');
       return; // Don't play warnings when video is paused
     }
 
-    // Check for countdown warning - trigger only within the configured window (e.g. 60-50 seconds)
-    // logVerbose('[AudioWarning] Countdown check - timeRemaining:', timeRemainingSeconds, 'countdownThreshold:', this.config.countdownWarningSeconds, 'range:', this.config.countdownWarningSeconds - 10, 'to', this.config.countdownWarningSeconds);
+    // Check for countdown warning (e.g. at 60 seconds)
     if (
       !this.state.hasPlayedCountdownWarning &&
       timeRemainingSeconds <= this.config.countdownWarningSeconds &&
       timeRemainingSeconds > this.config.countdownWarningSeconds - 10
     ) {
-      // logVerbose('[AudioWarning] Triggering countdown warning at', timeRemainingSeconds, 'seconds');
       this.playCountdownWarning();
     }
 
-    // Check for audio warning (10 seconds) - trigger when first reaching <= 10 seconds
-    // This ensures it triggers even if the check happens at 7 seconds (missed 10)
-    // logVerbose('[AudioWarning] Audio warning check - timeRemaining:', timeRemainingSeconds, 'audioThreshold:', this.config.audioWarningSeconds);
-    
+    // Check for audio warning (final countdown, e.g. at 10 seconds)
     if (
       timeRemainingSeconds <= this.config.audioWarningSeconds &&
       timeRemainingSeconds >= 0 &&
       !this.state.hasPlayedAudioWarning
     ) {
-      // logVerbose('[AudioWarning] Triggering audio warning at', timeRemainingSeconds, 'seconds (first time reaching <= 10)');
+      this.playAudioWarning();
+    }
+  }
+
+  /**
+   * Check if audio warnings should be triggered for source limits
+   * Triggers ONLY the final countdown warning (last seconds)
+   */
+  checkSourceAudioWarnings(timeRemainingSeconds: number, isVideoPlaying: boolean): void {
+    if (!isVideoPlaying) return;
+
+    // Only check for audio warning (final countdown, e.g. at 10 seconds)
+    // We intentionally SKIP the countdown warning (60s mark) for source limits
+    if (
+      timeRemainingSeconds <= this.config.audioWarningSeconds &&
+      timeRemainingSeconds >= 0 &&
+      !this.state.hasPlayedAudioWarning
+    ) {
+      // Force reset countdown warning state to avoid interference if switching contexts
+      this.state.hasPlayedCountdownWarning = true;
       this.playAudioWarning();
     }
   }
@@ -148,12 +162,12 @@ class AudioWarningService {
         // logVerboseRenderer('[AudioWarning] Countdown warning completed');
         return;
       }
-      
+
       // Play beep and schedule next one
       this.playBeep();
       this.state.beepCount++;
       this.state.lastBeepTime = Date.now();
-      
+
       // Schedule next beep
       this.beepInterval = globalThis.setTimeout(beep, intervalMs);
     };
@@ -177,7 +191,7 @@ class AudioWarningService {
    */
   private async playBeep(): Promise<void> {
     // logVerboseRenderer('[AudioWarning] Playing beep, useSystemBeep:', this.config.useSystemBeep);
-    
+
     // Try Web Audio API first (works better in Electron than system beep)
     const AudioContextClass = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
     // Prefer Web Audio when available for reliable beep in Electron; fallback to console bell
@@ -197,38 +211,38 @@ class AudioWarningService {
             throw resumeError;
           }
         }
-        
+
         const oscillator = ctx.createOscillator();
         const gainNode = ctx.createGain();
-        
+
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(880, ctx.currentTime);
         oscillator.connect(gainNode);
         gainNode.connect(ctx.destination);
-        
+
         // Fade in and out for better sound
         gainNode.gain.setValueAtTime(0, ctx.currentTime);
         gainNode.gain.linearRampToValueAtTime(0.5, ctx.currentTime + 0.01);
         gainNode.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.3);
-        
+
         oscillator.start(ctx.currentTime);
         oscillator.stop(ctx.currentTime + 0.3);
-        
+
         oscillator.onended = () => {
           oscillator.disconnect();
           gainNode.disconnect();
         };
-        
+
         // logVerboseRenderer('[AudioWarning] Web Audio API beep played successfully');
         return;
       } catch (e) {
         // logVerboseRenderer('[AudioWarning] Web Audio API beep failed, falling back to system beep:', e);
       }
     }
-    
+
     // Fallback to system beep
     // logVerboseRenderer('[AudioWarning] Using system beep (console.log)');
-     
+
     console.log('\x07');
   }
 

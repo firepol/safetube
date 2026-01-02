@@ -105,6 +105,9 @@ const IPC = {
     GET_SOURCE_STATE: 'time-tracking:get-source-state',
     GRANT_SOURCE_EXTENSION: 'time-tracking:grant-source-extension',
     GET_ALL_SOURCE_STATES: 'time-tracking:get-all-source-states',
+    REQUEST_EXTENSION: 'time-tracking:request-extension',
+    GET_PENDING_REQUESTS: 'time-tracking:get-pending-requests',
+    RESOLVE_EXTENSION_REQUEST: 'time-tracking:resolve-extension-request',
   },
 
   // ============================================================================
@@ -378,8 +381,8 @@ contextBridge.exposeInMainWorld(
     getDlnaFile: (server: string, port: number, path: string) =>
       ipcRenderer.invoke(IPC.DLNA.GET_DLNA_FILE, server, port, path),
     getVideoStreams: (videoId: string) => ipcRenderer.invoke(IPC.PLAYBACK.GET_VIDEO_STREAMS, videoId),
-    recordVideoWatching: (videoId: string, position: number, timeWatched: number, duration?: number) =>
-      ipcRenderer.invoke(IPC.TIME_TRACKING.RECORD_VIDEO_WATCHING, videoId, position, timeWatched, duration),
+    recordVideoWatching: (videoId: string, position: number, timeWatched: number, duration?: number, sourceId?: string) =>
+      ipcRenderer.invoke(IPC.TIME_TRACKING.RECORD_VIDEO_WATCHING, videoId, position, timeWatched, duration, sourceId),
     getTimeTrackingState: () => ipcRenderer.invoke(IPC.TIME_TRACKING.GET_TIME_TRACKING_STATE),
     getTimeLimits: () => ipcRenderer.invoke(IPC.TIME_TRACKING.GET_TIME_LIMITS),
     // Source time tracking API
@@ -394,7 +397,13 @@ contextBridge.exposeInMainWorld(
           addedBy: 'parent'
         }),
       getAllSourceStates: () =>
-        ipcRenderer.invoke(IPC.TIME_TRACKING.GET_ALL_SOURCE_STATES)
+        ipcRenderer.invoke(IPC.TIME_TRACKING.GET_ALL_SOURCE_STATES),
+      requestTimeExtension: (sourceId: string | null, minutes: number) =>
+        ipcRenderer.invoke(IPC.TIME_TRACKING.REQUEST_EXTENSION, sourceId, minutes),
+      getPendingRequests: () =>
+        ipcRenderer.invoke(IPC.TIME_TRACKING.GET_PENDING_REQUESTS),
+      resolveRequest: (requestId: number, approved: boolean) =>
+        ipcRenderer.invoke(IPC.TIME_TRACKING.RESOLVE_EXTENSION_REQUEST, requestId, approved)
     },
     getWatchedVideos: () => ipcRenderer.invoke(IPC.VIDEO_LOADING.GET_WATCHED_VIDEOS),
     getPlayerConfig: () => ipcRenderer.invoke(IPC.PLAYBACK.GET_PLAYER_CONFIG),
@@ -555,7 +564,7 @@ contextBridge.exposeInMainWorld(
     searchDatabase: (query: string, sourceId?: string) => ipcRenderer.invoke(IPC.SEARCH.DATABASE, query, sourceId),
     searchYouTube: (query: string) => ipcRenderer.invoke(IPC.SEARCH.YOUTUBE, query),
     getSearchHistory: (limit?: number) => ipcRenderer.invoke(IPC.SEARCH.HISTORY_GET, limit),
-    getCachedSearchResults: (query: string, searchType: 'database' | 'youtube') => 
+    getCachedSearchResults: (query: string, searchType: 'database' | 'youtube') =>
       ipcRenderer.invoke(IPC.SEARCH.CACHED_RESULTS_GET, query, searchType),
 
     // Wishlist handlers

@@ -430,6 +430,21 @@ async function handleGetVideoSources(): Promise<ApiResponse> {
         ORDER BY position ASC, title ASC
       `) as any;
 
+      console.log('[API GET /video-sources] Raw database rows count:', rows.length);
+      console.log('[API GET /video-sources] First source:', rows[0] ? {
+        id: rows[0].id,
+        title: rows[0].title,
+        daily_time_limit_minutes: rows[0].daily_time_limit_minutes,
+        type: rows[0].type
+      } : 'No rows');
+
+      log.debug('[API] Raw database rows:', rows.map((r: any) => ({
+        id: r.id,
+        title: r.title,
+        dailyTimeLimit_raw: r.daily_time_limit_minutes,
+        type: r.type
+      })));
+
       // Transform database rows to VideoSource objects
       const sources = (rows || []).map((row: any) => {
         const base = {
@@ -462,6 +477,21 @@ async function handleGetVideoSources(): Promise<ApiResponse> {
         }
         return base;
       });
+
+      console.log('[API GET /video-sources] Response count:', sources.length);
+      console.log('[API GET /video-sources] First source response:', sources[0] ? {
+        id: sources[0].id,
+        title: sources[0].title,
+        dailyTimeLimit: sources[0].dailyTimeLimit,
+        type: sources[0].type
+      } : 'No sources');
+
+      log.debug('[API] Transformed sources:', sources.map((s: any) => ({
+        id: s.id,
+        title: s.title,
+        dailyTimeLimit: s.dailyTimeLimit,
+        type: s.type
+      })));
 
       return { status: 200, body: sources };
     }
@@ -496,6 +526,7 @@ async function handleSaveVideoSources(body: any): Promise<ApiResponse> {
     for (let i = 0; i < body.length; i++) {
       const source = body[i];
       const position = i + 1;
+      log.debug('[API] Saving source:', { id: source.id, title: source.title, dailyTimeLimit: source.dailyTimeLimit, type: source.type });
 
       if (source.type === 'youtube_channel') {
         await (dbService as any).run(`

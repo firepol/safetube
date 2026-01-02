@@ -376,13 +376,13 @@ async function recordUsageTime(timeWatchedSeconds: number): Promise<void> {
   try {
     const usageLog = await readUsageLog();
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    
+
     if (!usageLog[today]) {
       usageLog[today] = 0;
     }
-    
+
     usageLog[today] += timeWatchedSeconds;
-    
+
     await writeUsageLog(usageLog);
   } catch (error) {
     logVerbose(`[TimeTracking] Error recording usage time: ${error}`);
@@ -407,7 +407,7 @@ export async function getTimeTrackingState(): Promise<{
       readUsageLog(),
       readTimeExtra()
     ]);
-    
+
     const currentDate = new Date().toISOString().split('T')[0];
     const dayOfWeek = new Date().toLocaleDateString('en-US', { weekday: 'long' });
 
@@ -437,16 +437,15 @@ export async function getTimeTrackingState(): Promise<{
  */
 export async function addExtraTime(minutes: number): Promise<void> {
   try {
-    const timeExtra = await readTimeExtra();
+    const { DatabaseService } = await import('./services/DatabaseService');
+    const dbService = DatabaseService.getInstance();
     const today = new Date().toISOString().split('T')[0];
 
-    if (!timeExtra[today]) {
-      timeExtra[today] = 0;
-    }
-
-    timeExtra[today] += minutes;
-
-    await writeTimeExtra(timeExtra);
+    // Insert into usage_extras table directly (append-only log)
+    await dbService.run(`
+      INSERT INTO usage_extras (date, minutes_added, reason, added_by)
+      VALUES (?, ?, ?, ?)
+    `, [today, minutes, 'Manual addition', 'system']);
 
     logVerbose(`[TimeTracking] Added ${minutes} minutes extra time for ${today}`);
   } catch (error) {
@@ -634,9 +633,9 @@ export async function grantSourceTimeExtension(
       throw new Error(`Source ${sourceId} not found`);
     }
 
-    // Validate minutesAdded is 1-60
-    if (!Number.isInteger(minutesAdded) || minutesAdded < 1 || minutesAdded > 60) {
-      throw new Error(`Extension duration must be between 1 and 60 minutes, got: ${minutesAdded}`);
+    // Validate minutesAdded is -60 to 60 (but not 0)
+    if (!Number.isInteger(minutesAdded) || Math.abs(minutesAdded) > 60 || minutesAdded === 0) {
+      throw new Error(`Extension duration must be between -60 and 60 minutes (non-zero), got: ${minutesAdded}`);
     }
 
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
@@ -681,3 +680,105 @@ export async function resetDailySourceUsage(): Promise<void> {
   }
 }
 
+
+/**
+ * Request time extension (called from Kid Screen/Time Up Page)
+ */
+export async function requestTimeExtension(sourceId: string | null, minutes: number): Promise<boolean> {
+  try {
+    const { DatabaseService } = await import('./services/DatabaseService');
+    const dbService = DatabaseService.getInstance();
+
+    await dbService.run(
+      'INSERT INTO extension_requests (source_id, minutes_requested, status) VALUES (?, ?, ?)',
+      [sourceId, minutes, 'pending']
+    );
+
+    logVerbose(`[TimeTracking] Created extension request: source=${sourceId || 'global'}, minutes=${minutes}`);
+    return true;
+  } catch (error) {
+    logVerbose(`[TimeTracking] Error creating extension request: ${error}`);
+    return false;
+  }
+}
+
+/**
+ * Get all pending extension requests
+ */
+export async function getPendingExtensionRequests(): Promise<any[]> {
+  try {
+    const { DatabaseService } = await import('./services/DatabaseService');
+    const dbService = DatabaseService.getInstance();
+
+    const rows = await dbService.all<any>(`
+       SELECT r.id, r.source_id, r.minutes_requested, r.status, r.created_at, s.title as source_title
+       FROM extension_requests r
+       LEFT JOIN sources s ON r.source_id = s.id
+       WHERE r.status = 'pending'
+       ORDER BY r.created_at DESC
+     `);
+
+    return rows.map(row => ({
+      id: row.id,
+      sourceId: row.source_id,
+      sourceName: row.source_title || (row.source_id ? 'Unknown Source' : 'Global Time'),
+      minutesRequested: row.minutes_requested,
+      status: row.status,
+      createdAt: row.created_at
+    }));
+  } catch (error) {
+    logVerbose(`[TimeTracking] Error getting pending requests: ${error}`);
+    return [];
+  }
+}
+
+/**
+ * Resolve an extension request (approve/deny)
+ */
+export async function resolveExtensionRequest(requestId: number, approved: boolean, approvedBy?: string): Promise<void> {
+  try {
+    const { DatabaseService } = await import('./services/DatabaseService');
+    const dbService = DatabaseService.getInstance();
+
+    const status = approved ? 'approved' : 'denied';
+    const now = new Date().toISOString();
+
+    // Start transaction
+    await dbService.run('BEGIN TRANSACTION');
+
+    try {
+      // Update request status
+      await dbService.run(
+        'UPDATE extension_requests SET status = ?, resolved_at = ? WHERE id = ?',
+        [status, now, requestId]
+      );
+
+      if (approved) {
+        // Get request details
+        const request = await dbService.get<any>(
+          'SELECT source_id, minutes_requested FROM extension_requests WHERE id = ?',
+          [requestId]
+        );
+
+        if (request) {
+          if (request.source_id) {
+            await grantSourceTimeExtension(request.source_id, request.minutes_requested, 'Request Approved', approvedBy || 'Admin');
+          } else {
+            // Global time extension
+            await addExtraTime(request.minutes_requested);
+          }
+        }
+      }
+
+      await dbService.run('COMMIT');
+      logVerbose(`[TimeTracking] Resolved request ${requestId}: ${status}`);
+    } catch (err) {
+      await dbService.run('ROLLBACK');
+      throw err;
+    }
+
+  } catch (error) {
+    logVerbose(`[TimeTracking] Error resolving request ${requestId}: ${error}`);
+    throw error;
+  }
+}

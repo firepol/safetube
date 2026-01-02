@@ -66,7 +66,7 @@ export const KidScreen: React.FC = () => {
           setSources(videosBySource || []);
           setLoaderDebug(debug || []);
           setLoaderError(null);
-          
+
           // Check if any sources are using cached data due to API failures (not normal cache usage)
           const hasApiErrorFallback = videosBySource?.some((source: any) => source.apiErrorFallback);
           if (hasApiErrorFallback && !warningShownRef.current) {
@@ -97,7 +97,26 @@ export const KidScreen: React.FC = () => {
     // Sources now navigate to separate pages
   }, []);
 
-  const handleSourceClick = (source: any) => {
+  const handleSourceClick = async (source: any) => {
+    // Check if source is blocked before navigating
+    if (window.electron?.timeTracking) {
+      try {
+        const sourceState = await window.electron.timeTracking.getSourceState(source.id);
+        if (sourceState.isLimitExceeded) {
+          navigate('/time-up', {
+            state: {
+              blockedReason: 'source_limit',
+              sourceId: source.id,
+              blockedSourceId: source.id,
+              sourceTimeState: sourceState
+            }
+          });
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking source state:', error);
+      }
+    }
     navigate(`/source/${source.id}`);
   };
 
@@ -160,7 +179,7 @@ export const KidScreen: React.FC = () => {
         </div>
         <TimeIndicator initialState={timeTrackingState} />
       </div>
-      
+
       {/* Sources Container */}
       <div className="sources-container">
         <SourceGrid
@@ -195,7 +214,7 @@ export const KidScreen: React.FC = () => {
           }}
         />
       </div>
-      
+
       {/* Only show debug info if verbose logging is enabled */}
       {isVerboseLogging && (
         <details className="mt-4">
@@ -205,7 +224,7 @@ export const KidScreen: React.FC = () => {
           </pre>
         </details>
       )}
-      
+
       {/* Footer with Parent Access */}
       <div className="mt-8 pt-4 border-t border-gray-200">
         <div className="flex justify-between items-center text-xs text-gray-400">

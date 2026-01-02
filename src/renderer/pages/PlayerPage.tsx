@@ -36,7 +36,7 @@ export const PlayerPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const loadingTimeoutRef = useRef<number | undefined>(undefined);
-  
+
   // Conversion state
   const [conversionStatus, setConversionStatus] = useState<{
     status: 'idle' | 'converting' | 'completed' | 'failed';
@@ -45,7 +45,7 @@ export const PlayerPage: React.FC = () => {
   }>({ status: 'idle' });
   const [hasConvertedVideo, setHasConvertedVideo] = useState<boolean>(false);
   const [needsConversion, setNeedsConversion] = useState<boolean>(false);
-  
+
   // Download state using shared hook
   const {
     downloadStatus,
@@ -67,7 +67,7 @@ export const PlayerPage: React.FC = () => {
   const [sourceTimeRemaining, setSourceTimeRemaining] = useState<number | null>(null);
   const [sourceTimeLimit, setSourceTimeLimit] = useState<number | null>(null);
   const lastSourceTimeCheckRef = useRef<number>(0);
-  
+
   // Flag to prevent infinite loop when setting resume time
   const resumeAttemptedRef = useRef<boolean>(false);
 
@@ -79,7 +79,7 @@ export const PlayerPage: React.FC = () => {
         window.electron.hasConvertedVideo(filePath),
         window.electron.getConversionStatus(filePath)
       ]);
-      
+
       setNeedsConversion(needsConversionResult);
       setHasConvertedVideo(hasConvertedResult);
       setConversionStatus(statusResult);
@@ -90,17 +90,17 @@ export const PlayerPage: React.FC = () => {
 
   const handleStartConversion = async () => {
     if (!video?.url) return;
-    
+
     try {
       setConversionStatus({ status: 'converting', progress: 0 });
       await window.electron.startVideoConversion(video.url, { quality: 'medium' });
-      
+
       // Start polling for status updates
       const pollInterval = setInterval(async () => {
         try {
           const status = await window.electron.getConversionStatus(video.url);
           setConversionStatus(status);
-          
+
           if (status.status === 'completed') {
             clearInterval(pollInterval);
             setHasConvertedVideo(true);
@@ -113,19 +113,19 @@ export const PlayerPage: React.FC = () => {
           console.error('[PlayerPage] Error polling conversion status:', error);
         }
       }, 1000);
-      
+
     } catch (error) {
       console.error('[PlayerPage] Error starting conversion:', error);
-      setConversionStatus({ 
-        status: 'failed', 
-        error: error instanceof Error ? error.message : String(error) 
+      setConversionStatus({
+        status: 'failed',
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   };
 
   const handleUseConvertedVideo = async () => {
     if (!video?.url) return;
-    
+
     try {
       const convertedPath = await window.electron.getExistingConvertedVideoPath(video.url);
       if (convertedPath && videoRef.current) {
@@ -142,7 +142,7 @@ export const PlayerPage: React.FC = () => {
 
   const loadVideoWithConversion = async () => {
     if (!video?.url) return;
-    
+
     try {
       const hasConverted = await window.electron.hasConvertedVideo(video.url);
       if (hasConverted && videoRef.current) {
@@ -236,7 +236,7 @@ export const PlayerPage: React.FC = () => {
     if (video?.url && video.type === 'local') {
       checkConversionStatus(video.url);
     }
-    
+
     // Check download status for YouTube videos
     if (video?.id && video.type === 'youtube') {
       checkDownloadStatus(video.id);
@@ -405,7 +405,7 @@ export const PlayerPage: React.FC = () => {
                 logVerbose('[PlayerPage] 🔍 Checking if video needs conversion');
                 const needsConversion = await window.electron.needsVideoConversion(video.url);
                 logVerbose('[PlayerPage] Conversion check result:', needsConversion);
-                
+
                 if (needsConversion) {
                   logVerbose('[PlayerPage] 🎥 Video needs conversion, checking for existing converted version');
                   // Check if converted video already exists
@@ -597,19 +597,19 @@ export const PlayerPage: React.FC = () => {
             }
           } else {
             const { videoStreams, audioTracks } = await window.electron.getVideoStreams(video.id);
-            
+
             // Get MediaSource configuration for max quality
             const mediaSourceConfig = await PlayerConfigService.getMediaSourceConfig();
             // logVerbose('[PlayerPage] Media source config:', mediaSourceConfig);
-            
+
             // Use the proper stream selection functions with max quality limit
             const highestQuality = YouTubeAPI.getHighestQualityStream(
-              videoStreams, 
-              audioTracks, 
+              videoStreams,
+              audioTracks,
               mediaSourceConfig.preferredLanguages,
               mediaSourceConfig.maxQuality
             );
-            
+
             videoStream = {
               url: highestQuality.videoUrl,
               quality: highestQuality.quality,
@@ -629,28 +629,28 @@ export const PlayerPage: React.FC = () => {
             throw new Error('No video stream URL available');
           }
 
-                      // For video-only entries, we can use direct playback
-            if (!audioTrack) {
-              if (videoRef.current) {
-                videoRef.current.src = videoStream.url;
-                // Set resume time if available
-                if (video.resumeAt && video.resumeAt > 0) {
-                  videoRef.current.addEventListener('loadedmetadata', () => {
-                    setTimeout(() => {
-                      try {
-                        if (videoRef.current && video.resumeAt) {
-                          videoRef.current.currentTime = video.resumeAt;
-                        }
-                      } catch (error) {
-                        console.warn('[PlayerPage] Failed to set resume time for YouTube video-only:', error);
+          // For video-only entries, we can use direct playback
+          if (!audioTrack) {
+            if (videoRef.current) {
+              videoRef.current.src = videoStream.url;
+              // Set resume time if available
+              if (video.resumeAt && video.resumeAt > 0) {
+                videoRef.current.addEventListener('loadedmetadata', () => {
+                  setTimeout(() => {
+                    try {
+                      if (videoRef.current && video.resumeAt) {
+                        videoRef.current.currentTime = video.resumeAt;
                       }
-                    }, 100);
-                  }, { once: true });
-                }
-                setIsLoading(false);
+                    } catch (error) {
+                      console.warn('[PlayerPage] Failed to set resume time for YouTube video-only:', error);
+                    }
+                  }, 100);
+                }, { once: true });
               }
-              return;
+              setIsLoading(false);
             }
+            return;
+          }
 
           // For videos with both video and audio, use MediaSource
           mediaSource = new MediaSource();
@@ -671,43 +671,43 @@ export const PlayerPage: React.FC = () => {
             });
           }
 
-                      // Set up video element event handlers
-            if (videoElement) {
-              videoElement.addEventListener('error', (e) => {
-                console.error('Video element error:', e);
-                const error = videoElement.error;
-                if (error) {
-                  console.error('Error code:', error.code);
-                  console.error('Error message:', error.message);
-                }
-                setError('Video playback error: ' + (error?.message || 'Unknown error'));
-                setIsLoading(false);
-              });
+          // Set up video element event handlers
+          if (videoElement) {
+            videoElement.addEventListener('error', (e) => {
+              console.error('Video element error:', e);
+              const error = videoElement.error;
+              if (error) {
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+              }
+              setError('Video playback error: ' + (error?.message || 'Unknown error'));
+              setIsLoading(false);
+            });
 
-              videoElement.addEventListener('loadedmetadata', () => {
-                // console.log('Video metadata loaded');
-                // Set resume time if available - use a small delay to ensure video is ready
-                if (video.resumeAt && video.resumeAt > 0) {
-                  setTimeout(() => {
-                    try {
-                      if (video.resumeAt) {
-                        videoElement.currentTime = video.resumeAt;
-                      }
-                    } catch (error) {
-                      console.warn('[PlayerPage] Failed to set resume time for YouTube media source:', error);
+            videoElement.addEventListener('loadedmetadata', () => {
+              // console.log('Video metadata loaded');
+              // Set resume time if available - use a small delay to ensure video is ready
+              if (video.resumeAt && video.resumeAt > 0) {
+                setTimeout(() => {
+                  try {
+                    if (video.resumeAt) {
+                      videoElement.currentTime = video.resumeAt;
                     }
-                  }, 100);
-                }
-              });
+                  } catch (error) {
+                    console.warn('[PlayerPage] Failed to set resume time for YouTube media source:', error);
+                  }
+                }, 100);
+              }
+            });
 
-              videoElement.addEventListener('loadeddata', () => {
-                // console.log('Video data loaded');
-              });
+            videoElement.addEventListener('loadeddata', () => {
+              // console.log('Video data loaded');
+            });
 
-              videoElement.addEventListener('canplay', () => {
-                // console.log('Video can play');
-              });
-            }
+            videoElement.addEventListener('canplay', () => {
+              // console.log('Video can play');
+            });
+          }
 
           // Wait for MediaSource to be ready
           await new Promise<void>((resolve, reject) => {
@@ -734,12 +734,12 @@ export const PlayerPage: React.FC = () => {
             if (!isMediaSourceActive || !mediaSource) return;
 
             // Determine the correct MIME type and codec
-            const videoMimeType = videoStream.mimeType.includes('webm') 
-              ? (videoStream.mimeType.includes('vp9') 
-                ? 'video/webm; codecs="vp9"' 
+            const videoMimeType = videoStream.mimeType.includes('webm')
+              ? (videoStream.mimeType.includes('vp9')
+                ? 'video/webm; codecs="vp9"'
                 : 'video/webm; codecs="vp8"')
               : 'video/mp4; codecs="avc1.42E01E"';
-            
+
             // Use WebM audio for WebM video to ensure compatibility
             const audioMimeType = videoStream.mimeType.includes('webm')
               ? 'audio/webm; codecs="opus"'
@@ -886,15 +886,15 @@ export const PlayerPage: React.FC = () => {
   // Check time limits on mount and when video changes
   useEffect(() => {
     let isMounted = true;
-    
+
     const checkTimeLimits = async () => {
       if (!video || !isMounted) return;
-      
+
       try {
         const state = await window.electron.getTimeTrackingState();
         if (isMounted) {
           setTimeRemainingSeconds(state.timeRemaining);
-          
+
           // If limit is reached, don't allow playback
           if (state.isLimitReached) {
             if (videoRef.current) {
@@ -908,7 +908,7 @@ export const PlayerPage: React.FC = () => {
     };
 
     checkTimeLimits();
-    
+
     return () => {
       isMounted = false;
     };
@@ -970,6 +970,11 @@ export const PlayerPage: React.FC = () => {
 
         setSourceTimeLimit(sourceState.dailyLimitMinutes);
         setSourceTimeRemaining(sourceState.secondsRemainingToday);
+
+        // Trigger source-specific audio warnings (only final countdown)
+        if (sourceState.secondsRemainingToday !== null) {
+          audioWarningService.checkSourceAudioWarnings(sourceState.secondsRemainingToday, isVideoPlaying);
+        }
 
         if (sourceState.isLimitExceeded) {
           // Stop video playback
@@ -1093,20 +1098,44 @@ export const PlayerPage: React.FC = () => {
     if (timeTrackingRef.current.isTracking && video) {
       const currentTime = Date.now();
       const timeWatched = (currentTime - timeTrackingRef.current.lastUpdateTime) / 1000;
-      
+
       if (timeWatched >= 1) {
         timeTrackingRef.current.totalWatched += timeWatched;
         timeTrackingRef.current.lastUpdateTime = currentTime;
 
         // Record the time watched
         if (videoRef.current) {
-          await window.electron.recordVideoWatching(
+          const result = await window.electron.recordVideoWatching(
             video.id,
             videoRef.current.currentTime,
             timeWatched,
-            video.duration
+            video.duration,
+            video.sourceId
           );
-          
+
+          if (result.sourceBlocked) {
+            // Stop playback immediately
+            videoRef.current.pause();
+
+            // Exit fullscreen if in fullscreen mode
+            if (document.fullscreenElement) {
+              try {
+                await document.exitFullscreen();
+              } catch (error) {
+                console.error('Error exiting fullscreen:', error);
+              }
+            }
+
+            navigate('/time-up', {
+              state: {
+                blockedReason: 'source_limit',
+                sourceId: video.sourceId,
+                blockedSourceId: result.blockedSourceId
+              }
+            });
+            return;
+          }
+
           // Immediately check if time limit has been reached after recording
           try {
             const state = await window.electron.getTimeTrackingState();
@@ -1114,7 +1143,7 @@ export const PlayerPage: React.FC = () => {
               // Stop playback immediately
               videoRef.current.pause();
               setTimeRemainingSeconds(0);
-              
+
               // Exit fullscreen if in fullscreen mode
               if (document.fullscreenElement) {
                 try {
@@ -1123,7 +1152,7 @@ export const PlayerPage: React.FC = () => {
                   console.error('Error exiting fullscreen:', error);
                 }
               }
-              
+
               // Navigate to Time's Up page
               navigate('/time-up');
             } else {
@@ -1328,8 +1357,8 @@ export const PlayerPage: React.FC = () => {
 
   const handleVideoTimeUpdate = useCallback(() => {
     // Throttle time update events to prevent excessive calls
-    if (!timeTrackingRef.current.lastUpdateTime || 
-        Date.now() - timeTrackingRef.current.lastUpdateTime > 1000) {
+    if (!timeTrackingRef.current.lastUpdateTime ||
+      Date.now() - timeTrackingRef.current.lastUpdateTime > 1000) {
       updateTimeTracking();
     }
   }, [updateTimeTracking]);
@@ -1354,12 +1383,12 @@ export const PlayerPage: React.FC = () => {
   // Custom error display for conversion options
   const renderConversionError = () => {
     if (!error || !needsConversion) return null;
-    
+
     return (
       <div className="text-center text-red-500 mb-4">
         <div className="text-lg mb-2">Video Playback Error</div>
         <div className="text-sm mb-4">{error}</div>
-        
+
         <div className="space-y-3">
           {conversionStatus.status === 'converting' && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -1369,7 +1398,7 @@ export const PlayerPage: React.FC = () => {
               </div>
               {conversionStatus.progress !== undefined && (
                 <div className="w-full bg-blue-200 rounded-full h-2">
-                  <div 
+                  <div
                     className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${conversionStatus.progress}%` }}
                   ></div>
@@ -1380,7 +1409,7 @@ export const PlayerPage: React.FC = () => {
               </div>
             </div>
           )}
-          
+
           {conversionStatus.status === 'failed' && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <div className="text-red-800 font-medium mb-2">Conversion Failed</div>
@@ -1395,7 +1424,7 @@ export const PlayerPage: React.FC = () => {
               </button>
             </div>
           )}
-          
+
           {conversionStatus.status === 'completed' && hasConvertedVideo && (
             <div className="bg-green-50 border border-green-200 rounded-lg p-4">
               <div className="text-green-800 font-medium mb-2">Video Converted Successfully!</div>
@@ -1410,12 +1439,12 @@ export const PlayerPage: React.FC = () => {
               </button>
             </div>
           )}
-          
+
           {conversionStatus.status === 'idle' && !hasConvertedVideo && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
               <div className="text-yellow-800 font-medium mb-2">Video Format Not Supported</div>
               <div className="text-sm text-yellow-600 mb-3">
-                This video uses an older format that isn't supported by modern browsers. 
+                This video uses an older format that isn't supported by modern browsers.
                 You can convert it to a compatible format.
               </div>
               <button
@@ -1479,7 +1508,7 @@ export const PlayerPage: React.FC = () => {
         }}
         onLoadedData={handleVideoLoaded}
       />
-      
+
       {/* Downloaded video indicator */}
       {video?.type === 'local' && video?.downloadedAt && (video?.sourceType === 'youtube_channel' || video?.sourceType === 'youtube_playlist') && (
         <div className="mt-4">
@@ -1496,13 +1525,13 @@ export const PlayerPage: React.FC = () => {
           </div>
         </div>
       )}
-      
+
       {/* Reset UI for downloaded YouTube videos */}
       <LocalPlayerResetUI
         video={video}
         onResetDownload={handleResetDownload}
       />
-      
+
       {/* Download UI using shared component */}
       <DownloadUI
         video={video}
@@ -1515,27 +1544,25 @@ export const PlayerPage: React.FC = () => {
       {/* Source time remaining display */}
       {video?.sourceId && sourceTimeLimit !== null && (
         <div className="mt-4">
-          <div className={`p-3 rounded-lg border-2 ${
-            sourceTimeRemaining !== null && sourceTimeRemaining < 300
-              ? 'bg-orange-50 border-orange-300'
-              : 'bg-blue-50 border-blue-300'
-          }`}>
+          <div className={`p-3 rounded-lg border-2 ${sourceTimeRemaining !== null && sourceTimeRemaining < 300
+            ? 'bg-orange-50 border-orange-300'
+            : 'bg-blue-50 border-blue-300'
+            }`}>
             <div className="flex items-center justify-between">
               <span className="font-medium text-gray-700">Source Time:</span>
-              <span className={`font-semibold ${
-                sourceTimeRemaining !== null && sourceTimeRemaining < 300
-                  ? 'text-orange-600'
-                  : 'text-blue-600'
-              }`}>
+              <span className={`font-semibold ${sourceTimeRemaining !== null && sourceTimeRemaining < 300
+                ? 'text-orange-600'
+                : 'text-blue-600'
+                }`}>
                 {sourceTimeRemaining !== null
                   ? TimeTrackingService.formatTimeRemaining({
-                      dailyLimitMinutes: sourceTimeLimit,
-                      secondsRemainingToday: sourceTimeRemaining,
-                      secondsUsedToday: 0,
-                      isLimitExceeded: false,
-                      sourceId: video.sourceId,
-                      lastResetDate: ''
-                    })
+                    dailyLimitMinutes: sourceTimeLimit,
+                    secondsRemainingToday: sourceTimeRemaining,
+                    secondsUsedToday: 0,
+                    isLimitExceeded: false,
+                    sourceId: video.sourceId,
+                    lastResetDate: ''
+                  })
                   : 'Unlimited'}
               </span>
             </div>

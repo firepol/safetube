@@ -85,6 +85,37 @@ export const QuickExtensionMenu: React.FC<QuickExtensionMenuProps> = ({
                 {minutes} minutes
               </button>
             ))}
+            <div className="border-t border-gray-100 mt-1 pt-1 px-3 py-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min="-60"
+                  max="60"
+                  placeholder="Min"
+                  className="w-full text-sm border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 p-1 border"
+                  title="Use positive numbers to add time, negative to remove time"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      const val = parseInt((e.target as HTMLInputElement).value);
+                      if (val !== 0 && !isNaN(val)) handleExtend(val);
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <button
+                  onClick={(e) => {
+                    const input = (e.currentTarget.previousSibling as HTMLInputElement);
+                    const val = parseInt(input.value);
+                    if (val !== 0 && !isNaN(val)) handleExtend(val);
+                  }}
+                  title="Apply custom time"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

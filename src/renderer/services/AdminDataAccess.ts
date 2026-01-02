@@ -473,7 +473,17 @@ export class HTTPAdminDataAccess implements IAdminDataAccess {
   async getVideoSources(): Promise<VideoSource[]> {
     const response = await fetch('/api/video-sources');
     if (!response.ok) throw new Error('Failed to get video sources');
-    return await response.json();
+    const sources = await response.json();
+    console.log('[HTTP AdminDataAccess] getVideoSources response count:', sources.length);
+    if (sources.length > 0) {
+      console.log('[HTTP AdminDataAccess] First source:', {
+        id: sources[0].id,
+        title: sources[0].title,
+        dailyTimeLimit: sources[0].dailyTimeLimit,
+        type: sources[0].type
+      });
+    }
+    return sources;
   }
 
   async saveVideoSources(sources: VideoSource[]): Promise<void> {

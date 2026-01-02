@@ -118,6 +118,9 @@ export const IPC = {
     GET_SOURCE_STATE: 'time-tracking:get-source-state',
     GRANT_SOURCE_EXTENSION: 'time-tracking:grant-source-extension',
     GET_ALL_SOURCE_STATES: 'time-tracking:get-all-source-states',
+    REQUEST_EXTENSION: 'time-tracking:request-extension',
+    GET_PENDING_REQUESTS: 'time-tracking:get-pending-requests',
+    RESOLVE_EXTENSION_REQUEST: 'time-tracking:resolve-extension-request',
   },
 
   // ============================================================================

@@ -113,7 +113,7 @@ async function ensureConfigDir(): Promise<void> {
 async function readJsonFile<T>(filename: string): Promise<T> {
   await ensureConfigDir();
   const filePath = path.join(CONFIG_DIR, filename);
-  
+
   try {
     const content = await fs.readFile(filePath, 'utf-8');
     return JSON.parse(content) as T;
@@ -121,8 +121,8 @@ async function readJsonFile<T>(filename: string): Promise<T> {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       // File doesn't exist, return default value based on filename
       if (filename.includes('downloadStatus.json') ||
-          filename.includes('downloadedVideos.json') ||
-          filename.includes('videoSources.json')) {
+        filename.includes('downloadedVideos.json') ||
+        filename.includes('videoSources.json')) {
         return [] as T; // Return empty array for array-type files
       }
       return {} as T; // Return empty object for object-type files
@@ -137,7 +137,7 @@ async function readJsonFile<T>(filename: string): Promise<T> {
 async function writeJsonFile<T>(filename: string, data: T): Promise<void> {
   await ensureConfigDir();
   const filePath = path.join(CONFIG_DIR, filename);
-  
+
   try {
     const content = JSON.stringify(data, null, 2);
     await fs.writeFile(filePath, content, 'utf-8');
@@ -300,9 +300,11 @@ export async function readTimeExtra(): Promise<TimeExtra> {
     const db = DatabaseService.getInstance();
 
     // Sum all minutes_added for each date (since table allows multiple entries per date)
+    // Only count global extensions (where source_id IS NULL)
     const rows = await db.all(`
       SELECT date, SUM(minutes_added) as total_minutes
       FROM usage_extras
+      WHERE source_id IS NULL
       GROUP BY date
       ORDER BY date DESC
     `) as Array<{ date: string; total_minutes: number }>;
@@ -344,7 +346,7 @@ export { readMainSettings, writeMainSettings } from './helpers/settingsHelper';
 export async function getDefaultDownloadPath(): Promise<string> {
   const { app } = await import('electron');
   const userHome = app.getPath('home');
-  
+
   // Use user's Videos folder as default
   const videosPath = path.join(userHome, 'Videos', 'SafeTube');
   return videosPath;
@@ -362,13 +364,13 @@ export async function writeDownloadStatus(statuses: DownloadStatus[]): Promise<v
 export async function updateDownloadStatus(videoId: string, status: Partial<DownloadStatus>): Promise<void> {
   const statuses = await readDownloadStatus();
   const existingIndex = statuses.findIndex(s => s.videoId === videoId);
-  
+
   if (existingIndex >= 0) {
     statuses[existingIndex] = { ...statuses[existingIndex], ...status };
   } else {
     statuses.push({ videoId, status: 'pending', progress: 0, ...status });
   }
-  
+
   await writeDownloadStatus(statuses);
 }
 

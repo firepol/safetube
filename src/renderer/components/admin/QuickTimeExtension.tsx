@@ -103,27 +103,41 @@ export const QuickTimeExtension: React.FC = () => {
         </div>
       )}
 
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-2 mb-6">
         <button
-          onClick={() => setExtraMinutes(Math.max(-1440, extraMinutes - 5))}
-          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg"
+          onClick={() => setExtraMinutes(Math.max(-1440, extraMinutes - 10))}
+          className="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-lg"
           disabled={isApplying}
         >
-          -5
+          -10
+        </button>
+        <button
+          onClick={() => setExtraMinutes(Math.max(-1440, extraMinutes - 1))}
+          className="bg-red-400 hover:bg-red-500 text-white font-bold py-2 px-3 rounded-lg"
+          disabled={isApplying}
+        >
+          -1
         </button>
         <input
           type="number"
           value={extraMinutes}
           onChange={(e) => setExtraMinutes(Math.max(-1440, Math.min(1440, Number(e.target.value))))}
-          className="flex-1 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg p-2"
+          className="flex-1 text-center text-2xl font-bold border-2 border-gray-300 rounded-lg p-2 min-w-[80px]"
           disabled={isApplying}
         />
         <button
-          onClick={() => setExtraMinutes(Math.min(1440, extraMinutes + 5))}
-          className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg"
+          onClick={() => setExtraMinutes(Math.min(1440, extraMinutes + 1))}
+          className="bg-green-400 hover:bg-green-500 text-white font-bold py-2 px-3 rounded-lg"
           disabled={isApplying}
         >
-          +5
+          +1
+        </button>
+        <button
+          onClick={() => setExtraMinutes(Math.min(1440, extraMinutes + 10))}
+          className="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg"
+          disabled={isApplying}
+        >
+          +10
         </button>
       </div>
 

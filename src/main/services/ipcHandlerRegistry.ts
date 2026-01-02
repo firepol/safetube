@@ -9,7 +9,7 @@ import { AppPaths } from '../appPaths';
 import { readTimeLimits, readMainSettings, writeMainSettings } from '../fileUtils';
 import { getYouTubeApiKey } from '../helpers/settingsHelper';
 import log from '../logger';
-import { recordVideoWatching, getTimeTrackingState, getSourceTimeState, grantSourceTimeExtension } from '../timeTracking';
+import { recordVideoWatching, getTimeTrackingState, getSourceTimeState, grantSourceTimeExtension, requestTimeExtension, getPendingExtensionRequests, resolveExtensionRequest } from '../timeTracking';
 import { YouTubeAPI } from '../youtube-api';
 import registerDatabaseHandlers from '../ipc/databaseHandlers';
 import { extractChannelId, extractPlaylistId } from '../../shared/videoSourceUtils';
@@ -144,9 +144,9 @@ export function registerVideoDataHandlers() {
 // Time Tracking Handlers
 export function registerTimeTrackingHandlers() {
   // Record video watching
-  ipcMain.handle(IPC.TIME_TRACKING.RECORD_VIDEO_WATCHING, async (_, videoId: string, position: number, timeWatched: number, duration?: number) => {
+  ipcMain.handle(IPC.TIME_TRACKING.RECORD_VIDEO_WATCHING, async (_, videoId: string, position: number, timeWatched: number, duration?: number, sourceId?: string) => {
     try {
-      await recordVideoWatching(videoId, position, timeWatched, duration);
+      await recordVideoWatching(videoId, position, timeWatched, duration, sourceId);
       return { success: true };
     } catch (error) {
       log.error('[IPC] Error recording video watching:', error);
@@ -305,8 +305,8 @@ export function registerTimeTrackingHandlers() {
       if (!sourceId || typeof sourceId !== 'string') {
         throw new Error('Invalid sourceId parameter');
       }
-      if (!minutesAdded || typeof minutesAdded !== 'number' || minutesAdded < 1 || minutesAdded > 60) {
-        throw new Error('Invalid minutesAdded parameter - must be between 1 and 60');
+      if (!minutesAdded || typeof minutesAdded !== 'number' || Math.abs(minutesAdded) > 60 || minutesAdded === 0) {
+        throw new Error('Invalid minutesAdded parameter - must be between -60 and 60 (non-zero)');
       }
       if (!addedBy || typeof addedBy !== 'string') {
         throw new Error('Invalid addedBy parameter');
@@ -343,6 +343,39 @@ export function registerTimeTrackingHandlers() {
       return states;
     } catch (error) {
       log.error('[IPC] Error getting all source states:', error);
+      throw error;
+    }
+  });
+
+  // Request time extension
+  ipcMain.handle(IPC.TIME_TRACKING.REQUEST_EXTENSION, async (_, sourceId: string | null, minutes: number) => {
+    try {
+      const success = await requestTimeExtension(sourceId, minutes);
+      return success;
+    } catch (error) {
+      log.error('[IPC] Error requesting extension:', error);
+      throw error;
+    }
+  });
+
+  // Get pending requests
+  ipcMain.handle(IPC.TIME_TRACKING.GET_PENDING_REQUESTS, async () => {
+    try {
+      const requests = await getPendingExtensionRequests();
+      return requests;
+    } catch (error) {
+      log.error('[IPC] Error getting pending requests:', error);
+      throw error;
+    }
+  });
+
+  // Resolve request
+  ipcMain.handle(IPC.TIME_TRACKING.RESOLVE_EXTENSION_REQUEST, async (_, requestId: number, approved: boolean) => {
+    try {
+      await resolveExtensionRequest(requestId, approved);
+      return { success: true };
+    } catch (error) {
+      log.error('[IPC] Error resolving extension request:', error);
       throw error;
     }
   });
@@ -537,13 +570,29 @@ export function registerVideoSourceHandlers() {
       const dbService = DatabaseService.default.getInstance();
       const status = await dbService.getHealthStatus();
       if (dbService && status.initialized) {
-        const sources = await dbService.all<any>(`
+        const rows = await dbService.all<any>(`
           SELECT id, type, title, sort_preference, position, url, channel_id, path, max_depth, daily_time_limit_minutes
           FROM sources
           ORDER BY position ASC, title ASC
         `);
-        log.info('[IPC] Retrieved sources from database:', sources.length);
-        return sources || [];
+        log.info('[IPC] Retrieved sources from database:', rows.length);
+
+        // Transform database rows to camelCase for frontend
+        const sources = (rows || []).map((row: any) => ({
+          id: row.id,
+          type: row.type,
+          title: row.title,
+          sortPreference: row.sort_preference,
+          position: row.position,
+          url: row.url || undefined,
+          channelId: row.channel_id || undefined,
+          path: row.path || undefined,
+          maxDepth: row.max_depth,
+          dailyTimeLimit: row.daily_time_limit_minutes || null
+        }));
+
+        log.debug('[IPC] Transformed sources for frontend:', sources.length, sources[0] ? `(first: ${sources[0].title}, dailyTimeLimit: ${sources[0].dailyTimeLimit})` : '');
+        return sources;
       }
       // If DB is not initialized, return empty (migration/first-run will handle JSON)
       return [];

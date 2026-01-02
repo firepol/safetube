@@ -104,8 +104,15 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
         return;
       }
 
-      // Log the extension request (this would normally be sent to parent via notification)
-      console.log(`[TimeUpPage] Extension request: ${sourceName} needs ${minutesToRequest} more minutes`);
+      // Send extension request to backend
+      if (window.electron?.timeTracking?.requestTimeExtension) {
+        const success = await window.electron.timeTracking.requestTimeExtension(sourceId, minutesToRequest);
+        if (!success) {
+          throw new Error('Failed to save request');
+        }
+      } else {
+        console.warn('requestTimeExtension API not available');
+      }
 
       // Show confirmation message
       setExtensionRequestSent(true);
@@ -281,11 +288,10 @@ export const TimeUpPage: React.FC<{ currentDate?: string }> = ({ currentDate }) 
                       setSelectedExtensionMinutes(minutes);
                       setCustomExtensionMinutes('');
                     }}
-                    className={`py-2 px-4 rounded-lg font-medium transition-colors ${
-                      selectedExtensionMinutes === minutes && !customExtensionMinutes
+                    className={`py-2 px-4 rounded-lg font-medium transition-colors ${selectedExtensionMinutes === minutes && !customExtensionMinutes
                         ? 'bg-purple-600 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
+                      }`}
                   >
                     {minutes}m
                   </button>

@@ -24,7 +24,7 @@ export const YouTubePlayerPage: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YouTubeIframePlayer | null>(null);
   const ytPlayerInstance = useRef<any>(null);
-  
+
   // State for the base component
   const [video, setVideo] = useState<Video | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +56,7 @@ export const YouTubePlayerPage: React.FC = () => {
   useEffect(() => {
     const loadVideoData = async () => {
       if (!videoId) return;
-      
+
       try {
         setIsLoading(true);
         // Pass location.state to preserve navigation context from related video clicks
@@ -85,15 +85,15 @@ export const YouTubePlayerPage: React.FC = () => {
   // Check time limits on mount and when video changes
   useEffect(() => {
     let isMounted = true;
-    
+
     const checkTimeLimits = async () => {
       if (!video || !isMounted) return;
-      
+
       try {
         const state = await window.electron.getTimeTrackingState();
         if (isMounted) {
           setTimeRemainingSeconds(state.timeRemaining);
-          
+
           // If limit is reached, don't allow playback
           if (state.isLimitReached) {
             if (ytPlayerInstance.current && ytPlayerInstance.current.pauseVideo) {
@@ -101,6 +101,29 @@ export const YouTubePlayerPage: React.FC = () => {
             }
             // Navigate to Time's Up page
             navigate('/time-up');
+            return;
+          }
+
+          // Check source limit
+          if (video.sourceId) {
+            try {
+              const sourceState = await window.electron.timeTracking.getSourceState(video.sourceId);
+              if (sourceState.isLimitExceeded) {
+                if (ytPlayerInstance.current && ytPlayerInstance.current.pauseVideo) {
+                  ytPlayerInstance.current.pauseVideo();
+                }
+                navigate('/time-up', {
+                  state: {
+                    blockedReason: 'source_limit',
+                    sourceId: video.sourceId,
+                    blockedSourceId: video.sourceId,
+                    sourceTimeState: sourceState
+                  }
+                });
+              }
+            } catch (err) {
+              console.error('Error checking source time limit:', err);
+            }
           }
         }
       } catch (error) {
@@ -109,7 +132,7 @@ export const YouTubePlayerPage: React.FC = () => {
     };
 
     checkTimeLimits();
-    
+
     return () => {
       isMounted = false;
     };
@@ -118,27 +141,27 @@ export const YouTubePlayerPage: React.FC = () => {
   // Continuous time limit monitoring during video playback
   useEffect(() => {
     if (!video) return;
-    
+
     let isMounted = true;
     let intervalId: number | undefined;
-    
+
     const monitorTimeLimits = async () => {
       try {
         const state = await window.electron.getTimeTrackingState();
         if (!isMounted) return;
-        
+
         // Update time remaining for countdown overlay
         setTimeRemainingSeconds(state.timeRemaining);
-        
+
         // Check and trigger audio warnings
         audioWarningService.checkAudioWarnings(state.timeRemaining, isVideoPlaying);
-        
+
         if (state.isLimitReached) {
           // Stop video playback
           if (ytPlayerInstance.current && ytPlayerInstance.current.pauseVideo) {
             ytPlayerInstance.current.pauseVideo();
           }
-          
+
           // Exit fullscreen if in fullscreen mode
           if (document.fullscreenElement) {
             try {
@@ -147,20 +170,62 @@ export const YouTubePlayerPage: React.FC = () => {
               console.error('Error exiting fullscreen:', error);
             }
           }
-          
+
           // Navigate to Time's Up page
           navigate('/time-up');
+          return;
+        }
+
+        // Check source limit
+        if (video.sourceId) {
+          try {
+            const sourceState = await window.electron.timeTracking.getSourceState(video.sourceId);
+            if (!isMounted) return;
+
+            // Trigger source-specific audio warnings (only final countdown)
+            if (sourceState.secondsRemainingToday !== null) {
+              audioWarningService.checkSourceAudioWarnings(sourceState.secondsRemainingToday, isVideoPlaying);
+            }
+
+            if (sourceState.isLimitExceeded) {
+              // Stop video playback
+              if (ytPlayerInstance.current && ytPlayerInstance.current.pauseVideo) {
+                ytPlayerInstance.current.pauseVideo();
+              }
+
+              // Exit fullscreen if in fullscreen mode
+              if (document.fullscreenElement) {
+                try {
+                  await document.exitFullscreen();
+                } catch (error) {
+                  console.error('Error exiting fullscreen:', error);
+                }
+              }
+
+              // Navigate to Time's Up page
+              navigate('/time-up', {
+                state: {
+                  blockedReason: 'source_limit',
+                  sourceId: video.sourceId,
+                  blockedSourceId: video.sourceId,
+                  sourceTimeState: sourceState
+                }
+              });
+            }
+          } catch (err) {
+            console.error('Error monitoring source limit:', err);
+          }
         }
       } catch (error) {
         console.error('Error monitoring time limits:', error);
       }
     };
-    
+
     // Only poll while playing to ensure fresh play-state in the closure
     if (isVideoPlaying) {
       intervalId = window.setInterval(monitorTimeLimits, 1000);
     }
-    
+
     return () => {
       isMounted = false;
       if (intervalId) {
@@ -198,7 +263,7 @@ export const YouTubePlayerPage: React.FC = () => {
   // Get wishlist status for this video
   const wishlistInfo = video?.id ? isInWishlist(video.id) : { inWishlist: false };
 
-    // Time tracking state
+  // Time tracking state
   const timeTrackingRef = useRef<{
     startTime: number;
     totalWatched: number;
@@ -233,7 +298,7 @@ export const YouTubePlayerPage: React.FC = () => {
     }
   }, []);
 
-      const updateTimeTracking = useCallback(async () => {
+  const updateTimeTracking = useCallback(async () => {
     if (timeTrackingRef.current.isTracking && video && ytPlayerInstance.current) {
       const currentTime = Date.now();
       const timeWatched = (currentTime - timeTrackingRef.current.lastUpdateTime) / 1000;
@@ -244,12 +309,28 @@ export const YouTubePlayerPage: React.FC = () => {
 
         // Record the time watched
         const videoCurrentTime = ytPlayerInstance.current.getCurrentTime();
-        await window.electron.recordVideoWatching(
+        const result = await window.electron.recordVideoWatching(
           video.id,
           videoCurrentTime,
           timeWatched,
-          video.duration
+          video.duration,
+          video.sourceId
         );
+
+        // Check if source limit reached
+        if (result.sourceBlocked) {
+          if (timeTrackingRef.current.isTracking) {
+            timeTrackingRef.current.isTracking = false;
+          }
+          navigate('/time-up', {
+            state: {
+              blockedReason: 'source_limit',
+              sourceId: video.sourceId,
+              blockedSourceId: result.blockedSourceId
+            }
+          });
+          return;
+        }
 
         timeTrackingRef.current.lastVideoTime = videoCurrentTime;
       }
@@ -338,7 +419,7 @@ export const YouTubePlayerPage: React.FC = () => {
 
   // Initialize YouTube player
   useEffect(() => {
-    let cleanup = () => {};
+    let cleanup = () => { };
     if (containerRef.current && videoId && !isLoading) {
       playerRef.current = new YouTubeIframePlayer(PLAYER_CONTAINER_ID);
 
@@ -358,7 +439,7 @@ export const YouTubePlayerPage: React.FC = () => {
           onReady: (event: any) => {
             ytPlayerInstance.current = event.target;
             setIsLoading(false);
-            
+
             // If we have a resume time, seek to it after the player is ready
             if (video?.resumeAt && video.resumeAt > 0) {
               // Small delay to ensure player is fully ready
@@ -434,7 +515,7 @@ export const YouTubePlayerPage: React.FC = () => {
         },
       };
 
-        // Add start time if resumeAt is available
+      // Add start time if resumeAt is available
       if (video?.resumeAt && video.resumeAt > 0) {
         playerOptions.startSeconds = video.resumeAt;
       }
@@ -510,7 +591,7 @@ export const YouTubePlayerPage: React.FC = () => {
       <div ref={containerRef} id={PLAYER_CONTAINER_ID} className="w-full aspect-video bg-black">
         {/* YouTube player will be mounted here */}
       </div>
-      
+
       {/* Compact Controls Row - combines download and favorite functionality */}
       {video && (
         <div className="mt-4">

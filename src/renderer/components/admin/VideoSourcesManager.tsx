@@ -26,6 +26,15 @@ export const VideoSourcesManager: React.FC = () => {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }));
       const sources = await dataAccess.getVideoSources();
+      console.log('[VideoSourcesManager] Loaded sources count:', sources.length);
+      if (sources.length > 0) {
+        console.log('[VideoSourcesManager] First source:', {
+          id: sources[0].id,
+          title: sources[0].title,
+          dailyTimeLimit: sources[0].dailyTimeLimit,
+          type: sources[0].type
+        });
+      }
       setState(prev => ({ ...prev, sources, isLoading: false }));
     } catch (error) {
       console.error('Error loading video sources:', error);

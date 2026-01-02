@@ -38,6 +38,7 @@ export class SimpleSchemaManager {
         await this.fixUsageExtrasTableColumns();
         await this.fixDownloadsTableColumns();
         await this.fixDownloadedVideosTableColumns();
+        await this.fixUsageLogsUniqueConstraint();
       }
 
       await this.databaseService.run('BEGIN IMMEDIATE TRANSACTION');
@@ -59,6 +60,7 @@ export class SimpleSchemaManager {
         await this.createSearchesTable();
         await this.createWishlistTable();
         await this.createSearchResultsCacheTable();
+        await this.createExtensionRequestsTable();
 
         // Set default settings (INSERT OR IGNORE handles existing data)
         await this.insertDefaultSettings();
@@ -106,7 +108,7 @@ export class SimpleSchemaManager {
    * Create sources table
    */
   private async createSourcesTable(): Promise<void> {
-  await this.databaseService.run(`
+    await this.databaseService.run(`
     CREATE TABLE IF NOT EXISTS sources (
       id TEXT PRIMARY KEY,
       type TEXT NOT NULL,
@@ -529,6 +531,27 @@ export class SimpleSchemaManager {
   }
 
   /**
+   * Create extension_requests table
+   */
+  private async createExtensionRequestsTable(): Promise<void> {
+    await this.databaseService.run(`
+      CREATE TABLE IF NOT EXISTS extension_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_id TEXT,
+        minutes_requested INTEGER NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        resolved_at TEXT,
+        FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE SET NULL
+      )
+    `);
+
+    // Create indexes
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_extension_requests_status ON extension_requests(status)');
+    await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_extension_requests_created_at ON extension_requests(created_at)');
+  }
+
+  /**
    * Get current schema version
    */
   async getCurrentSchemaVersion(): Promise<SchemaVersion | null> {
@@ -780,6 +803,119 @@ export class SimpleSchemaManager {
       log.info('[SimpleSchemaManager] Usage logs table columns fixed successfully (data preserved)');
     } catch (error) {
       log.error('[SimpleSchemaManager] Error fixing usage_logs table columns:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Fix unique constraint on usage_logs table to include source_id
+   * Old schema: UNIQUE(date)
+   * New schema: UNIQUE(date, source_id)
+   */
+  private async fixUsageLogsUniqueConstraint(): Promise<void> {
+    try {
+      // Check existing indexes to see if migration is needed
+      const indexes = await this.databaseService.all<{ name: string; unique: number }>(`
+        PRAGMA index_list(usage_logs)
+      `);
+
+      let needsMigration = false;
+
+      // Look for the unique index on date (old format)
+      // Note: We check index info for each unique index
+      for (const index of indexes) {
+        if (index.unique === 1 && !index.name.startsWith('sqlite_autoindex')) {
+          const info = await this.databaseService.all<{ name: string }>(`
+            PRAGMA index_info('${index.name}')
+          `);
+
+          // If we find a unique index that ONLY has 'date', we definitely need to migrate 
+          // (unless it's a manually created index we want to keep, but here we assume standard schema)
+          if (info.length === 1 && info[0].name === 'date') {
+            needsMigration = true;
+            break;
+          }
+        }
+
+        // Also check auto-created indexes (from UNIQUE constraints)
+        if (index.unique === 1 && index.name.startsWith('sqlite_autoindex')) {
+          const info = await this.databaseService.all<{ name: string }>(`
+            PRAGMA index_info('${index.name}')
+          `);
+
+          // Old schema had UNIQUE(date), which creates an autoindex on date
+          if (info.length === 1 && info[0].name === 'date') {
+            needsMigration = true;
+            break;
+          }
+        }
+      }
+
+      // If we didn't find the old index, we should also check if we ALREADY have the new index,
+      // just to be safe. But the logic above finding the OLD one is a strong signal we need migration.
+      // However, if the table was created fresh with correct schema, we won't find the old index.
+      // If the table was ALTERed to add column but not constraint, we WILL find the old index.
+
+      if (!needsMigration) {
+        log.debug('[SimpleSchemaManager] usage_logs unique constraint appears correct');
+        return;
+      }
+
+      log.info('[SimpleSchemaManager] Migrating usage_logs table to fix unique constraint...');
+
+      // Migration using transaction
+      await this.databaseService.run('BEGIN IMMEDIATE TRANSACTION');
+      try {
+        // 1. Rename old table
+        await this.databaseService.run('ALTER TABLE usage_logs RENAME TO usage_logs_old');
+
+        // 2. Create new table with correct constraint
+        await this.databaseService.run(`
+          CREATE TABLE usage_logs (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              date TEXT NOT NULL,
+              seconds_used INTEGER NOT NULL DEFAULT 0,
+              source_id TEXT DEFAULT NULL,
+              created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+              FOREIGN KEY (source_id) REFERENCES sources(id) ON DELETE SET NULL,
+              UNIQUE(date, source_id)
+          )
+        `);
+
+        // 3. Copy data
+        // We need to handle potential duplicates if strict uniqueness wasn't enforced before on global usage
+        // But since old constraint was stricter (UNIQUE(date)), we shouldn't have duplicates on date.
+        // Wait, if source_id did not exist, all source_ids are NULL in old table (implicit).
+        // If source_id column existed but constraint was old:
+        // Rows could be: ('2025-01-01', NULL) -> OK.
+        // Could we have ('2025-01-01', 'yt1')? NO, because UNIQUE(date) would block it if ('2025-01-01', NULL) existed.
+        // So actually, the old constraint PREVENTED storing per-source usage. 
+        // So copying is safe, simple INSERT SELECT.
+
+        await this.databaseService.run(`
+          INSERT INTO usage_logs (id, date, seconds_used, source_id, created_at, updated_at)
+          SELECT id, date, seconds_used, source_id, created_at, updated_at
+          FROM usage_logs_old
+        `);
+
+        // 4. Create indexes
+        await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_date ON usage_logs(date)');
+        await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_updated_at ON usage_logs(updated_at)');
+        await this.databaseService.run('CREATE INDEX IF NOT EXISTS idx_usage_logs_source_id ON usage_logs(source_id, date)');
+
+        // 5. Drop old table
+        await this.databaseService.run('DROP TABLE usage_logs_old');
+
+        await this.databaseService.run('COMMIT');
+        log.info('[SimpleSchemaManager] usage_logs table migrated successfully');
+      } catch (error) {
+        await this.databaseService.run('ROLLBACK');
+        throw error;
+      }
+
+    } catch (error) {
+      log.error('[SimpleSchemaManager] Error fixing usage_logs unique constraint:', error);
       throw error;
     }
   }

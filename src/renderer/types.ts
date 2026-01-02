@@ -43,6 +43,17 @@ export interface Video {
 }
 
 // Source-level time tracking API interface
+export interface ExtensionRequest {
+  id: number;
+  sourceId: string | null;
+  sourceName?: string;
+  minutesRequested: number;
+  status: 'pending' | 'approved' | 'denied';
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+// Source-level time tracking API interface
 export interface TimeTrackingAPI {
   /**
    * Get current time state for a source
@@ -58,6 +69,21 @@ export interface TimeTrackingAPI {
    * Get time states for all sources
    */
   getAllSourceStates(): Promise<SourceTimeState[]>;
+
+  /**
+   * Request time extension
+   */
+  requestTimeExtension(sourceId: string | null, minutes: number): Promise<boolean>;
+
+  /**
+   * Get all pending extension requests
+   */
+  getPendingRequests(): Promise<ExtensionRequest[]>;
+
+  /**
+   * Resolve an extension request
+   */
+  resolveRequest(requestId: number, approved: boolean): Promise<void>;
 }
 
 export interface ElectronAPI {
@@ -67,7 +93,7 @@ export interface ElectronAPI {
   getLocalFile: (filePath: string) => Promise<string>;
   getDlnaFile: (server: string, port: number, path: string) => Promise<string>;
   getVideoStreams: (videoId: string) => Promise<any>;
-  recordVideoWatching: (videoId: string, position: number, timeWatched: number, duration?: number) => Promise<void>;
+  recordVideoWatching: (videoId: string, position: number, timeWatched: number, duration?: number, sourceId?: string) => Promise<{ success?: boolean; sourceBlocked?: boolean; blockedSourceId?: string; sourceTimeState?: any }>;
   getTimeTrackingState: () => Promise<any>;
   getTimeLimits: () => Promise<any>;
   // Source-level time tracking API
@@ -263,20 +289,20 @@ export interface ElectronAPI {
   pathJoin: (...paths: string[]) => Promise<string>;
 
   // Search functionality
-  searchDatabase: (query: string, sourceId?: string) => Promise<{success: boolean; data?: any[]; error?: string}>;
-  searchYouTube: (query: string) => Promise<{success: boolean; data?: any[]; error?: string}>;
-  getSearchHistory: (limit?: number) => Promise<{success: boolean; data?: any[]; error?: string}>;
-  getCachedSearchResults: (query: string, searchType: 'database' | 'youtube') => Promise<{success: boolean; data?: any[]; error?: string}>;
+  searchDatabase: (query: string, sourceId?: string) => Promise<{ success: boolean; data?: any[]; error?: string }>;
+  searchYouTube: (query: string) => Promise<{ success: boolean; data?: any[]; error?: string }>;
+  getSearchHistory: (limit?: number) => Promise<{ success: boolean; data?: any[]; error?: string }>;
+  getCachedSearchResults: (query: string, searchType: 'database' | 'youtube') => Promise<{ success: boolean; data?: any[]; error?: string }>;
 
   // Wishlist functionality
   wishlistAdd: (video: any) => Promise<{ success: boolean; error?: string }>;
   wishlistRemove: (videoId: string) => Promise<{ success: boolean; error?: string }>;
-  wishlistGetByStatus: (status: 'pending' | 'approved' | 'denied') => Promise<{success: boolean; data?: any[]; error?: string}>;
+  wishlistGetByStatus: (status: 'pending' | 'approved' | 'denied') => Promise<{ success: boolean; data?: any[]; error?: string }>;
   wishlistApprove: (videoId: string) => Promise<{ success: boolean; error?: string }>;
   wishlistDeny: (videoId: string, reason?: string) => Promise<{ success: boolean; error?: string }>;
   wishlistBulkApprove: (videoIds: string[]) => Promise<{ success: string[]; failed: string[] }>;
   wishlistBulkDeny: (videoIds: string[], reason?: string) => Promise<{ success: string[]; failed: string[] }>;
-  
+
   // Wishlist events
   onWishlistUpdated: (callback: () => void) => any;
   offWishlistUpdated: (wrappedCallback: any) => void;
