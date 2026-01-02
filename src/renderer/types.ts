@@ -130,7 +130,11 @@ export interface ElectronAPI {
   adminGetTimeExtra: () => Promise<any>;
   adminWriteTimeLimits: (timeLimits: any) => Promise<{ success: boolean }>;
   adminGetLastWatchedVideoWithSource: () => Promise<{
-    video: any;
+    video: {
+      id: string;
+      title: string;
+      thumbnail: string;
+    };
     sourceId: string;
     sourceTitle: string;
   } | null>;

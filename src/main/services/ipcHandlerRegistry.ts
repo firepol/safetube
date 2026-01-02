@@ -546,7 +546,7 @@ export function registerAdminHandlers() {
       // Transform to expected format for AdminPage
       return {
         video: {
-          videoId: result.videoId,
+          id: result.videoId,
           title: result.title || 'Unknown Title',
           thumbnail: result.thumbnail
         },
